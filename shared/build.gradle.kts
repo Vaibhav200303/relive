@@ -43,6 +43,7 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.compose.uiTooling)
+            implementation(libs.androidx.core.ktx)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -62,4 +63,10 @@ kotlin {
 
 dependencies {
     androidRuntimeClasspath(libs.compose.uiTooling)
+}
+
+compose.resources {
+    publicResClass = false
+    packageOfResClass = "relive.shared.generated.resources"
+    generateResClass = auto
 }
