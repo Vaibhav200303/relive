@@ -63,3 +63,9 @@ kotlin {
 dependencies {
     androidRuntimeClasspath(libs.compose.uiTooling)
 }
+
+compose.resources {
+    publicResClass = false
+    packageOfResClass = "relive.shared.generated.resources"
+    generateResClass = auto
+}

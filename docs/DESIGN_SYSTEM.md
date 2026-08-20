@@ -66,7 +66,7 @@ Base theme (**Warm Journal**), from the reference:
 | Token              | Value     | Usage                          |
 | ------------------ | --------- | ------------------------------ |
 | `color.bg.canvas`  | `#F6F4F0` | app background (cream)          |
-| `color.bg.header`  | `#F6F4F0` (≈90% + blur) | sticky header background |
+| `color.bg.header`  | `#F6F4F0` @ `opacity.veryHigh` (+ blur) | sticky header background |
 
 ---
 
@@ -115,12 +115,12 @@ Surfaces are used sparingly — the product avoids excessive cards.
 
 ## 8. Typography
 
-Two families:
+Two families, both bundled locally in the app via the Compose Multiplatform resources system (no network font loading, ever):
 
-- **Serif** — `Playfair Display` (titles, wordmark). Fallback: `serif`.
-- **Sans** — `Inter` (body, metadata). Fallback: `sans-serif`.
+- **Serif** — `Playfair Display`, SIL Open Font License 1.1. Bundled weights/styles: Regular, Italic.
+- **Sans** — `Inter`, SIL Open Font License 1.1. Bundled weights/styles: Regular, Italic, Medium, SemiBold.
 
-Bundle equivalent fonts in the app; do not depend on network font loading.
+Only the weights and styles actually referenced by the token mappings below are bundled. License files are stored alongside the font binaries in the design-system layer. Callers reference typography exclusively through `ReliveTheme.typography.*` — the underlying font resource names are an implementation detail of the design-system layer.
 
 | Token                   | Family | Size / style                              | Usage                         |
 | ----------------------- | ------ | ----------------------------------------- | ----------------------------- |
@@ -240,12 +240,13 @@ Use Material 3 motion easing as the foundation; keep it restrained.
 
 ## 17. Opacity
 
-| Token          | Value  | Usage                          |
-| -------------- | ------ | ------------------------------ |
-| `opacity.full` | `1.0`  | primary content                |
-| `opacity.high` | `0.7`  | secondary metadata             |
-| `opacity.med`  | `0.5`  | muted borders, placeholders    |
-| `opacity.low`  | `0.4`  | inactive dots, faint text      |
+| Token              | Value  | Usage                                     |
+| ------------------ | ------ | ----------------------------------------- |
+| `opacity.full`     | `1.0`  | primary content                           |
+| `opacity.veryHigh` | `0.9`  | sticky header background (`color.bg.header`) |
+| `opacity.high`     | `0.7`  | secondary metadata                        |
+| `opacity.med`      | `0.5`  | muted borders, placeholders               |
+| `opacity.low`      | `0.4`  | inactive dots, faint text                 |
 
 Opacity variants for colors come from this scale rather than one-off alpha values.
 

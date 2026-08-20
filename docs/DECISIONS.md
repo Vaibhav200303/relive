@@ -92,6 +92,24 @@ Format for each entry:
 
 ---
 
+## ADR-0010 — Relive design tokens exposed via `ReliveTheme`, layered on Material 3
+
+- **Date:** 2026-08-20 · **Status:** Accepted
+- **Context:** Phase 0 must establish a reusable visual foundation that (a) keeps Material 3 for accessibility/component semantics, (b) forces every visual value to come from a named token, and (c) leaves room for future per-timeline themes (Warm Journal, Monochrome Archive, Film Memory) without rewriting components.
+- **Decision:** Introduce a `ReliveThemeTokens` bundle (colors, typography, dimensions, motion) selected by `ReliveThemeId`. `ReliveTheme` composable resolves the active bundle, publishes it through a `staticCompositionLocalOf`, and derives a minimal Material 3 `ColorScheme` + `Typography` from it so `MaterialTheme.*` reads stay valid. Components read design values exclusively via `ReliveTheme.colors / typography / dimensions / motion`; no raw colors, sizes, or durations in UI code. Warm Journal is the only concrete token set in Phase 0; `MonochromeArchive` and `FilmMemory` are declared ids that currently resolve to Warm Journal until their palettes are transcribed.
+- **Consequences:** Adding a new theme is a token-set addition plus a `when` branch — no component changes. Non-color tokens (spacing, radii, icons, stroke, timeline, media, opacity, motion) are shared, preventing per-screen drift. Material 3 semantics/accessibility are preserved. See [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) and [`ARCHITECTURE.md`](ARCHITECTURE.md) §7–§8.
+
+---
+
+## ADR-0011 — Playfair Display + Inter bundled locally under the Compose Multiplatform resources system
+
+- **Date:** 2026-08-20 · **Status:** Accepted
+- **Context:** `DESIGN_SYSTEM.md` §8 requires Playfair Display (serif) and Inter (sans) to be the actual families used at runtime, with no network font loading. Phase 0 must ship the completed design-system foundation, so temporary platform-family fallbacks are not acceptable.
+- **Decision:** Both families are bundled as static TTF binaries inside the design-system layer under `shared/src/commonMain/composeResources/font/`, exposed to Compose only through the internal `rememberReliveSerifFamily()` / `rememberReliveSansFamily()` helpers. `ReliveTheme` composes the typography scale from those families and publishes it via `ReliveTheme.typography`. Only the weights/styles actually referenced by the token mappings are bundled: Playfair Display Regular + Italic, and Inter Regular + Italic + Medium + SemiBold. Both fonts are licensed under SIL Open Font License 1.1; the full license texts are checked into the repository at `shared/licenses/fonts/`. Neither the resource filenames nor the generated `Res` class are exposed outside the `com.vaibhav.relive.ui.theme` package — the Compose resources module is generated with `publicResClass = false`.
+- **Consequences:** Visual fidelity to the approved UI reference is achieved without any runtime network dependency. Adding a new typography weight is a design-system-layer change: bundle the TTF, add one `Font(...)` entry in `ReliveFonts.kt`. Redistribution obligations are satisfied by shipping the OFL text alongside the binaries. If a future theme (Monochrome Archive, Film Memory) needs different families, they are declared the same way and injected via `ReliveTheme` — components remain unchanged.
+
+---
+
 ## Template for new decisions
 
 ```
