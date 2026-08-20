@@ -1,0 +1,23 @@
+CREATE TABLE custom_timelines (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    theme TEXT,
+    created_at INTEGER NOT NULL
+);
+
+CREATE INDEX custom_timelines_created_at ON custom_timelines(created_at);
+
+insertCustomTimeline:
+INSERT INTO custom_timelines (id, name, theme, created_at) VALUES (?, ?, ?, ?);
+
+selectCustomTimelineById:
+SELECT * FROM custom_timelines WHERE id = :id;
+
+selectAllCustomTimelines:
+SELECT * FROM custom_timelines ORDER BY created_at ASC, id ASC;
+
+updateCustomTimeline:
+UPDATE custom_timelines SET name = :name, theme = :theme WHERE id = :id;
+
+deleteCustomTimeline:
+DELETE FROM custom_timelines WHERE id = :id;

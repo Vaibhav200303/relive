@@ -1,0 +1,28 @@
+CREATE TABLE moment_timeline_memberships (
+    moment_id TEXT NOT NULL REFERENCES moments(id) ON DELETE CASCADE,
+    timeline_id TEXT NOT NULL REFERENCES custom_timelines(id) ON DELETE CASCADE,
+    PRIMARY KEY (moment_id, timeline_id)
+);
+
+CREATE INDEX memberships_timeline ON moment_timeline_memberships(timeline_id);
+CREATE INDEX memberships_moment ON moment_timeline_memberships(moment_id);
+
+insertMembership:
+INSERT OR IGNORE INTO moment_timeline_memberships(moment_id, timeline_id) VALUES (?, ?);
+
+deleteMembership:
+DELETE FROM moment_timeline_memberships
+WHERE moment_id = :momentId AND timeline_id = :timelineId;
+
+deleteMembershipsForMoment:
+DELETE FROM moment_timeline_memberships WHERE moment_id = :momentId;
+
+selectTimelinesForMoment:
+SELECT timeline_id FROM moment_timeline_memberships WHERE moment_id = :momentId;
+
+selectMomentIdsInTimeline:
+SELECT moment_id FROM moment_timeline_memberships WHERE timeline_id = :timelineId;
+
+countMembership:
+SELECT COUNT(*) FROM moment_timeline_memberships
+WHERE moment_id = :momentId AND timeline_id = :timelineId;

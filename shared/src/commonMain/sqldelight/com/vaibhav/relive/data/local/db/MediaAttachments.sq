@@ -1,0 +1,25 @@
+CREATE TABLE media_attachments (
+    id TEXT NOT NULL PRIMARY KEY,
+    moment_id TEXT NOT NULL REFERENCES moments(id) ON DELETE CASCADE,
+    media_type TEXT NOT NULL,
+    storage_ref TEXT NOT NULL,
+    sort_index INTEGER NOT NULL,
+    UNIQUE(moment_id, sort_index)
+);
+
+CREATE INDEX media_attachments_moment ON media_attachments(moment_id);
+
+insertMediaAttachment:
+INSERT INTO media_attachments(id, moment_id, media_type, storage_ref, sort_index)
+VALUES (?, ?, ?, ?, ?);
+
+selectAttachmentsForMoment:
+SELECT * FROM media_attachments
+WHERE moment_id = :momentId
+ORDER BY sort_index ASC;
+
+deleteAttachmentsForMoment:
+DELETE FROM media_attachments WHERE moment_id = :momentId;
+
+deleteAttachment:
+DELETE FROM media_attachments WHERE id = :id;

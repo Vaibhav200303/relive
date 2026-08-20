@@ -1,0 +1,35 @@
+CREATE TABLE moment_tags (
+    moment_id TEXT NOT NULL REFERENCES moments(id) ON DELETE CASCADE,
+    tag_canonical TEXT NOT NULL REFERENCES tags(canonical) ON DELETE RESTRICT,
+    PRIMARY KEY (moment_id, tag_canonical)
+);
+
+CREATE INDEX moment_tags_tag ON moment_tags(tag_canonical);
+CREATE INDEX moment_tags_moment ON moment_tags(moment_id);
+
+insertMomentTag:
+INSERT OR IGNORE INTO moment_tags(moment_id, tag_canonical) VALUES (?, ?);
+
+deleteMomentTag:
+DELETE FROM moment_tags WHERE moment_id = :momentId AND tag_canonical = :tagCanonical;
+
+deleteMomentTagsForMoment:
+DELETE FROM moment_tags WHERE moment_id = :momentId;
+
+selectTagsForMoment:
+SELECT t.canonical, t.label FROM tags t
+JOIN moment_tags mt ON mt.tag_canonical = t.canonical
+WHERE mt.moment_id = :momentId
+ORDER BY t.canonical ASC;
+
+selectDistinctTagsInTimeline:
+SELECT DISTINCT t.canonical, t.label FROM tags t
+JOIN moment_tags mt ON mt.tag_canonical = t.canonical
+JOIN moment_timeline_memberships mtm ON mtm.moment_id = mt.moment_id
+WHERE mtm.timeline_id = :timelineId
+ORDER BY t.canonical ASC;
+
+selectDistinctTagsAll:
+SELECT DISTINCT t.canonical, t.label FROM tags t
+JOIN moment_tags mt ON mt.tag_canonical = t.canonical
+ORDER BY t.canonical ASC;
