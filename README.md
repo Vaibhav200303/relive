@@ -1,31 +1,69 @@
-This is a Kotlin Multiplatform project targeting Android, iOS.
+# Relive
 
-* [/iosApp](./iosApp/iosApp) contains an iOS application. Even if you’re sharing your UI with Compose Multiplatform,
-  you need this entry point for your iOS app. This is also where you should add SwiftUI code for your project.
+**Capture moments. Relive them later.**
 
-* [/shared](./shared/src) is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-  - [commonMain](./shared/src/commonMain/kotlin) is for code that’s common for all targets.
-  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-    the [iosMain](./shared/src/iosMain/kotlin) folder would be the right place for such calls.
-    Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./shared/src/jvmMain/kotlin)
-    folder is the appropriate location.
+Relive is a private, **local-first** personal memory timeline for Android and iOS. You save thoughts, memories, journal-style text, photos, videos, audio, or any combination — and revisit them later as a beautiful chronological archive of your life, organized into timelines like *All*, *College*, or *Japan 2026*.
 
-### Running the apps
-
-Use the run configurations provided by the run widget in your IDE's toolbar. You can also use these commands and options:
-
-- Android app: `./gradlew :androidApp:assembleDebug`
-- iOS app: open the [/iosApp](./iosApp) directory in Xcode and run it from there.
-
-### Running tests
-
-Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
-
-- Android tests: `./gradlew :shared:testAndroidHostTest`
-- iOS tests: `./gradlew :shared:iosSimulatorArm64Test`
+Relive is designed to feel like a personal life archive, not a notes app or database.
 
 ---
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
+## Tech stack
+
+- **Kotlin Multiplatform** — shared business logic across platforms
+- **Compose Multiplatform** — shared UI where practical
+- **Android + iOS** targets
+- **Material 3** as the interaction/accessibility/component foundation, with a custom Relive design system on top
+- **Local-first persistence** — no backend, no login, no cloud sync
+
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full picture.
+
+---
+
+## Current development status
+
+**Documentation / foundation phase.** The repository currently contains the generated Kotlin Multiplatform + Compose Multiplatform starter project plus the authoritative product, architecture, and design documentation. Application features have **not** been implemented yet.
+
+Progress is tracked in [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+---
+
+## Build & run
+
+Requires a recent JDK, Android SDK, and (for iOS) Xcode on macOS.
+
+- **Android app:**
+  ```bash
+  ./gradlew :androidApp:assembleDebug
+  ```
+- **iOS app:** open the `iosApp/` directory in Xcode and run it there.
+
+### Tests
+
+- **Android host tests:**
+  ```bash
+  ./gradlew :shared:testAndroidHostTest
+  ```
+- **iOS simulator tests:**
+  ```bash
+  ./gradlew :shared:iosSimulatorArm64Test
+  ```
+
+See [`docs/TESTING.md`](docs/TESTING.md) for the full testing strategy.
+
+---
+
+## Authoritative documentation
+
+Read these before contributing. They are the source of truth:
+
+- [`AGENTS.md`](AGENTS.md) — operating rules for contributors and AI agents
+- [`docs/PRODUCT_SPEC.md`](docs/PRODUCT_SPEC.md) — what Relive does
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — how it is structured
+- [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) — tokens and visual language
+- [`docs/DECISIONS.md`](docs/DECISIONS.md) — architectural decision record
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) — phased plan
+- [`docs/TESTING.md`](docs/TESTING.md) — testing expectations
+- [`docs/RELEASE.md`](docs/RELEASE.md) — release requirements (planned)
+
+The approved UI reference lives in `docs/ui-reference/` and is authoritative for timeline UI work.

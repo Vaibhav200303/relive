@@ -1,0 +1,89 @@
+# Relive — Roadmap
+
+A phased plan from foundation to release. Work **phase by phase** ([`../AGENTS.md`](../AGENTS.md)). Phase boundaries may be refined when technically justified, but scope must **not** expand beyond [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md). Each phase ships with the tests described in [`TESTING.md`](TESTING.md) and records major decisions in [`DECISIONS.md`](DECISIONS.md).
+
+Status legend: ☐ not started · ◐ in progress · ☑ done.
+
+---
+
+## Phase 0 — Foundation & design system  ☐
+
+- Establish module layering in `shared/` (domain, data, platform, presentation, ui, di) per [`ARCHITECTURE.md`](ARCHITECTURE.md).
+- Implement the tokenized design system and `ReliveTheme` (Warm Journal base) from [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md); bundle Playfair Display + Inter.
+- Replace the starter `App()` scaffold with the Relive app shell (header, canvas background) matching the reference.
+- Wire formatting + static analysis into the build.
+- **Exit:** app builds on Android and iOS showing the themed shell; tokens in place; no feature logic yet.
+
+## Phase 1 — Core memory domain & persistence  ☐
+
+- Define domain models: `Moment`, `Timeline`, `MediaAttachment`, `Tag`, `ReliveLocation`, membership.
+- Define repository interfaces and the `Clock` abstraction.
+- Select and record the local database engine ([`DECISIONS.md`](DECISIONS.md)); implement schema: moments once, many-to-many timeline membership, attachment/tag references, All as a logical query.
+- **Exit:** domain + persistence unit/persistence tests pass; CRUD at the repository level works.
+
+## Phase 2 — Basic All timeline  ☐
+
+- Render the **All** timeline: rail, dots, moment presentation (title, subtitle, content), chronological order, continuous scroll — matching the reference.
+- Content expansion (`... more` / `less`).
+- Favorite action (subtle).
+- **Exit:** All timeline displays persisted text moments correctly; Compose UI tests for core rendering.
+
+## Phase 3 — Inline composer (+ location data model)  ☐
+
+- Inline composer with plus-circle marker: auto date/time, title, content, tags, **Keep Moment**, reset `×`.
+- Establish the **location data model and interfaces** (`ReliveLocation`, `LocationProvider`, `PlaceResolver`, `LocationResult`) in shared code — **before** platform GPS implementations.
+- Composer location UI: show resolved place below date/time; keep / remove / replace with manual entry. All fields optional; no raw coordinates in UI. Composer works fully with no location.
+- **Exit:** a text moment (optionally with manually entered location) can be composed inline and saved; new marker becomes a dot; tests for compose/save and the no-location path.
+
+## Phase 4 — Media + platform GPS  ☐
+
+- Media capture/storage interfaces + platform implementations (image, video, audio). Add Media flow, per-attachment remove, carousel with subtle page indicators, correct aspect ratios; no empty placeholders.
+- Platform GPS implementations behind the Phase 3 interfaces: Android location APIs; iOS Core Location; reverse geocoding via `PlaceResolver`. Handle permission denied / permanently denied / services disabled / unavailable / timeout — composer continues in every case. Permission requested only when needed; no background tracking.
+- **Exit:** moments with multiple attachments render as a carousel; detected location works and degrades gracefully; location + media tests pass.
+
+## Phase 5 — Custom timelines  ☐
+
+- Create custom timelines; home screen lists All + custom timelines.
+- Membership rules: create-in-custom → All + that timeline; create-in-All → optional assignment to custom timelines.
+- **Exit:** moments appear in the correct timelines without duplication; membership tests pass.
+
+## Phase 6 — Edit / forget rules  ☐
+
+- Long-press within 4 days shows Edit / Forget; hidden after 4 days (keyed on `createdAt`).
+- Inline editing (add/remove media while editing); tap-outside save that does not trigger on control interactions.
+- Forget with confirmation → permanent removal.
+- **Exit:** 4-day rule enforced everywhere; edit/forget and window-boundary tests pass.
+
+## Phase 7 — Search  ☐
+
+- Search icon transforms the app bar; timeline stays visible; All / Tags / Places filters scoped to the current timeline.
+- All-search: highlight, match count, up/down navigation, auto-scroll (WhatsApp-style).
+- Tags: filter + suggestions (current timeline). Places: filter + suggestions derived only from the current timeline's moment locations.
+- **Exit:** timeline-scoped search across title/content/tags/location; Places scoping and search tests pass.
+
+## Phase 8 — Themes & settings  ☐
+
+- Additional themes (Monochrome Archive, Film Memory) as token sets; per-timeline theme selection; themes change only presentation.
+- Settings screen: Profile, Themes, Upgrade to Pro, Export (entries present; detailed behavior deferred where unspecified).
+- **Exit:** switching themes changes only presentation; navigation/structure/interaction unchanged; theme tests pass.
+
+## Phase 9 — RevenueCat / Pro  ☐
+
+- Implement Pro entitlement behind the existing entitlement interface using RevenueCat; wire "Upgrade to Pro."
+- (Later/optional) RevenueCat Funnels + Stripe for web subscription conversion — see [`RELEASE.md`](RELEASE.md).
+- **Exit:** Pro state drives gated features; entitlement is swappable; monetization dependencies added only now.
+
+## Phase 10 — Production polish + Shipaton release  ☐
+
+- Performance, accessibility, empty/edge states, final visual polish against the reference.
+- Release readiness per [`RELEASE.md`](RELEASE.md): Android release, iOS build/signing, screenshots/demo video, privacy checks, Shipaton submission.
+- **Exit:** release candidate builds for both platforms; release checklist complete.
+
+---
+
+## Guardrails across all phases
+
+- No unrequested dependencies or scope. No backend, sync, login, social, AI, analytics.
+- Keep platform APIs out of shared business logic.
+- Tests for important behavior; formatting + static analysis before completion.
+- Never commit/merge/push without explicit approval.
