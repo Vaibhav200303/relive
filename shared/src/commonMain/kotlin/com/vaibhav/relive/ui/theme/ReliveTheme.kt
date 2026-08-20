@@ -32,6 +32,13 @@ data class ReliveThemeTokens(
     val typography: ReliveTypography,
     val dimensions: ReliveDimensions,
     val motion: ReliveMotion,
+    /**
+     * When true, the platform status/navigation bar icons should render in a DARK
+     * appearance (for use over light Relive canvases like Warm Journal). Future dark
+     * themes set this to false so the platform draws light icons instead. Platform
+     * bar wiring lives in [ApplyReliveSystemBars]; shared code stays platform-free.
+     */
+    val systemBarIconsDark: Boolean,
 )
 
 val WarmJournalTokens: ReliveThemeTokens = ReliveThemeTokens(
@@ -40,6 +47,7 @@ val WarmJournalTokens: ReliveThemeTokens = ReliveThemeTokens(
     typography = DefaultReliveTypography,
     dimensions = DefaultReliveDimensions,
     motion = DefaultReliveMotion,
+    systemBarIconsDark = true,
 )
 
 fun reliveTokensFor(id: ReliveThemeId): ReliveThemeTokens = when (id) {
@@ -85,6 +93,7 @@ fun ReliveTheme(
         labelMedium = tokens.typography.eyebrow,
         labelSmall = tokens.typography.tag,
     )
+    ApplyReliveSystemBars(tokens)
     CompositionLocalProvider(
         LocalReliveTokens provides tokens,
         LocalContentColor provides c.textPrimary,
@@ -96,6 +105,14 @@ fun ReliveTheme(
         )
     }
 }
+
+/**
+ * Configure the host platform's system bars (status/navigation) to match [tokens].
+ * Android sets bar icon appearance and keeps bars transparent for edge-to-edge;
+ * iOS is a no-op (status-bar style is driven by the UIViewController).
+ */
+@Composable
+expect fun ApplyReliveSystemBars(tokens: ReliveThemeTokens)
 
 object ReliveTheme {
     val tokens: ReliveThemeTokens

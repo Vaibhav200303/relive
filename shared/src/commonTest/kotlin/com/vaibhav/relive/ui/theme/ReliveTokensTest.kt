@@ -141,6 +141,13 @@ class ReliveTokensTest {
     }
 
     @Test
+    fun warmJournalRequestsDarkSystemBarIcons() {
+        // Warm Journal is a light canvas; platform status/nav icons must render dark
+        // for readability. Future dark themes flip this to false.
+        assertTrue(WarmJournalTokens.systemBarIconsDark)
+    }
+
+    @Test
     fun warmJournalIsTheOnlyResolvedThemeInPhase0() {
         assertEquals(ReliveThemeId.WarmJournal, WarmJournalTokens.id)
         assertSame(WarmJournalTokens, reliveTokensFor(ReliveThemeId.WarmJournal))
