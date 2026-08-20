@@ -110,6 +110,15 @@ Format for each entry:
 
 ---
 
+## ADR-0012 — Moment minimum validity: at least one of title, content, or media
+
+- **Date:** 2026-08-20 · **Status:** Accepted
+- **Context:** PRODUCT_SPEC §4 lists title, content, media, tags, and location as moment fields and confirms text-only moments are supported (§4). It does not explicitly define whether a moment with an empty title AND empty content AND zero attachments is valid. Such a moment would render as a bare timeline dot with nothing to relive, which contradicts the product's "beautiful personal life archive" feeling.
+- **Decision:** A moment is semantically valid only if at least one of the following is non-empty: title (non-blank), content (non-blank), or attachments (≥ 1). This rule is enforced in the domain layer by `MomentValidation.validate` and returns a structured result (`Ok` / `Invalid(reasons)`). Structural invariants (unique attachment ids/sortIndex, no duplicate tags in canonical form, `updatedAt >= createdAt`, coordinates present as a pair) are enforced in the constructors of `Moment`, `MediaAttachment`, and `ReliveLocation`. User-entered title/content is preserved verbatim; the only trimming performed is on tag input, and the original label is retained for display.
+- **Consequences:** The composer / presentation layer can rely on `MomentValidation` to decide whether a "Keep Moment" tap is allowed. Media-only and text-only moments both remain valid. If PRODUCT_SPEC is later refined to permit truly empty moments (or to add further required fields), this ADR is superseded by a new one.
+
+---
+
 ## Template for new decisions
 
 ```
