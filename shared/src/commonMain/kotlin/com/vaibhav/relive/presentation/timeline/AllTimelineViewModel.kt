@@ -13,10 +13,10 @@ import kotlinx.coroutines.launch
  * and republishes the derived UI state; favorite toggles delegate straight to the
  * repository so the observed flow re-emits with the updated row.
  *
- * The state holder receives its own [CoroutineScope] rather than extending
- * `androidx.lifecycle.ViewModel`, so it composes cleanly with `rememberCoroutineScope`
- * in Compose Multiplatform without pulling the AndroidX ViewModel factory plumbing
- * into shared code. Cancelling [scope] tears down the observation.
+ * The repository contract is newest-first (see [MomentRepository.observeAll]).
+ * The UI wants a WhatsApp-style chronological order (oldest at the top, newest
+ * just above the composer), so this presentation layer reverses the emitted
+ * list. The persistence contract is preserved untouched.
  */
 class AllTimelineViewModel(
     private val momentRepository: MomentRepository,
@@ -32,7 +32,9 @@ class AllTimelineViewModel(
                 _state.value = if (moments.isEmpty()) {
                     AllTimelineUiState.Empty
                 } else {
-                    AllTimelineUiState.Loaded(moments.map { it.toPresentation() })
+                    AllTimelineUiState.Loaded(
+                        moments.asReversed().map { it.toPresentation() },
+                    )
                 }
             }
         }

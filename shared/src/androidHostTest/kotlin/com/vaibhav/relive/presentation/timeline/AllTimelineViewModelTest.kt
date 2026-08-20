@@ -10,6 +10,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -63,6 +64,72 @@ class AllTimelineViewModelTest {
     }
 
     @Test
+    fun reversesNewestFirstRepositoryOrderingIntoOldestFirstPresentation() = runTest {
+        // Repository contract is newest-first (see MomentRepository.observeAll);
+        // the UI wants WhatsApp-style oldest-at-top so it can render composer
+        // at the bottom. This test locks in the presentation-layer reversal
+        // without asking the repository to change its contract.
+        val newest = Moment(
+            id = MomentId("m-new"),
+            createdAt = Instant(3_000_000_000_000L),
+            title = "newest",
+        )
+        val middle = Moment(
+            id = MomentId("m-mid"),
+            createdAt = Instant(2_000_000_000_000L),
+            title = "middle",
+        )
+        val oldest = Moment(
+            id = MomentId("m-old"),
+            createdAt = Instant(1_000_000_000_000L),
+            title = "oldest",
+        )
+        val repo = FakeMomentRepository(listOf(newest, middle, oldest))
+        val scope = TestScope(UnconfinedTestDispatcher(testScheduler))
+        val vm = AllTimelineViewModel(repo, scope)
+
+        // Repo still newest-first.
+        assertEquals(
+            listOf("m-new", "m-mid", "m-old"),
+            repo.observeAll().first().map { it.id.value },
+        )
+
+        val state = assertIs<AllTimelineUiState.Loaded>(vm.state.value)
+        assertEquals(
+            listOf("m-old", "m-mid", "m-new"),
+            state.moments.map { it.id.value },
+        )
+    }
+
+    @Test
+    fun newlySavedMomentBecomesLastPresentedEntry() = runTest {
+        // After Keep Moment: repo emits newest-first, presentation places the
+        // new moment last (just above the composer, which is a UI-layer slot).
+        val existing = Moment(
+            id = MomentId("m-existing"),
+            createdAt = Instant(1_000_000_000_000L),
+            title = "existing",
+        )
+        val repo = FakeMomentRepository(listOf(existing))
+        val scope = TestScope(UnconfinedTestDispatcher(testScheduler))
+        val vm = AllTimelineViewModel(repo, scope)
+
+        val fresh = Moment(
+            id = MomentId("m-fresh"),
+            createdAt = Instant(2_000_000_000_000L),
+            title = "fresh",
+        )
+        repo.insert(fresh)
+
+        val state = assertIs<AllTimelineUiState.Loaded>(vm.state.value)
+        assertEquals(2, state.moments.size)
+        assertEquals("m-existing", state.moments.first().id.value)
+        assertEquals("m-fresh", state.moments.last().id.value)
+        // Presentation never duplicates the emitted moment.
+        assertEquals(state.moments.size, state.moments.map { it.id }.toSet().size)
+    }
+
+    @Test
     fun setFavoriteRoutesThroughRepository() = runTest {
         val moments = listOf(
             Moment(
@@ -85,7 +152,12 @@ private class FakeMomentRepository(initial: List<Moment> = emptyList()) : Moment
     private val flow = MutableStateFlow(initial)
 
     override suspend fun insert(moment: Moment, timelineIds: Set<TimelineId>) {
-        flow.value = flow.value + moment
+        // Match MomentRepository.observeAll contract: newest first, ties broken
+        // by descending id — so tests exercise the real ordering guarantee.
+        flow.value = (flow.value + moment).sortedWith(
+            compareByDescending<Moment> { it.createdAt }
+                .thenByDescending { it.id.value },
+        )
     }
 
     override suspend fun findById(id: MomentId): Moment? = flow.value.firstOrNull { it.id == id }

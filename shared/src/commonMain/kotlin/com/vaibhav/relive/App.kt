@@ -11,6 +11,10 @@ import com.vaibhav.relive.ui.theme.ReliveThemeId
 @Preview
 fun App(container: ReliveAppContainer) {
     ReliveTheme(themeId = ReliveThemeId.WarmJournal) {
-        AllTimelineScreen(momentRepository = container.momentRepository)
+        AllTimelineScreen(
+            momentRepository = container.momentRepository,
+            clock = container.clock,
+            idGenerator = container.idGenerator,
+        )
     }
 }
