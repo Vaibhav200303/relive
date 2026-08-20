@@ -4,5 +4,11 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Relive uses the microphone only while you record a voice memory.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Relive uses the camera only when you capture a photo or video for a moment.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Relive imports selected photos and videos from your library into your local memory archive.</string>
 </dict>
 </plist>

@@ -32,55 +32,91 @@ import com.vaibhav.relive.domain.id.IdGenerator
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.repository.MomentRepository
 import com.vaibhav.relive.domain.time.Clock
+import com.vaibhav.relive.platform.media.MediaProcessor
+import com.vaibhav.relive.platform.media.MediaStore
+import com.vaibhav.relive.platform.media.rememberMediaPickerHandle
+import com.vaibhav.relive.platform.permission.MicPermissionResult
 import com.vaibhav.relive.presentation.composer.MomentComposerState
 import com.vaibhav.relive.presentation.composer.MomentComposerViewModel
 import com.vaibhav.relive.presentation.timeline.AllTimelineUiState
 import com.vaibhav.relive.presentation.timeline.AllTimelineViewModel
 import com.vaibhav.relive.presentation.timeline.MomentPresentation
+import com.vaibhav.relive.ui.components.composer.ComposerOverlayHost
+import com.vaibhav.relive.ui.components.composer.MediaPickerDriver
 import com.vaibhav.relive.ui.components.composer.MomentComposer
 import com.vaibhav.relive.ui.components.timeline.MomentCard
 import com.vaibhav.relive.ui.components.timeline.TimelineHeader
 import com.vaibhav.relive.ui.theme.ReliveTheme
 
-/**
- * The built-in All timeline: header, cream canvas, a continuous left rail with
- * brown dots, and the moment stack. Reads chronologically top-to-bottom
- * (oldest first, newest last), with the inline composer pinned as the final
- * timeline item beneath the newest saved moment. Presentation-layer reversal
- * of the newest-first repository contract lives in [AllTimelineViewModel].
- */
 @Composable
 fun AllTimelineScreen(
     momentRepository: MomentRepository,
     clock: Clock,
     idGenerator: IdGenerator,
+    mediaStore: MediaStore,
+    mediaProcessor: MediaProcessor,
 ) {
     val scope = rememberCoroutineScope()
     val timelineViewModel: AllTimelineViewModel = remember(momentRepository, scope) {
         AllTimelineViewModel(momentRepository, scope)
     }
-    val composerViewModel: MomentComposerViewModel = remember(momentRepository, clock, idGenerator, scope) {
-        MomentComposerViewModel(momentRepository, clock, idGenerator, scope)
+    val composerViewModel: MomentComposerViewModel = remember(momentRepository, clock, idGenerator, scope, mediaStore, mediaProcessor) {
+        MomentComposerViewModel(
+            momentRepository = momentRepository,
+            clock = clock,
+            idGenerator = idGenerator,
+            scope = scope,
+            mediaStore = mediaStore,
+            mediaProcessor = mediaProcessor,
+        )
     }
     val timelineState by timelineViewModel.state.collectAsState()
     val composerState by composerViewModel.state.collectAsState()
 
-    AllTimelineContent(
-        timelineState = timelineState,
-        composerState = composerState,
-        clock = clock,
-        onToggleFavorite = timelineViewModel::setFavorite,
-        onMenuClick = { /* Settings arrives in Phase 8. */ },
-        onSearchClick = { /* Search arrives in Phase 7. */ },
-        onTitleChange = composerViewModel::updateTitle,
-        onContentChange = composerViewModel::updateContent,
-        onPendingTagChange = composerViewModel::updatePendingTagInput,
-        onCommitPendingTag = composerViewModel::commitPendingTag,
-        onRemoveTag = composerViewModel::removeTag,
-        onToggleAddMedia = composerViewModel::toggleAddMedia,
-        onReset = composerViewModel::reset,
-        onKeepMoment = composerViewModel::keepMoment,
+    val pickerHandle = rememberMediaPickerHandle(mediaStore)
+
+    MediaPickerDriver(
+        pending = composerState.pendingMediaAction,
+        handle = pickerHandle,
+        onResult = composerViewModel::processRawBatch,
+        onClear = composerViewModel::clearPendingMediaAction,
     )
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        AllTimelineContent(
+            timelineState = timelineState,
+            composerState = composerState,
+            clock = clock,
+            mediaStore = mediaStore,
+            onToggleFavorite = timelineViewModel::setFavorite,
+            onMenuClick = { },
+            onSearchClick = { },
+            onTitleChange = composerViewModel::updateTitle,
+            onContentChange = composerViewModel::updateContent,
+            onPendingTagChange = composerViewModel::updatePendingTagInput,
+            onCommitPendingTag = composerViewModel::commitPendingTag,
+            onRemoveTag = composerViewModel::removeTag,
+            onToggleAddMedia = composerViewModel::toggleAddMedia,
+            onMicTap = composerViewModel::requestMicPermission,
+            onCameraTap = composerViewModel::openCamera,
+            onLibraryTap = composerViewModel::openLibraryChoice,
+            onStopRecording = composerViewModel::stopRecording,
+            onCancelRecording = composerViewModel::cancelRecording,
+            onRemoveAttachment = composerViewModel::removeAttachment,
+            onReset = composerViewModel::reset,
+            onKeepMoment = composerViewModel::keepMoment,
+            onMicPermissionResult = composerViewModel::onMicPermissionResult,
+            onDismissMicPermissionMessage = composerViewModel::dismissMicPermissionMessage,
+            onOpenAppSettings = composerViewModel::openAppSettings,
+        )
+        ComposerOverlayHost(
+            overlay = composerState.overlay,
+            mediaStore = mediaStore,
+            onCaptured = composerViewModel::processRaw,
+            onDismiss = composerViewModel::dismissOverlay,
+            onPick = composerViewModel::requestPick,
+        )
+    }
 }
 
 @Composable
@@ -88,6 +124,7 @@ fun AllTimelineContent(
     timelineState: AllTimelineUiState,
     composerState: MomentComposerState,
     clock: Clock,
+    mediaStore: MediaStore,
     onToggleFavorite: (MomentId, Boolean) -> Unit,
     onMenuClick: () -> Unit,
     onSearchClick: () -> Unit,
@@ -97,8 +134,17 @@ fun AllTimelineContent(
     onCommitPendingTag: () -> Unit,
     onRemoveTag: (com.vaibhav.relive.domain.model.Tag) -> Unit,
     onToggleAddMedia: () -> Unit,
+    onMicTap: () -> Unit,
+    onCameraTap: () -> Unit,
+    onLibraryTap: () -> Unit,
+    onStopRecording: () -> Unit,
+    onCancelRecording: () -> Unit,
+    onRemoveAttachment: (com.vaibhav.relive.domain.model.MediaStorageRef) -> Unit,
     onReset: () -> Unit,
     onKeepMoment: () -> Unit,
+    onMicPermissionResult: (MicPermissionResult) -> Unit,
+    onDismissMicPermissionMessage: () -> Unit,
+    onOpenAppSettings: () -> Unit,
 ) {
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
@@ -122,9 +168,6 @@ fun AllTimelineContent(
                 is AllTimelineUiState.Loaded -> timelineState.moments
             }
 
-            // Continuous rail: a hairline running down the gutter, behind the
-            // moment stack. Individual dots are drawn by MomentCard; the plus
-            // marker is drawn by MomentComposer.
             val railInset = remember(dims.timeline.contentInset, dims.timeline.railWidth) {
                 (dims.timeline.contentInset - dims.timeline.railWidth) / 2
             }
@@ -137,17 +180,12 @@ fun AllTimelineContent(
                     .align(Alignment.TopStart),
             )
             val listState = rememberLazyListState()
-            // Composer sits at the end of the list; scrolling to `moments.size`
-            // reveals both the newest moment and the composer.
             var lastSeenCount by remember { mutableIntStateOf(-1) }
             LaunchedEffect(moments.size) {
                 val target = moments.size
                 if (lastSeenCount == -1) {
-                    // Initial snapshot: land at the latest end without an
-                    // animated journey through the whole timeline.
                     listState.scrollToItem(target)
                 } else if (target > lastSeenCount) {
-                    // New moment persisted; keep composer + newest in view.
                     listState.animateScrollToItem(target)
                 }
                 lastSeenCount = target
@@ -157,15 +195,11 @@ fun AllTimelineContent(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = dims.spacing.huge),
             ) {
-                items(
-                    items = moments,
-                    key = { it.id.value },
-                ) { moment ->
+                items(items = moments, key = { it.id.value }) { moment ->
                     MomentCard(
                         moment = moment,
-                        onToggleFavorite = { newValue ->
-                            onToggleFavorite(moment.id, newValue)
-                        },
+                        mediaStore = mediaStore,
+                        onToggleFavorite = { newValue -> onToggleFavorite(moment.id, newValue) },
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
@@ -173,14 +207,24 @@ fun AllTimelineContent(
                     MomentComposer(
                         state = composerState,
                         clock = clock,
+                        mediaStore = mediaStore,
                         onTitleChange = onTitleChange,
                         onContentChange = onContentChange,
                         onPendingTagChange = onPendingTagChange,
                         onCommitPendingTag = onCommitPendingTag,
                         onRemoveTag = onRemoveTag,
                         onToggleAddMedia = onToggleAddMedia,
+                        onMicTap = onMicTap,
+                        onCameraTap = onCameraTap,
+                        onLibraryTap = onLibraryTap,
+                        onStopRecording = onStopRecording,
+                        onCancelRecording = onCancelRecording,
+                        onRemoveAttachment = onRemoveAttachment,
                         onReset = onReset,
                         onKeepMoment = onKeepMoment,
+                        onMicPermissionResult = onMicPermissionResult,
+                        onDismissMicPermissionMessage = onDismissMicPermissionMessage,
+                        onOpenAppSettings = onOpenAppSettings,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }

@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.presentation.timeline.MomentPresentation
 import com.vaibhav.relive.ui.theme.ReliveTheme
 
@@ -38,6 +39,7 @@ import com.vaibhav.relive.ui.theme.ReliveTheme
 @Composable
 fun MomentCard(
     moment: MomentPresentation,
+    mediaStore: MediaStore,
     onToggleFavorite: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -93,6 +95,13 @@ fun MomentCard(
                     text = moment.title,
                     style = type.title,
                     color = colors.textPrimary,
+                )
+            }
+            if (moment.hasAttachments) {
+                Spacer(Modifier.height(dims.spacing.md))
+                TimelineMediaSection(
+                    attachments = moment.attachments,
+                    mediaStore = mediaStore,
                 )
             }
             if (moment.hasContent) {
