@@ -15,6 +15,8 @@ kotlin = "2.4.10"
 material3 = "1.11.0-alpha07"
 sqldelight = "2.1.0"
 kotlinx-coroutines = "1.10.2"
+androidx-camerax = "1.4.2"
+androidx-media3 = "1.5.1"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -43,6 +45,15 @@ sqldelight-primitiveAdapters = { module = "app.cash.sqldelight:primitive-adapter
 sqldelight-sqliteDialect338 = { module = "app.cash.sqldelight:sqlite-3-38-dialect", version.ref = "sqldelight" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
+androidx-camera-core = { module = "androidx.camera:camera-core", version.ref = "androidx-camerax" }
+androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "androidx-camerax" }
+androidx-camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "androidx-camerax" }
+androidx-camera-view = { module = "androidx.camera:camera-view", version.ref = "androidx-camerax" }
+androidx-camera-video = { module = "androidx.camera:camera-video", version.ref = "androidx-camerax" }
+androidx-media3-transformer = { module = "androidx.media3:media3-transformer", version.ref = "androidx-media3" }
+androidx-media3-common = { module = "androidx.media3:media3-common", version.ref = "androidx-media3" }
+androidx-media3-effect = { module = "androidx.media3:media3-effect", version.ref = "androidx-media3" }
+androidx-media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "androidx-media3" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

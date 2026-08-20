@@ -15,6 +15,8 @@ fun App(container: ReliveAppContainer) {
             momentRepository = container.momentRepository,
             clock = container.clock,
             idGenerator = container.idGenerator,
+            mediaStore = container.mediaStore,
+            mediaProcessor = container.mediaProcessor,
         )
     }
 }

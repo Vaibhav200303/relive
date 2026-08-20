@@ -1,7 +1,6 @@
 package com.vaibhav.relive.ui.components.composer
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -9,7 +8,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -44,9 +42,17 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vaibhav.relive.domain.model.MediaStorageRef
+import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.domain.model.MomentValidation
 import com.vaibhav.relive.domain.model.Tag
 import com.vaibhav.relive.domain.time.Clock
+import com.vaibhav.relive.platform.media.MediaStore
+import com.vaibhav.relive.platform.permission.MicPermissionAdapter
+import com.vaibhav.relive.platform.permission.MicPermissionResult
+import com.vaibhav.relive.platform.system.ReliveBackHandler
+import com.vaibhav.relive.presentation.composer.LiveRecording
+import com.vaibhav.relive.presentation.composer.MicPermissionUiState
 import com.vaibhav.relive.presentation.composer.MomentComposerState
 import com.vaibhav.relive.presentation.composer.SaveState
 import com.vaibhav.relive.presentation.date.EditorialDateFormatter
@@ -54,36 +60,50 @@ import com.vaibhav.relive.presentation.date.EditorialTimeFormatter
 import com.vaibhav.relive.ui.theme.ReliveTheme
 
 /**
- * Inline composer article. Sits at the newest edge of the timeline — visually
- * indistinguishable from the surrounding entries except for the plus-circle
- * marker (which becomes a normal dot only once a moment is kept). The composer
- * itself is never persisted; it always occupies the top slot.
+ * Inline composer article. Extends the Phase 3 shape with the Phase 4
+ * media surface: draft attachments stack above `Add Media`; while
+ * recording, a compact recorder replaces the Add Media reveal.
  *
- * The composer intentionally avoids Material text-field affordances — no boxes,
- * no filled backgrounds, no labels — so it reads as the next journal entry
- * being written rather than a form.
+ * Add Media reveals exactly three actions: Mic, Camera, Library — per the
+ * Phase 4 spec. Photo/Video selection is presented inside the Library and
+ * Camera flows, not as top-level composer actions.
  */
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun MomentComposer(
     state: MomentComposerState,
     clock: Clock,
+    mediaStore: MediaStore,
     onTitleChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
     onPendingTagChange: (String) -> Unit,
     onCommitPendingTag: () -> Unit,
     onRemoveTag: (Tag) -> Unit,
     onToggleAddMedia: () -> Unit,
+    onMicTap: () -> Unit,
+    onCameraTap: () -> Unit,
+    onLibraryTap: () -> Unit,
+    onStopRecording: () -> Unit,
+    onCancelRecording: () -> Unit,
+    onRemoveAttachment: (MediaStorageRef) -> Unit,
     onReset: () -> Unit,
     onKeepMoment: () -> Unit,
+    onMicPermissionResult: (MicPermissionResult) -> Unit,
+    onDismissMicPermissionMessage: () -> Unit,
+    onOpenAppSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Bridge composer state → platform mic-permission prompt.
+    MicPermissionAdapter(
+        pending = state.pendingMicPermissionRequest,
+        onResult = onMicPermissionResult,
+    )
+    // Back collapses the Add Media reveal without exiting the app.
+    ReliveBackHandler(enabled = state.addMediaExpanded, onBack = onToggleAddMedia)
     val colors = ReliveTheme.colors
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
 
-    // Sample once per recomposition; state changes drive recomposition, and the
-    // composer is short-lived so the timestamp stays close to real "now".
     val now = clock.now()
 
     Row(
@@ -92,7 +112,6 @@ fun MomentComposer(
             .padding(vertical = dims.spacing.lg),
         verticalAlignment = Alignment.Top,
     ) {
-        // Rail gutter with the plus-circle marker centered horizontally.
         Box(
             modifier = Modifier
                 .width(dims.timeline.contentInset)
@@ -139,8 +158,6 @@ fun MomentComposer(
 
             Spacer(Modifier.height(dims.spacing.sm))
 
-            // Location intentionally omitted in Phase 3 — state field kept, no UI.
-
             ComposerTitleField(
                 value = state.title,
                 enabled = !state.isSaving,
@@ -168,18 +185,46 @@ fun MomentComposer(
 
             Spacer(Modifier.height(dims.spacing.lg))
 
-            AddMediaShell(
-                expanded = state.addMediaExpanded,
-                enabled = !state.isSaving,
-                onToggle = onToggleAddMedia,
-            )
+            // Attachments (if any) — above the recorder & Add Media.
+            if (state.attachments.isNotEmpty()) {
+                DraftAttachmentColumn(
+                    attachments = state.attachments,
+                    mediaStore = mediaStore,
+                    onRemove = onRemoveAttachment,
+                )
+                Spacer(Modifier.height(dims.spacing.lg))
+            }
+
+            // Live recorder replaces the Add Media reveal while active.
+            if (state.recording != null) {
+                LiveRecorderCard(
+                    recording = state.recording,
+                    onStop = onStopRecording,
+                    onCancel = onCancelRecording,
+                )
+            } else {
+                AddMediaShell(
+                    expanded = state.addMediaExpanded,
+                    enabled = !state.isSaving,
+                    onToggle = onToggleAddMedia,
+                    onMicTap = onMicTap,
+                    onCameraTap = onCameraTap,
+                    onLibraryTap = onLibraryTap,
+                )
+            }
 
             Spacer(Modifier.height(dims.spacing.lg))
 
+            MicPermissionHint(
+                state = state.micPermission,
+                onOpenSettings = onOpenAppSettings,
+                onDismiss = onDismissMicPermissionMessage,
+            )
+            MediaErrorText(state.mediaError)
             SaveErrorLine(state.saveState)
 
             KeepMomentAction(
-                enabled = !state.isSaving,
+                enabled = !state.isSaving && !state.isRecording,
                 isSaving = state.isSaving,
                 onClick = onKeepMoment,
             )
@@ -234,11 +279,7 @@ private fun ComposerTitleField(
             .semantics { contentDescription = "Memory title" },
         decorationBox = { inner ->
             if (value.isEmpty()) {
-                Text(
-                    text = "Memory Title",
-                    style = type.title,
-                    color = colors.textMuted,
-                )
+                Text(text = "Memory Title", style = type.title, color = colors.textMuted)
             }
             inner()
         },
@@ -270,11 +311,7 @@ private fun ComposerContentField(
             .semantics { contentDescription = "Memory content" },
         decorationBox = { inner ->
             if (value.isEmpty()) {
-                Text(
-                    text = "What do you want to remember?",
-                    style = bodyItalic,
-                    color = colors.textMuted,
-                )
+                Text(text = "What do you want to remember?", style = bodyItalic, color = colors.textMuted)
             }
             inner()
         },
@@ -302,9 +339,6 @@ private fun ComposerTagsRow(
         tags.forEach { tag ->
             TagPill(tag = tag, enabled = enabled, onRemove = { onRemove(tag) })
         }
-        // Inline add-tag input rendered as a pill-sized text field with a
-        // discreet + affordance. Behaves as a normal text field but styled to
-        // match the tag row.
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(dims.spacing.xs),
@@ -335,11 +369,7 @@ private fun ComposerTagsRow(
                         .semantics { contentDescription = "Add tag" },
                     decorationBox = { inner ->
                         if (pendingInput.isEmpty()) {
-                            Text(
-                                text = "TAG",
-                                style = type.tag,
-                                color = colors.textMuted,
-                            )
+                            Text(text = "TAG", style = type.tag, color = colors.textMuted)
                         }
                         inner()
                     },
@@ -352,11 +382,7 @@ private fun ComposerTagsRow(
                     .size(dims.minTouchTarget / 2)
                     .semantics { contentDescription = "Commit tag" },
             ) {
-                PlusGlyph(
-                    size = dims.icon.sm,
-                    color = colors.textSecondary,
-                    strokeWidth = dims.stroke.icon,
-                )
+                PlusGlyph(size = dims.icon.sm, color = colors.textSecondary, strokeWidth = dims.stroke.icon)
             }
         }
     }
@@ -380,11 +406,7 @@ private fun TagPill(tag: Tag, enabled: Boolean, onRemove: () -> Unit) {
             )
             .padding(start = dims.spacing.md, end = dims.spacing.sm, top = dims.spacing.xs, bottom = dims.spacing.xs),
     ) {
-        Text(
-            text = tag.label.uppercase(),
-            style = type.tag,
-            color = colors.textSecondary,
-        )
+        Text(text = tag.label.uppercase(), style = type.tag, color = colors.textSecondary)
         IconButton(
             onClick = onRemove,
             enabled = enabled,
@@ -392,17 +414,20 @@ private fun TagPill(tag: Tag, enabled: Boolean, onRemove: () -> Unit) {
                 .size(dims.minTouchTarget / 3)
                 .semantics { contentDescription = "Remove tag ${tag.label}" },
         ) {
-            CloseGlyph(
-                size = dims.icon.sm,
-                color = colors.textMuted,
-                strokeWidth = dims.stroke.icon,
-            )
+            CloseGlyph(size = dims.icon.sm, color = colors.textMuted, strokeWidth = dims.stroke.icon)
         }
     }
 }
 
 @Composable
-private fun AddMediaShell(expanded: Boolean, enabled: Boolean, onToggle: () -> Unit) {
+private fun AddMediaShell(
+    expanded: Boolean,
+    enabled: Boolean,
+    onToggle: () -> Unit,
+    onMicTap: () -> Unit,
+    onCameraTap: () -> Unit,
+    onLibraryTap: () -> Unit,
+) {
     val colors = ReliveTheme.colors
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
@@ -427,7 +452,6 @@ private fun AddMediaShell(expanded: Boolean, enabled: Boolean, onToggle: () -> U
             horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm),
         ) {
             ImageGlyph(size = dims.icon.md, color = colors.textPrimary, strokeWidth = dims.stroke.icon)
-            // Reference calls for `font-serif text-sm` at this specific spot.
             Text(
                 text = "Add a New Moment",
                 style = type.title.copy(fontSize = 14.sp),
@@ -447,18 +471,15 @@ private fun AddMediaShell(expanded: Boolean, enabled: Boolean, onToggle: () -> U
                     .padding(top = dims.spacing.lg),
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
-                MediaChoice(
-                    label = "Microphone",
-                    contentDesc = "Add audio",
-                ) { MicGlyph(size = dims.icon.lg, color = colors.textPrimary, strokeWidth = dims.stroke.icon) }
-                MediaChoice(
-                    label = "Image",
-                    contentDesc = "Add image",
-                ) { ImageGlyph(size = dims.icon.lg, color = colors.textPrimary, strokeWidth = dims.stroke.icon) }
-                MediaChoice(
-                    label = "Video",
-                    contentDesc = "Add video",
-                ) { VideoGlyph(size = dims.icon.lg, color = colors.textPrimary, strokeWidth = dims.stroke.icon) }
+                MediaChoice(label = "Mic", contentDesc = "Record audio", onClick = onMicTap) {
+                    MicGlyph(size = dims.icon.lg, color = colors.textPrimary, strokeWidth = dims.stroke.icon)
+                }
+                MediaChoice(label = "Camera", contentDesc = "Open camera", onClick = onCameraTap) {
+                    VideoGlyph(size = dims.icon.lg, color = colors.textPrimary, strokeWidth = dims.stroke.icon)
+                }
+                MediaChoice(label = "Library", contentDesc = "Choose from library", onClick = onLibraryTap) {
+                    ImageGlyph(size = dims.icon.lg, color = colors.textPrimary, strokeWidth = dims.stroke.icon)
+                }
             }
         }
     }
@@ -468,12 +489,12 @@ private fun AddMediaShell(expanded: Boolean, enabled: Boolean, onToggle: () -> U
 private fun MediaChoice(
     label: String,
     contentDesc: String,
+    onClick: () -> Unit,
     icon: @Composable () -> Unit,
 ) {
     val colors = ReliveTheme.colors
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
-    // Phase 3: structural only. No click handler wired to capture/permissions.
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(dims.spacing.xs),
@@ -481,7 +502,7 @@ private fun MediaChoice(
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
-                onClick = {},
+                onClick = onClick,
             )
             .padding(dims.spacing.sm)
             .semantics { contentDescription = contentDesc },
@@ -502,11 +523,7 @@ private fun ResetButton(onReset: () -> Unit, enabled: Boolean) {
             .size(dims.minTouchTarget)
             .semantics { contentDescription = "Reset composer" },
     ) {
-        CloseGlyph(
-            size = dims.icon.md,
-            color = colors.textMuted,
-            strokeWidth = dims.stroke.icon,
-        )
+        CloseGlyph(size = dims.icon.md, color = colors.textMuted, strokeWidth = dims.stroke.icon)
     }
 }
 
@@ -535,6 +552,57 @@ private fun KeepMomentAction(enabled: Boolean, isSaving: Boolean, onClick: () ->
                 .padding(dims.spacing.sm)
                 .semantics { contentDescription = "Keep moment" },
         )
+    }
+}
+
+@Composable
+private fun MicPermissionHint(
+    state: MicPermissionUiState,
+    onOpenSettings: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    if (state is MicPermissionUiState.Idle) return
+    val colors = ReliveTheme.colors
+    val type = ReliveTheme.typography
+    val dims = ReliveTheme.dimensions
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = dims.spacing.sm)
+            .semantics { contentDescription = "Microphone permission required" },
+    ) {
+        Text(
+            text = "Microphone access is needed to record audio.",
+            style = type.subtitle,
+            color = colors.textSecondary,
+            modifier = Modifier.weight(1f),
+        )
+        if (state is MicPermissionUiState.SettingsRequired) {
+            Text(
+                text = "Settings",
+                style = type.action,
+                color = colors.accent,
+                modifier = Modifier
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onOpenSettings,
+                    )
+                    .padding(dims.spacing.xs)
+                    .semantics { contentDescription = "Open app settings" },
+            )
+        } else {
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .size(dims.minTouchTarget / 2)
+                    .semantics { contentDescription = "Dismiss microphone permission message" },
+            ) {
+                CloseGlyph(size = dims.icon.sm, color = colors.textMuted, strokeWidth = dims.stroke.icon)
+            }
+        }
     }
 }
 
