@@ -146,6 +146,33 @@ Format for each entry:
 
 ---
 
+## ADR-0015 — Chronological timeline order applied at the presentation layer
+
+- **Date:** 2026-08-20 · **Status:** Accepted
+- **Context:** ADR-0013's SQLDelight schema exposes `MomentRepository.observeAll()` as newest-first (`ORDER BY created_at DESC`), which is the canonical persistence contract. Phase 3 needs the All timeline to read like a WhatsApp chat: oldest moment at the top, newest saved moment at the bottom, with the inline composer pinned as the final timeline item immediately after the newest moment, and the initial viewport landed at the latest/bottom end so a newly kept moment appears just above the composer without a long animated scroll through history.
+- **Decision:** Keep the repository ordering contract untouched. `AllTimelineViewModel` reverses the emitted list once (`moments.asReversed()`) before publishing it as `AllTimelineUiState.Loaded`, so presentation renders oldest → newest top-to-bottom. `AllTimelineScreen` renders the moments inside a `LazyColumn`, with the composer as the terminal `item("composer")` after the moment `items(...)`. A `rememberLazyListState()` tracks the item count: on the first non-empty snapshot the list `scrollToItem(moments.size)` (no animation) lands the user at the composer; on subsequent growth it `animateScrollToItem(moments.size)` so a freshly kept moment slides into view directly above the composer. SQLDelight ordering is never changed for UI reasons.
+- **Consequences:** The persistence contract stays newest-first (cheap `LIMIT`/pagination for later phases still works), and any other consumer of `observeAll()` continues to receive that order. Presentation owns the visual chronology; changing the top/bottom orientation later is a single VM change, not a schema migration. See [`ARCHITECTURE.md`](ARCHITECTURE.md) §7 and [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) §5.
+
+---
+
+## ADR-0016 — Keyboard-aware inline composer (no detached floating composer)
+
+- **Date:** 2026-08-20 · **Status:** Accepted
+- **Context:** The composer is the final item in the timeline `LazyColumn`, not a separately positioned surface. When a composer input receives focus the IME appears and could either (a) obscure the active field, (b) force the app to hoist a detached floating composer above the keyboard, or (c) rely on hardcoded keyboard-height constants that break across devices and platforms. Options (b) and (c) both fragment the layout and diverge from the "timeline reads as one document" feel.
+- **Decision:** The composer remains a normal timeline item. `AllTimelineScreen` applies `Modifier.windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime))` at the timeline container, so the visible list is inset by whatever the IME actually reports. Compose's default focus-based auto-scroll then brings the focused field above the keyboard using the reported inset — no hardcoded heights, no manual `WindowInsets.ime.getBottom(...)` arithmetic, and no measurement of keyboard chrome anywhere in the codebase. Scrolling occurs only as needed to reveal the focused input; closing the keyboard collapses the IME inset back to zero and the timeline layout returns to its normal resting state.
+- **Consequences:** One layout handles keyboard-open and keyboard-closed states; there is no second composer surface to keep in sync. Behavior is correct on any device the platform IME insets are correct on (Android IME animation callbacks, iOS keyboard notifications). If a future phase needs a truly overlayed composer (e.g. an expanded modal editor), it will be an additive surface, not a replacement of the inline one. See [`ARCHITECTURE.md`](ARCHITECTURE.md) §7.
+
+---
+
+## ADR-0017 — `SystemClock` and `UuidGenerator` as presentation-layer platform seams
+
+- **Date:** 2026-08-20 · **Status:** Accepted
+- **Context:** The composer needs a wall-clock reading (to stamp `createdAt`/`updatedAt` on a kept moment and to render the "now" eyebrow while composing) and a fresh identifier (to build `MomentId` for the persisted row). Both are inherently platform-provided. Options considered: (a) call `java.util.UUID`/`NSUUID` and `System.currentTimeMillis()`/`NSDate` directly from shared code — violates ADR-0007 by importing platform APIs into `commonMain`; (b) add `kotlinx-datetime` and a UUID multiplatform library to `shared` just for this — pulls two dependencies for one clock read and one string; (c) declare thin `expect object` seams that resolve to the platform primitive per target.
+- **Decision:** Introduce two `expect object` seams in the presentation layer: `presentation.time.SystemClock : Clock` and `presentation.id.UuidGenerator : IdGenerator`, actualised in `androidMain` (JDK `System.currentTimeMillis()` / `java.util.UUID.randomUUID().toString()`) and `iosMain` (`NSDate.timeIntervalSince1970` / `NSUUID().UUIDString`). Both are exposed via the shared `ReliveAppContainer` (`clock`, `idGenerator`) and threaded down through `App` → `AllTimelineScreen` → `MomentComposerViewModel`. Tests substitute deterministic fakes at the container/VM boundary. The domain contracts (`domain.time.Clock`, `domain.id.IdGenerator`) stay platform-free and dependency-free.
+- **Consequences:** Shared UI and shared tests never touch a platform API; deterministic composer tests do not need to mock time or generate UUIDs from real sources. No new shared-module dependency is added. Adding a third target (JVM, wasm, desktop) is a two-file `actual` addition, not a shared-code change. If a future phase legitimately needs richer calendar arithmetic or UUID semantics, it may introduce `kotlinx-datetime` / a UUID library then, superseding this ADR — but the composer itself will continue to depend only on the `Clock` / `IdGenerator` interfaces. Complements ADR-0007 and ADR-0014.
+
+---
+
 ## Template for new decisions
 
 ```
