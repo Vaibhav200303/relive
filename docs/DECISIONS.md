@@ -137,6 +137,15 @@ Format for each entry:
 
 ---
 
+## ADR-0014 — Platform date formatting via `expect/actual`, no new date dependency
+
+- **Date:** 2026-08-20 · **Status:** Accepted
+- **Context:** Phase 2 must show each moment's `createdAt` as an editorial eyebrow (e.g. `SEPTEMBER 28, 2023`) in the user's device time zone. The domain's `Instant` is a raw epoch-millisecond value class (`domain/time/ReliveTime.kt`); it deliberately carries no calendar or timezone semantics. Options considered: (a) add `kotlinx-datetime` to the shared module, (b) hand-roll Gregorian conversion in `commonMain`, (c) declare an `expect object EditorialDateFormatter` and implement it per platform. `kotlinx-datetime` is explicitly deferred for this phase, and hand-rolled Gregorian arithmetic is disallowed by the Phase 2 brief.
+- **Decision:** Introduce `presentation.date.EditorialDateFormatter` as an `expect object` in `commonMain` with `fun format(instant: Instant): String`. The Android actual uses `java.text.SimpleDateFormat("MMMM d, yyyy", Locale.US)` bound to `TimeZone.getDefault()`, uppercased. The iOS actual uses `NSDateFormatter` with `en_US_POSIX`, `dateFormat = "MMMM d, yyyy"`, `timeZone = NSTimeZone.localTimeZone`, then `uppercaseStringWithLocale(en_US_POSIX)`. Both consume the domain `Instant` unchanged; no `kotlinx-datetime` dependency is added, and no Gregorian math lives in shared code. The formatter belongs to the presentation layer (it exists solely to build the string a UI reads), not to the domain, so the moment model stays platform-agnostic per ADR-0007.
+- **Consequences:** Editorial dates are produced by well-tested platform calendar libraries and always render in the device's local time zone. Adding another formatted date variant is a one-line addition per platform actual. If a later phase legitimately needs cross-platform calendar arithmetic (e.g. Phase 6's 4-day rule already uses raw milliseconds, but future features like grouping by day/month may not), that phase records its own ADR — potentially introducing `kotlinx-datetime` at that point — rather than reversing this decision retroactively.
+
+---
+
 ## Template for new decisions
 
 ```
