@@ -1,0 +1,17 @@
+CREATE TABLE tags (
+    canonical TEXT NOT NULL PRIMARY KEY,
+    label TEXT NOT NULL
+);
+
+insertTagIfAbsent:
+INSERT INTO tags(canonical, label) VALUES (?, ?)
+ON CONFLICT(canonical) DO NOTHING;
+
+selectTagByCanonical:
+SELECT * FROM tags WHERE canonical = :canonical;
+
+selectAllTags:
+SELECT * FROM tags ORDER BY canonical ASC;
+
+deleteUnusedTags:
+DELETE FROM tags WHERE canonical NOT IN (SELECT DISTINCT tag_canonical FROM moment_tags);
