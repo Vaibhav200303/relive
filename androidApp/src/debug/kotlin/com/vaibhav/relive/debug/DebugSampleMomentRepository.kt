@@ -12,12 +12,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 
 /**
- * Purely in-memory `MomentRepository` used only in the debug build variant. It
- * never touches SQLite and never runs in a release build. Seeded with text-only
- * moments that exercise the presentation combinations Phase 2 needs to verify:
- * title + content, text-only thought, optional location, long expandable content,
- * mixed favorite state, and a spread of dates. Media attachments are intentionally
- * absent — Phase 2 does not implement media rendering.
+ * Purely in-memory `MomentRepository` seeded with sample moments. Opt-in only —
+ * debug builds now use the persistent SQLDelight repository (same as release) so
+ * user-created moments survive process death, updates, and Recents removal. This
+ * class remains for explicit dev use (e.g. seeding a preview or a test fixture)
+ * and MUST NOT be wired into the app composition root; doing so silently wipes
+ * user data on every restart.
  */
 internal class DebugSampleMomentRepository : MomentRepository {
 

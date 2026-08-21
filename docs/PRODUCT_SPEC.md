@@ -125,8 +125,9 @@ Supported media types:
 Rules:
 
 - A moment may have **multiple attachments**.
-- Images and videos use a **horizontally swipeable carousel**, similar to an Instagram post.
-- Show **subtle page indicators**.
+- Multiple attachments use an **adaptive visual collage** inline (see [`DECISIONS.md`](DECISIONS.md) ADR-0019 for layout rules by count). All media types — image, video, audio — participate as visual tiles.
+- For 5+ attachments, only the first four render inline; the fourth tile shows a translucent `+N` overlay.
+- Tapping a tile opens a dedicated full-screen media viewer; horizontal swiping between attachments is available only inside that viewer.
 - Media should feel **integrated into the timeline**, not enclosed in heavy cards.
 
 ---

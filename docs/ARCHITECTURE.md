@@ -70,7 +70,7 @@ shared/src/commonMain/kotlin/com/vaibhav/relive/
 │   └── settings/
 ├── ui/              # Compose Multiplatform UI + Relive design system
 │   ├── theme/       # design tokens, ReliveTheme, theme variants
-│   ├── components/  # timeline rail, dot, moment card, media carousel, composer, ...
+│   ├── components/  # timeline rail, dot, moment card, media collage, composer, ...
 │   └── screens/
 └── di/              # composition root / manual dependency wiring
 ```
@@ -130,7 +130,7 @@ Local-first, on-device. The concrete engine (e.g. a KMP-compatible local databas
 - **moments** — one row per moment, stored once.
 - **custom timelines** — reference moments; never duplicate moment data.
 - **moment ↔ timeline** — a many-to-many membership table for custom-timeline references.
-- **attachments** — reference their moment (`momentId`), ordered for carousel display.
+- **attachments** — reference their moment (`momentId`), ordered for collage/viewer display (see [`DECISIONS.md`](DECISIONS.md) ADR-0019).
 - **tags** — stored so they can be queried efficiently, including scoped to a timeline.
 - **All** — logically automatic: a query over all moments, **not** an explicit membership row per moment.
 

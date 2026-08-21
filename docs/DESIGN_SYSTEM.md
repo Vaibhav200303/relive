@@ -207,11 +207,11 @@ The plus-circle is integrated into the rail (bordered, canvas fill) and becomes 
 | Token              | Value  | Usage                                  |
 | ------------------ | ------ | -------------------------------------- |
 | `media.ratio.wide` | `2:1`  | single landscape image/video           |
-| `media.ratio.square` | `1:1` | carousel items                        |
-| `media.carousel.peek` | ~`85%` width | swipeable carousel item width (peek next) |
 | `media.treatment.sepia` | ~`0.3` | subtle sepia on media (theme-dependent) |
 
-Media is integrated into the timeline (light container, subtle border), not enclosed in heavy cards. Audio has no image frame; never show empty media placeholders.
+~~`media.ratio.square` and `media.carousel.peek` are superseded by [`DECISIONS.md`](DECISIONS.md) ADR-0019 (adaptive visual collage).~~
+
+Media uses an adaptive visual collage integrated into the timeline (see ADR-0019 for layout rules by attachment count). All media types — image, video, audio — are first-class visual tiles. Audio has no image frame; never show empty media placeholders. No horizontal carousel or pager in the timeline.
 
 ---
 

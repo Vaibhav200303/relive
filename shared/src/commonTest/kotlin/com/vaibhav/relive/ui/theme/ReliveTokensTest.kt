@@ -95,8 +95,12 @@ class ReliveTokensTest {
     fun mediaTokensMatchDesignSystem() {
         val m = DefaultReliveDimensions.media
         assertEquals(2f, m.ratioWide)
-        assertEquals(1f, m.ratioSquare)
-        assertEquals(0.85f, m.carouselPeekFraction)
+        assertEquals(4.dp, m.collageGap)
+        assertEquals(420.dp, m.collageSingleMaxHeight)
+        assertEquals(1f, m.collageTileAspectSquare)
+        assertEquals(4f / 3f, m.collageDominantAspect)
+        assertEquals(16f / 9f, m.collageVideoAspect)
+        assertEquals(4f / 3f, m.collageAudioAspect)
     }
 
     @Test

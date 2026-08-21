@@ -23,6 +23,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -32,6 +33,7 @@ import com.vaibhav.relive.domain.id.IdGenerator
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.repository.MomentRepository
 import com.vaibhav.relive.domain.time.Clock
+import com.vaibhav.relive.platform.media.ActivePlayback
 import com.vaibhav.relive.platform.media.MediaProcessor
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.platform.media.rememberMediaPickerHandle
@@ -40,8 +42,16 @@ import com.vaibhav.relive.presentation.composer.MomentComposerState
 import com.vaibhav.relive.presentation.composer.MomentComposerViewModel
 import com.vaibhav.relive.presentation.timeline.AllTimelineUiState
 import com.vaibhav.relive.presentation.timeline.AllTimelineViewModel
+import com.vaibhav.relive.presentation.timeline.MomentAttachmentPresentation
 import com.vaibhav.relive.presentation.timeline.MomentPresentation
+import com.vaibhav.relive.presentation.viewer.TimelineMediaNavState
+import com.vaibhav.relive.presentation.viewer.closeGallery
+import com.vaibhav.relive.presentation.viewer.closeViewer
+import com.vaibhav.relive.presentation.viewer.openFromCollage
+import com.vaibhav.relive.presentation.viewer.openFromGallery
 import com.vaibhav.relive.ui.components.composer.ComposerOverlayHost
+import com.vaibhav.relive.ui.components.viewer.MediaViewer
+import com.vaibhav.relive.ui.components.viewer.MomentMediaGallery
 import com.vaibhav.relive.ui.components.composer.MediaPickerDriver
 import com.vaibhav.relive.ui.components.composer.MomentComposer
 import com.vaibhav.relive.ui.components.timeline.MomentCard
@@ -73,6 +83,8 @@ fun AllTimelineScreen(
     val timelineState by timelineViewModel.state.collectAsState()
     val composerState by composerViewModel.state.collectAsState()
 
+    var navState by remember { mutableStateOf(TimelineMediaNavState.Idle) }
+
     val pickerHandle = rememberMediaPickerHandle(mediaStore)
 
     MediaPickerDriver(
@@ -89,6 +101,10 @@ fun AllTimelineScreen(
             clock = clock,
             mediaStore = mediaStore,
             onToggleFavorite = timelineViewModel::setFavorite,
+            onOpenMedia = { list, idx ->
+                ActivePlayback.stopActive()
+                navState = navState.openFromCollage(list, idx)
+            },
             onMenuClick = { },
             onSearchClick = { },
             onTitleChange = composerViewModel::updateTitle,
@@ -117,6 +133,34 @@ fun AllTimelineScreen(
             onPick = composerViewModel::requestPick,
             onOpenLibraryFromCamera = composerViewModel::openLibraryChoice,
         )
+        val gallery = navState.gallery
+        val viewer = navState.viewer
+        if (gallery != null) {
+            MomentMediaGallery(
+                state = gallery,
+                mediaStore = mediaStore,
+                onOpenItem = { idx ->
+                    ActivePlayback.stopActive()
+                    navState = navState.openFromGallery(idx)
+                },
+                onClose = {
+                    ActivePlayback.stopActive()
+                    navState = navState.closeGallery()
+                },
+                backEnabled = viewer == null,
+            )
+        }
+        if (viewer != null) {
+            MediaViewer(
+                state = viewer,
+                mediaStore = mediaStore,
+                onIndexChange = { idx -> navState = navState.copy(viewer = viewer.withCurrent(idx)) },
+                onClose = {
+                    ActivePlayback.stopActive()
+                    navState = navState.closeViewer()
+                },
+            )
+        }
     }
 }
 
@@ -127,6 +171,7 @@ fun AllTimelineContent(
     clock: Clock,
     mediaStore: MediaStore,
     onToggleFavorite: (MomentId, Boolean) -> Unit,
+    onOpenMedia: (List<MomentAttachmentPresentation>, Int) -> Unit,
     onMenuClick: () -> Unit,
     onSearchClick: () -> Unit,
     onTitleChange: (String) -> Unit,
@@ -201,6 +246,7 @@ fun AllTimelineContent(
                         moment = moment,
                         mediaStore = mediaStore,
                         onToggleFavorite = { newValue -> onToggleFavorite(moment.id, newValue) },
+                        onOpenMedia = onOpenMedia,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }

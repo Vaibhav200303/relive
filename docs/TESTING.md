@@ -91,7 +91,7 @@ Using Compose Multiplatform UI testing:
 - Timeline renders rail, dots, and moment hierarchy; text-only moments show no media area.
 - Content expansion: `... more` reveals full content; `less` collapses.
 - Composer: plus-circle marker, Add Media reveal order (attachment above, Add Media moves below), per-attachment remove, reset `×`, Keep Moment → dot.
-- Media carousel: multiple attachments swipe with subtle page indicators.
+- Media collage: multiple attachments render as an adaptive visual collage (see [`DECISIONS.md`](DECISIONS.md) ADR-0019); `+N` overlay for 5+ attachments; tapping a tile opens the full-screen media viewer.
 - Favorite action is present but visually subtle.
 - Search app-bar transform keeps the timeline visible; highlighting and match navigation behave.
 - Accessibility: icon-only controls expose content descriptions; touch targets meet the 48dp minimum ([`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) §18).

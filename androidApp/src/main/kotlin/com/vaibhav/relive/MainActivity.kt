@@ -4,7 +4,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import com.vaibhav.relive.debug.debugMomentRepositoryOverrideOrNull
 import com.vaibhav.relive.di.createDefaultReliveAppContainer
 
 class MainActivity : ComponentActivity() {
@@ -12,10 +11,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
-        val container = createDefaultReliveAppContainer(
-            context = applicationContext,
-            momentRepositoryOverride = debugMomentRepositoryOverrideOrNull(),
-        )
+        val container = createDefaultReliveAppContainer(context = applicationContext)
         setContent { App(container) }
     }
 }

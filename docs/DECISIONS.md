@@ -234,6 +234,76 @@ Format for each entry:
 
 ---
 
+## ADR-0019 — Timeline media uses an adaptive visual collage
+
+- **Date:** 2026-08-21 · **Status:** Accepted
+- **Context:** The timeline is an editorial memory journal, not a chat feed or generic attachment list. Media is a first-class part of a Moment and should be visually prominent. The existing warm Relive identity remains authoritative: cream journal canvas, timeline rail and dots, Playfair editorial titles, Inter body text, warm brown accent, chronological timeline, no enclosing card around an entire Moment. ADR-0018 §9 deferred saved-audio waveform generation. Phase 4's carousel model (PRODUCT_SPEC §5, DESIGN_SYSTEM §14, ROADMAP Phase 4) needs to be revisited: a horizontal carousel fragments the visual hierarchy, hides attachments behind swipe discovery, and does not express the editorial density the product demands. WhatsApp is a behavioral reference for efficient multi-media presentation only — Relive must not copy WhatsApp's chat bubbles, colors, typography, or chat visual language.
+- **Decision:**
+
+  **1. Adaptive collage replaces the carousel.**
+  Multiple attachments in the timeline use an inline adaptive collage instead of a horizontal carousel/pager. This supersedes the carousel model described in PRODUCT_SPEC §5, DESIGN_SYSTEM §14, ROADMAP Phase 4, ARCHITECTURE §5, and TESTING §Phase 4.
+
+  Collage rules by attachment count:
+
+  | Count | Layout |
+  |-------|--------|
+  | 1 | Large responsive media tile using most of the available Moment content width. Single images preserve their natural aspect ratio as much as practical; portrait images remain meaningfully portrait rather than being squeezed into a short landscape viewport. |
+  | 2 | Two equal visual tiles side-by-side. |
+  | 3 | Asymmetric composition: one dominant tile + two smaller vertically stacked tiles. |
+  | 4 | 2×2 grid. |
+  | 5+ | First four tiles rendered inline; the fourth tile receives a translucent `+N` overlay representing the remaining attachment count. |
+
+  Attachment order is deterministic and follows the Moment attachment ordering contract (ADR-0013 `UNIQUE(moment_id, sort_index)`). Grid tiles may use controlled cropping to maintain collage geometry, but media must never be stretched or distorted.
+
+  **2. All media types participate in the collage.**
+  The adaptive collage is not image/video-only. All three existing media types — Image, Video, Audio — are first-class visual timeline tiles. A Moment may therefore contain mixed layouts such as Photo|Audio or Photo|Video / Audio|Photo. Audio must not be moved into a separate generic player underneath the collage.
+
+  **3. Video presentation in the timeline.**
+  Video tiles occupy the same grid system as images. Each video tile shows a representative thumbnail/frame with a subtle Play affordance. No autoplay. No persistent active video player merely because a tile is visible. Actual consumption occurs through the media viewer (§7 below).
+
+  **4. Audio visual identity in the timeline.**
+  Audio is represented as a visual media tile, not a traditional horizontal audio player, equalizer bars, voice-message bubble, generic Material audio card, or random animated bars.
+
+  *Audio canvas:* The tile is a large black/near-black media canvas. Inside that canvas is a compact, centered waveform visualization region. The waveform must not stretch across most of the black tile — the black negative space is intentional. The waveform region occupies approximately 45–60% of the available tile width, with generous space on the left and right and comfortable vertical space around it. Visual hierarchy: large black media canvas → compact centered sound visualization → minimal playback affordance.
+
+  *Real waveform requirement:* The waveform represents the actual audio signal, not random data. Silence → nearly flat; quiet audio → small amplitude; normal speech/music → moderate amplitude; loud audio → larger peaks; sharp events → corresponding real peaks. The waveform communicates the structure of the actual saved recording. This is an architectural/design requirement, not decoration.
+
+  *Waveform visual form (revised 2026-08-21):* The earlier "continuous waveform/sound trace" form is superseded. The waveform is a compact row of white vertical rounded-capsule amplitude segments on the black canvas, symmetric around the horizontal midline, uniform segment width, amplitude driving height only. Segments are not decorative equalizer bars — each segment's height comes from a real bucket of the extracted amplitude envelope, so silence renders as a tiny centered dot, quiet audio as short capsules, and loud peaks as tall capsules. Approximately 9–17 visible segments depending on tile width (smaller collage tiles get fewer segments; the same rounded-capsule identity is preserved). No random amplitude, no per-segment bounce animation, no bar-width variation.
+
+  *Waveform paused state:* Real waveform window visible, segments stationary, minimal Play affordance, subtle duration indicator. Pausing does not reset the window.
+
+  *Waveform playing state:* The visible segments represent a bounded window into the real envelope centered on the current playback position. As playback advances, past segments exit toward the left and future segments enter from the right — the shape flows horizontally through the viewport. Segment heights remain determined by real envelope data at every frame; there is no fabricated animation. Near the head and tail of the recording the window clamps to real data so playback still finishes at the actual end of the envelope.
+
+  *Waveform processing principle:* Saved audio is analyzed to derive a lightweight normalized/downsampled amplitude envelope: audio → decode/sample → amplitude envelope → normalize → downsample → reusable waveform representation. Do not repeatedly decode the entire audio file during Compose recomposition. Waveform information should be reusable/cached. This ADR does not introduce a database/schema change; if implementation later determines persistent waveform metadata is necessary, that requires a separate explicit architecture decision.
+
+  **5. Full-screen media viewer.**
+  Timeline = browsing memories. Media viewer = consuming media. Tapping a timeline media tile opens a dedicated dark/full-screen media viewer at the exact attachment that was tapped. If a Moment has multiple attachments, the viewer allows horizontal navigation through all attachments of that Moment. For 5+ attachments, tapping the `+N` tile opens the viewer and all hidden attachments remain accessible. No carousel in the timeline; swiping between attachments is allowed only in the dedicated viewer.
+
+  **6. Image viewer.**
+  Dark/black background. Image initially fitted appropriately, preserving aspect ratio/orientation. Pinch-to-zoom. Pan while zoomed. Double-tap zoom where practical. Android Back returns to the timeline without losing the user's scroll position. No editing controls.
+
+  **7. Video viewer.**
+  Dark viewing surface. Correct aspect ratio/orientation. Play/Pause. Playback progress/seeking. Audio. No timeline autoplay. Reuse existing media playback architecture where practical (ADR-0018 §8).
+
+  **8. Audio viewer.**
+  Full-screen audio preserves the same visual identity as the timeline audio tile: black viewing surface → larger but still intentionally bounded real waveform visualization → minimal Play/Pause → playback progress/duration. The real waveform remains synchronized with playback. It must not become a generic audio-player screen.
+
+  **9. Performance constraints.**
+  Timeline scrolling must remain smooth. Avoid: decoding original full-resolution images unnecessarily; constructing video players for every video tile; repeatedly decoding audio to regenerate waveforms; animating off-screen waveform tiles; eagerly loading hidden 5+ attachments; unnecessary recomposition caused by playback progress. Prefer: existing optimized Relive media copies (ADR-0018 §1); thumbnails/representative video frames; lazy media loading; cached/reusable waveform envelope data; playback resources created only when needed; lifecycle-aware cleanup. If practical, only one audio/video playback session should be active at a time.
+
+  **10. Material 3 usage.**
+  Material 3 should be used wherever it provides appropriate behavior/accessibility primitives: Play/Pause, navigation/back, interaction states, touch targets, semantics, standard controls. But Material 3 must not override Relive's visual identity (ADR-0003, ADR-0010). Do not introduce large icon dependencies merely for a few standard glyphs when lightweight/local vectors are sufficient.
+
+  **11. Accessibility.**
+  Minimum appropriate touch targets (DESIGN_SYSTEM §18). Meaningful content descriptions. Play/Pause state exposed semantically. Media type identifiable. `+N` exposes that more attachments are available. Interactions must not rely solely on color.
+
+  **12. Explicit non-goals.**
+  This decision does not change: timeline chronological ordering (ADR-0015), timeline rail/dots, composer, camera (ADR-0018 addenda), capture behavior, media compression policy (ADR-0018 §5), media persistence/storage semantics (ADR-0018 §1), favorite behavior, search (ADR-0006), settings, location (ADR-0008), or custom timelines.
+
+- **Consequences:** The carousel model from PRODUCT_SPEC §5, DESIGN_SYSTEM §14, ROADMAP Phase 4, ARCHITECTURE §5, and TESTING is superseded for timeline media presentation. Those documents are updated to reference the adaptive collage. The `media.ratio.square`, `media.carousel.peek` tokens in DESIGN_SYSTEM §14 are superseded; collage geometry is defined by this ADR's layout rules. ADR-0018 §9's deferral of saved-audio waveform generation is superseded — this ADR commits to real waveform visualization as a design requirement (the specific waveform processing implementation remains a Phase 5+ task). Horizontal swiping between attachments is available only inside the full-screen media viewer, never in the timeline itself.
+
+---
+
 ## Template for new decisions
 
 ```

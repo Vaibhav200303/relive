@@ -32,6 +32,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import com.vaibhav.relive.platform.media.MediaStore
+import com.vaibhav.relive.presentation.timeline.MomentAttachmentPresentation
 import com.vaibhav.relive.presentation.timeline.MomentPresentation
 import com.vaibhav.relive.ui.theme.ReliveTheme
 
@@ -41,6 +42,7 @@ fun MomentCard(
     moment: MomentPresentation,
     mediaStore: MediaStore,
     onToggleFavorite: (Boolean) -> Unit,
+    onOpenMedia: (List<MomentAttachmentPresentation>, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = ReliveTheme.colors
@@ -112,6 +114,7 @@ fun MomentCard(
                 TimelineMediaSection(
                     attachments = moment.attachments,
                     mediaStore = mediaStore,
+                    onOpen = onOpenMedia,
                 )
             }
 

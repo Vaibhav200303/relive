@@ -50,13 +50,14 @@ data class ReliveTimelineDimensions(
 @Immutable
 data class ReliveMediaDimensions(
     val ratioWide: Float = 2f,
-    val ratioSquare: Float = 1f,
-    val carouselPeekFraction: Float = 0.85f,
     val sepiaAmount: Float = 0.3f,
-    val carouselHeight: Dp = 240.dp,
-    val indicatorDotActive: Dp = 6.dp,
-    val indicatorDotInactive: Dp = 5.dp,
-    val indicatorSpacing: Dp = 3.dp,
+    // Adaptive collage (ADR-0019).
+    val collageGap: Dp = 4.dp,
+    val collageSingleMaxHeight: Dp = 420.dp,
+    val collageTileAspectSquare: Float = 1f,
+    val collageDominantAspect: Float = 4f / 3f,
+    val collageVideoAspect: Float = 16f / 9f,
+    val collageAudioAspect: Float = 4f / 3f,
 )
 
 @Immutable

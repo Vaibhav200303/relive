@@ -37,9 +37,9 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 
 ## Phase 4 — Media + platform GPS  ☐
 
-- Media capture/storage interfaces + platform implementations (image, video, audio). Add Media flow, per-attachment remove, carousel with subtle page indicators, correct aspect ratios; no empty placeholders.
+- Media capture/storage interfaces + platform implementations (image, video, audio). Add Media flow, per-attachment remove, adaptive visual collage (see [`DECISIONS.md`](DECISIONS.md) ADR-0019), correct aspect ratios; no empty placeholders.
 - Platform GPS implementations behind the Phase 3 interfaces: Android location APIs; iOS Core Location; reverse geocoding via `PlaceResolver`. Handle permission denied / permanently denied / services disabled / unavailable / timeout — composer continues in every case. Permission requested only when needed; no background tracking.
-- **Exit:** moments with multiple attachments render as a carousel; detected location works and degrades gracefully; location + media tests pass.
+- **Exit:** moments with multiple attachments render as an adaptive collage; detected location works and degrades gracefully; location + media tests pass.
 
 ## Phase 5 — Custom timelines  ☐
 
