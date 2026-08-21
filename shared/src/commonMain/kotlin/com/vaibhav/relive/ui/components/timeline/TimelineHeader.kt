@@ -41,7 +41,7 @@ fun TimelineHeader(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = dims.spacing.md, vertical = dims.spacing.xs),
+                .padding(horizontal = dims.spacing.md, vertical = dims.spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {

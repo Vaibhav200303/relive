@@ -11,6 +11,7 @@ fun Moment.toPresentation(): MomentPresentation = MomentPresentation(
     content = content,
     locationLabel = location?.readableLabel(),
     isFavorite = isFavorite,
+    tags = tags,
     attachments = attachments
         .sortedBy { it.sortIndex }
         .map { MomentAttachmentPresentation(storageRef = it.storageRef, type = it.type) },

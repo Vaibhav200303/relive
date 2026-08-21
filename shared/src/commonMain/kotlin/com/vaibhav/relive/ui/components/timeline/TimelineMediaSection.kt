@@ -21,7 +21,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.unit.dp
 import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.platform.media.RelivedAudio
@@ -83,7 +82,7 @@ private fun VisualCarousel(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(240.dp)
+                .height(dims.media.carouselHeight)
                 .clip(RoundedCornerShape(dims.radii.md))
                 .background(colors.surfaceCard)
                 .border(
@@ -114,8 +113,8 @@ private fun VisualCarousel(
                     val active = pagerState.currentPage == i
                     Box(
                         modifier = Modifier
-                            .padding(horizontal = 3.dp)
-                            .size(if (active) 6.dp else 5.dp)
+                            .padding(horizontal = dims.media.indicatorSpacing)
+                            .size(if (active) dims.media.indicatorDotActive else dims.media.indicatorDotInactive)
                             .clip(CircleShape)
                             .background(if (active) colors.accent else colors.textMuted),
                     )

@@ -109,7 +109,7 @@ fun MomentComposer(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = dims.spacing.lg),
+            .padding(vertical = dims.spacing.xl),
         verticalAlignment = Alignment.Top,
     ) {
         Box(
