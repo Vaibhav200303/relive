@@ -42,7 +42,6 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.vaibhav.relive.domain.model.MediaStorageRef
 import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.domain.model.MomentValidation
 import com.vaibhav.relive.domain.model.Tag
@@ -85,7 +84,8 @@ fun MomentComposer(
     onLibraryTap: () -> Unit,
     onStopRecording: () -> Unit,
     onCancelRecording: () -> Unit,
-    onRemoveAttachment: (MediaStorageRef) -> Unit,
+    onRemoveAttachment: (String) -> Unit,
+    onRetryAttachment: (String) -> Unit,
     onReset: () -> Unit,
     onKeepMoment: () -> Unit,
     onMicPermissionResult: (MicPermissionResult) -> Unit,
@@ -191,6 +191,7 @@ fun MomentComposer(
                     attachments = state.attachments,
                     mediaStore = mediaStore,
                     onRemove = onRemoveAttachment,
+                    onRetry = onRetryAttachment,
                 )
                 Spacer(Modifier.height(dims.spacing.lg))
             }
@@ -224,8 +225,9 @@ fun MomentComposer(
             SaveErrorLine(state.saveState)
 
             KeepMomentAction(
-                enabled = !state.isSaving && !state.isRecording,
+                enabled = !state.isSaving && !state.isRecording && !state.hasProcessingAttachments,
                 isSaving = state.isSaving,
+                isProcessingMedia = state.hasProcessingAttachments,
                 onClick = onKeepMoment,
             )
         }
@@ -528,11 +530,20 @@ private fun ResetButton(onReset: () -> Unit, enabled: Boolean) {
 }
 
 @Composable
-private fun KeepMomentAction(enabled: Boolean, isSaving: Boolean, onClick: () -> Unit) {
+private fun KeepMomentAction(
+    enabled: Boolean,
+    isSaving: Boolean,
+    isProcessingMedia: Boolean,
+    onClick: () -> Unit,
+) {
     val colors = ReliveTheme.colors
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
-    val label = if (isSaving) "Keeping…" else "Keep Moment"
+    val label = when {
+        isSaving -> "Keeping…"
+        isProcessingMedia -> "Processing media…"
+        else -> "Keep Moment"
+    }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.End,
@@ -618,6 +629,7 @@ private fun SaveErrorLine(saveState: SaveState) {
             "This moment can't be kept yet."
         }
         is SaveState.Failure -> "Couldn't keep this moment. Try again."
+        SaveState.AwaitingProcessing -> "Waiting for media to finish processing…"
         SaveState.Idle, SaveState.Saving -> null
     }
     if (message != null) {

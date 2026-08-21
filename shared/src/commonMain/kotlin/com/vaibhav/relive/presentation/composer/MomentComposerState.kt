@@ -13,10 +13,10 @@ import com.vaibhav.relive.domain.model.Tag
  * entered.
  *
  * Attachments are draft-scope: files are already normalized and live under
- * [com.vaibhav.relive.platform.media.MediaStore], but ownership belongs to
- * the composer until Keep Moment succeeds. Reset, remove-attachment, and
- * recording-cancel all delete their draft files. A failed Keep Moment
- * preserves the drafts so a retry does not recompress.
+ * [com.vaibhav.relive.platform.media.MediaStore] once processing succeeds,
+ * but ownership belongs to the composer until Keep Moment succeeds. Reset,
+ * remove-attachment, and recording-cancel all delete their draft files. A
+ * failed Keep Moment preserves the drafts so a retry does not recompress.
  */
 data class MomentComposerState(
     val title: String = "",
@@ -36,6 +36,12 @@ data class MomentComposerState(
 ) {
     val isSaving: Boolean get() = saveState is SaveState.Saving
     val isRecording: Boolean get() = recording != null
+    val hasProcessingAttachments: Boolean
+        get() = attachments.any { it.status is DraftMediaStatus.Pending || it.status is DraftMediaStatus.Processing }
+    val hasFailedAttachments: Boolean
+        get() = attachments.any { it.status is DraftMediaStatus.Failed }
+    val allAttachmentsReady: Boolean
+        get() = attachments.all { it.status is DraftMediaStatus.Ready }
 }
 
 /** Recoverable UI hint about microphone-permission status. */
@@ -50,17 +56,40 @@ sealed interface MicPermissionUiState {
 }
 
 /**
- * A normalized composer-owned draft. [storageRef] points at a real optimized
- * file inside `MediaStore`; the composer will delete that file if the user
- * removes the attachment or resets the composer before Keep Moment succeeds.
+ * A composer-owned draft attachment. The slot is created immediately when the
+ * user selects/captures the underlying media, keyed by a stable [draftId] so
+ * the UI tile does not jump when processing completes. Processing status is
+ * explicit — callers must never infer it from null fields.
  */
 data class DraftAttachment(
-    val storageRef: MediaStorageRef,
+    val draftId: String,
     val type: MediaType,
-    val durationMs: Long? = null,
-    val widthPx: Int? = null,
-    val heightPx: Int? = null,
+    val status: DraftMediaStatus,
 )
+
+/** Explicit lifecycle for a [DraftAttachment]. */
+sealed interface DraftMediaStatus {
+    /** Slot created; the processing coroutine has not started yet. */
+    data object Pending : DraftMediaStatus
+
+    /** Processing is running. Progress is intentionally indeterminate. */
+    data object Processing : DraftMediaStatus
+
+    /**
+     * Processed. [storageRef] points at a real optimized file inside
+     * `MediaStore`; the composer will delete that file if the user removes the
+     * attachment or resets the composer before Keep Moment succeeds.
+     */
+    data class Ready(
+        val storageRef: MediaStorageRef,
+        val durationMs: Long? = null,
+        val widthPx: Int? = null,
+        val heightPx: Int? = null,
+    ) : DraftMediaStatus
+
+    /** Terminal failure. UI offers Retry / Remove. */
+    data class Failed(val cause: Throwable) : DraftMediaStatus
+}
 
 /** Live recording snapshot mirrored from the [com.vaibhav.relive.platform.media.AudioRecorder]. */
 data class LiveRecording(
@@ -87,4 +116,7 @@ sealed interface SaveState {
 
     /** Persistence threw while attempting to write the moment. */
     data class Failure(val cause: Throwable) : SaveState
+
+    /** Keep tapped while attachments are still processing. */
+    data object AwaitingProcessing : SaveState
 }

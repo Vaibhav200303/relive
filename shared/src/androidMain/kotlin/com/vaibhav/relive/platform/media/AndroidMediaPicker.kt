@@ -10,30 +10,35 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import com.vaibhav.relive.domain.model.MediaType
 import kotlinx.coroutines.CompletableDeferred
-import java.io.File
 import java.util.UUID
 
+/**
+ * Android picker handles. Uses the system Photo Picker for images/videos and
+ * `OpenMultipleDocuments` for audio, so the app never requests broad storage
+ * permission. All entry points accept multi-selection and preserve the order
+ * the picker returns.
+ */
 @Composable
 actual fun rememberMediaPickerHandle(mediaStore: MediaStore): MediaPickerHandle {
     val context = LocalContext.current
     val store = mediaStore as? AndroidMediaStore
         ?: error("Android media picker requires AndroidMediaStore")
 
-    val pendingImage = remember { PendingPick() }
-    val pendingVideo = remember { PendingPick() }
+    val pendingImages = remember { PendingPick() }
+    val pendingVideos = remember { PendingPick() }
     val pendingAudio = remember { PendingPick() }
 
     val imageLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickVisualMedia(),
-    ) { uri: Uri? -> pendingImage.deliver(uris = listOfNotNull(uri)) }
+        ActivityResultContracts.PickMultipleVisualMedia(MULTI_SELECT_MAX),
+    ) { uris: List<Uri> -> pendingImages.deliver(uris) }
 
     val videoLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickVisualMedia(),
-    ) { uri: Uri? -> pendingVideo.deliver(uris = listOfNotNull(uri)) }
+        ActivityResultContracts.PickMultipleVisualMedia(MULTI_SELECT_MAX),
+    ) { uris: List<Uri> -> pendingVideos.deliver(uris) }
 
     val audioLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
-    ) { uri: Uri? -> pendingAudio.deliver(uris = listOfNotNull(uri)) }
+        ActivityResultContracts.OpenMultipleDocuments(),
+    ) { uris: List<Uri> -> pendingAudio.deliver(uris) }
 
     return remember(context, store) {
         object : MediaPickerHandle {
@@ -41,13 +46,13 @@ actual fun rememberMediaPickerHandle(mediaStore: MediaStore): MediaPickerHandle 
                 imageLauncher.launch(
                     PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
                 )
-                return pendingImage.await().mapNotNull { copyToTmp(context, store, it, MediaType.Image) }
+                return pendingImages.await().mapNotNull { copyToTmp(context, store, it, MediaType.Image) }
             }
             override suspend fun pickVideo(): List<RawMedia> {
                 videoLauncher.launch(
                     PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly),
                 )
-                return pendingVideo.await().mapNotNull { copyToTmp(context, store, it, MediaType.Video) }
+                return pendingVideos.await().mapNotNull { copyToTmp(context, store, it, MediaType.Video) }
             }
             override suspend fun pickAudio(): List<RawMedia> {
                 audioLauncher.launch(arrayOf("audio/*"))
@@ -84,3 +89,6 @@ private fun copyToTmp(
         null
     }
 }
+
+/** Upper bound matching the Photo Picker cap on modern Android. */
+private const val MULTI_SELECT_MAX = 50
