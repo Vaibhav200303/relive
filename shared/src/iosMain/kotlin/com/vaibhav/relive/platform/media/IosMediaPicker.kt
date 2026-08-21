@@ -8,7 +8,6 @@ import kotlinx.coroutines.CompletableDeferred
 import platform.Foundation.NSItemProvider
 import platform.Foundation.NSURL
 import platform.Foundation.NSFileManager
-import platform.Foundation.NSUUID
 import platform.PhotosUI.PHPickerConfiguration
 import platform.PhotosUI.PHPickerFilter
 import platform.PhotosUI.PHPickerResult
@@ -38,10 +37,16 @@ actual fun rememberMediaPickerHandle(mediaStore: MediaStore): MediaPickerHandle 
     }
 }
 
+/**
+ * PHPicker in multi-select mode. Emitted order matches the order the user
+ * confirmed inside the picker (PHPicker preserves selection order in its
+ * `results` array). Per-item async copies are collected into an indexed slot
+ * table so a slower file cannot overtake a faster one.
+ */
 @OptIn(ExperimentalForeignApi::class)
 private suspend fun presentPHPicker(store: IosMediaStore, type: MediaType): List<RawMedia> {
     val cfg = PHPickerConfiguration().apply {
-        selectionLimit = 1
+        selectionLimit = 0 // unlimited multi-select
         filter = when (type) {
             MediaType.Image -> PHPickerFilter.imagesFilter
             MediaType.Video -> PHPickerFilter.videosFilter
@@ -54,10 +59,9 @@ private suspend fun presentPHPicker(store: IosMediaStore, type: MediaType): List
             picker.dismissViewControllerAnimated(true, completion = null)
             val results = didFinishPicking.filterIsInstance<PHPickerResult>()
             if (results.isEmpty()) { deferred.complete(emptyList()); return }
-            // Copy each result to tmp file synchronously.
-            val out = mutableListOf<RawMedia>()
-            var pending = results.size
-            results.forEach { res ->
+            val slots = arrayOfNulls<RawMedia>(results.size)
+            var remaining = results.size
+            results.forEachIndexed { index, res ->
                 val provider: NSItemProvider = res.itemProvider
                 val ext = store.extensionFor(type)
                 val destPath = store.newTempPath(ext)
@@ -69,10 +73,12 @@ private suspend fun presentPHPicker(store: IosMediaStore, type: MediaType): List
                             NSFileManager.defaultManager.copyItemAtURL(
                                 url, NSURL.fileURLWithPath(destPath), error = null,
                             )
-                            synchronized(out) { out += RawMedia(type, destPath, ownedByRelive = true) }
-                        } catch (_: Throwable) { /* ignore */ }
+                            slots[index] = RawMedia(type, destPath, ownedByRelive = true)
+                        } catch (_: Throwable) { /* leave slot null */ }
                     }
-                    if (--pending == 0) deferred.complete(out.toList())
+                    if (--remaining == 0) {
+                        deferred.complete(slots.filterNotNull())
+                    }
                 }
             }
         }
@@ -87,6 +93,7 @@ private suspend fun presentPHPicker(store: IosMediaStore, type: MediaType): List
 private suspend fun presentDocumentPicker(store: IosMediaStore): List<RawMedia> {
     val deferred = CompletableDeferred<List<RawMedia>>()
     val picker = UIDocumentPickerViewController(forOpeningContentTypes = listOf(UTTypeAudio))
+    picker.allowsMultipleSelection = true
     val delegate = object : NSObject(), UIDocumentPickerDelegateProtocol {
         override fun documentPicker(controller: UIDocumentPickerViewController, didPickDocumentsAtURLs: List<*>) {
             val urls = didPickDocumentsAtURLs.filterIsInstance<NSURL>()
@@ -119,6 +126,3 @@ private fun presentModal(vc: UIViewController) {
     val root = UIApplication.sharedApplication.keyWindow?.rootViewController ?: return
     root.presentViewController(vc, animated = true, completion = null)
 }
-
-// K/N does not provide `synchronized`; fallback minimal no-op wrapper.
-private inline fun <R> synchronized(lock: Any, block: () -> R): R = block()

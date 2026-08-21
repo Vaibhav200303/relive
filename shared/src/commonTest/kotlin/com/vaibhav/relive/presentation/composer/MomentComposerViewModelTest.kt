@@ -29,6 +29,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -87,8 +88,9 @@ class MomentComposerViewModelTest {
 
         vm.processRaw(RawMedia(MediaType.Image, "/tmp/x.jpg", ownedByRelive = true))
 
-        assertEquals(1, vm.state.value.attachments.size)
-        assertEquals(MediaType.Image, vm.state.value.attachments.single().type)
+        val att = vm.state.value.attachments.single()
+        assertEquals(MediaType.Image, att.type)
+        assertIs<DraftMediaStatus.Ready>(att.status)
     }
 
     @Test
@@ -107,26 +109,198 @@ class MomentComposerViewModelTest {
     }
 
     @Test
-    fun removeAttachmentDeletesFile() = runTest {
+    fun processRawBatchMixedOrderPreserved() = runTest {
+        val store = FakeMediaStore()
+        val vm = newViewModel(RecordingRepository(), store = store, processor = FakeMediaProcessor(store))
+        vm.processRawBatch(
+            listOf(
+                RawMedia(MediaType.Video, "v1", ownedByRelive = true),
+                RawMedia(MediaType.Image, "p1", ownedByRelive = true),
+                RawMedia(MediaType.Video, "v2", ownedByRelive = true),
+                RawMedia(MediaType.Image, "p2", ownedByRelive = true),
+            ),
+        )
+        val types = vm.state.value.attachments.map { it.type }
+        assertEquals(
+            listOf(MediaType.Video, MediaType.Image, MediaType.Video, MediaType.Image),
+            types,
+        )
+    }
+
+    @Test
+    fun placeholdersAppearImmediately() = runTest {
+        val store = FakeMediaStore()
+        val proc = GateableProcessor(store)
+        val vm = newViewModel(RecordingRepository(), store = store, processor = proc)
+
+        vm.processRawBatch(
+            listOf(
+                RawMedia(MediaType.Image, "a", ownedByRelive = true),
+                RawMedia(MediaType.Image, "b", ownedByRelive = true),
+                RawMedia(MediaType.Image, "c", ownedByRelive = true),
+                RawMedia(MediaType.Image, "d", ownedByRelive = true),
+                RawMedia(MediaType.Image, "e", ownedByRelive = true),
+            ),
+        )
+
+        // Before any processing completes, all 5 tiles must already be visible.
+        val slots = vm.state.value.attachments
+        assertEquals(5, slots.size)
+        slots.forEach { assertNotEquals(DraftMediaStatus.Ready::class, it.status::class) }
+
+        proc.releaseAll()
+        assertTrue(vm.state.value.attachments.all { it.status is DraftMediaStatus.Ready })
+    }
+
+    @Test
+    fun draftIdsAreStableAcrossStatusTransitions() = runTest {
+        val store = FakeMediaStore()
+        val proc = GateableProcessor(store)
+        val vm = newViewModel(RecordingRepository(), store = store, processor = proc)
+
+        vm.processRaw(RawMedia(MediaType.Image, "a", ownedByRelive = true))
+        val idBefore = vm.state.value.attachments.single().draftId
+        val before = vm.state.value.attachments.single().status
+        assertTrue(
+            before is DraftMediaStatus.Pending || before is DraftMediaStatus.Processing,
+            "must expose an explicit pre-Ready status, was $before",
+        )
+
+        proc.releaseAll()
+        val idAfter = vm.state.value.attachments.single().draftId
+        assertEquals(idBefore, idAfter)
+        assertIs<DraftMediaStatus.Ready>(vm.state.value.attachments.single().status)
+    }
+
+    @Test
+    fun processingBoundedByConcurrencyLimit() = runTest {
+        val store = FakeMediaStore()
+        val proc = GateableProcessor(store)
+        val vm = newViewModel(
+            RecordingRepository(),
+            store = store,
+            processor = proc,
+            processingConcurrency = 2,
+        )
+
+        vm.processRawBatch(
+            listOf(
+                RawMedia(MediaType.Video, "a", ownedByRelive = true),
+                RawMedia(MediaType.Video, "b", ownedByRelive = true),
+                RawMedia(MediaType.Video, "c", ownedByRelive = true),
+                RawMedia(MediaType.Video, "d", ownedByRelive = true),
+            ),
+        )
+
+        assertEquals(
+            2,
+            proc.activeCount,
+            "no more than concurrency permits may be processing at once",
+        )
+
+        proc.releaseOne(); proc.releaseOne()
+        assertEquals(2, proc.activeCount, "next batch takes over as permits free up")
+        proc.releaseAll()
+        assertTrue(vm.state.value.attachments.all { it.status is DraftMediaStatus.Ready })
+    }
+
+    @Test
+    fun failureIsolatedFromSiblings() = runTest {
+        val store = FakeMediaStore()
+        val proc = FailingProcessor(store, failOnPath = "bad")
+        val vm = newViewModel(RecordingRepository(), store = store, processor = proc)
+
+        vm.processRawBatch(
+            listOf(
+                RawMedia(MediaType.Image, "ok1", ownedByRelive = true),
+                RawMedia(MediaType.Image, "bad", ownedByRelive = true),
+                RawMedia(MediaType.Image, "ok2", ownedByRelive = true),
+            ),
+        )
+
+        val statuses = vm.state.value.attachments.map { it.status }
+        assertIs<DraftMediaStatus.Ready>(statuses[0])
+        assertIs<DraftMediaStatus.Failed>(statuses[1])
+        assertIs<DraftMediaStatus.Ready>(statuses[2])
+    }
+
+    @Test
+    fun retryTransitionsFailedToReady() = runTest {
+        val store = FakeMediaStore()
+        val proc = FailingProcessor(store, failOnPath = "bad")
+        val vm = newViewModel(RecordingRepository(), store = store, processor = proc)
+
+        vm.processRaw(RawMedia(MediaType.Image, "bad", ownedByRelive = true))
+        val draftId = vm.state.value.attachments.single().draftId
+        assertIs<DraftMediaStatus.Failed>(vm.state.value.attachments.single().status)
+
+        proc.failNext = false
+        vm.retryAttachment(draftId)
+        assertIs<DraftMediaStatus.Ready>(vm.state.value.attachments.single().status)
+        assertEquals(draftId, vm.state.value.attachments.single().draftId)
+    }
+
+    @Test
+    fun removeAttachmentDeletesReadyFile() = runTest {
         val store = FakeMediaStore()
         val vm = newViewModel(RecordingRepository(), store = store, processor = FakeMediaProcessor(store))
         vm.processRaw(RawMedia(MediaType.Image, "x", ownedByRelive = true))
-        val ref = vm.state.value.attachments.single().storageRef
-        vm.removeAttachment(ref)
+        val slot = vm.state.value.attachments.single()
+        val ref = (slot.status as DraftMediaStatus.Ready).storageRef
+        vm.removeAttachment(slot.draftId)
         assertTrue(vm.state.value.attachments.isEmpty())
         assertTrue(store.deleted.contains(ref))
     }
 
     @Test
-    fun resetDeletesAllDraftMedia() = runTest {
+    fun removeOnePendingDoesNotAffectSiblings() = runTest {
+        val store = FakeMediaStore()
+        val proc = GateableProcessor(store)
+        val vm = newViewModel(RecordingRepository(), store = store, processor = proc)
+
+        vm.processRawBatch(
+            listOf(
+                RawMedia(MediaType.Image, "a", ownedByRelive = true),
+                RawMedia(MediaType.Image, "b", ownedByRelive = true),
+                RawMedia(MediaType.Image, "c", ownedByRelive = true),
+            ),
+        )
+        val middleId = vm.state.value.attachments[1].draftId
+        vm.removeAttachment(middleId)
+        assertEquals(2, vm.state.value.attachments.size)
+
+        proc.releaseAll()
+        assertTrue(vm.state.value.attachments.all { it.status is DraftMediaStatus.Ready })
+    }
+
+    @Test
+    fun resetDeletesAllReadyDraftMedia() = runTest {
         val store = FakeMediaStore()
         val vm = newViewModel(RecordingRepository(), store = store, processor = FakeMediaProcessor(store))
         vm.processRaw(RawMedia(MediaType.Image, "a", ownedByRelive = true))
         vm.processRaw(RawMedia(MediaType.Video, "b", ownedByRelive = true))
-        val refs = vm.state.value.attachments.map { it.storageRef }
+        val refs = vm.state.value.attachments.mapNotNull { (it.status as? DraftMediaStatus.Ready)?.storageRef }
         vm.reset()
         assertTrue(vm.state.value.attachments.isEmpty())
         assertTrue(store.deleted.containsAll(refs))
+    }
+
+    @Test
+    fun keepMomentBlockedWhileProcessing() = runTest {
+        val store = FakeMediaStore()
+        val proc = GateableProcessor(store)
+        val repo = RecordingRepository()
+        val vm = newViewModel(repo, store = store, processor = proc)
+        vm.updateTitle("t")
+        vm.processRaw(RawMedia(MediaType.Video, "v", ownedByRelive = true))
+
+        vm.keepMoment()
+        assertEquals(SaveState.AwaitingProcessing, vm.state.value.saveState)
+        assertTrue(repo.inserts.isEmpty(), "must not persist while a draft is processing")
+
+        proc.releaseAll()
+        vm.keepMoment()
+        assertEquals(1, repo.inserts.size)
     }
 
     @Test
@@ -147,7 +321,6 @@ class MomentComposerViewModelTest {
             listOf(MediaType.Image, MediaType.Video, MediaType.Audio),
             saved.attachments.map { it.type },
         )
-        // Successful save clears composer without deleting the committed files.
         assertTrue(store.deleted.isEmpty(), "committed files must not be deleted")
     }
 
@@ -300,21 +473,22 @@ class MomentComposerViewModelTest {
     private fun TestScope.newViewModel(
         repo: MomentRepository,
         clockValue: Instant = Instant(0L),
-        idValue: String = "id-fixed",
         store: MediaStore = FakeMediaStore(),
         processor: MediaProcessor = FakeMediaProcessor(store as? FakeMediaStore ?: FakeMediaStore()),
         recorderFactory: () -> AudioRecorder = { error("not used") },
+        processingConcurrency: Int = 4,
         testScope: TestScope = TestScope(UnconfinedTestDispatcher(testScheduler)),
     ): MomentComposerViewModel {
         var counter = 0
         return MomentComposerViewModel(
             momentRepository = repo,
             clock = Clock { clockValue },
-            idGenerator = IdGenerator { if (counter++ == 0) idValue else "$idValue-${counter}" },
+            idGenerator = IdGenerator { "id-${counter++}" },
             scope = testScope,
             mediaStore = store,
             mediaProcessor = processor,
             audioRecorderFactory = recorderFactory,
+            processingConcurrency = processingConcurrency,
         )
     }
 }
@@ -357,6 +531,57 @@ private class FakeMediaStore : MediaStore {
 
 private class FakeMediaProcessor(private val store: FakeMediaStore) : MediaProcessor {
     override suspend fun process(raw: RawMedia): ProcessedMedia {
+        val ref = store.allocateKey(raw.type)
+        return ProcessedMedia(type = raw.type, storageRef = ref)
+    }
+}
+
+/**
+ * Processor whose `process` suspends until [releaseOne] / [releaseAll] is
+ * called. Used to observe pending/processing state without relying on wall-
+ * clock timing.
+ */
+private class GateableProcessor(private val store: FakeMediaStore) : MediaProcessor {
+    private val gates = mutableListOf<CompletableDeferred<Unit>>()
+    var activeCount: Int = 0
+        private set
+
+    override suspend fun process(raw: RawMedia): ProcessedMedia {
+        val gate = CompletableDeferred<Unit>()
+        gates += gate
+        activeCount += 1
+        try {
+            gate.await()
+            val ref = store.allocateKey(raw.type)
+            return ProcessedMedia(type = raw.type, storageRef = ref)
+        } finally {
+            activeCount -= 1
+        }
+    }
+
+    fun releaseOne() {
+        val g = gates.removeFirstOrNull() ?: return
+        g.complete(Unit)
+    }
+
+    fun releaseAll() {
+        while (true) {
+            val g = gates.removeFirstOrNull() ?: return
+            g.complete(Unit)
+        }
+    }
+
+}
+
+private class FailingProcessor(
+    private val store: FakeMediaStore,
+    private val failOnPath: String,
+) : MediaProcessor {
+    var failNext: Boolean = true
+    override suspend fun process(raw: RawMedia): ProcessedMedia {
+        if (raw.sourcePath == failOnPath && failNext) {
+            throw RuntimeException("boom")
+        }
         val ref = store.allocateKey(raw.type)
         return ProcessedMedia(type = raw.type, storageRef = ref)
     }
