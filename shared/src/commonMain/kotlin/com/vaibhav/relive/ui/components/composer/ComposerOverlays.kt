@@ -45,6 +45,7 @@ internal fun ComposerOverlayHost(
     onCaptured: (RawMedia) -> Unit,
     onDismiss: () -> Unit,
     onPick: (MediaType) -> Unit,
+    onOpenLibraryFromCamera: () -> Unit,
 ) {
     when (overlay) {
         ComposerOverlay.None -> Unit
@@ -57,6 +58,10 @@ internal fun ComposerOverlayHost(
                         onDismiss()
                     },
                     onCancel = onDismiss,
+                    // In-camera Gallery hands off to the composer's Library
+                    // sheet. openLibraryChoice() replaces the Camera overlay
+                    // atomically so the user never sees a bare timeline flash.
+                    onOpenGallery = onOpenLibraryFromCamera,
                 )
             }
         }

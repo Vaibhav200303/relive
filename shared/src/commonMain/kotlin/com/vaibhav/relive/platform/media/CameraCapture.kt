@@ -9,10 +9,16 @@ import androidx.compose.runtime.Composable
  *
  * Capture is intentionally moderate quality — Relive normalizes the result
  * afterwards via [MediaProcessor]. Themes are never baked into the capture.
+ *
+ * [onOpenGallery] is invoked when the user taps the in-camera Gallery
+ * control. The Android surface uses it to dismiss the camera and hand off to
+ * the composer's Library sheet; the iOS surface ignores it because the
+ * native picker already surfaces the on-device library.
  */
 @Composable
 expect fun CameraCaptureSurface(
     mediaStore: MediaStore,
     onCaptured: (RawMedia) -> Unit,
     onCancel: () -> Unit,
+    onOpenGallery: () -> Unit,
 )

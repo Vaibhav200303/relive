@@ -29,7 +29,11 @@ actual fun CameraCaptureSurface(
     mediaStore: MediaStore,
     onCaptured: (RawMedia) -> Unit,
     onCancel: () -> Unit,
+    @Suppress("UNUSED_PARAMETER") onOpenGallery: () -> Unit,
 ) {
+    // iOS uses the native UIImagePickerController camera, which already
+    // surfaces the on-device photo library from its own controls — the
+    // Android-only in-camera Gallery shortcut has no equivalent here.
     val store = mediaStore as? IosMediaStore
         ?: error("iOS CameraCaptureSurface requires IosMediaStore")
     Box(modifier = Modifier.fillMaxSize().background(Color.Black))
@@ -46,6 +50,11 @@ private fun present(
     val picker = UIImagePickerController()
     picker.sourceType = UIImagePickerControllerSourceType.UIImagePickerControllerSourceTypeCamera
     picker.mediaTypes = listOf("public.image", "public.movie")
+    // iOS's native camera UI already provides its own two-state Off/On flash
+    // control, plus the platform shutter click and start/stop recording tones.
+    // Relive does not draw its own iOS camera chrome and does not override the
+    // picker's flash mode — iOS ships an Auto default that the user resets via
+    // the picker's own control.
     val delegate = object : NSObject(),
         UIImagePickerControllerDelegateProtocol,
         UINavigationControllerDelegateProtocol {

@@ -129,10 +129,25 @@ class AndroidMediaProcessor(
         val destFile = File(store.resolveAbsolutePath(destRef))
         destFile.parentFile?.mkdirs()
 
-        val mediaItem = MediaItem.fromUri(File(raw.sourcePath).toURI().toString())
+        val uri = File(raw.sourcePath).toURI().toString()
+        // Apply optional trim range as MediaItem clipping so Transformer only
+        // demuxes/decodes the selected interval — cheaper and exact.
+        val itemBuilder = MediaItem.Builder().setUri(uri)
+        val start = raw.trimStartMs
+        val end = raw.trimEndMs
+        if (start != null && end != null && end > start) {
+            itemBuilder.setClippingConfiguration(
+                MediaItem.ClippingConfiguration.Builder()
+                    .setStartPositionMs(start.coerceAtLeast(0L))
+                    .setEndPositionMs(end)
+                    .build(),
+            )
+        }
+        val mediaItem = itemBuilder.build()
         val videoEffects: List<Effect> = listOf(Presentation.createForHeight(TARGET_VIDEO_SHORT_EDGE))
         val edited = EditedMediaItem.Builder(mediaItem)
             .setEffects(Effects(emptyList(), videoEffects))
+            .apply { if (raw.muteAudio) setRemoveAudio(true) }
             .build()
         try {
             suspendCancellableCoroutine<Unit> { cont ->
