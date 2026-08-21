@@ -1,10 +1,24 @@
 package com.vaibhav.relive.platform.media
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.media.ExifInterface
+import android.media.AudioManager
+import android.media.ToneGenerator
+import android.net.Uri
+import android.os.Build
+import android.widget.VideoView
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
@@ -18,8 +32,16 @@ import androidx.camera.video.Recording
 import androidx.camera.video.VideoCapture
 import androidx.camera.video.VideoRecordEvent
 import androidx.camera.view.PreviewView
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,12 +51,17 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -42,31 +69,55 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.vaibhav.relive.domain.model.MediaType
+import com.vaibhav.relive.ui.icons.CameraIcons
 import java.io.File
 import java.util.concurrent.Executor
 
 /**
- * Single CameraX experience where the user picks Photo or Video before
- * capturing. Cancel/Back both return without a capture and discard any
- * in-flight temporary file. Controls respect safe-drawing insets so they
- * remain fully tappable across cutouts and gesture-nav bars.
+ * WhatsApp-style minimal camera. Full-screen preview under a compact black
+ * control bar. The shutter is the fixed geometric center of the screen;
+ * gallery/filter live to its left, switch-camera to its right, and zoom
+ * presets sit directly above on the same center axis. Photo/Video mode
+ * selector sits below and above the system navigation area. Flash is a
+ * small secondary control in the upper-left of the preview.
+ *
+ * See ADR-0018 addendum for the flash/torch policy, camera-switch behavior,
+ * zoom policy, and platform-native capture-feedback sources on Android and
+ * iOS.
  */
 @Composable
 actual fun CameraCaptureSurface(
     mediaStore: MediaStore,
     onCaptured: (RawMedia) -> Unit,
     onCancel: () -> Unit,
+    onOpenGallery: () -> Unit,
 ) {
     val store = mediaStore as? AndroidMediaStore
         ?: error("Android CameraCaptureSurface requires AndroidMediaStore")
@@ -98,19 +149,83 @@ actual fun CameraCaptureSurface(
     }
 
     var mode by remember { mutableStateOf(CameraMode.Photo) }
+    var lens by remember { mutableStateOf(LensFacing.Back) }
+    var flash by remember { mutableStateOf(FlashMode.Off) }
+    var hasFrontCamera by remember { mutableStateOf(false) }
+    var hasFlashUnit by remember { mutableStateOf(false) }
     var isRecording by remember { mutableStateOf(false) }
+    var isCapturingPhoto by remember { mutableStateOf(false) }
+    var recordingElapsedMs by remember { mutableStateOf(0L) }
+    var zoomMin by remember { mutableStateOf(1f) }
+    var zoomMax by remember { mutableStateOf(1f) }
+    var zoomRatio by remember { mutableStateOf(1f) }
+    // Ruler-vs-presets: true while a pinch is in progress or during the
+    // brief post-pinch linger. Timing lives here in the composable; the
+    // dynamic-label logic itself is deterministic and tested in common.
+    var isPinching by remember { mutableStateOf(false) }
+    var rulerVisible by remember { mutableStateOf(false) }
+    var pinchTick by remember { mutableStateOf(0) }
     val previewView = remember { PreviewView(context) }
-    val imageCapture = remember { ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).build() }
+    val imageCapture = remember {
+        ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).build()
+    }
     val recorder = remember { Recorder.Builder().setQualitySelector(QualitySelector.from(Quality.HD)).build() }
     val videoCapture = remember { VideoCapture.withOutput(recorder) }
     var activeRecording: Recording? by remember { mutableStateOf(null) }
+    var boundCamera: Camera? by remember { mutableStateOf(null) }
     // Track the in-flight temp file so cancel/back can delete it if no
     // capture ever completed.
     var pendingTempFile: File? by remember { mutableStateOf(null) }
+    // Photo review state — a just-captured photo the user has not yet
+    // accepted. While non-Live, the shutter row swaps for retake/confirm and
+    // the live preview is hidden behind the frozen capture. The captured
+    // temp file is owned by [uiState] here — it becomes an attachment only
+    // when the user taps ✓ (confirm).
+    var uiState: CameraUiState by remember { mutableStateOf<CameraUiState>(CameraUiState.Live) }
+    val isReviewing = uiState.isReviewing
+    // Video playback UI state for VideoReview. Kept next to uiState so it
+    // resets whenever we return to Live.
+    var videoPlayback by remember { mutableStateOf(VideoReviewPlayback.Initial) }
+    // Editor state (trim + mute + duration + cursor). Reset alongside
+    // videoPlayback on Retake/Confirm so a fresh review starts untrimmed and
+    // unmuted regardless of the previous session.
+    var videoEdit by remember { mutableStateOf(VideoReviewEditState.initial(0L)) }
+
+    // Capture feedback tones. ToneGenerator on STREAM_MUSIC uses the media
+    // volume the user actually controls and works across OEMs where the
+    // system MediaActionSound path silently no-ops for third-party apps.
+    val toneGen = remember {
+        try {
+            ToneGenerator(AudioManager.STREAM_MUSIC, TONE_VOLUME)
+        } catch (_: RuntimeException) {
+            null
+        }
+    }
+    val vibrator = remember { getVibrator(context) }
+    val feedbackScope = rememberCoroutineScope()
 
     fun discardPendingTempFile() {
         pendingTempFile?.delete()
         pendingTempFile = null
+    }
+
+    // Delete the frozen review capture (if any). Called on retake, back, and
+    // dispose so repeated retakes never leave orphan files (photo or video)
+    // on disk.
+    fun discardReviewFile() {
+        when (val current = uiState) {
+            is CameraUiState.PhotoReview ->
+                try { File(current.captured.sourcePath).delete() } catch (_: Throwable) {}
+            is CameraUiState.VideoReview ->
+                try { File(current.captured.sourcePath).delete() } catch (_: Throwable) {}
+            CameraUiState.Live -> Unit
+        }
+    }
+
+    fun releaseCamera() {
+        boundCamera?.cameraControl?.enableTorch(false)
+        boundCamera = null
+        try { ProcessCameraProvider.getInstance(context).get().unbindAll() } catch (_: Throwable) {}
     }
 
     val cancel: () -> Unit = {
@@ -118,137 +233,1084 @@ actual fun CameraCaptureSurface(
         activeRecording = null
         isRecording = false
         discardPendingTempFile()
+        discardReviewFile()
+        uiState = CameraUiState.Live
+        releaseCamera()
         onCancel()
     }
 
-    // Bind camera use cases whenever mode changes.
-    LaunchedEffect(mode) {
+    // Retake: discard the captured file and drop back to Live. Preview is
+    // still bound behind the review overlay, so removing the overlay
+    // restores the live feed without a full CameraX re-bind. Video playback
+    // state is also reset; the VideoView is disposed by leaving VideoReview.
+    val retake: () -> Unit = {
+        discardReviewFile()
+        videoPlayback = VideoReviewPlayback.Initial
+        videoEdit = VideoReviewEditState.initial(0L)
+        uiState = CameraUiState.Live
+    }
+
+    // Confirm: hand the captured photo or video to the caller. The file is
+    // now the callee's responsibility (composer + media processor), so we
+    // clear review state without deleting.
+    val confirm: () -> Unit = {
+        when (val current = uiState) {
+            is CameraUiState.PhotoReview -> {
+                uiState = CameraUiState.Live
+                onCaptured(current.captured)
+            }
+            is CameraUiState.VideoReview -> {
+                val edit = videoEdit
+                val out = current.captured.copy(
+                    trimStartMs = if (edit.isTrimmed) edit.trimStartMs else null,
+                    trimEndMs = if (edit.isTrimmed) edit.trimEndMs else null,
+                    muteAudio = edit.isMuted,
+                )
+                videoPlayback = VideoReviewPlayback.Initial
+                videoEdit = VideoReviewEditState.initial(0L)
+                uiState = CameraUiState.Live
+                onCaptured(out)
+            }
+            CameraUiState.Live -> Unit
+        }
+    }
+
+    // Bind camera use cases whenever mode or lens changes. Torch and zoom are
+    // reapplied after binding so they reflect the *current* lens's real
+    // capabilities and reported ranges.
+    LaunchedEffect(mode, lens) {
         val providerFuture = ProcessCameraProvider.getInstance(context)
         providerFuture.addListener({
             val provider = providerFuture.get()
             provider.unbindAll()
             val preview = Preview.Builder().build().also { it.setSurfaceProvider(previewView.surfaceProvider) }
-            val selector = CameraSelector.DEFAULT_BACK_CAMERA
-            when (mode) {
+            val selector = when (lens) {
+                LensFacing.Back -> CameraSelector.DEFAULT_BACK_CAMERA
+                LensFacing.Front -> CameraSelector.DEFAULT_FRONT_CAMERA
+            }
+            hasFrontCamera = try { provider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA) } catch (_: Throwable) { false }
+            imageCapture.flashMode = flash.toImageCaptureFlash()
+            val cam = when (mode) {
                 CameraMode.Photo -> provider.bindToLifecycle(lifecycleOwner, selector, preview, imageCapture)
                 CameraMode.Video -> provider.bindToLifecycle(lifecycleOwner, selector, preview, videoCapture)
             }
+            boundCamera = cam
+            hasFlashUnit = cam.cameraInfo.hasFlashUnit()
+            val coerced = flash.coercedFor(hasFlashUnit)
+            if (coerced != flash) flash = coerced
+            imageCapture.flashMode = coerced.toImageCaptureFlash()
+            if (mode == CameraMode.Video && hasFlashUnit) {
+                cam.cameraControl.enableTorch(coerced == FlashMode.On)
+            } else {
+                cam.cameraControl.enableTorch(false)
+            }
+            // Read the newly bound lens's actual zoom range and reconcile any
+            // in-flight ratio. When the ratio is still supported it survives
+            // Photo↔Video / Back↔Back rebinds; when it isn't (typical when
+            // toggling to the fixed-zoom front lens), fall back to the lens
+            // default.
+            val zs = cam.cameraInfo.zoomState.value
+            val minR = zs?.minZoomRatio ?: 1f
+            val maxR = zs?.maxZoomRatio ?: 1f
+            zoomMin = minR
+            zoomMax = maxR
+            val nextRatio = if (zoomRatio in minR..maxR) zoomRatio else defaultZoomRatio(minR, maxR)
+            zoomRatio = nextRatio
+            try { cam.cameraControl.setZoomRatio(nextRatio) } catch (_: Throwable) { /* best-effort */ }
         }, executor)
     }
     DisposableEffect(Unit) {
         onDispose {
             activeRecording?.stop()
             discardPendingTempFile()
-            ProcessCameraProvider.getInstance(context).get().unbindAll()
+            discardReviewFile()
+            releaseCamera()
+            try { toneGen?.release() } catch (_: Throwable) {}
         }
     }
 
-    // System Back closes camera and returns to composer without exiting Relive.
-    BackHandler(enabled = true, onBack = cancel)
-
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-        AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
-
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(horizontal = 16.dp, vertical = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            // Mode toggle.
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(Color(0x66000000))
-                    .padding(4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                ModeChip("Photo", selected = mode == CameraMode.Photo, enabled = !isRecording) { mode = CameraMode.Photo }
-                ModeChip("Video", selected = mode == CameraMode.Video, enabled = !isRecording) { mode = CameraMode.Video }
+    // Elapsed timer runs only while recording; reset on stop.
+    LaunchedEffect(isRecording) {
+        if (isRecording) {
+            recordingElapsedMs = 0L
+            val start = System.currentTimeMillis()
+            while (isRecording) {
+                recordingElapsedMs = System.currentTimeMillis() - start
+                delay(200)
             }
-            Spacer(Modifier.height(24.dp))
-            // Cancel | Shutter | (spacer) — Cancel sits in the safe area next
-            // to the shutter so it is always reachable.
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                CancelPill(onClick = cancel)
+        } else {
+            recordingElapsedMs = 0L
+        }
+    }
+
+    // System Back during PhotoReview discards the capture and returns to
+    // live; otherwise it closes the camera and returns to the composer.
+    BackHandler(enabled = true, onBack = { if (isReviewing) retake() else cancel() })
+
+    // rememberUpdatedState so preview gestures always see current lens state.
+    val onPreviewDoubleTap by rememberUpdatedState({
+        if (!isRecording && hasFrontCamera) lens = lens.toggled()
+    })
+    val currentZoomForPinch by rememberUpdatedState(zoomRatio)
+    val onPreviewPinch by rememberUpdatedState({ scaleFactor: Float ->
+        val next = clampZoomRatio(currentZoomForPinch * scaleFactor, zoomMin, zoomMax)
+        if (next != currentZoomForPinch) {
+            zoomRatio = next
+            try { boundCamera?.cameraControl?.setZoomRatio(next) } catch (_: Throwable) {}
+        }
+    })
+    val onPinchStart by rememberUpdatedState({
+        isPinching = true
+        rulerVisible = true
+    })
+    val onPinchEnd by rememberUpdatedState({
+        isPinching = false
+        pinchTick += 1
+    })
+
+    // After pinch ends, keep ruler on screen briefly then swap back to
+    // presets. Restarted on every new pinch via pinchTick.
+    LaunchedEffect(pinchTick) {
+        if (pinchTick == 0) return@LaunchedEffect
+        delay(RULER_LINGER_MS)
+        if (!isPinching) rulerVisible = false
+    }
+
+    Column(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+        // Top black band. Compact strip above the preview holding secondary
+        // controls (flash). Sits above status-bar/cutout via statusBars
+        // inset so nothing overlaps the notch, and the visible content row
+        // stays around 48dp regardless of inset height.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.Black)
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .heightIn(min = 48.dp)
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (!isReviewing) FlashButton(
+                flash = flash,
+                enabled = hasFlashUnit,
+                onClick = {
+                    val next = when (mode) {
+                        CameraMode.Photo -> flash.nextPhoto()
+                        CameraMode.Video -> flash.nextVideo()
+                    }
+                    flash = next
+                    imageCapture.flashMode = next.toImageCaptureFlash()
+                    if (mode == CameraMode.Video) {
+                        boundCamera?.cameraControl?.enableTorch(next == FlashMode.On)
+                    }
+                },
+            )
+        }
+
+        // Preview area — dominant middle band between the two black strips.
+        Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+            // Live CameraX preview stays in the tree even during review so
+            // the binding is preserved; retake just drops the overlay.
+            // Preview-only gestures (double-tap switch, pinch-zoom) are
+            // disabled while reviewing.
+            AndroidView(
+                factory = { previewView },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(isReviewing) {
+                        if (isReviewing) return@pointerInput
+                        detectTapGestures(onDoubleTap = { onPreviewDoubleTap() })
+                    }
+                    .pointerInput(isReviewing) {
+                        if (isReviewing) return@pointerInput
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                            var started = false
+                            do {
+                                val event = awaitPointerEvent()
+                                val zoom = event.calculateZoom()
+                                if (zoom != 1f) {
+                                    if (!started) {
+                                        started = true
+                                        onPinchStart()
+                                    }
+                                    onPreviewPinch(zoom)
+                                }
+                            } while (event.changes.any { it.pressed })
+                            if (started) onPinchEnd()
+                        }
+                    },
+            )
+
+            // Photo review overlay: frozen full-size capture inside the same
+            // preview band. Black backdrop covers the preview edges so
+            // letterboxed portrait/landscape captures don't leak the live
+            // feed behind them.
+            val reviewState = uiState as? CameraUiState.PhotoReview
+            if (reviewState != null) {
+                val bmp: ImageBitmap? = remember(reviewState.captured.sourcePath) {
+                    try {
+                        BitmapFactory.decodeFile(reviewState.captured.sourcePath)?.asImageBitmap()
+                    } catch (_: Throwable) { null }
+                }
+                Box(
+                    modifier = Modifier.fillMaxSize().background(Color.Black),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (bmp != null) {
+                        Image(
+                            bitmap = bmp,
+                            contentDescription = "Captured photo",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit,
+                        )
+                    }
+                }
+            }
+
+            // Video review overlay: recorded clip in the same preview band
+            // with centered Play/Pause overlay controls. Uses the framework
+            // VideoView so we don't pull in ExoPlayer, and so recorded
+            // orientation metadata is respected without a hardcoded rotation.
+            val videoReviewState = uiState as? CameraUiState.VideoReview
+            if (videoReviewState != null) {
+                VideoReviewEditor(
+                    filePath = videoReviewState.captured.sourcePath,
+                    edit = videoEdit,
+                    playback = videoPlayback,
+                    onEditChange = { videoEdit = it },
+                    onSingleTap = { videoPlayback = videoPlayback.singleTap() },
+                    onTapPlay = {
+                        // Snap the cursor to trimStart when needed *before*
+                        // signalling isPlaying, so the editor's playback loop
+                        // seeks to the correct spot on the first tick.
+                        videoEdit = videoEdit.pressPlay()
+                        videoPlayback = videoPlayback.tapPlay()
+                    },
+                    onTapPause = {
+                        videoEdit = videoEdit.pressPause()
+                        videoPlayback = videoPlayback.tapPause()
+                    },
+                    onOverlayTimeout = { videoPlayback = videoPlayback.pauseOverlayTimeout() },
+                    onPlaybackReachedTrimEnd = {
+                        videoEdit = videoEdit.reachedTrimEnd()
+                        videoPlayback = videoPlayback.playbackEnded()
+                    },
+                )
+            }
+
+            // Recording timer floats over the preview, just below the top
+            // black band. No status-bar inset needed — the band absorbs it.
+            if (isRecording) {
                 Box(
                     modifier = Modifier
-                        .size(72.dp)
-                        .clip(CircleShape)
-                        .background(Color.White)
-                        .clickable {
-                            when (mode) {
-                                CameraMode.Photo -> takePhoto(
+                        .align(Alignment.TopCenter)
+                        .padding(top = 12.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xB3000000))
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                ) {
+                    Text(formatElapsed(recordingElapsedMs), color = Color.White)
+                }
+            }
+        }
+
+        // Bottom black control bar. Absorbs system navigation via nav-bar
+        // inset so gestures don't clip the shutter row.
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.Black)
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .padding(top = 8.dp, bottom = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            // Zoom control slot — same fixed area holds either the quick
+            // preset row (normal) or the live ruler (during pinch). Fixed
+            // height keeps the shutter row from shifting when swapping.
+            val slots = zoomSlotsFor(zoomMin, zoomMax)
+            if (!isReviewing && (slots.size > 1 || zoomMax > zoomMin + 0.01f)) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(ZOOM_SLOT_HEIGHT),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (rulerVisible) {
+                        ZoomRulerRow(
+                            ratio = zoomRatio,
+                            minRatio = zoomMin,
+                            maxRatio = zoomMax,
+                        )
+                    } else if (slots.size > 1) {
+                        ZoomPresetSlotRow(
+                            slots = slots,
+                            ratio = zoomRatio,
+                            onSelect = { spec ->
+                                val target = clampZoomRatio(spec.anchorRatio, zoomMin, zoomMax)
+                                zoomRatio = target
+                                try { boundCamera?.cameraControl?.setZoomRatio(target) } catch (_: Throwable) {}
+                            },
+                        )
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+            }
+
+            // Main control row: shutter is the geometric center of the
+            // screen — enforced by a full-width Box with side controls
+            // pinned to CenterStart / CenterEnd. Using SpaceBetween on a Row
+            // would let the shutter drift whenever left/right widths differ.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (!isReviewing) Row(
+                    modifier = Modifier.align(Alignment.CenterStart),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    GalleryButton(onClick = onOpenGallery)
+                    FilterButton(onClick = { /* Retro filters — reserved for a future phase. */ })
+                }
+                if (isReviewing) {
+                    RetakeButton(onClick = retake)
+                } else ShutterButton(
+                    mode = mode,
+                    isRecording = isRecording,
+                    onClick = {
+                        when (mode) {
+                            CameraMode.Photo -> if (!isCapturingPhoto) {
+                                isCapturingPhoto = true
+                                takePhoto(
                                     store = store,
                                     imageCapture = imageCapture,
                                     executor = executor,
                                     onPending = { pendingTempFile = it },
                                     onCaptured = { raw ->
+                                        // Photo review: freeze on the just-
+                                        // captured file; the caller receives
+                                        // the RawMedia only on Confirm. The
+                                        // temp file is now owned by
+                                        // [uiState] rather than
+                                        // pendingTempFile.
                                         pendingTempFile = null
-                                        onCaptured(raw)
+                                        isCapturingPhoto = false
+                                        playShutterTone(toneGen)
+                                        hapticTick(vibrator)
+                                        uiState = enterPhotoReview(raw)
                                     },
+                                    onError = { isCapturingPhoto = false },
                                 )
-                                CameraMode.Video -> {
-                                    if (!isRecording) {
+                            }
+                            CameraMode.Video -> {
+                                if (!isRecording) {
+                                    // Play start tone BEFORE opening the recorder
+                                    // and wait for it to clear so it cannot bleed
+                                    // into the video's audio track.
+                                    playStartTone(toneGen)
+                                    hapticTick(vibrator)
+                                    feedbackScope.launch {
+                                        delay((START_TONE_MS + START_TONE_GUARD_MS).toLong())
                                         activeRecording = startRecording(
                                             context = context,
                                             store = store,
                                             videoCapture = videoCapture,
                                             executor = executor,
                                             onPending = { pendingTempFile = it },
+                                            onStarted = { /* tone already played pre-open */ },
                                             onFinal = { raw ->
+                                                // Video review: temp file is
+                                                // now owned by [uiState]; do
+                                                // NOT call onCaptured here —
+                                                // the caller receives the
+                                                // RawMedia only on Confirm.
                                                 pendingTempFile = null
                                                 activeRecording = null
                                                 isRecording = false
-                                                onCaptured(raw)
+                                                boundCamera?.cameraControl?.enableTorch(false)
+                                                playStopTone(toneGen)
+                                                hapticTick(vibrator)
+                                                videoPlayback = VideoReviewPlayback.Initial
+                                                uiState = enterVideoReview(raw)
+                                            },
+                                            onError = {
+                                                pendingTempFile = null
+                                                activeRecording = null
+                                                isRecording = false
+                                                boundCamera?.cameraControl?.enableTorch(false)
                                             },
                                         )
                                         isRecording = true
-                                    } else {
-                                        activeRecording?.stop()
                                     }
+                                } else {
+                                    activeRecording?.stop()
                                 }
                             }
-                        },
+                        }
+                    },
                 )
-                // Symmetry spacer so the shutter stays centered.
-                Spacer(Modifier.size(72.dp))
+                Row(
+                    modifier = Modifier.align(Alignment.CenterEnd),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    when {
+                        isReviewing -> ConfirmButton(onClick = confirm)
+                        hasFrontCamera -> SwitchButton(
+                            enabled = !isRecording,
+                            onClick = { lens = lens.toggled() },
+                        )
+                        else -> Spacer(Modifier.size(48.dp))
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            // Photo / Video selector — hidden during review; the mode is
+            // implicitly Photo and the user should only see retake/confirm.
+            if (!isReviewing) ModeSelector(
+                mode = mode,
+                enabled = !isRecording,
+                onSelect = { mode = it },
+            )
+        }
+    }
+}
+
+// Height of the zoom-control slot (presets or ruler). Sized to comfortably
+// fit both variants so swapping does not shift the shutter row underneath.
+private val ZOOM_SLOT_HEIGHT: Dp = 48.dp
+
+// Post-pinch linger on the ruler before it hides and presets return.
+// Matches the Pixel-camera feel (~700–900 ms).
+private const val RULER_LINGER_MS: Long = 850L
+
+// ToneGenerator volume is 0..100. 80 sits well below max so it doesn't feel
+// jarring but is clearly audible over ambient noise on a normal handset.
+private const val TONE_VOLUME = 80
+
+// Timing budget for the pre-record start tone (ms). Tone + guard must clear
+// before CameraX opens the AudioSource, otherwise it leaks into the video's
+// audio track. 140 ms tone + 80 ms guard has tested clean across handsets;
+// leave the guard generous rather than shave milliseconds off responsiveness.
+private const val START_TONE_MS = 140
+private const val START_TONE_GUARD_MS = 80
+private const val SHUTTER_TONE_MS = 90
+private const val STOP_TONE_MS = 160
+
+private fun playShutterTone(tone: ToneGenerator?) {
+    try { tone?.startTone(ToneGenerator.TONE_PROP_ACK, SHUTTER_TONE_MS) } catch (_: Throwable) {}
+}
+
+private fun playStartTone(tone: ToneGenerator?) {
+    try { tone?.startTone(ToneGenerator.TONE_PROP_PROMPT, START_TONE_MS) } catch (_: Throwable) {}
+}
+
+private fun playStopTone(tone: ToneGenerator?) {
+    try { tone?.startTone(ToneGenerator.TONE_PROP_BEEP2, STOP_TONE_MS) } catch (_: Throwable) {}
+}
+
+private fun FlashMode.toImageCaptureFlash(): Int = when (this) {
+    FlashMode.Off -> ImageCapture.FLASH_MODE_OFF
+    FlashMode.On -> ImageCapture.FLASH_MODE_ON
+}
+
+@Suppress("DEPRECATION")
+private fun getVibrator(context: Context): Vibrator? {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
+    } else {
+        context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+    }
+}
+
+private fun hapticTick(vibrator: Vibrator?) {
+    val v = vibrator ?: return
+    try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            v.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK))
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            v.vibrate(VibrationEffect.createOneShot(20, VibrationEffect.DEFAULT_AMPLITUDE))
+        }
+    } catch (_: Throwable) { /* haptic is best-effort */ }
+}
+
+// Pill segmented control: two icon halves with a cream circular highlight
+// that animates between them. Photo lives on the left, Video on the right.
+// Highlight background is animated with animateDpAsState so mode switches
+// glide across the pill instead of snapping.
+@Composable
+private fun ModeSelector(mode: CameraMode, enabled: Boolean, onSelect: (CameraMode) -> Unit) {
+    val segmentWidth: Dp = 56.dp
+    val height: Dp = 52.dp
+    val highlightSize: Dp = 44.dp
+    val highlightInset: Dp = (segmentWidth - highlightSize) / 2
+    val verticalInset: Dp = (height - highlightSize) / 2
+    val cream = Color(0xFFEDE9C8)
+    val charcoal = Color(0xFF1F1F1F)
+    val targetX = if (mode == CameraMode.Photo) highlightInset else segmentWidth + highlightInset
+    val animX by animateDpAsState(
+        targetValue = targetX,
+        animationSpec = tween(durationMillis = 180),
+        label = "modeHighlight",
+    )
+    Box(
+        modifier = Modifier
+            .height(height)
+            .width(segmentWidth * 2)
+            .clip(RoundedCornerShape(percent = 50))
+            .background(charcoal),
+    ) {
+        Box(
+            modifier = Modifier
+                .offset(x = animX, y = verticalInset)
+                .size(highlightSize)
+                .clip(CircleShape)
+                .background(cream),
+        )
+        Row(modifier = Modifier.fillMaxSize()) {
+            ModeIconSegment(
+                width = segmentWidth,
+                height = height,
+                enabled = enabled,
+                contentDesc = "Photo mode",
+                onClick = { onSelect(CameraMode.Photo) },
+            ) {
+                Icon(
+                    imageVector = CameraIcons.PhotoCamera,
+                    contentDescription = null,
+                    tint = if (mode == CameraMode.Photo) charcoal else Color.White,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+            ModeIconSegment(
+                width = segmentWidth,
+                height = height,
+                enabled = enabled,
+                contentDesc = "Video mode",
+                onClick = { onSelect(CameraMode.Video) },
+            ) {
+                Icon(
+                    imageVector = CameraIcons.Videocam,
+                    contentDescription = null,
+                    tint = if (mode == CameraMode.Video) charcoal else Color.White,
+                    modifier = Modifier.size(24.dp),
+                )
             }
         }
     }
 }
 
-private enum class CameraMode { Photo, Video }
-
 @Composable
-private fun ModeChip(label: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
+private fun ModeIconSegment(
+    width: Dp,
+    height: Dp,
+    enabled: Boolean,
+    contentDesc: String,
+    onClick: () -> Unit,
+    icon: @Composable () -> Unit,
+) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(if (selected) Color.White else Color.Transparent)
+            .width(width)
+            .height(height)
+            .clip(CircleShape)
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .semantics { contentDescription = contentDesc },
+        contentAlignment = Alignment.Center,
     ) {
-        Text(label, color = if (selected) Color.Black else Color.White)
+        icon()
     }
 }
 
 @Composable
-private fun CancelPill(onClick: () -> Unit) {
-    Box(
+private fun ZoomPresetSlotRow(
+    slots: List<ZoomSlotSpec>,
+    ratio: Float,
+    onSelect: (ZoomSlotSpec) -> Unit,
+) {
+    val activeSlot = activeZoomSlot(ratio, slots)
+    Row(
         modifier = Modifier
             .clip(RoundedCornerShape(24.dp))
+            .background(Color(0x66000000))
+            .padding(horizontal = 6.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        slots.forEach { spec ->
+            val active = spec.slot == activeSlot
+            val label = zoomSlotLabel(spec.slot, ratio, slots)
+            Box(
+                modifier = Modifier
+                    .heightIn(min = 36.dp)
+                    .clip(CircleShape)
+                    .background(if (active) Color.White else Color.Transparent)
+                    .clickable { onSelect(spec) }
+                    .padding(horizontal = if (active) 10.dp else 8.dp, vertical = 6.dp)
+                    .semantics { contentDescription = "Zoom ${spec.anchorLabel}" },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = label,
+                    color = if (active) Color.Black else Color.White,
+                    fontSize = 13.sp,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Live zoom ruler shown during pinch. Log-scaled tick strip with the current
+ * value in a small pill above. Occupies the same slot as [ZoomPresetSlotRow]
+ * so swapping does not shift the shutter row.
+ */
+@Composable
+private fun ZoomRulerRow(ratio: Float, minRatio: Float, maxRatio: Float) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xB3000000))
+                .padding(horizontal = 10.dp, vertical = 3.dp),
+        ) {
+            Text(formatZoomLabel(ratio), color = Color.White, fontSize = 12.sp)
+        }
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(Color(0xB3000000))
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+        ) {
+            RulerCanvas(ratio = ratio, minRatio = minRatio, maxRatio = maxRatio)
+        }
+    }
+}
+
+@Composable
+private fun RulerCanvas(ratio: Float, minRatio: Float, maxRatio: Float) {
+    val safeMin = minRatio.coerceAtLeast(0.05f)
+    val safeMax = maxRatio.coerceAtLeast(safeMin + 0.01f)
+    val logMin = kotlin.math.log10(safeMin.toDouble()).toFloat()
+    val logMax = kotlin.math.log10(safeMax.toDouble()).toFloat()
+    fun posFrac(r: Float): Float {
+        val lr = kotlin.math.log10(r.coerceIn(safeMin, safeMax).toDouble()).toFloat()
+        return ((lr - logMin) / (logMax - logMin)).coerceIn(0f, 1f)
+    }
+    Canvas(
+        modifier = Modifier
+            .fillMaxWidth(0.72f)
+            .height(28.dp),
+    ) {
+        val w = size.width
+        val h = size.height
+        val baseline = h * 0.55f
+        // Minor ticks: 20 evenly spaced in log space.
+        val minorColor = Color.White.copy(alpha = 0.35f)
+        val majorColor = Color.White
+        val minorCount = 20
+        for (i in 0..minorCount) {
+            val t = i.toFloat() / minorCount
+            val x = t * w
+            drawLine(
+                color = minorColor,
+                start = Offset(x, baseline - 4.dp.toPx()),
+                end = Offset(x, baseline + 4.dp.toPx()),
+                strokeWidth = 1.dp.toPx(),
+            )
+        }
+        // Major ticks at integer / half stops within the visible range.
+        val majors = listOf(0.5f, 1f, 2f, 4f, 8f).filter { it in safeMin..safeMax }
+        for (mv in majors) {
+            val x = posFrac(mv) * w
+            drawLine(
+                color = majorColor,
+                start = Offset(x, baseline - 7.dp.toPx()),
+                end = Offset(x, baseline + 7.dp.toPx()),
+                strokeWidth = 1.8.dp.toPx(),
+            )
+        }
+        // Current-ratio indicator: taller amber tick.
+        val cx = posFrac(ratio) * w
+        drawLine(
+            color = Color(0xFFFFD54F),
+            start = Offset(cx, baseline - 12.dp.toPx()),
+            end = Offset(cx, baseline + 12.dp.toPx()),
+            strokeWidth = 2.4.dp.toPx(),
+        )
+    }
+}
+
+@Composable
+private fun GalleryButton(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(CircleShape)
             .background(Color(0x80000000))
             .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 12.dp),
+            .semantics { contentDescription = "Open gallery" },
+        contentAlignment = Alignment.Center,
     ) {
-        Text("Cancel", color = Color.White)
+        GalleryGlyph(size = 22.dp, color = Color.White, strokeWidth = 1.8.dp)
+    }
+}
+
+@Composable
+private fun FilterButton(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .background(Color(0x80000000))
+            .clickable(onClick = onClick)
+            .semantics { contentDescription = "Retro filters" },
+        contentAlignment = Alignment.Center,
+    ) {
+        SparkleGlyph(size = 22.dp, color = Color.White, strokeWidth = 1.8.dp)
+    }
+}
+
+@Composable
+private fun ShutterButton(
+    mode: CameraMode,
+    isRecording: Boolean,
+    onClick: () -> Unit,
+) {
+    val innerFill = when {
+        mode == CameraMode.Video && isRecording -> Color(0xFFFF3B30)
+        mode == CameraMode.Video -> Color(0xFFFF3B30)
+        else -> Color.White
+    }
+    val contentDesc = when {
+        mode == CameraMode.Video && isRecording -> "Stop recording"
+        mode == CameraMode.Video -> "Start recording"
+        else -> "Take photo"
+    }
+    Box(
+        modifier = Modifier
+            .size(84.dp)
+            .clip(CircleShape)
+            .clickable(onClick = onClick)
+            .semantics { contentDescription = contentDesc },
+        contentAlignment = Alignment.Center,
+    ) {
+        // Outer white ring.
+        Box(
+            modifier = Modifier
+                .size(84.dp)
+                .clip(CircleShape)
+                .background(Color.White),
+        )
+        // Small black gap between ring and inner disc.
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(Color.Black),
+        )
+        // Inner disc — square when recording (stop affordance), else large.
+        if (mode == CameraMode.Video && isRecording) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(innerFill),
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(CircleShape)
+                    .background(innerFill),
+            )
+        }
+    }
+}
+
+/**
+ * Retake control shown during PhotoReview. Sits in the exact centered slot
+ * the shutter normally occupies (same 84dp footprint), so the center of the
+ * bottom row never shifts when swapping between Live and PhotoReview.
+ */
+@Composable
+private fun RetakeButton(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(84.dp)
+            .clip(CircleShape)
+            .clickable(onClick = onClick)
+            .semantics { contentDescription = "Retake" },
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .clip(CircleShape)
+                .background(Color(0xFF2A2A2A)),
+        )
+        Icon(
+            imageVector = CameraIcons.Refresh,
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.size(32.dp),
+        )
+    }
+}
+
+/** Confirmation ✓ shown during PhotoReview on the right side of the row. */
+@Composable
+private fun ConfirmButton(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(56.dp)
+            .clip(CircleShape)
+            .background(Color(0xFFEDE9C8))
+            .clickable(onClick = onClick)
+            .semantics { contentDescription = "Confirm" },
+        contentAlignment = Alignment.Center,
+    ) {
+        CheckGlyph(size = 28.dp, color = Color(0xFF1F1F1F), strokeWidth = 3.dp)
+    }
+}
+
+@Composable
+private fun CheckGlyph(size: Dp, color: Color, strokeWidth: Dp) {
+    Canvas(modifier = Modifier.size(size)) {
+        val px = size.toPx()
+        val sw = strokeWidth.toPx()
+        drawLine(
+            color,
+            Offset(px * 0.20f, px * 0.55f),
+            Offset(px * 0.44f, px * 0.78f),
+            strokeWidth = sw,
+        )
+        drawLine(
+            color,
+            Offset(px * 0.44f, px * 0.78f),
+            Offset(px * 0.82f, px * 0.28f),
+            strokeWidth = sw,
+        )
+    }
+}
+
+@Composable
+private fun FlashButton(
+    flash: FlashMode,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val alpha = if (enabled) 1f else 0.4f
+    val contentDesc = if (flash == FlashMode.On) "Turn flash off" else "Turn flash on"
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .background(Color(0x80000000))
+            .clickable(enabled = enabled, onClick = onClick)
+            .semantics { contentDescription = contentDesc },
+        contentAlignment = Alignment.Center,
+    ) {
+        FlashGlyph(
+            size = 22.dp,
+            color = Color.White.copy(alpha = alpha),
+            strokeWidth = 1.8.dp,
+            on = flash == FlashMode.On,
+        )
+    }
+}
+
+@Composable
+private fun SwitchButton(enabled: Boolean, onClick: () -> Unit) {
+    val alpha = if (enabled) 1f else 0.4f
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .background(Color(0x80000000))
+            .clickable(enabled = enabled, onClick = onClick)
+            .semantics { contentDescription = "Switch camera" },
+        contentAlignment = Alignment.Center,
+    ) {
+        SwitchGlyph(size = 24.dp, color = Color.White.copy(alpha = alpha), strokeWidth = 2.0.dp)
+    }
+}
+
+@Composable
+private fun FlashGlyph(size: Dp, color: Color, strokeWidth: Dp, on: Boolean) {
+    Canvas(modifier = Modifier.size(size)) {
+        val px = size.toPx()
+        val sw = strokeWidth.toPx()
+        val path = Path().apply {
+            moveTo(px * 0.55f, px * 0.05f)
+            lineTo(px * 0.20f, px * 0.55f)
+            lineTo(px * 0.45f, px * 0.55f)
+            lineTo(px * 0.35f, px * 0.95f)
+            lineTo(px * 0.80f, px * 0.40f)
+            lineTo(px * 0.55f, px * 0.40f)
+            close()
+        }
+        if (on) drawPath(path, color = color) else drawPath(path, color = color, style = Stroke(width = sw))
+    }
+}
+
+/**
+ * Minimal loop-arrow rotate icon: two curved arrows chasing each other. No
+ * camera body — surrounding UI already establishes context.
+ */
+@Composable
+private fun SwitchGlyph(size: Dp, color: Color, strokeWidth: Dp) {
+    Canvas(modifier = Modifier.size(size)) {
+        val px = size.toPx()
+        val sw = strokeWidth.toPx()
+        val radius = px * 0.34f
+        val center = Offset(px * 0.5f, px * 0.5f)
+        val topArc = Path().apply {
+            arcTo(
+                rect = androidx.compose.ui.geometry.Rect(center = center, radius = radius),
+                startAngleDegrees = 200f,
+                sweepAngleDegrees = 140f,
+                forceMoveTo = true,
+            )
+        }
+        drawPath(topArc, color = color, style = Stroke(width = sw))
+        val bottomArc = Path().apply {
+            arcTo(
+                rect = androidx.compose.ui.geometry.Rect(center = center, radius = radius),
+                startAngleDegrees = 20f,
+                sweepAngleDegrees = 140f,
+                forceMoveTo = true,
+            )
+        }
+        drawPath(bottomArc, color = color, style = Stroke(width = sw))
+        val topTip = Offset(
+            x = center.x + radius * kotlin.math.cos(Math.toRadians(340.0)).toFloat(),
+            y = center.y + radius * kotlin.math.sin(Math.toRadians(340.0)).toFloat(),
+        )
+        drawLine(color, topTip, Offset(topTip.x - sw * 2.2f, topTip.y - sw * 1.4f), strokeWidth = sw)
+        drawLine(color, topTip, Offset(topTip.x + sw * 0.4f, topTip.y - sw * 2.6f), strokeWidth = sw)
+        val botTip = Offset(
+            x = center.x + radius * kotlin.math.cos(Math.toRadians(160.0)).toFloat(),
+            y = center.y + radius * kotlin.math.sin(Math.toRadians(160.0)).toFloat(),
+        )
+        drawLine(color, botTip, Offset(botTip.x + sw * 2.2f, botTip.y + sw * 1.4f), strokeWidth = sw)
+        drawLine(color, botTip, Offset(botTip.x - sw * 0.4f, botTip.y + sw * 2.6f), strokeWidth = sw)
+    }
+}
+
+/** Simple gallery / stacked-photos glyph. */
+@Composable
+private fun GalleryGlyph(size: Dp, color: Color, strokeWidth: Dp) {
+    Canvas(modifier = Modifier.size(size)) {
+        val px = size.toPx()
+        val sw = strokeWidth.toPx()
+        val back = androidx.compose.ui.geometry.Rect(px * 0.12f, px * 0.22f, px * 0.78f, px * 0.78f)
+        val front = androidx.compose.ui.geometry.Rect(px * 0.24f, px * 0.34f, px * 0.90f, px * 0.90f)
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(back.left, back.top),
+            size = androidx.compose.ui.geometry.Size(back.width, back.height),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(px * 0.06f, px * 0.06f),
+            style = Stroke(width = sw),
+        )
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(front.left, front.top),
+            size = androidx.compose.ui.geometry.Size(front.width, front.height),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(px * 0.06f, px * 0.06f),
+            style = Stroke(width = sw),
+        )
+        // Small "sun" inside the front frame to read as an image.
+        drawCircle(
+            color = color,
+            radius = px * 0.06f,
+            center = Offset(front.left + front.width * 0.30f, front.top + front.height * 0.30f),
+        )
+    }
+}
+
+/** Sparkle / magic-wand-adjacent glyph representing the future retro filters. */
+@Composable
+private fun SparkleGlyph(size: Dp, color: Color, strokeWidth: Dp) {
+    Canvas(modifier = Modifier.size(size)) {
+        val px = size.toPx()
+        val sw = strokeWidth.toPx()
+        fun spark(cx: Float, cy: Float, r: Float) {
+            drawLine(color, Offset(cx - r, cy), Offset(cx + r, cy), strokeWidth = sw)
+            drawLine(color, Offset(cx, cy - r), Offset(cx, cy + r), strokeWidth = sw)
+            drawLine(color, Offset(cx - r * 0.6f, cy - r * 0.6f), Offset(cx + r * 0.6f, cy + r * 0.6f), strokeWidth = sw * 0.7f)
+            drawLine(color, Offset(cx - r * 0.6f, cy + r * 0.6f), Offset(cx + r * 0.6f, cy - r * 0.6f), strokeWidth = sw * 0.7f)
+        }
+        spark(px * 0.36f, px * 0.36f, px * 0.20f)
+        spark(px * 0.72f, px * 0.66f, px * 0.14f)
+        spark(px * 0.70f, px * 0.24f, px * 0.08f)
+    }
+}
+
+private fun formatElapsed(ms: Long): String {
+    val s = ms / 1000
+    val mm = s / 60
+    val ss = s % 60
+    return "%02d:%02d".format(mm, ss)
+}
+
+private fun normalizeExifOrientation(file: File) {
+    val path = file.absolutePath
+    val exif = try { ExifInterface(path) } catch (_: Throwable) { return }
+    val orientation = exif.getAttributeInt(
+        ExifInterface.TAG_ORIENTATION,
+        ExifInterface.ORIENTATION_NORMAL,
+    )
+    if (orientation == ExifInterface.ORIENTATION_NORMAL ||
+        orientation == ExifInterface.ORIENTATION_UNDEFINED
+    ) return
+    val matrix = Matrix()
+    when (orientation) {
+        ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+        ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+        ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+        ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.postScale(-1f, 1f)
+        ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.postScale(1f, -1f)
+        ExifInterface.ORIENTATION_TRANSPOSE -> {
+            matrix.postRotate(90f); matrix.postScale(-1f, 1f)
+        }
+        ExifInterface.ORIENTATION_TRANSVERSE -> {
+            matrix.postRotate(270f); matrix.postScale(-1f, 1f)
+        }
+        else -> return
+    }
+    val src = try { BitmapFactory.decodeFile(path) } catch (_: Throwable) { null } ?: return
+    val rotated = try {
+        Bitmap.createBitmap(src, 0, 0, src.width, src.height, matrix, true)
+    } catch (_: Throwable) {
+        src.recycle(); return
+    }
+    try {
+        java.io.FileOutputStream(file).use { out ->
+            rotated.compress(Bitmap.CompressFormat.JPEG, 95, out)
+        }
+        try {
+            val fresh = ExifInterface(path)
+            fresh.setAttribute(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL.toString(),
+            )
+            fresh.saveAttributes()
+        } catch (_: Throwable) { /* orientation baked in pixels; tag reset best-effort */ }
+    } catch (_: Throwable) {
+        // If write fails the original file remains; consumers still get the
+        // (rotated-by-EXIF) file — worst case Photo Review shows sensor-
+        // orientation, but we do not corrupt the capture.
+    } finally {
+        if (rotated !== src) rotated.recycle()
+        src.recycle()
     }
 }
 
@@ -258,25 +1320,43 @@ private fun takePhoto(
     executor: Executor,
     onPending: (File) -> Unit,
     onCaptured: (RawMedia) -> Unit,
+    onError: () -> Unit,
 ) {
     val tmp = store.newTempFile("relive-cam-", ".jpg")
     onPending(tmp)
     val out = ImageCapture.OutputFileOptions.Builder(tmp).build()
     imageCapture.takePicture(out, executor, object : ImageCapture.OnImageSavedCallback {
         override fun onImageSaved(result: ImageCapture.OutputFileResults) {
-            onCaptured(RawMedia(MediaType.Image, tmp.absolutePath, ownedByRelive = true))
+            // Normalize EXIF orientation off the main thread. CameraX writes
+            // the sensor orientation into the JPEG's EXIF tag rather than
+            // rotating the pixels; consumers that decode via BitmapFactory
+            // (which ignores EXIF) would otherwise see a rotated image. We
+            // bake the rotation into the pixel data once here so every
+            // downstream reader — Photo Review, the store, later reopens —
+            // gets a correctly oriented file.
+            Thread {
+                normalizeExifOrientation(tmp)
+                executor.execute {
+                    onCaptured(RawMedia(MediaType.Image, tmp.absolutePath, ownedByRelive = true))
+                }
+            }.start()
         }
-        override fun onError(exc: ImageCaptureException) { tmp.delete() }
+        override fun onError(exc: ImageCaptureException) {
+            tmp.delete()
+            onError()
+        }
     })
 }
 
 private fun startRecording(
-    context: android.content.Context,
+    context: Context,
     store: AndroidMediaStore,
     videoCapture: VideoCapture<Recorder>,
     executor: Executor,
     onPending: (File) -> Unit,
+    onStarted: () -> Unit,
     onFinal: (RawMedia) -> Unit,
+    onError: () -> Unit,
 ): Recording {
     val tmp = store.newTempFile("relive-cam-", ".mp4")
     onPending(tmp)
@@ -289,9 +1369,11 @@ private fun startRecording(
     }
     return pending.start(executor) { event ->
         when (event) {
+            is VideoRecordEvent.Start -> onStarted()
             is VideoRecordEvent.Finalize -> {
                 if (event.hasError()) {
                     tmp.delete()
+                    onError()
                 } else {
                     onFinal(RawMedia(MediaType.Video, tmp.absolutePath, ownedByRelive = true))
                 }

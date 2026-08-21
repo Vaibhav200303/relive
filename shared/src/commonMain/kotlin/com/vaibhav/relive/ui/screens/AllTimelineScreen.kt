@@ -115,6 +115,7 @@ fun AllTimelineScreen(
             onCaptured = composerViewModel::processRaw,
             onDismiss = composerViewModel::dismissOverlay,
             onPick = composerViewModel::requestPick,
+            onOpenLibraryFromCamera = composerViewModel::openLibraryChoice,
         )
     }
 }
