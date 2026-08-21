@@ -2,11 +2,14 @@ package com.vaibhav.relive.ui.components.timeline
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,10 +35,7 @@ import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.presentation.timeline.MomentPresentation
 import com.vaibhav.relive.ui.theme.ReliveTheme
 
-/**
- * A single moment entry rendered on the All timeline. The parent lays out the rail
- * as a continuous background line; this row draws only its own dot and content.
- */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MomentCard(
     moment: MomentPresentation,
@@ -50,10 +50,9 @@ fun MomentCard(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = dims.spacing.lg),
+            .padding(vertical = dims.spacing.xl),
         verticalAlignment = Alignment.Top,
     ) {
-        // Rail gutter with a centered dot aligned to the eyebrow row.
         Box(
             modifier = Modifier
                 .width(dims.timeline.contentInset)
@@ -72,6 +71,7 @@ fun MomentCard(
                 .weight(1f)
                 .padding(end = dims.spacing.sm),
         ) {
+            // DATE / LOCATION
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm),
@@ -89,24 +89,59 @@ fun MomentCard(
                     )
                 }
             }
+
+            // TITLE
             if (moment.hasTitle) {
-                Spacer(Modifier.height(dims.spacing.xs))
+                Spacer(Modifier.height(dims.spacing.sm))
                 Text(
                     text = moment.title,
                     style = type.title,
                     color = colors.textPrimary,
                 )
             }
+
+            // CONTENT
+            if (moment.hasContent) {
+                Spacer(Modifier.height(dims.spacing.sm))
+                ExpandableContent(text = moment.content)
+            }
+
+            // MEDIA
             if (moment.hasAttachments) {
-                Spacer(Modifier.height(dims.spacing.md))
+                Spacer(Modifier.height(dims.spacing.lg))
                 TimelineMediaSection(
                     attachments = moment.attachments,
                     mediaStore = mediaStore,
                 )
             }
-            if (moment.hasContent) {
-                Spacer(Modifier.height(dims.spacing.sm))
-                ExpandableContent(text = moment.content)
+
+            // TAGS
+            if (moment.hasTags) {
+                Spacer(Modifier.height(dims.spacing.md))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm),
+                    verticalArrangement = Arrangement.spacedBy(dims.spacing.sm),
+                ) {
+                    moment.tags.forEach { tag ->
+                        Box(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(colors.surfaceCard)
+                                .border(
+                                    width = dims.stroke.hairline,
+                                    color = colors.borderMuted,
+                                    shape = CircleShape,
+                                )
+                                .padding(horizontal = dims.spacing.md, vertical = dims.spacing.xs),
+                        ) {
+                            Text(
+                                text = tag.label.uppercase(),
+                                style = type.tag,
+                                color = colors.textSecondary,
+                            )
+                        }
+                    }
+                }
             }
         }
         FavoriteHeart(
@@ -132,10 +167,6 @@ private fun ExpandableContent(text: String) {
             maxLines = if (expanded) Int.MAX_VALUE else collapsedLines,
             overflow = if (expanded) TextOverflow.Clip else TextOverflow.Ellipsis,
         )
-        // Only offer expansion when the collapsed view would truncate. A safe
-        // approximation: text long enough to overflow three lines at the body
-        // style. Presentation prefers a low-risk heuristic over a re-measurement
-        // pass; matches the reference "... more"/"less" behaviour visually.
         if (text.length > MinExpandThreshold) {
             Spacer(Modifier.height(dims.spacing.xs))
             Text(

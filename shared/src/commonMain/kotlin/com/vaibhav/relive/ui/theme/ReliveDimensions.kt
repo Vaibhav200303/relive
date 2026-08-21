@@ -53,6 +53,10 @@ data class ReliveMediaDimensions(
     val ratioSquare: Float = 1f,
     val carouselPeekFraction: Float = 0.85f,
     val sepiaAmount: Float = 0.3f,
+    val carouselHeight: Dp = 240.dp,
+    val indicatorDotActive: Dp = 6.dp,
+    val indicatorDotInactive: Dp = 5.dp,
+    val indicatorSpacing: Dp = 3.dp,
 )
 
 @Immutable
