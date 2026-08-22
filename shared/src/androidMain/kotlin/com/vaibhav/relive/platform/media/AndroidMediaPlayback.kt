@@ -283,6 +283,138 @@ actual fun RelivedVideoTile(ref: MediaStorageRef, mediaStore: MediaStore, modifi
 }
 
 @Composable
+actual fun RelivedTimelineInlineVideo(
+    ref: MediaStorageRef,
+    mediaStore: MediaStore,
+    onOpenFullScreen: () -> Unit,
+    modifier: Modifier,
+) {
+    val path = mediaStore.resolveAbsolutePath(ref)
+    val key = ref.value
+    var player: MediaPlayer? by remember(path) { mutableStateOf(null) }
+    var playing by remember(path) { mutableStateOf(false) }
+    val stopSelf: () -> Unit = remember(path) {
+        {
+            try { if (player?.isPlaying == true) player?.pause() } catch (_: Throwable) {}
+            playing = false
+        }
+    }
+    // Reuse the same thumbnail cache the static tile uses so the poster
+    // paints instantly on first frame.
+    val cached = AndroidVideoThumbnailCache.get(key)
+    val poster by produceState<Bitmap?>(initialValue = cached, key1 = key) {
+        if (value != null) return@produceState
+        val bmp = withContext(Dispatchers.Default) { extractVideoFrame(path) }
+        if (bmp != null) {
+            AndroidVideoThumbnailCache.put(key, bmp)
+            value = bmp
+        }
+    }
+    val releasePlayer: () -> Unit = {
+        try { player?.release() } catch (_: Throwable) {}
+        player = null
+        playing = false
+        ActivePlayback.release(stopSelf)
+    }
+    DisposableEffect(path) {
+        onDispose { releasePlayer() }
+    }
+    Box(
+        modifier = modifier
+            .background(Color.Black)
+            .clickable {
+                releasePlayer()
+                onOpenFullScreen()
+            }
+            .semantics { contentDescription = "Open video full screen" },
+        contentAlignment = Alignment.Center,
+    ) {
+        // Poster is drawn only while paused so the SurfaceView shows through
+        // during playback.
+        if (!playing) {
+            val f = poster
+            if (f != null) {
+                Image(
+                    bitmap = f.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit,
+                )
+            }
+        }
+        if (playing || player != null) {
+            AndroidView(
+                factory = { ctx ->
+                    val surface = SurfaceView(ctx)
+                    surface.holder.addCallback(object : SurfaceHolder.Callback {
+                        override fun surfaceCreated(holder: SurfaceHolder) {
+                            val existing = player
+                            if (existing != null) {
+                                try { existing.setDisplay(holder) } catch (_: Throwable) {}
+                                return
+                            }
+                            val mp = MediaPlayer().apply {
+                                setDataSource(path)
+                                setDisplay(holder)
+                                setOnPreparedListener { start(); playing = true }
+                                setOnCompletionListener {
+                                    playing = false
+                                    ActivePlayback.release(stopSelf)
+                                }
+                                prepareAsync()
+                            }
+                            player = mp
+                        }
+                        override fun surfaceChanged(h: SurfaceHolder, f: Int, w: Int, ht: Int) {}
+                        override fun surfaceDestroyed(holder: SurfaceHolder) {
+                            try { player?.setDisplay(null) } catch (_: Throwable) {}
+                        }
+                    })
+                    surface
+                },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        // Central Play/Pause target sits above the surface/poster and
+        // intercepts touches independently of the body clickable so tapping
+        // the button never routes to full-screen navigation.
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(CircleShape)
+                .background(Color(0x99000000))
+                .clickable {
+                    val existing = player
+                    if (existing != null) {
+                        try {
+                            if (existing.isPlaying) {
+                                existing.pause()
+                                playing = false
+                                ActivePlayback.release(stopSelf)
+                            } else {
+                                existing.start()
+                                playing = true
+                                ActivePlayback.claim(stopSelf)
+                            }
+                        } catch (_: Throwable) { releasePlayer() }
+                    } else {
+                        // First tap: flip playing so the AndroidView composes;
+                        // its surfaceCreated builds the MediaPlayer and starts
+                        // playback via the OnPreparedListener. Claim ownership
+                        // now so any prior audio/video stops immediately.
+                        ActivePlayback.claim(stopSelf)
+                        playing = true
+                    }
+                }
+                .semantics {
+                    contentDescription = if (playing) "Pause video" else "Play video"
+                },
+            contentAlignment = Alignment.Center,
+        ) { Text(if (playing) "❚❚" else "▶", color = Color.White) }
+    }
+}
+
+@Composable
 actual fun RelivedAudioTile(ref: MediaStorageRef, mediaStore: MediaStore, modifier: Modifier) {
     val path = mediaStore.resolveAbsolutePath(ref)
     val durationMs = rememberMediaDurationMs(ref, mediaStore) ?: 0L

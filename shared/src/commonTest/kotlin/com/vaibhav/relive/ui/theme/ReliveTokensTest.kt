@@ -96,6 +96,7 @@ class ReliveTokensTest {
         val m = DefaultReliveDimensions.media
         assertEquals(2f, m.ratioWide)
         assertEquals(4.dp, m.collageGap)
+        assertEquals(4.dp, m.collageBorder)
         assertEquals(420.dp, m.collageSingleMaxHeight)
         assertEquals(1f, m.collageTileAspectSquare)
         assertEquals(4f / 3f, m.collageDominantAspect)

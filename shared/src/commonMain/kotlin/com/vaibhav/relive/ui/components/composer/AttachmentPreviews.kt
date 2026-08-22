@@ -44,6 +44,8 @@ import com.vaibhav.relive.platform.media.rememberVideoNaturalSizeFor
 import com.vaibhav.relive.platform.media.rememberVideoNaturalSizeForPath
 import com.vaibhav.relive.presentation.composer.DraftAttachment
 import com.vaibhav.relive.presentation.composer.DraftMediaStatus
+import com.vaibhav.relive.ui.media.computeAdaptiveMediaPreviewSize
+import com.vaibhav.relive.ui.media.fallbackAdaptivePreviewSize
 import com.vaibhav.relive.ui.theme.ReliveTheme
 
 /**
@@ -254,40 +256,17 @@ private fun computeAdaptiveSize(
     density: Density,
     fallbackAspect: Float,
     fallbackHeight: Dp,
-    hasReadyRef: Boolean,
+    @Suppress("UNUSED_PARAMETER") hasReadyRef: Boolean,
 ): DpSize {
     if (natural == null) {
-        // Pre-ready or metadata pending. Use a modest fallback: cap by
-        // fallback height, and by max width via aspect ratio. This deliberately
-        // does NOT fill the column so the eventual re-layout is a shrink,
-        // not an expansion, keeping the spinner centered within a stable
-        // area of the column.
-        val h = if (hasReadyRef) fallbackHeight.coerceAtMost(maxHeight) else fallbackHeight.coerceAtMost(maxHeight)
-        val wFromAspect = h * fallbackAspect
-        val w = if (wFromAspect > maxWidth) maxWidth else wFromAspect
-        // If width got clamped, recompute height from aspect so the box stays proportional.
-        val hFinal = if (wFromAspect > maxWidth) (maxWidth / fallbackAspect).coerceAtMost(maxHeight) else h
-        return DpSize(w, hFinal)
+        return fallbackAdaptivePreviewSize(
+            maxWidth = maxWidth,
+            maxHeight = maxHeight,
+            fallbackAspect = fallbackAspect,
+            fallbackHeight = fallbackHeight,
+        )
     }
-
-    val naturalW = with(density) { natural.widthPx.toDp() }
-    val naturalH = with(density) { natural.heightPx.toDp() }
-    val aspect = natural.widthPx.toFloat() / natural.heightPx.toFloat()
-
-    // Rule C: media already fits inside both ceilings → shrink-wrap.
-    if (naturalW <= maxWidth && naturalH <= maxHeight) {
-        return DpSize(naturalW, naturalH)
-    }
-
-    // Media exceeds at least one bound. Fit inside both while preserving aspect.
-    // Start by fitting to width, then further shrink if height still exceeds.
-    var w = if (naturalW > maxWidth) maxWidth else naturalW
-    var h = w / aspect
-    if (h > maxHeight) {
-        h = maxHeight
-        w = h * aspect
-    }
-    return DpSize(w, h)
+    return computeAdaptiveMediaPreviewSize(natural, maxWidth, maxHeight, density)
 }
 
 @Composable

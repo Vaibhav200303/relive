@@ -51,6 +51,34 @@ expect fun RelivedImageTile(ref: MediaStorageRef, mediaStore: MediaStore, modifi
 @Composable
 expect fun RelivedVideoTile(ref: MediaStorageRef, mediaStore: MediaStore, modifier: Modifier)
 
+/**
+ * Inline timeline video surface used when the video fits inside the
+ * approved single-media timeline bounds without clamping. Distinct hit
+ * targets:
+ *
+ *   - Central Play/Pause button toggles inline playback in place. Bounds
+ *     stay identical to the paused thumbnail — no resize on start.
+ *   - The rest of the video body invokes [onOpenFullScreen] so tapping
+ *     anywhere off the button opens the existing full-screen viewer.
+ *
+ * Implementations MUST:
+ *   - Never construct a player until the user first taps Play.
+ *   - Claim [ActivePlayback] on Play (stopping any prior audio/video) and
+ *     release on Pause / body-tap / Compose disposal.
+ *   - Stop and release the player before invoking [onOpenFullScreen].
+ *   - Preserve rotation-corrected aspect ratio — no distortion.
+ *
+ * Single-attachment moments only. Collage cells continue to use
+ * [RelivedVideoTile].
+ */
+@Composable
+expect fun RelivedTimelineInlineVideo(
+    ref: MediaStorageRef,
+    mediaStore: MediaStore,
+    onOpenFullScreen: () -> Unit,
+    modifier: Modifier,
+)
+
 @Composable
 expect fun RelivedAudioTile(ref: MediaStorageRef, mediaStore: MediaStore, modifier: Modifier)
 

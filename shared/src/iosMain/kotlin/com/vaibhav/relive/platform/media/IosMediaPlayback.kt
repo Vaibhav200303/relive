@@ -252,6 +252,118 @@ actual fun RelivedVideoTile(ref: MediaStorageRef, mediaStore: MediaStore, modifi
 
 @OptIn(ExperimentalForeignApi::class)
 @Composable
+actual fun RelivedTimelineInlineVideo(
+    ref: MediaStorageRef,
+    mediaStore: MediaStore,
+    onOpenFullScreen: () -> Unit,
+    modifier: Modifier,
+) {
+    val path = mediaStore.resolveAbsolutePath(ref)
+    val key = ref.value
+    var player: AVPlayer? by remember(path) { mutableStateOf(null) }
+    var playerLayer: AVPlayerLayer? by remember(path) { mutableStateOf(null) }
+    var playing by remember(path) { mutableStateOf(false) }
+    val stopSelf: () -> Unit = remember(path) {
+        {
+            try { if (playing) player?.pause() } catch (_: Throwable) {}
+            playing = false
+        }
+    }
+    val cached = IosVideoThumbnailCache.get(key)
+    val poster by produceState<UIImage?>(initialValue = cached, key1 = key) {
+        if (value != null) return@produceState
+        val img = withContext(Dispatchers.Default) { extractVideoFrame(path) }
+        if (img != null) {
+            IosVideoThumbnailCache.put(key, img)
+            value = img
+        }
+    }
+    val releasePlayer: () -> Unit = {
+        try { player?.pause() } catch (_: Throwable) {}
+        playerLayer = null
+        player = null
+        playing = false
+        ActivePlayback.release(stopSelf)
+    }
+    DisposableEffect(path) { onDispose { releasePlayer() } }
+    Box(
+        modifier = modifier
+            .background(Color.Black)
+            .clickable {
+                releasePlayer()
+                onOpenFullScreen()
+            }
+            .semantics { contentDescription = "Open video full screen" },
+        contentAlignment = Alignment.Center,
+    ) {
+        if (!playing) {
+            val f = poster
+            if (f != null) {
+                UIKitView(
+                    factory = {
+                        val iv = UIImageView()
+                        iv.contentMode = UIViewContentMode.UIViewContentModeScaleAspectFit
+                        iv.clipsToBounds = true
+                        iv.image = f
+                        iv
+                    },
+                    update = { it.image = f },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+        val activeLayer = playerLayer
+        if (activeLayer != null) {
+            UIKitView(
+                factory = {
+                    val view = UIView()
+                    activeLayer.frame = view.bounds
+                    view.layer.addSublayer(activeLayer)
+                    view
+                },
+                update = { view -> activeLayer.frame = view.bounds },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(CircleShape)
+                .background(Color(0x99000000))
+                .clickable {
+                    val existing = player
+                    if (existing != null) {
+                        if (playing) {
+                            existing.pause()
+                            playing = false
+                            ActivePlayback.release(stopSelf)
+                        } else {
+                            existing.play()
+                            playing = true
+                            ActivePlayback.claim(stopSelf)
+                        }
+                    } else {
+                        val mp = AVPlayer(uRL = NSURL.fileURLWithPath(path))
+                        val layer = AVPlayerLayer.playerLayerWithPlayer(mp).apply {
+                            setVideoGravity(AVLayerVideoGravityResizeAspect)
+                        }
+                        ActivePlayback.claim(stopSelf)
+                        player = mp
+                        playerLayer = layer
+                        mp.play()
+                        playing = true
+                    }
+                }
+                .semantics {
+                    contentDescription = if (playing) "Pause video" else "Play video"
+                },
+            contentAlignment = Alignment.Center,
+        ) { Text(if (playing) "❚❚" else "▶", color = Color.White) }
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+@Composable
 actual fun RelivedAudioTile(ref: MediaStorageRef, mediaStore: MediaStore, modifier: Modifier) {
     val path = mediaStore.resolveAbsolutePath(ref)
     val durationMs = rememberMediaDurationMs(ref, mediaStore) ?: 0L

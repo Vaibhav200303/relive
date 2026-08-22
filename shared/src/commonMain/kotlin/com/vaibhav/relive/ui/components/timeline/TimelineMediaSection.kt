@@ -1,6 +1,7 @@
 package com.vaibhav.relive.ui.components.timeline
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,6 +12,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,15 +22,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.DpSize
 import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.platform.media.MediaStore
+import com.vaibhav.relive.platform.media.NaturalSizePx
 import com.vaibhav.relive.platform.media.RelivedAudioTile
 import com.vaibhav.relive.platform.media.RelivedImageTile
+import com.vaibhav.relive.platform.media.RelivedTimelineInlineVideo
 import com.vaibhav.relive.platform.media.RelivedVideoTile
-import com.vaibhav.relive.platform.media.rememberImageAspectRatioFor
+import com.vaibhav.relive.platform.media.rememberImageNaturalSizeFor
+import com.vaibhav.relive.platform.media.rememberVideoNaturalSizeFor
 import com.vaibhav.relive.presentation.timeline.MomentAttachmentPresentation
+import com.vaibhav.relive.ui.media.computeAdaptiveMediaPreview
+import com.vaibhav.relive.ui.media.fallbackAdaptivePreviewSize
 import com.vaibhav.relive.ui.theme.ReliveTheme
 
 /**
@@ -36,6 +46,11 @@ import com.vaibhav.relive.ui.theme.ReliveTheme
  * follows the attachment list, which the presentation mapper produces by
  * ADR-0013 `sort_index`. For 5+ attachments only the first four render
  * inline; the fourth tile receives a translucent `+N` overlay.
+ *
+ * Single-media Moments use adaptive natural sizing: the container
+ * shrink-wraps around the media's aspect ratio, subject only to timeline
+ * width/height maximums. Multi-media Moments retain the existing 2/3/4/5+
+ * collage geometry unchanged.
  *
  * Tapping a tile invokes [onOpen] with the full attachment list and the
  * tapped attachment's index into that list (ADR-0019 §5). The `+N` tile
@@ -69,32 +84,112 @@ private fun SingleTile(
     mediaStore: MediaStore,
     onClick: () -> Unit,
 ) {
-    val dims = ReliveTheme.dimensions
-    val naturalAspect = when (att.type) {
-        MediaType.Image -> rememberImageAspectRatioFor(att.storageRef, mediaStore)
-            ?: dims.media.collageDominantAspect
-        MediaType.Video -> dims.media.collageVideoAspect
-        MediaType.Audio -> dims.media.collageAudioAspect
+    if (att.type == MediaType.Audio) {
+        SingleAudioTile(att, mediaStore, onClick)
+        return
     }
-    // ADR-0019 §3: single-tile height MUST NOT exceed collageSingleMaxHeight.
-    // A `heightIn(max)` before `aspectRatio` is silently ignored when
-    // `fillMaxWidth` pins the width — Compose's aspectRatio then returns
-    // height = width / aspect, which for a portrait image dominates the screen.
-    // Bound the aspect to the ratio that yields exactly the height cap at the
-    // available width; RelivedImageTile's ContentScale.Crop absorbs the rest.
+    SingleVisualTile(att, mediaStore, onClick)
+}
+
+/**
+ * Adaptive photo/video single tile. Container matches the media's natural
+ * aspect ratio (rotation-corrected for videos), bounded by the timeline
+ * single-media max width/height. A hairline hugs the resulting box.
+ */
+@Composable
+private fun SingleVisualTile(
+    att: MomentAttachmentPresentation,
+    mediaStore: MediaStore,
+    onClick: () -> Unit,
+) {
+    val dims = ReliveTheme.dimensions
+    val colors = ReliveTheme.colors
+    val density = LocalDensity.current
+
+    val natural: NaturalSizePx? = when (att.type) {
+        MediaType.Image -> rememberImageNaturalSizeFor(att.storageRef, mediaStore)
+        MediaType.Video -> rememberVideoNaturalSizeFor(att.storageRef, mediaStore)
+        MediaType.Audio -> null
+    }
+
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        val minAllowedAspect = maxWidth.value / dims.media.collageSingleMaxHeight.value
-        val effectiveAspect = naturalAspect.coerceAtLeast(minAllowedAspect)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(effectiveAspect)
-                .clip(RoundedCornerShape(dims.radii.md))
-                .clickable(onClick = onClick)
-                .semantics { contentDescription = openLabelFor(att.type) },
-        ) {
-            Tile(att, mediaStore, Modifier.fillMaxSize())
+        val maxW = maxWidth
+        val maxH = dims.media.timelineSinglePreviewMaxHeight
+        val displaySize: DpSize
+        val inlineVideoAllowed: Boolean
+        if (natural != null) {
+            val preview = computeAdaptiveMediaPreview(natural, maxW, maxH, density)
+            displaySize = preview.size
+            inlineVideoAllowed = att.type == MediaType.Video && !preview.wasConstrained
+        } else {
+            displaySize = fallbackAdaptivePreviewSize(
+                maxWidth = maxW,
+                maxHeight = maxH,
+                fallbackAspect = dims.media.timelineSingleFallbackAspect,
+                fallbackHeight = dims.media.timelineSingleFallbackHeight,
+            )
+            inlineVideoAllowed = false
         }
+        val outerModifier = Modifier
+            .size(displaySize.width, displaySize.height)
+            .clip(RoundedCornerShape(dims.radii.md))
+            .border(
+                width = dims.media.collageBorder,
+                color = colors.accent,
+                shape = RoundedCornerShape(dims.radii.md),
+            )
+        if (inlineVideoAllowed) {
+            // Inline video owns its own hit targets: Play/Pause button
+            // toggles playback in place, body tap opens the full-screen
+            // viewer. No outer clickable so the button never routes to nav.
+            Box(modifier = outerModifier) {
+                RelivedTimelineInlineVideo(
+                    ref = att.storageRef,
+                    mediaStore = mediaStore,
+                    onOpenFullScreen = onClick,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        } else {
+            Box(
+                modifier = outerModifier
+                    .clickable(onClick = onClick)
+                    .semantics { contentDescription = openLabelFor(att.type) },
+            ) {
+                Tile(att, mediaStore, Modifier.fillMaxSize())
+            }
+        }
+    }
+}
+
+/**
+ * Adaptive audio single tile. Preserves the Stage 2 waveform visual
+ * identity: bounded black canvas at column width, waveform + controls
+ * rendered by [RelivedAudioTile]. A hairline hugs the black canvas so it
+ * reads as a deliberate media surface rather than a raw block.
+ */
+@Composable
+private fun SingleAudioTile(
+    att: MomentAttachmentPresentation,
+    mediaStore: MediaStore,
+    onClick: () -> Unit,
+) {
+    val dims = ReliveTheme.dimensions
+    val colors = ReliveTheme.colors
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(dims.media.timelineSingleAudioHeight)
+            .clip(RoundedCornerShape(dims.radii.md))
+            .border(
+                width = dims.media.collageBorder,
+                color = colors.accent,
+                shape = RoundedCornerShape(dims.radii.md),
+            )
+            .clickable(onClick = onClick)
+            .semantics { contentDescription = openLabelFor(att.type) },
+    ) {
+        RelivedAudioTile(att.storageRef, mediaStore, Modifier.fillMaxSize())
     }
 }
 
@@ -105,9 +200,18 @@ private fun TwoTiles(
     openAt: (Int) -> Unit,
 ) {
     val dims = ReliveTheme.dimensions
+    val colors = ReliveTheme.colors
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(dims.media.collageGap),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(dims.radii.md))
+            .background(colors.accent, RoundedCornerShape(dims.radii.md))
+            .border(
+                width = dims.media.collageBorder,
+                color = colors.accent,
+                shape = RoundedCornerShape(dims.radii.md),
+            ),
+        horizontalArrangement = Arrangement.spacedBy(dims.media.collageBorder),
     ) {
         GridCellImpl(items[0], mediaStore, Modifier.weight(1f).aspectRatio(dims.media.collageTileAspectSquare), overflow = 0, onClick = { openAt(0) })
         GridCellImpl(items[1], mediaStore, Modifier.weight(1f).aspectRatio(dims.media.collageTileAspectSquare), overflow = 0, onClick = { openAt(1) })
@@ -121,14 +225,24 @@ private fun ThreeTiles(
     openAt: (Int) -> Unit,
 ) {
     val dims = ReliveTheme.dimensions
+    val colors = ReliveTheme.colors
     Row(
-        modifier = Modifier.fillMaxWidth().aspectRatio(dims.media.collageDominantAspect),
-        horizontalArrangement = Arrangement.spacedBy(dims.media.collageGap),
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(dims.media.collageDominantAspect)
+            .clip(RoundedCornerShape(dims.radii.md))
+            .background(colors.accent, RoundedCornerShape(dims.radii.md))
+            .border(
+                width = dims.media.collageBorder,
+                color = colors.accent,
+                shape = RoundedCornerShape(dims.radii.md),
+            ),
+        horizontalArrangement = Arrangement.spacedBy(dims.media.collageBorder),
     ) {
         GridCellImpl(items[0], mediaStore, Modifier.weight(2f).fillMaxSize(), overflow = 0, onClick = { openAt(0) })
         Column(
             modifier = Modifier.weight(1f).fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(dims.media.collageGap),
+            verticalArrangement = Arrangement.spacedBy(dims.media.collageBorder),
         ) {
             GridCellImpl(items[1], mediaStore, Modifier.weight(1f).fillMaxSize(), overflow = 0, onClick = { openAt(1) })
             GridCellImpl(items[2], mediaStore, Modifier.weight(1f).fillMaxSize(), overflow = 0, onClick = { openAt(2) })
@@ -144,9 +258,18 @@ private fun FourTiles(
     openAt: (Int) -> Unit,
 ) {
     val dims = ReliveTheme.dimensions
+    val colors = ReliveTheme.colors
     Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(dims.media.collageGap),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(dims.radii.md))
+            .background(colors.accent, RoundedCornerShape(dims.radii.md))
+            .border(
+                width = dims.media.collageBorder,
+                color = colors.accent,
+                shape = RoundedCornerShape(dims.radii.md),
+            ),
+        verticalArrangement = Arrangement.spacedBy(dims.media.collageBorder),
     ) {
         FourRow(items[0], items[1], mediaStore, overlayIndex = -1, overflow = 0, baseIndex = 0, openAt = openAt)
         FourRow(items[2], items[3], mediaStore, overlayIndex = 1, overflow = overflow, baseIndex = 2, openAt = openAt)
@@ -166,7 +289,7 @@ private fun FourRow(
     val dims = ReliveTheme.dimensions
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(dims.media.collageGap),
+        horizontalArrangement = Arrangement.spacedBy(dims.media.collageBorder),
     ) {
         GridCellImpl(
             att = left,
