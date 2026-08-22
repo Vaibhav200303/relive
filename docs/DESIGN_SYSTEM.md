@@ -202,16 +202,43 @@ The plus-circle is integrated into the rail (bordered, canvas fill) and becomes 
 
 ---
 
-## 14. Media aspect ratios
-
-| Token              | Value  | Usage                                  |
-| ------------------ | ------ | -------------------------------------- |
-| `media.ratio.wide` | `2:1`  | single landscape image/video           |
-| `media.treatment.sepia` | ~`0.3` | subtle sepia on media (theme-dependent) |
+## 14. Media dimensions and presentation
 
 ~~`media.ratio.square` and `media.carousel.peek` are superseded by [`DECISIONS.md`](DECISIONS.md) ADR-0019 (adaptive visual collage).~~
 
 Media uses an adaptive visual collage integrated into the timeline (see ADR-0019 for layout rules by attachment count). All media types — image, video, audio — are first-class visual tiles. Audio has no image frame; never show empty media placeholders. No horizontal carousel or pager in the timeline.
+
+### Single-media adaptive sizing
+
+Single-media Moments use adaptive natural sizing: the container shrink-wraps around the media's aspect ratio, subject to timeline max constraints only. Media is never stretched or distorted. Max bounds are ceilings, not targets.
+
+| Token | Value | Usage |
+| --- | --- | --- |
+| `media.ratio.wide` | `2:1` | single landscape image/video (reference) |
+| `media.treatment.sepia` | ~`0.3` | subtle sepia on media (theme-dependent) |
+| `media.timelineSinglePreviewMaxHeight` | `420dp` | max height for single timeline media |
+| `media.timelineSingleAudioHeight` | `200dp` | fixed height for single audio tile |
+| `media.timelineSingleFallbackHeight` | `180dp` | fallback when natural size unknown |
+| `media.composerPreviewMaxHeight` | `420dp` | max height for composer media preview |
+
+### Multi-media collage tokens
+
+| Token | Value | Usage |
+| --- | --- | --- |
+| `media.collageGap` | `4dp` | internal gap between tiles (acts as divider) |
+| `media.collageBorder` | `4dp` | outer collage border thickness |
+| `media.collageSingleMaxHeight` | `420dp` | max height for dominant tile in collage |
+| `media.collageTileAspectSquare` | `1:1` | default tile aspect in 2/4-grid layouts |
+| `media.collageDominantAspect` | `4:3` | dominant tile in 3-layout |
+| `media.collageVideoAspect` | `16:9` | video tile aspect in collage |
+| `media.collageAudioAspect` | `4:3` | audio tile aspect in collage |
+
+### Border behavior
+
+- Single-media and multi-media outer borders use the **same thickness** (`4dp`).
+- Border color matches timeline-dot color (`color.accent` / `#6F4E37`).
+- Multi-media internal gaps and outer border are the same weight, so adjacent tiles yield **one** ~4dp separator, not two overlapping strokes.
+- Audio, video, and image tiles all participate in the same border/gap system.
 
 ---
 

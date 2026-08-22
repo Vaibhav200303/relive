@@ -304,6 +304,46 @@ Format for each entry:
 
 ---
 
+## ADR-0020 — Editorial time formatter via `expect/actual`, extending date eyebrow to `DATE • TIME`
+
+- **Date:** 2026-08-22 · **Status:** Accepted
+- **Context:** Phase 2 shipped with a date-only eyebrow (`SEPTEMBER 28, 2023`). Timeline and composer both benefit from showing time-of-day alongside the date. ADR-0014 established the `expect/actual` pattern for `EditorialDateFormatter`; the same pattern applies to time.
+- **Decision:** Introduce `presentation.date.EditorialTimeFormatter` as an `expect object` with `fun format(instant: Instant): String`. Android actual uses `SimpleDateFormat("h:mm a", Locale.US)` with `TimeZone.getDefault()`; iOS actual uses `NSDateFormatter` with `dateFormat = "h:mm a"` and `localTimeZone`. The saved-moment eyebrow renders as `DATE • TIME` (e.g. `AUGUST 22, 2026 • 10:48 AM`) on a single row. Both formatters consume the same immutable `createdAt` in the device's local time zone. The `type.eyebrow` token description in `DESIGN_SYSTEM.md` is updated to reflect `DATE • TIME`.
+- **Consequences:** Complements ADR-0014. No new dependencies. Consistent device-local time display across both platforms. The composer shows time in a separate label below the date using the same formatter.
+
+---
+
+## ADR-0021 — Inline-vs-fullscreen single-video playback rule
+
+- **Date:** 2026-08-22 · **Status:** Accepted
+- **Context:** Single-video Moments use adaptive natural sizing (ADR-0019 §1). Some videos fit within timeline bounds without being constrained; others must be scaled down. Inline playback is desirable when the video is already at comfortable viewing size, but loses value when the video was squeezed to fit constraints — the user would benefit more from immediate full-screen viewing.
+- **Decision:** The adaptive sizing pass produces a `wasConstrained` flag. If the single video was **not** constrained (natural size fits within timeline max bounds): Play starts **inline** in the same adaptive bounds; body tap opens the full-screen viewer. If the video **was** constrained: both Play and body tap open the **full-screen viewer** directly; no inline player is created. Multi-media collage video tiles always navigate to the gallery/viewer. The flag is computed once per tile from `computeAdaptiveMediaPreview()` and does not change during scroll.
+- **Consequences:** Small/naturally-fitting videos get quick inline playback. Large videos skip the compromised inline view and go straight to full-screen. No unnecessary player creation for constrained tiles. Complements ADR-0019 §3 and §9.
+
+---
+
+## ADR-0022 — Multi-media gallery as intermediate navigation surface
+
+- **Date:** 2026-08-22 · **Status:** Accepted
+- **Context:** ADR-0019 §5 specifies a full-screen viewer for media consumption. For Moments with 2+ attachments, opening the viewer directly from a collage tile would skip the opportunity to see all attachments at once. For single-attachment Moments, the gallery adds no value — the viewer alone suffices.
+- **Decision:** Navigation hierarchy by attachment count: **1 attachment** — timeline tap opens the full-screen viewer directly. **2+ attachments** — timeline collage tap (including `+N`) opens a dedicated `MomentMediaGallery` first, showing all attachments for that Moment in a vertically scrollable adaptive grid on a dark surface. Tapping a gallery item opens the full-screen viewer at that index. Viewer Back returns to the gallery (scroll position preserved). Gallery Back returns to the timeline (scroll position preserved). State is tracked via `TimelineMediaNavState`, which holds optional gallery and viewer overlays.
+- **Consequences:** Gallery provides attachment overview for multi-media Moments without cluttering the single-attachment path. Scroll positions are preserved at every level. Gallery is a presentation concern; it does not change persistence or domain models. Complements ADR-0019 §5.
+
+---
+
+## ADR-0023 — Media presentation caching and single-owner playback
+
+- **Date:** 2026-08-22 · **Status:** Accepted
+- **Context:** Media-heavy timelines with images, video thumbnails, and audio waveforms can stall the UI thread if each tile eagerly decodes media, creates players, or repeatedly extracts waveforms. ADR-0019 §9 requires smooth timeline scrolling and lifecycle-aware cleanup.
+- **Decision:**
+  1. **`MediaPresentationCache`** — bounded in-memory cache keyed by `MediaStorageRef` for video thumbnails (`NaturalSizePx` + bitmap), image natural dimensions, and audio waveform envelopes. All cache hits are off-main-thread; cache misses trigger background extraction. Cache is bounded and entries evict under memory pressure.
+  2. **Lazy player creation** — passive audio/video tiles in the timeline do not create `MediaPlayer`/`AVPlayer` instances. Players are instantiated only when the user taps Play.
+  3. **`ActivePlayback` single owner** — at most one audio or video playback session is active at any time. Starting a new playback stops the prior one. Navigation (opening gallery, viewer, or returning to timeline) stops the active playback. Compose disposal releases the player.
+  4. **Scoped recomposition** — playback progress updates are scoped to the playing tile; the rest of the `LazyColumn` does not recompose for playback ticks. Stable `MomentId` keys prevent unnecessary item recomposition during scroll.
+- **Consequences:** Timeline scrolling performance is protected. Waveform data is reusable without re-decoding audio. Only one set of playback resources is live at any time. Off-screen tiles release resources on disposal. Complements ADR-0019 §9 and ADR-0018 §8.
+
+---
+
 ## Template for new decisions
 
 ```

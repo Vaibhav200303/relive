@@ -6,7 +6,7 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 
 ---
 
-## Phase 0 — Foundation & design system  ☐
+## Phase 0 — Foundation & design system  ☑
 
 - Establish module layering in `shared/` (domain, data, platform, presentation, ui, di) per [`ARCHITECTURE.md`](ARCHITECTURE.md).
 - Implement the tokenized design system and `ReliveTheme` (Warm Journal base) from [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md); bundle Playfair Display + Inter.
@@ -14,30 +14,42 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 - Wire formatting + static analysis into the build.
 - **Exit:** app builds on Android and iOS showing the themed shell; tokens in place; no feature logic yet.
 
-## Phase 1 — Core memory domain & persistence  ☐
+## Phase 1 — Core memory domain & persistence  ☑
 
 - Define domain models: `Moment`, `Timeline`, `MediaAttachment`, `Tag`, `ReliveLocation`, membership.
 - Define repository interfaces and the `Clock` abstraction.
-- Select and record the local database engine ([`DECISIONS.md`](DECISIONS.md)); implement schema: moments once, many-to-many timeline membership, attachment/tag references, All as a logical query.
+- Select and record the local database engine ([`DECISIONS.md`](DECISIONS.md) ADR-0013); implement schema: moments once, many-to-many timeline membership, attachment/tag references, All as a logical query.
 - **Exit:** domain + persistence unit/persistence tests pass; CRUD at the repository level works.
 
-## Phase 2 — Basic All timeline  ☐
+## Phase 2 — Basic All timeline  ☑
 
-- Render the **All** timeline: rail, dots, moment presentation (title, subtitle, content), chronological order, continuous scroll — matching the reference.
+- Render the **All** timeline: rail, dots, moment presentation (title, subtitle, content), chronological order (oldest-top, newest-bottom per ADR-0015), continuous scroll — matching the reference.
 - Content expansion (`... more` / `less`).
 - Favorite action (subtle).
+- Date + time metadata eyebrow (`DATE • TIME`).
 - **Exit:** All timeline displays persisted text moments correctly; Compose UI tests for core rendering.
 
-## Phase 3 — Inline composer (+ location data model)  ☐
+## Phase 3 — Inline composer (+ location data model)  ☑
 
-- Inline composer with plus-circle marker: auto date/time, title, content, tags, **Keep Moment**, reset `×`.
+- Inline composer with collapsed-by-default plus-circle marker; animated expand/collapse in place; auto date/time, title, content, tags, **Keep Moment**, reset `×` (collapses composer).
 - Establish the **location data model and interfaces** (`ReliveLocation`, `LocationProvider`, `PlaceResolver`, `LocationResult`) in shared code — **before** platform GPS implementations.
 - Composer location UI: show resolved place below date/time; keep / remove / replace with manual entry. All fields optional; no raw coordinates in UI. Composer works fully with no location.
+- Keyboard-aware inline composer (ADR-0016): IME insets keep active field visible.
 - **Exit:** a text moment (optionally with manually entered location) can be composed inline and saved; new marker becomes a dot; tests for compose/save and the no-location path.
 
-## Phase 4 — Media + platform GPS  ☐
+## Phase 4 — Media + platform GPS  ☑
 
-- Media capture/storage interfaces + platform implementations (image, video, audio). Add Media flow, per-attachment remove, adaptive visual collage (see [`DECISIONS.md`](DECISIONS.md) ADR-0019), correct aspect ratios; no empty placeholders.
+- Media capture/storage interfaces + platform implementations (image, video, audio). Add Media flow (Mic / Camera / Library), per-attachment remove, adaptive visual collage (see [`DECISIONS.md`](DECISIONS.md) ADR-0019), correct aspect ratios; no empty placeholders.
+- Single-media adaptive natural sizing; multi-media collage with border/gap tokens.
+- Inline-vs-fullscreen video rule based on `wasConstrained` flag.
+- Multi-media gallery → viewer navigation hierarchy. Single-attachment timeline tap opens viewer directly; 2+ opens gallery first.
+- Audio waveform real-data visualization (rounded-capsule segments on black canvas).
+- Camera with front/back switching, flash/torch, zoom presets/pinch, photo/video review, platform-native feedback sounds (ADR-0018 addenda).
+- Audio recorder with Stop/waveform/duration/× row layout.
+- Multi-select with stable draft identities, processing placeholders, bounded concurrency.
+- Composer adaptive media previews with size-stable processing placeholders.
+- `ActivePlayback` single-owner playback coordination.
+- `MediaPresentationCache` for thumbnails, dimensions, waveform envelopes.
 - Platform GPS implementations behind the Phase 3 interfaces: Android location APIs; iOS Core Location; reverse geocoding via `PlaceResolver`. Handle permission denied / permanently denied / services disabled / unavailable / timeout — composer continues in every case. Permission requested only when needed; no background tracking.
 - **Exit:** moments with multiple attachments render as an adaptive collage; detected location works and degrades gracefully; location + media tests pass.
 

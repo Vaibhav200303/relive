@@ -218,6 +218,30 @@ See [`ROADMAP.md`](ROADMAP.md) Phase 9 and [`RELEASE.md`](RELEASE.md).
 
 ---
 
-## 11. Testing seams
+## 11. Media presentation performance
+
+Media-heavy timelines require careful performance architecture. The following constraints are enforced:
+
+- **No expensive media decode on the UI thread.** Video thumbnails and image aspect/dimensions are resolved off the main thread.
+- **Video thumbnail cache.** Representative frames are generated once and cached via `MediaPresentationCache`; the cache is bounded.
+- **Image aspect/dimensions cached.** Natural size is probed once per `MediaStorageRef` and reused for adaptive sizing calculations.
+- **Audio waveform extraction cached.** Amplitude envelopes are extracted once and reused for all timeline/viewer renders. No repeated audio decoding during Compose recomposition.
+- **Player creation is lazy.** Passive audio/video tiles in the timeline do **not** create media players. Players are instantiated only when the user initiates playback.
+- **Only one active playback at a time.** `ActivePlayback` coordinates ownership — starting a new audio or video stops any prior one.
+- **Off-screen cleanup.** Playback and animation resources for tiles scrolled off-screen are cleaned up.
+- **Stable timeline keys.** `LazyColumn` items use stable `MomentId` keys to avoid unnecessary recomposition.
+- **No whole-timeline recomposition for playback ticks.** Playback progress updates are scoped to the playing tile, not the entire timeline list.
+
+These decisions support ADR-0019 §9 (performance constraints).
+
+---
+
+## 12. Persistence: debug and release behavior
+
+Both debug and release builds use **persistent SQLDelight/SQLite storage** (ADR-0013). There is no in-memory debug replacement or sample repository that silently substitutes for real user persistence. User Moments in debug builds survive process death, removal from Recents, and normal APK updates — the same as release builds.
+
+---
+
+## 13. Testing seams
 
 The layering above is designed for testability: pure domain logic, a `Clock` for the 4-day rule, repository interfaces for fakes, and platform capabilities behind interfaces for substitution in tests. See [`TESTING.md`](TESTING.md).

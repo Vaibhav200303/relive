@@ -116,6 +116,82 @@ Using Compose Multiplatform UI testing:
 
 ---
 
+## 11. Manual verification expectations
+
+Behavior that requires visual or interaction verification beyond unit/UI tests. Each item should be verified on a real device or emulator.
+
+### Inline composer expansion
+- [ ] Collapsed state shows only `+` timeline marker.
+- [ ] Tapping `+` smoothly expands the composer in place (no modal/sheet).
+- [ ] `×` resets fields and smoothly collapses.
+- [ ] Keep Moment resets fields and collapses.
+- [ ] Keyboard opens without obscuring the active field (IME insets).
+
+### Persistent debug data
+- [ ] Create a moment in a debug build, kill the process, reopen — moment persists.
+- [ ] Remove app from Recents, reopen — moment persists.
+- [ ] No in-memory fallback silently replaces SQLDelight storage.
+
+### Adaptive single media
+- [ ] Small image renders at natural size, not stretched.
+- [ ] Large image scales down proportionally, not distorted.
+- [ ] Portrait photo/video remains meaningfully portrait.
+- [ ] Audio tile uses black canvas with centered bounded waveform.
+
+### Collage borders and dividers
+- [ ] Multi-media collage outer border is visible and uses accent color.
+- [ ] Internal gaps between tiles are visible and match outer border width.
+- [ ] No doubled shared-edge strokes between adjacent tiles.
+- [ ] Single-media border thickness matches multi-media border thickness.
+
+### Inline-vs-fullscreen video rule
+- [ ] Unconstrained single video: Play starts inline, body tap opens full-screen.
+- [ ] Constrained single video: Play opens full-screen, body tap opens full-screen.
+- [ ] Multi-media collage video: always navigates to gallery/viewer.
+
+### Gallery → viewer hierarchy
+- [ ] Single attachment: timeline tap opens viewer directly.
+- [ ] 2+ attachments: timeline tap opens gallery; gallery tap opens viewer.
+- [ ] `+N` tile opens gallery (not viewer at index 3).
+- [ ] Viewer Back returns to gallery; gallery Back returns to timeline.
+- [ ] Timeline scroll position preserved after returning from gallery/viewer.
+
+### Audio waveform
+- [ ] Timeline audio tile shows real waveform capsule segments on black canvas.
+- [ ] Silent audio renders tiny/nearly-flat segments.
+- [ ] Playing state shows waveform moving horizontally with playback.
+- [ ] Paused state freezes waveform in place.
+- [ ] Full-screen audio viewer preserves same waveform identity.
+
+### Playback ownership
+- [ ] Starting audio stops any playing video (and vice versa).
+- [ ] Navigating to gallery/viewer stops timeline playback.
+- [ ] Navigating away from viewer stops viewer playback.
+- [ ] No background audio/video continues after leaving a screen.
+
+### Multi-select processing placeholders
+- [ ] Multiple files selected: each gets immediate placeholder tile.
+- [ ] Spinner centered in actual preview bounds.
+- [ ] Completed media replaces placeholder in place without reorder.
+- [ ] Failed tile shows retry/remove.
+- [ ] Processing → Ready does not cause a size jump (video).
+
+### Camera orientation and feedback
+- [ ] Photo review shows correct orientation on first frame (no rotate-then-correct snap).
+- [ ] Shutter sound plays on real capture success only.
+- [ ] Video start tone completes before mic opens (no bleed into recording).
+- [ ] Video stop tone plays after mic releases.
+- [ ] Front/back switch works; disabled while recording video.
+- [ ] Flash/torch toggles; muted on front camera.
+
+### Recorder duration/× layout
+- [ ] Active recording row: Stop, waveform, duration, × — all visible.
+- [ ] Duration and × never overlap on any screen width.
+- [ ] × has proper touch target (48dp).
+- [ ] Waveform shows real live amplitude.
+
+---
+
 ## Conventions
 
 - Keep domain tests platform-free in `commonTest`.

@@ -105,7 +105,30 @@ Rules:
 - **Text-only moments are fully supported.**
 - **Do not show empty media placeholders.** A moment with no media shows no media area at all.
 
-### 4.1 Content expansion
+### 4.1 Timeline metadata format
+
+Saved moments display metadata on the eyebrow row as:
+
+`DATE • TIME`
+
+Example: `AUGUST 22, 2026 • 10:48 AM`
+
+- Both date and time are derived from the same immutable `createdAt`.
+- Both are rendered in the device's local time zone.
+- Date and time appear on the **same eyebrow row**, separated by a centered dot (`•`).
+- Location, when present, is optional secondary metadata on the same row.
+
+### 4.2 Tags
+
+- UI displays lowercase hashtags: `#travel`.
+- The `#` prefix is **presentation-only** — it is supplied by the UI, **not** stored as part of the tag identity or label.
+- The composer tag input visually includes a permanent `#` prefix; the user types only the tag text.
+- Leading `#` characters typed manually by the user are stripped before processing.
+- New tag labels are **normalized to lowercase** before persistence.
+- Existing persisted uppercase labels may remain in the database but always **render lowercase** in the UI.
+- Tag identity uses a canonical form (lowercased, whitespace-collapsed, trimmed) for deduplication; the first persisted display label wins (ADR-0013).
+
+### 4.3 Content expansion
 
 - Long content initially shows only a few lines.
 - At the end, show a WhatsApp-style `... more` control.
@@ -127,34 +150,157 @@ Rules:
 - A moment may have **multiple attachments**.
 - Multiple attachments use an **adaptive visual collage** inline (see [`DECISIONS.md`](DECISIONS.md) ADR-0019 for layout rules by count). All media types — image, video, audio — participate as visual tiles.
 - For 5+ attachments, only the first four render inline; the fourth tile shows a translucent `+N` overlay.
-- Tapping a tile opens a dedicated full-screen media viewer; horizontal swiping between attachments is available only inside that viewer.
 - Media should feel **integrated into the timeline**, not enclosed in heavy cards.
+
+### 5.1 Single-media presentation
+
+- Adaptive natural/aspect-preserving sizing: the container shrink-wraps around the media's actual aspect ratio.
+- Max width and max height are **constraints only**, never forced dimensions.
+- Smaller media is **not** stretched to fill — it remains at its natural size.
+- Large media scales down proportionally when either max bound is exceeded.
+- The image/video/audio container follows the actual displayed media shape.
+- A visible border uses the same semantic color as timeline dots (`color.accent` / `#6F4E37`).
+- Single-media outer border thickness matches multi-media outer border thickness.
+
+### 5.2 Multi-media collage
+
+Adaptive collage layout by attachment count:
+
+| Count | Layout |
+|-------|--------|
+| 1 | Adaptive single tile (§5.1) |
+| 2 | Two equal tiles side-by-side |
+| 3 | One dominant tile + two vertically stacked tiles |
+| 4 | 2×2 grid |
+| 5+ | First four tiles + `+N` overlay on fourth tile |
+
+- Mixed photo/video/audio supported in the same collage.
+- Attachment order is preserved (follows `sort_index`).
+- Each media tile has a visible internal boundary/divider.
+- Outer collage border exists.
+- Internal gaps and outer multi-media border use the same approved weight (`4dp`), so adjacent tiles yield one separator rather than two overlapping strokes.
+- Border color matches timeline-dot color (`color.accent`).
+
+### 5.3 Timeline video playback
+
+**Single-video inline behavior depends on whether the video was constrained:**
+
+- If the video fits within timeline bounds **without** being constrained:
+  - Play button starts **inline playback** in the exact same adaptive bounds.
+  - Pause works inline.
+  - Tapping elsewhere on the video opens the **full-screen viewer**.
+- If the video had to be **constrained** by timeline max bounds:
+  - Play button opens the **full-screen viewer** directly.
+  - Body tap opens the **full-screen viewer** directly.
+  - No inline player starts.
+
+Multi-media collage video tiles always navigate to the gallery/viewer rather than inline playback.
+
+**Playback lifecycle:**
+
+- Only one active media playback owner at a time (`ActivePlayback`).
+- Navigating away stops previous playback.
+- No background playback.
+
+### 5.4 Timeline audio visual identity
+
+Audio is represented as a visual media tile, not a traditional audio player or voice-message bubble.
+
+- **Canvas:** black/near-black tile with generous negative space.
+- **Waveform:** compact centered row of white vertical rounded-capsule amplitude segments, symmetric around the horizontal midline.
+- **Real data:** waveform represents actual audio signal amplitude — silence renders as tiny/nearly-flat segments, loud sections as taller segments.
+- **Segment count:** approximately 9–17 visible segments depending on tile width.
+- **Paused state:** waveform window visible, segments stationary, Play affordance, subtle duration indicator.
+- **Playing state:** the waveform window moves horizontally with playback — past segments exit left, future segments enter right. Segment heights remain determined by real envelope data at every frame.
+- **No:** random equalizer bars, thin continuous line, per-segment bounce animation, bar-width variation.
+- Playback lifecycle is coordinated with other media through `ActivePlayback`.
+
+See ADR-0019 §4 for the full specification.
+
+### 5.5 Multi-media gallery and full-screen viewer
+
+Navigation hierarchy depends on attachment count:
+
+**One attachment:**
+Timeline → Full-screen viewer
+
+**Two or more attachments:**
+Timeline collage → Moment media gallery → tap item → Full-screen viewer
+
+**Gallery:**
+- Shows all attachments for the Moment in original order.
+- Mixed image/video/audio.
+- `+N` from timeline opens the gallery (not the viewer directly).
+- Back returns to timeline with scroll position preserved.
+
+**Full-screen viewer:**
+- Dark/black surface.
+- Image, video, and audio supported.
+- Opens at exact selected index.
+- Mixed-media horizontal navigation allowed in viewer.
+
+**Image viewer:**
+- Image initially fitted to available viewport, preserving aspect ratio and orientation.
+- Pinch-to-zoom.
+- Pan while zoomed.
+- Double-tap toggles fit ↔ zoom.
+- At fit: horizontal swipe pages between attachments.
+- While zoomed: image owns pan; pager is disabled.
+- Correct orientation.
+- Back returns to gallery (if 2+) or timeline (if 1) with scroll position preserved.
+
+**Video viewer:**
+- Play/Pause.
+- Progress/seek.
+- Sound.
+- Correct orientation and aspect ratio.
+- Playback released when leaving page/viewer.
+
+**Audio viewer:**
+- Same real waveform visual identity as timeline tile.
+- Full-screen black surface.
+- Waveform remains bounded/centered (not stretched full-width).
+- Play/Pause + progress/duration.
 
 ---
 
 ## 6. Creating a moment
 
-Creation happens **inline inside the current timeline**. The timeline marker for the new entry becomes a **plus-circle**.
+Creation happens **inline inside the current timeline**. The composer sits at the chronological end of the timeline (after the newest moment).
 
-The composer contains:
+### 6.1 Composer collapse/expand behavior
 
-- automatically generated **date/time**
+The composer is **collapsed by default**. In the collapsed state:
+
+- Only the **`+` timeline marker** (plus-circle) is visible.
+- Tapping `+` **expands the existing composer inline** at the same timeline position.
+- No modal, no bottom sheet, no separate screen — the composer opens in place.
+- Expansion and collapse are **smoothly animated** (`AnimatedContent` with expand/shrink vertical transitions).
+- The `×` reset button resets all fields and **collapses** the composer.
+- A successful **Keep Moment** resets all fields and **collapses** the composer.
+- Keyboard behavior keeps the active composer usable above the IME (see ADR-0016).
+
+### 6.2 Composer fields
+
+The expanded composer contains:
+
+- automatically generated **date/time** (from `createdAt`, device-local timezone)
 - optional **detected/selected location** (see §7)
 - **title**
 - **content**
-- **tags**
+- **tags** (see §4.2 for tag behavior)
 - **media attachments**
 - **Add Media** control
 - primary action: **Keep Moment**
 - reset/cancel **`×`** at the top-right
 
-### Add Media flow
+### 6.3 Add Media flow
 
-Tapping **Add Media** reveals options:
+Tapping **Add Media** reveals three options:
 
-- microphone (audio)
-- image
-- video
+- **Mic** (audio recording)
+- **Camera** (photo or video)
+- **Library** (photo, video, or audio from device)
 
 After media is added:
 
@@ -165,10 +311,53 @@ After media is added:
 
 The entire composer can be reset with the top-right **`×`**.
 
+### 6.4 Composer media preview
+
+- Media previews use **adaptive natural/aspect-preserving sizing** (same rules as timeline §5.1).
+- Max composer width/height are constraints only — smaller media remains smaller.
+- A thin boundary hugs actual preview bounds using the Relive semantic border color.
+- No oversized empty outer card wrapping the preview.
+
+**Video composer preview:**
+- Poster/thumbnail shown while ready/paused.
+- Processing placeholder uses the expected future adaptive dimensions (probed from source metadata).
+- Spinner centered in actual preview bounds.
+- Processing → Ready transition should not cause a size jump.
+- Ready state shows poster + Play, not a black box.
+- Inline playback remains in same adaptive bounds.
+- No distortion.
+
+### 6.5 Multi-select and processing placeholders
+
+- Device picker supports **multi-select** where platform APIs allow.
+- Multiple photos, videos, and/or audio can be selected together.
+- Mixed photo/video selection where supported.
+- Selection order is preserved.
+- Each selected attachment gets a **stable draft identity** (`draftId`).
+- Processing placeholders appear **immediately** on selection.
+- Large media processing is asynchronous and off the UI thread.
+- Each tile shows a centered circular processing indicator.
+- Completed media replaces its own placeholder **in place**.
+- Failures remain visible with retry/remove behavior.
+- Processing concurrency is bounded.
+- No fake determinate percentage if real progress is unavailable.
+
+### 6.6 Audio recording
+
+Active recording row layout: **Stop | flexible waveform | duration | ×/remove**
+
+- All controls are in a normal `Row` layout — no absolute positioning or overlays.
+- Duration and `×` must **never overlap**.
+- `×` retains proper touch target (`48dp` minimum).
+- Live waveform uses real amplitude data from the platform microphone.
+
+### 6.7 Save behavior
+
 Pressing **Keep Moment** saves the moment. After save:
 
 - the plus marker becomes a normal timeline dot
 - the new moment immediately adopts the standard timeline presentation
+- the composer resets and collapses
 
 ---
 
@@ -226,6 +415,41 @@ The location abstraction and platform boundary are defined in [`ARCHITECTURE.md`
 - **No background location tracking.**
 - **No location history separate from saved moments.**
 - **No third-party location analytics.**
+
+---
+
+## 7A. Camera behavior (Android)
+
+Camera is accessed from the composer's Add Media → Camera action. The camera captures both photo and video through a single in-camera surface with a Photo/Video mode selector.
+
+### Layout
+
+- Full-screen preview with flash icon (upper-left), zoom controls, main control row (Gallery / Filter / Shutter / Switch), and Photo/Video selector.
+- Shutter button is the fixed geometric center of the main control row.
+- All controls use `WindowInsets.safeDrawing` — no hardcoded status/nav bar heights.
+
+### Controls
+
+- **Front/rear switching:** in-camera switch control (loop-arrow icon) + double-tap on preview surface. Both are disabled while a video recording is in progress. Hidden when device reports no front lens.
+- **Flash/torch:** icon-only two-state Off/On toggle (outlined bolt / filled bolt). No Auto state, no text labels. Photo mode maps to `flashMode`; Video mode maps to `enableTorch`. Default is Off. Muted and inert when bound lens has no flash unit.
+- **Zoom:** Pixel-style dynamic presets (0.5×/1×/2×) filtered by actual CameraX zoom range + pinch-to-zoom live ruler. No faked digital 0.5×.
+
+### Capture feedback
+
+- **Platform-native sounds, no bundled audio assets.** Android uses `ToneGenerator` on `STREAM_MUSIC` (not `MediaActionSound`, which is inaudible on most Android 12+ OEM skins).
+- **Photo:** tone + haptic fire on `onImageSaved` (real success only).
+- **Video start:** start tone plays and completes (with guard delay) **before** CameraX opens the microphone, preventing audio bleed into the recording.
+- **Video stop:** stop tone fires **after** CameraX releases the microphone.
+- **iOS:** `UIImagePickerController` provides its own native feedback; Relive does not layer additional sounds.
+
+### Photo and video review
+
+- **PhotoReview** before Confirm: photo must already display with correct orientation on first frame — no visible rotate-then-correct snap.
+- **VideoReview** before Confirm: Play/Pause supported; video trim/mute/editor behavior available.
+- **Retake / Confirm** actions.
+- Expensive processing stays off the UI thread; review appears quickly without waiting for full post-processing.
+
+Platform-specific camera behavior should not be described as identical between Android and iOS where it is not.
 
 ---
 
@@ -377,6 +601,16 @@ The application is **local-first**. Persistence is designed so that:
 - tags can be **queried efficiently**
 - timeline membership is **many-to-many** where needed
 - **All** is logically automatic rather than duplicating every membership row unnecessarily
+
+### 13.1 Persistence in debug and release builds
+
+Both debug and release builds use **persistent SQLDelight/SQLite storage**. User Moments survive:
+
+- process death
+- removing from Recents
+- normal APK update
+
+Only explicit app data clear, uninstall, or delete removes persisted user data. There is **no** in-memory debug replacement — debug builds use the same persistent storage as release builds.
 
 Do **not** add: backend, cloud sync, login, social features, AI, embeddings, recommendations — unless explicitly requested later.
 
