@@ -234,6 +234,66 @@ fun MomentComposer(
     }
 }
 
+/**
+ * Collapsed placeholder for the inline composer. Renders only the `+` rail
+ * marker in the same timeline column position the expanded composer uses, so
+ * tapping it feels like the composer opens in place.
+ */
+@Composable
+fun CollapsedComposerMarker(
+    onExpand: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = ReliveTheme.colors
+    val dims = ReliveTheme.dimensions
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = dims.spacing.xl),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Box(
+            modifier = Modifier
+                .width(dims.timeline.contentInset)
+                .padding(top = dims.spacing.xs),
+            contentAlignment = Alignment.TopCenter,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(dims.minTouchTarget)
+                    .clip(CircleShape)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onExpand,
+                    )
+                    .semantics { contentDescription = "Add a new moment" },
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(dims.timeline.plusSize)
+                        .clip(CircleShape)
+                        .background(colors.bgCanvas)
+                        .border(
+                            width = dims.stroke.hairline,
+                            color = colors.border,
+                            shape = CircleShape,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    PlusGlyph(
+                        size = dims.icon.md,
+                        color = colors.textSecondary,
+                        strokeWidth = dims.stroke.icon,
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.weight(1f))
+    }
+}
+
 @Composable
 private fun ComposerDateTimeRow(date: String, time: String, modifier: Modifier = Modifier) {
     val colors = ReliveTheme.colors
