@@ -3,10 +3,12 @@ package com.vaibhav.relive.presentation.timeline
 import com.vaibhav.relive.domain.model.Moment
 import com.vaibhav.relive.domain.model.ReliveLocation
 import com.vaibhav.relive.presentation.date.EditorialDateFormatter
+import com.vaibhav.relive.presentation.date.EditorialTimeFormatter
 
 fun Moment.toPresentation(): MomentPresentation = MomentPresentation(
     id = id,
     formattedDate = EditorialDateFormatter.format(createdAt),
+    formattedTime = EditorialTimeFormatter.format(createdAt),
     title = title,
     content = content,
     locationLabel = location?.readableLabel(),

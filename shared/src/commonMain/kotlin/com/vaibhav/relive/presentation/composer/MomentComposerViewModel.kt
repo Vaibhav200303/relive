@@ -81,20 +81,28 @@ class MomentComposerViewModel(
 
     fun commitPendingTag() {
         _state.update { current ->
-            val candidate = Tag.ofOrNull(current.pendingTagInput) ?: return@update current.copy(
-                pendingTagInput = "",
-            )
+            val candidate = Tag.ofOrNull(normalizeTagInput(current.pendingTagInput))
+                ?: return@update current.copy(pendingTagInput = "")
             val tags = if (current.tags.contains(candidate)) current.tags else current.tags + candidate
             current.copy(tags = tags, pendingTagInput = "")
         }
     }
 
     fun addTag(raw: String) {
-        val candidate = Tag.ofOrNull(raw) ?: return
+        val candidate = Tag.ofOrNull(normalizeTagInput(raw)) ?: return
         _state.update { current ->
             if (current.tags.contains(candidate)) current else current.copy(tags = current.tags + candidate)
         }
     }
+
+    /**
+     * Presentation supplies the leading `#`; the stored tag label never carries
+     * one. Also lowercased so newly persisted display labels match how they
+     * render in the chip (`#lowercase`). Existing persisted labels remain
+     * untouched — ADR-0013's first-wins canonical identity is preserved.
+     */
+    private fun normalizeTagInput(raw: String): String =
+        raw.trim().trimStart('#').trim().lowercase()
 
     fun removeTag(tag: Tag) {
         _state.update { it.copy(tags = it.tags.filterNot { existing -> existing == tag }) }

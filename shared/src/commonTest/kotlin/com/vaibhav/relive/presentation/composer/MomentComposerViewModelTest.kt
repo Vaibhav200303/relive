@@ -70,6 +70,72 @@ class MomentComposerViewModelTest {
     }
 
     @Test
+    fun newTagLabelLowercasedOnCommit() = runTest {
+        val vm = newViewModel(RecordingRepository())
+        vm.updatePendingTagInput("Travel")
+        vm.commitPendingTag()
+        assertEquals("travel", vm.state.value.tags.single().label)
+    }
+
+    @Test
+    fun leadingHashStrippedFromCommittedTag() = runTest {
+        val vm = newViewModel(RecordingRepository())
+        vm.updatePendingTagInput("#Travel")
+        vm.commitPendingTag()
+        assertEquals("travel", vm.state.value.tags.single().label)
+    }
+
+    @Test
+    fun multipleLeadingHashesStripped() = runTest {
+        val vm = newViewModel(RecordingRepository())
+        vm.updatePendingTagInput("###College Life")
+        vm.commitPendingTag()
+        assertEquals("college life", vm.state.value.tags.single().label)
+    }
+
+    @Test
+    fun surroundingWhitespaceTrimmed() = runTest {
+        val vm = newViewModel(RecordingRepository())
+        vm.updatePendingTagInput("  College Life  ")
+        vm.commitPendingTag()
+        assertEquals("college life", vm.state.value.tags.single().label)
+    }
+
+    @Test
+    fun onlyHashRejected() = runTest {
+        val vm = newViewModel(RecordingRepository())
+        vm.updatePendingTagInput("#")
+        vm.commitPendingTag()
+        assertTrue(vm.state.value.tags.isEmpty())
+        assertEquals("", vm.state.value.pendingTagInput)
+    }
+
+    @Test
+    fun emptyInputRejected() = runTest {
+        val vm = newViewModel(RecordingRepository())
+        vm.updatePendingTagInput("   ")
+        vm.commitPendingTag()
+        assertTrue(vm.state.value.tags.isEmpty())
+    }
+
+    @Test
+    fun addTagNormalizesLabel() = runTest {
+        val vm = newViewModel(RecordingRepository())
+        vm.addTag("#Memories")
+        assertEquals("memories", vm.state.value.tags.single().label)
+    }
+
+    @Test
+    fun canonicalDedupSurvivesNormalization() = runTest {
+        val vm = newViewModel(RecordingRepository())
+        vm.updatePendingTagInput("#Travel"); vm.commitPendingTag()
+        vm.updatePendingTagInput("TRAVEL"); vm.commitPendingTag()
+        vm.updatePendingTagInput("travel"); vm.commitPendingTag()
+        assertEquals(1, vm.state.value.tags.size)
+        assertEquals("travel", vm.state.value.tags.single().label)
+    }
+
+    @Test
     fun resetClearsTransientState() = runTest {
         val vm = newViewModel(RecordingRepository())
         vm.updateTitle("t"); vm.updateContent("c"); vm.addTag("Family")

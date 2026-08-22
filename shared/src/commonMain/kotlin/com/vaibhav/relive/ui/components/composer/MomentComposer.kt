@@ -413,6 +413,7 @@ private fun ComposerTagsRow(
                 )
                 .padding(horizontal = dims.spacing.md, vertical = dims.spacing.xs),
         ) {
+            Text(text = "#", style = type.tag, color = colors.textMuted)
             val tagRequester = remember { BringIntoViewRequester() }
             val tagScope = rememberCoroutineScope()
             Box(modifier = Modifier.widthIn(min = 40.dp)) {
@@ -431,7 +432,7 @@ private fun ComposerTagsRow(
                         .semantics { contentDescription = "Add tag" },
                     decorationBox = { inner ->
                         if (pendingInput.isEmpty()) {
-                            Text(text = "TAG", style = type.tag, color = colors.textMuted)
+                            Text(text = "tag", style = type.tag, color = colors.textMuted)
                         }
                         inner()
                     },
@@ -468,7 +469,7 @@ private fun TagPill(tag: Tag, enabled: Boolean, onRemove: () -> Unit) {
             )
             .padding(start = dims.spacing.md, end = dims.spacing.sm, top = dims.spacing.xs, bottom = dims.spacing.xs),
     ) {
-        Text(text = tag.label.uppercase(), style = type.tag, color = colors.textSecondary)
+        Text(text = "#" + tag.label.lowercase(), style = type.tag, color = colors.textSecondary)
         IconButton(
             onClick = onRemove,
             enabled = enabled,

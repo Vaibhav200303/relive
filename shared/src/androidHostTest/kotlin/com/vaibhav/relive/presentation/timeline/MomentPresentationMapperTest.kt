@@ -28,7 +28,7 @@ class MomentPresentationMapperTest {
     }
 
     @Test
-    fun mapsMomentToPresentationWithFormattedDate() {
+    fun mapsMomentToPresentationWithFormattedDateAndTime() {
         val moment = Moment(
             id = MomentId("m-1"),
             createdAt = Instant(1_695_913_200_000L),
@@ -38,11 +38,27 @@ class MomentPresentationMapperTest {
         )
         val presentation = moment.toPresentation()
         assertEquals("SEPTEMBER 28, 2023", presentation.formattedDate)
+        assertEquals("3:00 PM", presentation.formattedTime)
         assertEquals("Quiet morning light", presentation.title)
         assertTrue(presentation.hasTitle)
         assertTrue(presentation.hasContent)
         assertTrue(presentation.isFavorite)
         assertNull(presentation.locationLabel)
+    }
+
+    @Test
+    fun sameCreatedAtDrivesBothFormattedDateAndTime() {
+        val createdAt = Instant(1_695_913_200_000L)
+        val moment = Moment(id = MomentId("m-x"), createdAt = createdAt, content = "n")
+        val presentation = moment.toPresentation()
+        assertEquals(
+            com.vaibhav.relive.presentation.date.EditorialDateFormatter.format(createdAt),
+            presentation.formattedDate,
+        )
+        assertEquals(
+            com.vaibhav.relive.presentation.date.EditorialTimeFormatter.format(createdAt),
+            presentation.formattedTime,
+        )
     }
 
     @Test

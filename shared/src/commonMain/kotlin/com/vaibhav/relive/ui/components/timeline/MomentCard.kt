@@ -31,6 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.presentation.timeline.MomentAttachmentPresentation
 import com.vaibhav.relive.presentation.timeline.MomentPresentation
@@ -73,13 +74,24 @@ fun MomentCard(
                 .weight(1f)
                 .padding(end = dims.spacing.sm),
         ) {
-            // DATE / LOCATION
+            // DATE • TIME / LOCATION
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm),
             ) {
                 Text(
                     text = moment.formattedDate,
+                    style = type.eyebrow,
+                    color = colors.accentMuted,
+                )
+                Box(
+                    modifier = Modifier
+                        .size(3.dp)
+                        .clip(CircleShape)
+                        .background(colors.accentMuted),
+                )
+                Text(
+                    text = moment.formattedTime,
                     style = type.eyebrow,
                     color = colors.accentMuted,
                 )
@@ -138,7 +150,7 @@ fun MomentCard(
                                 .padding(horizontal = dims.spacing.md, vertical = dims.spacing.xs),
                         ) {
                             Text(
-                                text = tag.label.uppercase(),
+                                text = "#" + tag.label.lowercase(),
                                 style = type.tag,
                                 color = colors.textSecondary,
                             )
