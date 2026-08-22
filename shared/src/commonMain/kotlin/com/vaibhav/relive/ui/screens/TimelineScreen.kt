@@ -62,6 +62,7 @@ import com.vaibhav.relive.platform.media.MediaProcessor
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.platform.media.rememberMediaPickerHandle
 import com.vaibhav.relive.platform.permission.MicPermissionResult
+import com.vaibhav.relive.platform.system.ReliveBackHandler
 import com.vaibhav.relive.presentation.composer.MomentComposerState
 import com.vaibhav.relive.presentation.composer.MomentComposerViewModel
 import com.vaibhav.relive.presentation.composer.ComposerOverlay
@@ -107,6 +108,8 @@ fun TimelineScreen(
     idGenerator: IdGenerator,
     mediaStore: MediaStore,
     mediaProcessor: MediaProcessor,
+    initialTimeline: CurrentTimeline = CurrentTimeline.All,
+    onBackToTimelineHome: (() -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
     val timelineViewModel = remember(
@@ -115,6 +118,7 @@ fun TimelineScreen(
         clock,
         idGenerator,
         scope,
+        initialTimeline,
     ) {
         TimelineViewModel(
             momentRepository = momentRepository,
@@ -122,6 +126,7 @@ fun TimelineScreen(
             clock = clock,
             idGenerator = idGenerator,
             scope = scope,
+            initialTimeline = initialTimeline,
         )
     }
     val composerViewModel = remember(
@@ -143,6 +148,8 @@ fun TimelineScreen(
     }
     val timelineState by timelineViewModel.state.collectAsState()
     val composerState by composerViewModel.state.collectAsState()
+
+    ReliveBackHandler(enabled = onBackToTimelineHome != null) { onBackToTimelineHome?.invoke() }
 
     var navState by remember { mutableStateOf(TimelineMediaNavState.Idle) }
     var isComposerExpanded by remember { mutableStateOf(false) }
@@ -239,6 +246,7 @@ fun TimelineScreen(
             },
             onMenuClick = { },
             onSearchClick = { },
+            onBack = onBackToTimelineHome,
             onTitleChange = composerViewModel::updateTitle,
             onContentChange = composerViewModel::updateContent,
             onPendingTagChange = composerViewModel::updatePendingTagInput,
@@ -367,6 +375,7 @@ private fun TimelineContent(
     onOpenMedia: (List<MomentAttachmentPresentation>, Int) -> Unit,
     onMenuClick: () -> Unit,
     onSearchClick: () -> Unit,
+    onBack: (() -> Unit)?,
     onTitleChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
     onPendingTagChange: (String) -> Unit,
@@ -398,7 +407,7 @@ private fun TimelineContent(
             .fillMaxSize()
             .background(colors.bgCanvas),
     ) {
-        TimelineHeader(onMenuClick = onMenuClick, onSearchClick = onSearchClick)
+        TimelineHeader(onMenuClick = onMenuClick, onSearchClick = onSearchClick, onBack = onBack)
         TimelineSelector(
             timelines = timelineState.customTimelines,
             selected = timelineState.currentTimeline,

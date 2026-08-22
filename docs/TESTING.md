@@ -148,6 +148,13 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 - [ ] Custom timelines and memberships survive process death, Recents removal, and a normal APK update.
 - [ ] Tags, location, favorite state, images, video, audio, gallery, and viewer behavior are unchanged in custom timelines.
 
+### Timeline Home
+- [ ] Timeline Home opens first and retains its scroll position after returning from All or a custom timeline.
+- [ ] All shows the persisted total Moment count; each custom card shows only its own membership count.
+- [ ] Card previews contain at most four image/video attachments, ordered by latest Moment then attachment order; audio/text-only scopes show the neutral preview.
+- [ ] The Home + opens the existing Create Timeline flow; the new timeline appears reactively without leaving Home.
+- [ ] Detail Back returns to Timeline Home on Android and iOS; no profile, menu, or bottom navigation controls appear.
+
 ### Adaptive single media
 - [ ] Small image renders at natural size, not stretched.
 - [ ] Large image scales down proportionally, not distorted.

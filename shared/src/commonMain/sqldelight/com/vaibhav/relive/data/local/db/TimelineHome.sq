@@ -1,0 +1,53 @@
+-- The Timeline Home is a read projection. All remains logical: it is the
+-- first row here and is never represented by a membership record.
+selectTimelineHomeCounts:
+SELECT
+    0 AS display_order,
+    '__all__' AS scope_key,
+    NULL AS timeline_id,
+    'All' AS name,
+    NULL AS theme,
+    COUNT(m.id) AS moment_count
+FROM moments m
+UNION ALL
+SELECT
+    1 AS display_order,
+    ct.id AS scope_key,
+    ct.id AS timeline_id,
+    ct.name AS name,
+    ct.theme AS theme,
+    COUNT(mtm.moment_id) AS moment_count
+FROM custom_timelines ct
+LEFT JOIN moment_timeline_memberships mtm ON mtm.timeline_id = ct.id
+GROUP BY ct.id, ct.name, ct.theme, ct.created_at
+ORDER BY display_order, scope_key;
+
+-- Visual attachments only. The window limits every scope to four rows after
+-- deterministic moment-recency and attachment-order sorting.
+selectTimelineHomePreviewAttachments:
+WITH scoped_moments AS (
+    SELECT '__all__' AS scope_key, id AS moment_id, created_at
+    FROM moments
+    UNION ALL
+    SELECT mtm.timeline_id AS scope_key, m.id AS moment_id, m.created_at
+    FROM moment_timeline_memberships mtm
+    JOIN moments m ON m.id = mtm.moment_id
+), ranked_attachments AS (
+    SELECT
+        sm.scope_key,
+        ma.id,
+        ma.media_type,
+        ma.storage_ref,
+        ma.sort_index,
+        ROW_NUMBER() OVER (
+            PARTITION BY sm.scope_key
+            ORDER BY sm.created_at DESC, ma.sort_index ASC, ma.id ASC
+        ) AS preview_rank
+    FROM scoped_moments sm
+    JOIN media_attachments ma ON ma.moment_id = sm.moment_id
+    WHERE ma.media_type IN ('Image', 'Video')
+)
+SELECT scope_key, id, media_type, storage_ref, sort_index
+FROM ranked_attachments
+WHERE preview_rank <= 4
+ORDER BY scope_key, preview_rank;
