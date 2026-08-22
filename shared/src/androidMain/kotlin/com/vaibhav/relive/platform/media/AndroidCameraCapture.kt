@@ -7,8 +7,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.media.ExifInterface
-import android.media.AudioManager
-import android.media.ToneGenerator
+import android.media.MediaActionSound
 import android.net.Uri
 import android.os.Build
 import android.widget.VideoView
@@ -72,8 +71,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -191,18 +194,34 @@ actual fun CameraCaptureSurface(
     // unmuted regardless of the previous session.
     var videoEdit by remember { mutableStateOf(VideoReviewEditState.initial(0L)) }
 
-    // Capture feedback tones. ToneGenerator on STREAM_MUSIC uses the media
-    // volume the user actually controls and works across OEMs where the
-    // system MediaActionSound path silently no-ops for third-party apps.
-    val toneGen = remember {
-        try {
-            ToneGenerator(AudioManager.STREAM_MUSIC, TONE_VOLUME)
-        } catch (_: RuntimeException) {
-            null
+    // Native camera feedback via MediaActionSound. Respects region-enforced
+    // shutter policy (Japan/Korea) and uses the system-authored shutter and
+    // video-recording sounds instead of a synthetic tone. Load ahead of first
+    // use so playback latency at shutter press is negligible.
+    val mediaSound = remember {
+        MediaActionSound().apply {
+            try {
+                load(MediaActionSound.SHUTTER_CLICK)
+                load(MediaActionSound.START_VIDEO_RECORDING)
+                load(MediaActionSound.STOP_VIDEO_RECORDING)
+            } catch (_: Throwable) { /* best-effort preload */ }
         }
     }
     val vibrator = remember { getVibrator(context) }
     val feedbackScope = rememberCoroutineScope()
+    // Frozen-preview snapshot captured from the live PreviewView at the
+    // instant the shutter is pressed. Used as the immediate visual backing
+    // for PhotoReview while the JPEG decodes/normalizes asynchronously.
+    var frozenPreview: ImageBitmap? by remember { mutableStateOf(null) }
+    // Post-processing (EXIF normalize) job for the current photo review. Null
+    // when no processing in flight. Confirm waits on this before handing the
+    // RawMedia off; Retake cancels it.
+    var photoProcessingJob: Job? by remember { mutableStateOf(null) }
+    var photoPendingConfirm by remember { mutableStateOf(false) }
+    // Short white flash overlay tied to shutter press. Non-blocking, purely
+    // visual capture-feedback that resembles the native shutter flash.
+    var captureFlashTick by remember { mutableStateOf(0) }
+    var captureFlashAlpha by remember { mutableStateOf(0f) }
 
     fun discardPendingTempFile() {
         pendingTempFile?.delete()
@@ -232,6 +251,10 @@ actual fun CameraCaptureSurface(
         activeRecording?.stop()
         activeRecording = null
         isRecording = false
+        photoProcessingJob?.cancel()
+        photoProcessingJob = null
+        photoPendingConfirm = false
+        frozenPreview = null
         discardPendingTempFile()
         discardReviewFile()
         uiState = CameraUiState.Live
@@ -244,6 +267,10 @@ actual fun CameraCaptureSurface(
     // restores the live feed without a full CameraX re-bind. Video playback
     // state is also reset; the VideoView is disposed by leaving VideoReview.
     val retake: () -> Unit = {
+        photoProcessingJob?.cancel()
+        photoProcessingJob = null
+        photoPendingConfirm = false
+        frozenPreview = null
         discardReviewFile()
         videoPlayback = VideoReviewPlayback.Initial
         videoEdit = VideoReviewEditState.initial(0L)
@@ -256,8 +283,19 @@ actual fun CameraCaptureSurface(
     val confirm: () -> Unit = {
         when (val current = uiState) {
             is CameraUiState.PhotoReview -> {
-                uiState = CameraUiState.Live
-                onCaptured(current.captured)
+                val job = photoProcessingJob
+                if (job != null && job.isActive) {
+                    // Processing still running: mark confirm pending. The
+                    // LaunchedEffect below will fire onCaptured once the
+                    // normalize job completes so the persisted file is
+                    // correctly oriented.
+                    photoPendingConfirm = true
+                } else {
+                    photoProcessingJob = null
+                    frozenPreview = null
+                    uiState = CameraUiState.Live
+                    onCaptured(current.captured)
+                }
             }
             is CameraUiState.VideoReview -> {
                 val edit = videoEdit
@@ -322,11 +360,45 @@ actual fun CameraCaptureSurface(
     DisposableEffect(Unit) {
         onDispose {
             activeRecording?.stop()
+            photoProcessingJob?.cancel()
             discardPendingTempFile()
             discardReviewFile()
             releaseCamera()
-            try { toneGen?.release() } catch (_: Throwable) {}
+            try { mediaSound.release() } catch (_: Throwable) {}
         }
+    }
+
+    // Await pending confirm: user tapped ✓ while EXIF normalization was
+    // still running. Join the job (or finish immediately if already done),
+    // then hand the captured photo off. Retake/cancel cancels the job and
+    // clears photoPendingConfirm, so this effect no-ops in those paths.
+    LaunchedEffect(photoProcessingJob, photoPendingConfirm) {
+        val job = photoProcessingJob
+        if (!photoPendingConfirm || job == null) return@LaunchedEffect
+        try { job.join() } catch (_: Throwable) {}
+        val current = uiState
+        if (photoPendingConfirm && current is CameraUiState.PhotoReview) {
+            photoProcessingJob = null
+            photoPendingConfirm = false
+            frozenPreview = null
+            uiState = CameraUiState.Live
+            onCaptured(current.captured)
+        } else {
+            photoPendingConfirm = false
+        }
+    }
+
+    // Short shutter flash overlay. Fades from ~0.55 to 0 over ~180 ms so it
+    // reads as a native capture flash rather than a full-screen loading state.
+    LaunchedEffect(captureFlashTick) {
+        if (captureFlashTick == 0) return@LaunchedEffect
+        captureFlashAlpha = 0.55f
+        val steps = 6
+        repeat(steps) {
+            delay(30)
+            captureFlashAlpha *= 0.55f
+        }
+        captureFlashAlpha = 0f
     }
 
     // Elapsed timer runs only while recording; reset on stop.
@@ -448,24 +520,55 @@ actual fun CameraCaptureSurface(
             // feed behind them.
             val reviewState = uiState as? CameraUiState.PhotoReview
             if (reviewState != null) {
-                val bmp: ImageBitmap? = remember(reviewState.captured.sourcePath) {
-                    try {
-                        BitmapFactory.decodeFile(reviewState.captured.sourcePath)?.asImageBitmap()
-                    } catch (_: Throwable) { null }
+                // Decoded/normalized JPEG. Loaded asynchronously so review
+                // opens without blocking the main thread on a full-size
+                // BitmapFactory.decodeFile. Reloads once processing (EXIF
+                // normalize) finishes so orientation is correct.
+                var decoded: ImageBitmap? by remember(reviewState.captured.sourcePath) {
+                    mutableStateOf(null)
+                }
+                LaunchedEffect(reviewState.captured.sourcePath, photoProcessingJob) {
+                    val path = reviewState.captured.sourcePath
+                    // Wait for normalize to bake EXIF orientation into pixels
+                    // before decoding. Decoding beforehand via
+                    // BitmapFactory.decodeFile ignores EXIF and shows sensor
+                    // orientation, causing a visible rotation snap when the
+                    // normalized image finally lands. frozenPreview covers
+                    // the wait so the review is never empty.
+                    val job = photoProcessingJob
+                    if (job != null) {
+                        try { job.join() } catch (_: Throwable) {}
+                    }
+                    val full = withContext(Dispatchers.IO) {
+                        decodeDownsampled(path, PHOTO_REVIEW_MAX_DIM)
+                    }
+                    if (full != null) decoded = full.asImageBitmap()
                 }
                 Box(
                     modifier = Modifier.fillMaxSize().background(Color.Black),
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (bmp != null) {
+                    val shown: ImageBitmap? = decoded ?: frozenPreview
+                    if (shown != null) {
                         Image(
-                            bitmap = bmp,
+                            bitmap = shown,
                             contentDescription = "Captured photo",
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Fit,
                         )
                     }
                 }
+            }
+
+            // Shutter flash overlay (non-blocking; sits above the preview and
+            // below the review overlay so the flash appears at press then
+            // fades under the frozen capture).
+            if (captureFlashAlpha > 0f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.White.copy(alpha = captureFlashAlpha)),
+                )
             }
 
             // Video review overlay: recorded clip in the same preview band
@@ -584,22 +687,51 @@ actual fun CameraCaptureSurface(
                         when (mode) {
                             CameraMode.Photo -> if (!isCapturingPhoto) {
                                 isCapturingPhoto = true
+                                // Native shutter feedback fires at press, not
+                                // after the JPEG lands — matches WhatsApp /
+                                // system-camera latency.
+                                playShutter(mediaSound)
+                                hapticTick(vibrator)
+                                captureFlashTick += 1
+                                // Snapshot the current preview frame as an
+                                // instant visual backing for PhotoReview.
+                                // Best-effort — a null snapshot falls back to
+                                // the decoded JPEG when it lands.
+                                frozenPreview = try {
+                                    val bmp = previewView.bitmap
+                                    when {
+                                        bmp == null -> null
+                                        // PreviewView shows the front camera
+                                        // mirrored (selfie view); CameraX
+                                        // saves the JPEG un-mirrored. Flip
+                                        // the frozen snapshot to match the
+                                        // decoded file — otherwise the
+                                        // decoded image replacing frozen
+                                        // reads as a horizontal flip.
+                                        lens == LensFacing.Front -> {
+                                            val m = Matrix().apply { postScale(-1f, 1f) }
+                                            Bitmap.createBitmap(
+                                                bmp, 0, 0, bmp.width, bmp.height, m, true,
+                                            ).asImageBitmap()
+                                        }
+                                        else -> bmp.asImageBitmap()
+                                    }
+                                } catch (_: Throwable) { null }
                                 takePhoto(
                                     store = store,
                                     imageCapture = imageCapture,
                                     executor = executor,
+                                    scope = feedbackScope,
                                     onPending = { pendingTempFile = it },
-                                    onCaptured = { raw ->
-                                        // Photo review: freeze on the just-
-                                        // captured file; the caller receives
-                                        // the RawMedia only on Confirm. The
-                                        // temp file is now owned by
-                                        // [uiState] rather than
-                                        // pendingTempFile.
+                                    onCaptured = { raw, job ->
+                                        // Enter PhotoReview immediately with
+                                        // the raw file. Normalize runs in
+                                        // [job]; Confirm awaits it before
+                                        // handing the file to the caller.
                                         pendingTempFile = null
                                         isCapturingPhoto = false
-                                        playShutterTone(toneGen)
-                                        hapticTick(vibrator)
+                                        photoProcessingJob = job
+                                        photoPendingConfirm = false
                                         uiState = enterPhotoReview(raw)
                                     },
                                     onError = { isCapturingPhoto = false },
@@ -607,44 +739,37 @@ actual fun CameraCaptureSurface(
                             }
                             CameraMode.Video -> {
                                 if (!isRecording) {
-                                    // Play start tone BEFORE opening the recorder
-                                    // and wait for it to clear so it cannot bleed
-                                    // into the video's audio track.
-                                    playStartTone(toneGen)
-                                    hapticTick(vibrator)
-                                    feedbackScope.launch {
-                                        delay((START_TONE_MS + START_TONE_GUARD_MS).toLong())
-                                        activeRecording = startRecording(
-                                            context = context,
-                                            store = store,
-                                            videoCapture = videoCapture,
-                                            executor = executor,
-                                            onPending = { pendingTempFile = it },
-                                            onStarted = { /* tone already played pre-open */ },
-                                            onFinal = { raw ->
-                                                // Video review: temp file is
-                                                // now owned by [uiState]; do
-                                                // NOT call onCaptured here —
-                                                // the caller receives the
-                                                // RawMedia only on Confirm.
-                                                pendingTempFile = null
-                                                activeRecording = null
-                                                isRecording = false
-                                                boundCamera?.cameraControl?.enableTorch(false)
-                                                playStopTone(toneGen)
-                                                hapticTick(vibrator)
-                                                videoPlayback = VideoReviewPlayback.Initial
-                                                uiState = enterVideoReview(raw)
-                                            },
-                                            onError = {
-                                                pendingTempFile = null
-                                                activeRecording = null
-                                                isRecording = false
-                                                boundCamera?.cameraControl?.enableTorch(false)
-                                            },
-                                        )
-                                        isRecording = true
-                                    }
+                                    activeRecording = startRecording(
+                                        context = context,
+                                        store = store,
+                                        videoCapture = videoCapture,
+                                        executor = executor,
+                                        onPending = { pendingTempFile = it },
+                                        onStarted = {
+                                            // Fire native start feedback only
+                                            // when CameraX confirms recording
+                                            // actually began.
+                                            playStartVideo(mediaSound)
+                                            hapticTick(vibrator)
+                                        },
+                                        onFinal = { raw ->
+                                            pendingTempFile = null
+                                            activeRecording = null
+                                            isRecording = false
+                                            boundCamera?.cameraControl?.enableTorch(false)
+                                            playStopVideo(mediaSound)
+                                            hapticTick(vibrator)
+                                            videoPlayback = VideoReviewPlayback.Initial
+                                            uiState = enterVideoReview(raw)
+                                        },
+                                        onError = {
+                                            pendingTempFile = null
+                                            activeRecording = null
+                                            isRecording = false
+                                            boundCamera?.cameraControl?.enableTorch(false)
+                                        },
+                                    )
+                                    isRecording = true
                                 } else {
                                     activeRecording?.stop()
                                 }
@@ -688,29 +813,21 @@ private val ZOOM_SLOT_HEIGHT: Dp = 48.dp
 // Matches the Pixel-camera feel (~700–900 ms).
 private const val RULER_LINGER_MS: Long = 850L
 
-// ToneGenerator volume is 0..100. 80 sits well below max so it doesn't feel
-// jarring but is clearly audible over ambient noise on a normal handset.
-private const val TONE_VOLUME = 80
+// Max dimension for the review-overlay decode. Comfortably above any
+// realistic device viewport, keeps the decode cheap versus the full sensor
+// resolution (~4000 px on flagship handsets).
+private const val PHOTO_REVIEW_MAX_DIM = 2048
 
-// Timing budget for the pre-record start tone (ms). Tone + guard must clear
-// before CameraX opens the AudioSource, otherwise it leaks into the video's
-// audio track. 140 ms tone + 80 ms guard has tested clean across handsets;
-// leave the guard generous rather than shave milliseconds off responsiveness.
-private const val START_TONE_MS = 140
-private const val START_TONE_GUARD_MS = 80
-private const val SHUTTER_TONE_MS = 90
-private const val STOP_TONE_MS = 160
-
-private fun playShutterTone(tone: ToneGenerator?) {
-    try { tone?.startTone(ToneGenerator.TONE_PROP_ACK, SHUTTER_TONE_MS) } catch (_: Throwable) {}
+private fun playShutter(sound: MediaActionSound) {
+    try { sound.play(MediaActionSound.SHUTTER_CLICK) } catch (_: Throwable) {}
 }
 
-private fun playStartTone(tone: ToneGenerator?) {
-    try { tone?.startTone(ToneGenerator.TONE_PROP_PROMPT, START_TONE_MS) } catch (_: Throwable) {}
+private fun playStartVideo(sound: MediaActionSound) {
+    try { sound.play(MediaActionSound.START_VIDEO_RECORDING) } catch (_: Throwable) {}
 }
 
-private fun playStopTone(tone: ToneGenerator?) {
-    try { tone?.startTone(ToneGenerator.TONE_PROP_BEEP2, STOP_TONE_MS) } catch (_: Throwable) {}
+private fun playStopVideo(sound: MediaActionSound) {
+    try { sound.play(MediaActionSound.STOP_VIDEO_RECORDING) } catch (_: Throwable) {}
 }
 
 private fun FlashMode.toImageCaptureFlash(): Int = when (this) {
@@ -1318,8 +1435,9 @@ private fun takePhoto(
     store: AndroidMediaStore,
     imageCapture: ImageCapture,
     executor: Executor,
+    scope: CoroutineScope,
     onPending: (File) -> Unit,
-    onCaptured: (RawMedia) -> Unit,
+    onCaptured: (RawMedia, Job) -> Unit,
     onError: () -> Unit,
 ) {
     val tmp = store.newTempFile("relive-cam-", ".jpg")
@@ -1327,25 +1445,44 @@ private fun takePhoto(
     val out = ImageCapture.OutputFileOptions.Builder(tmp).build()
     imageCapture.takePicture(out, executor, object : ImageCapture.OnImageSavedCallback {
         override fun onImageSaved(result: ImageCapture.OutputFileResults) {
-            // Normalize EXIF orientation off the main thread. CameraX writes
+            // Enter review immediately with the raw file, then normalize EXIF
+            // orientation asynchronously off the main thread. CameraX writes
             // the sensor orientation into the JPEG's EXIF tag rather than
-            // rotating the pixels; consumers that decode via BitmapFactory
-            // (which ignores EXIF) would otherwise see a rotated image. We
-            // bake the rotation into the pixel data once here so every
-            // downstream reader — Photo Review, the store, later reopens —
-            // gets a correctly oriented file.
-            Thread {
+            // rotating pixels; consumers that decode via BitmapFactory
+            // (which ignores EXIF) would otherwise see a rotated image.
+            // Confirm awaits this job so the persisted file is always
+            // correctly oriented; Retake cancels it.
+            val raw = RawMedia(MediaType.Image, tmp.absolutePath, ownedByRelive = true)
+            val job = scope.launch(Dispatchers.IO) {
                 normalizeExifOrientation(tmp)
-                executor.execute {
-                    onCaptured(RawMedia(MediaType.Image, tmp.absolutePath, ownedByRelive = true))
-                }
-            }.start()
+            }
+            onCaptured(raw, job)
         }
         override fun onError(exc: ImageCaptureException) {
             tmp.delete()
             onError()
         }
     })
+}
+
+/**
+ * Decode [path] into a [Bitmap] no larger than [maxDim] px on the longer
+ * axis. Uses BitmapFactory's inSampleSize bounds pass to avoid ever
+ * allocating the full-resolution bitmap for a review overlay that will only
+ * be composited into the preview band. Returns null on any decode failure.
+ */
+private fun decodeDownsampled(path: String, maxDim: Int): Bitmap? {
+    return try {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(path, bounds)
+        val longer = maxOf(bounds.outWidth, bounds.outHeight)
+        var sample = 1
+        while (longer / sample > maxDim) sample *= 2
+        val opts = BitmapFactory.Options().apply { inSampleSize = sample }
+        BitmapFactory.decodeFile(path, opts)
+    } catch (_: Throwable) {
+        null
+    }
 }
 
 private fun startRecording(
