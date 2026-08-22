@@ -11,12 +11,16 @@ import kotlin.concurrent.Volatile
  * which is harmless (a miss simply re-probes). Bounded so a long timeline
  * cannot grow the map without limit.
  */
+data class NaturalSizePx(val widthPx: Int, val heightPx: Int)
+
 object MediaPresentationCache {
 
     internal const val CAPACITY: Int = 256
 
     @Volatile private var aspectRatios: Map<String, Float> = emptyMap()
     @Volatile private var durationsMs: Map<String, Long> = emptyMap()
+    @Volatile private var naturalSizesPx: Map<String, NaturalSizePx> = emptyMap()
+    @Volatile private var sourcePathNaturalSizesPx: Map<String, NaturalSizePx> = emptyMap()
 
     fun aspectRatio(ref: MediaStorageRef): Float? = aspectRatios[ref.value]
 
@@ -30,13 +34,28 @@ object MediaPresentationCache {
         durationsMs = trim(durationsMs) + (ref.value to value)
     }
 
+    fun naturalSizePx(ref: MediaStorageRef): NaturalSizePx? = naturalSizesPx[ref.value]
+
+    fun putNaturalSizePx(ref: MediaStorageRef, value: NaturalSizePx) {
+        naturalSizesPx = trim(naturalSizesPx) + (ref.value to value)
+    }
+
+    fun naturalSizePxForPath(path: String): NaturalSizePx? = sourcePathNaturalSizesPx[path]
+
+    fun putNaturalSizePxForPath(path: String, value: NaturalSizePx) {
+        sourcePathNaturalSizesPx = trim(sourcePathNaturalSizesPx) + (path to value)
+    }
+
     fun clear() {
         aspectRatios = emptyMap()
         durationsMs = emptyMap()
+        naturalSizesPx = emptyMap()
+        sourcePathNaturalSizesPx = emptyMap()
     }
 
     internal fun aspectRatioSize(): Int = aspectRatios.size
     internal fun durationSize(): Int = durationsMs.size
+    internal fun naturalSizeCount(): Int = naturalSizesPx.size
 
     private fun <V> trim(cur: Map<String, V>): Map<String, V> =
         if (cur.size < CAPACITY) cur

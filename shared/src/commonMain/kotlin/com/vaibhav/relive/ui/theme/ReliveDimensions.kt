@@ -58,6 +58,12 @@ data class ReliveMediaDimensions(
     val collageDominantAspect: Float = 4f / 3f,
     val collageVideoAspect: Float = 16f / 9f,
     val collageAudioAspect: Float = 4f / 3f,
+    // Composer (new-moment) adaptive preview. Both are MAXIMUMS — the
+    // preview shrink-wraps around media that would otherwise render
+    // smaller. Never used as forced dimensions.
+    val composerPreviewMaxHeight: Dp = 420.dp,
+    val composerPlaceholderFallbackHeight: Dp = 180.dp,
+    val composerPlaceholderFallbackAspect: Float = 4f / 3f,
 )
 
 @Immutable

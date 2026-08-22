@@ -256,6 +256,7 @@ class MomentComposerViewModel(
                     draftId = draftId,
                     type = raw.type,
                     status = DraftMediaStatus.Pending,
+                    sourcePath = raw.sourcePath,
                 ),
                 mediaError = null,
                 saveState = current.saveState.clearedOnAttachmentChange(),

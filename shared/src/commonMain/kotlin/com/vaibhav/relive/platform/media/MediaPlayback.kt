@@ -15,8 +15,20 @@ import kotlinx.coroutines.withContext
 @Composable
 expect fun RelivedImage(ref: MediaStorageRef, mediaStore: MediaStore, modifier: Modifier)
 
+/**
+ * Composer callers pass [posterFallbackPath] — the pre-processing source
+ * file — so the ready surface can show an instant poster frame from the
+ * already-warm source-thumbnail cache while the ready file's own frame is
+ * being extracted. Non-composer callers (viewer, gallery) pass null to
+ * preserve existing behavior.
+ */
 @Composable
-expect fun RelivedVideo(ref: MediaStorageRef, mediaStore: MediaStore, modifier: Modifier)
+expect fun RelivedVideo(
+    ref: MediaStorageRef,
+    mediaStore: MediaStore,
+    modifier: Modifier,
+    posterFallbackPath: String? = null,
+)
 
 @Composable
 expect fun RelivedAudio(ref: MediaStorageRef, mediaStore: MediaStore, modifier: Modifier)
@@ -67,6 +79,47 @@ expect fun readImageAspectRatio(ref: MediaStorageRef, mediaStore: MediaStore): F
  * [rememberMediaDurationMs] Composable is the safe entry point.
  */
 expect fun readMediaDurationMs(ref: MediaStorageRef, mediaStore: MediaStore): Long?
+
+/**
+ * Best-effort natural pixel dimensions for an image ref after orientation
+ * has been applied. Callers MUST invoke off the main thread; the
+ * [rememberImageNaturalSizeFor] Composable is the safe entry point.
+ * Returned width/height are the display-oriented pixel sizes.
+ */
+expect fun readImageNaturalSize(ref: MediaStorageRef, mediaStore: MediaStore): NaturalSizePx?
+
+/**
+ * Best-effort natural pixel dimensions for a video ref after track
+ * preferred-transform rotation has been applied. Off-main-thread only;
+ * use [rememberVideoNaturalSizeFor] during composition.
+ */
+expect fun readVideoNaturalSize(ref: MediaStorageRef, mediaStore: MediaStore): NaturalSizePx?
+
+/**
+ * Lightweight metadata-only probe of the video at [path] (no full decode).
+ * Applies track rotation/preferredTransform so returned width/height match
+ * the frame the player will show. Off-main-thread only; use
+ * [rememberVideoNaturalSizeForPath] during composition. Enables the composer
+ * to size the Processing placeholder to the same bounds as the eventual
+ * ready video before compression finishes.
+ */
+expect fun readVideoNaturalSizeFromPath(path: String): NaturalSizePx?
+
+/**
+ * Renders a representative frame extracted from the video at [sourcePath]
+ * (the ORIGINAL pre-processing file). Used by the composer so a video
+ * placeholder shows the user what they picked while transcoding runs.
+ *
+ * Extraction contract: lightweight metadata-only frame grab (Android
+ * MediaMetadataRetriever, iOS AVAssetImageGenerator). MUST run off the
+ * main thread, release retriever/generator immediately, and be cached
+ * keyed by [sourcePath] so recompositions do not re-decode. No MediaPlayer
+ * / AVPlayer construction. Returns silently (empty layout) when
+ * [sourcePath] is null or extraction fails so the caller's own background
+ * shows through.
+ */
+@Composable
+expect fun VideoSourceThumbnail(sourcePath: String?, modifier: Modifier)
 
 /**
  * Best-effort real-audio amplitude envelope for [ref] with roughly
@@ -126,6 +179,66 @@ fun rememberMediaDurationMs(ref: MediaStorageRef, mediaStore: MediaStore): Long?
  * completes (or if extraction fails), so the waveform tile shows a flat
  * baseline while decoding and on error.
  */
+/**
+ * Composable that returns the natural pixel size for an image [ref].
+ * Reads from [MediaPresentationCache] on hit and probes on a background
+ * dispatcher on miss. Null until the probe completes / on failure.
+ */
+@Composable
+fun rememberImageNaturalSizeFor(ref: MediaStorageRef, mediaStore: MediaStore): NaturalSizePx? {
+    val cached = MediaPresentationCache.naturalSizePx(ref)
+    val state = produceState(initialValue = cached, key1 = ref.value) {
+        if (value != null) return@produceState
+        val v = withContext(Dispatchers.Default) { readImageNaturalSize(ref, mediaStore) }
+        if (v != null && v.widthPx > 0 && v.heightPx > 0) {
+            MediaPresentationCache.putNaturalSizePx(ref, v)
+            value = v
+        }
+    }
+    return state.value
+}
+
+/**
+ * Composable that returns the natural pixel size for a video [ref].
+ * Reads from [MediaPresentationCache] on hit and probes on a background
+ * dispatcher on miss.
+ */
+@Composable
+fun rememberVideoNaturalSizeFor(ref: MediaStorageRef, mediaStore: MediaStore): NaturalSizePx? {
+    val cached = MediaPresentationCache.naturalSizePx(ref)
+    val state = produceState(initialValue = cached, key1 = ref.value) {
+        if (value != null) return@produceState
+        val v = withContext(Dispatchers.Default) { readVideoNaturalSize(ref, mediaStore) }
+        if (v != null && v.widthPx > 0 && v.heightPx > 0) {
+            MediaPresentationCache.putNaturalSizePx(ref, v)
+            value = v
+        }
+    }
+    return state.value
+}
+
+/**
+ * Composable that returns the natural pixel size for a video whose bytes
+ * still live at [sourcePath] (pre-processing). Reads from
+ * [MediaPresentationCache] on hit and probes on a background dispatcher on
+ * miss. Null until the probe completes / on failure or when [sourcePath]
+ * is null.
+ */
+@Composable
+fun rememberVideoNaturalSizeForPath(sourcePath: String?): NaturalSizePx? {
+    if (sourcePath == null) return null
+    val cached = MediaPresentationCache.naturalSizePxForPath(sourcePath)
+    val state = produceState(initialValue = cached, key1 = sourcePath) {
+        if (value != null) return@produceState
+        val v = withContext(Dispatchers.Default) { readVideoNaturalSizeFromPath(sourcePath) }
+        if (v != null && v.widthPx > 0 && v.heightPx > 0) {
+            MediaPresentationCache.putNaturalSizePxForPath(sourcePath, v)
+            value = v
+        }
+    }
+    return state.value
+}
+
 @Composable
 fun rememberWaveformFor(
     ref: MediaStorageRef,
