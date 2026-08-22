@@ -128,8 +128,8 @@ Only the weights and styles actually referenced by the token mappings below are 
 | `type.title`            | serif  | ~24sp (2xl)                               | moment title                  |
 | `type.subtitle`         | sans   | ~14sp, italic                             | moment subtitle/summary line  |
 | `type.body`             | sans   | ~14–16sp                                  | content                       |
-| `type.eyebrow`          | sans   | ~10sp, semibold, uppercase, wide tracking | date/location metadata        |
-| `type.tag`              | sans   | ~10sp, semibold, uppercase, wide tracking | tag chips                     |
+| `type.eyebrow`          | sans   | ~10sp, semibold, uppercase, wide tracking | timeline metadata line (`DATE • TIME` / location)        |
+| `type.tag`              | sans   | ~10sp, semibold, wide tracking            | tag chips (rendered `#lowercase`; `#` is supplied by the UI, not stored on the tag label) |
 | `type.action`           | sans   | ~14sp, semibold                           | buttons                       |
 
 Sizes are expressed in scalable units (`sp`) so they respect system font scaling (§16).

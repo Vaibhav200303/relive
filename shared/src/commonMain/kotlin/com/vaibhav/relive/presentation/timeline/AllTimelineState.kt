@@ -11,6 +11,7 @@ import com.vaibhav.relive.domain.model.Tag
 data class MomentPresentation(
     val id: MomentId,
     val formattedDate: String,
+    val formattedTime: String,
     val title: String,
     val content: String,
     val locationLabel: String?,
