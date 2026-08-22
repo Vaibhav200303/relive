@@ -63,9 +63,14 @@ Central, high-value behavior. Use a deterministic `Clock`.
 
 ## 5. Timeline membership tests
 
+- Custom timelines persist and reappear when the database/repositories are reopened.
+- Timeline creation trims surrounding whitespace and rejects blank names without losing the entered value on failure.
 - Create-in-custom-timeline → moment belongs to **All** and that timeline.
 - Create-in-All → optional assignment to zero or more custom timelines.
 - A moment in multiple timelines exists once; appears in each referencing timeline.
+- All and custom timeline presentation remain chronological (oldest at top, newest above the composer).
+- Switching timelines changes the observed Moment set without changing Moment identity, favorite state, tags, location, or media.
+- Failed Moment + membership insertion leaves no partial Moment or membership rows and preserves the composer draft.
 - Removing a moment from a custom timeline does not delete the moment or affect All.
 - All always reflects every saved moment.
 
@@ -131,6 +136,17 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 - [ ] Create a moment in a debug build, kill the process, reopen — moment persists.
 - [ ] Remove app from Recents, reopen — moment persists.
 - [ ] No in-memory fallback silently replaces SQLDelight storage.
+
+### Custom timelines
+- [ ] All is selected by default; custom timelines appear in the selector immediately after creation.
+- [ ] Blank timeline names are rejected; surrounding whitespace is trimmed.
+- [ ] A custom timeline with no Moments shows the editorial empty state and the inline `+` marker.
+- [ ] Creating inside a custom timeline shows the same Moment once there and once in All.
+- [ ] Creating in All with no assignment keeps the Moment out of custom timelines.
+- [ ] Assigning one or more custom timelines from All shows one shared Moment in every selected scope.
+- [ ] Switching timelines stops active playback and never changes an unfinished draft's membership silently.
+- [ ] Custom timelines and memberships survive process death, Recents removal, and a normal APK update.
+- [ ] Tags, location, favorite state, images, video, audio, gallery, and viewer behavior are unchanged in custom timelines.
 
 ### Adaptive single media
 - [ ] Small image renders at natural size, not stretched.

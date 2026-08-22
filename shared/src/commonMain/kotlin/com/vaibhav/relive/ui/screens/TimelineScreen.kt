@@ -1,13 +1,13 @@
 package com.vaibhav.relive.ui.screens
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,7 +40,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.vaibhav.relive.domain.id.IdGenerator
 import com.vaibhav.relive.domain.model.MomentId
+import com.vaibhav.relive.domain.model.Tag
+import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.repository.MomentRepository
+import com.vaibhav.relive.domain.repository.TimelineRepository
 import com.vaibhav.relive.domain.time.Clock
 import com.vaibhav.relive.platform.media.ActivePlayback
 import com.vaibhav.relive.platform.media.MediaProcessor
@@ -48,39 +52,65 @@ import com.vaibhav.relive.platform.media.rememberMediaPickerHandle
 import com.vaibhav.relive.platform.permission.MicPermissionResult
 import com.vaibhav.relive.presentation.composer.MomentComposerState
 import com.vaibhav.relive.presentation.composer.MomentComposerViewModel
-import com.vaibhav.relive.presentation.timeline.AllTimelineUiState
-import com.vaibhav.relive.presentation.timeline.AllTimelineViewModel
+import com.vaibhav.relive.presentation.composer.SaveState
+import com.vaibhav.relive.presentation.timeline.CurrentTimeline
 import com.vaibhav.relive.presentation.timeline.MomentAttachmentPresentation
 import com.vaibhav.relive.presentation.timeline.MomentPresentation
+import com.vaibhav.relive.presentation.timeline.TimelineMomentsState
+import com.vaibhav.relive.presentation.timeline.TimelineScreenState
+import com.vaibhav.relive.presentation.timeline.TimelineViewModel
 import com.vaibhav.relive.presentation.viewer.TimelineMediaNavState
 import com.vaibhav.relive.presentation.viewer.closeGallery
 import com.vaibhav.relive.presentation.viewer.closeViewer
 import com.vaibhav.relive.presentation.viewer.openFromCollage
 import com.vaibhav.relive.presentation.viewer.openFromGallery
-import com.vaibhav.relive.presentation.composer.SaveState
 import com.vaibhav.relive.ui.components.composer.CollapsedComposerMarker
 import com.vaibhav.relive.ui.components.composer.ComposerOverlayHost
-import com.vaibhav.relive.ui.components.viewer.MediaViewer
-import com.vaibhav.relive.ui.components.viewer.MomentMediaGallery
 import com.vaibhav.relive.ui.components.composer.MediaPickerDriver
 import com.vaibhav.relive.ui.components.composer.MomentComposer
+import com.vaibhav.relive.ui.components.timeline.DiscardTimelineDraftDialog
+import com.vaibhav.relive.ui.components.timeline.EmptyCustomTimelinePlaceholder
 import com.vaibhav.relive.ui.components.timeline.MomentCard
+import com.vaibhav.relive.ui.components.timeline.TimelineCreationDialog
 import com.vaibhav.relive.ui.components.timeline.TimelineHeader
+import com.vaibhav.relive.ui.components.timeline.TimelineSelector
+import com.vaibhav.relive.ui.components.viewer.MediaViewer
+import com.vaibhav.relive.ui.components.viewer.MomentMediaGallery
 import com.vaibhav.relive.ui.theme.ReliveTheme
 
 @Composable
-fun AllTimelineScreen(
+fun TimelineScreen(
     momentRepository: MomentRepository,
+    timelineRepository: TimelineRepository,
     clock: Clock,
     idGenerator: IdGenerator,
     mediaStore: MediaStore,
     mediaProcessor: MediaProcessor,
 ) {
     val scope = rememberCoroutineScope()
-    val timelineViewModel: AllTimelineViewModel = remember(momentRepository, scope) {
-        AllTimelineViewModel(momentRepository, scope)
+    val timelineViewModel = remember(
+        momentRepository,
+        timelineRepository,
+        clock,
+        idGenerator,
+        scope,
+    ) {
+        TimelineViewModel(
+            momentRepository = momentRepository,
+            timelineRepository = timelineRepository,
+            clock = clock,
+            idGenerator = idGenerator,
+            scope = scope,
+        )
     }
-    val composerViewModel: MomentComposerViewModel = remember(momentRepository, clock, idGenerator, scope, mediaStore, mediaProcessor) {
+    val composerViewModel = remember(
+        momentRepository,
+        clock,
+        idGenerator,
+        scope,
+        mediaStore,
+        mediaProcessor,
+    ) {
         MomentComposerViewModel(
             momentRepository = momentRepository,
             clock = clock,
@@ -95,7 +125,9 @@ fun AllTimelineScreen(
 
     var navState by remember { mutableStateOf(TimelineMediaNavState.Idle) }
     var isComposerExpanded by remember { mutableStateOf(false) }
+    var pendingTimelineSwitch by remember { mutableStateOf<CurrentTimeline?>(null) }
     var wasSaving by remember { mutableStateOf(false) }
+
     LaunchedEffect(composerState.saveState) {
         val nowSaving = composerState.saveState is SaveState.Saving
         if (wasSaving && composerState.saveState is SaveState.Idle) {
@@ -104,8 +136,25 @@ fun AllTimelineScreen(
         wasSaving = nowSaving
     }
 
-    val pickerHandle = rememberMediaPickerHandle(mediaStore)
+    fun completeTimelineSwitch(target: CurrentTimeline) {
+        ActivePlayback.stopActive()
+        navState = TimelineMediaNavState.Idle
+        composerViewModel.reset()
+        composerViewModel.prepareForTimeline(target)
+        isComposerExpanded = false
+        timelineViewModel.selectTimeline(target)
+    }
 
+    fun requestTimelineSwitch(target: CurrentTimeline) {
+        if (target == timelineState.currentTimeline || composerState.isSaving) return
+        if (composerState.hasUserDraft) {
+            pendingTimelineSwitch = target
+        } else {
+            completeTimelineSwitch(target)
+        }
+    }
+
+    val pickerHandle = rememberMediaPickerHandle(mediaStore)
     MediaPickerDriver(
         pending = composerState.pendingMediaAction,
         handle = pickerHandle,
@@ -114,15 +163,17 @@ fun AllTimelineScreen(
     )
 
     Box(modifier = Modifier.fillMaxSize()) {
-        AllTimelineContent(
+        TimelineContent(
             timelineState = timelineState,
             composerState = composerState,
             clock = clock,
             mediaStore = mediaStore,
+            onSelectTimeline = ::requestTimelineSwitch,
+            onAddTimeline = timelineViewModel::showTimelineCreation,
             onToggleFavorite = timelineViewModel::setFavorite,
-            onOpenMedia = { list, idx ->
+            onOpenMedia = { list, index ->
                 ActivePlayback.stopActive()
-                navState = navState.openFromCollage(list, idx)
+                navState = navState.openFromCollage(list, index)
             },
             onMenuClick = { },
             onSearchClick = { },
@@ -131,6 +182,7 @@ fun AllTimelineScreen(
             onPendingTagChange = composerViewModel::updatePendingTagInput,
             onCommitPendingTag = composerViewModel::commitPendingTag,
             onRemoveTag = composerViewModel::removeTag,
+            onToggleTimelineAssignment = composerViewModel::toggleTimelineAssignment,
             onToggleAddMedia = composerViewModel::toggleAddMedia,
             onMicTap = composerViewModel::requestMicPermission,
             onCameraTap = composerViewModel::openCamera,
@@ -145,11 +197,15 @@ fun AllTimelineScreen(
             },
             onKeepMoment = composerViewModel::keepMoment,
             isComposerExpanded = isComposerExpanded,
-            onExpandComposer = { isComposerExpanded = true },
+            onExpandComposer = {
+                composerViewModel.prepareForTimeline(timelineState.currentTimeline)
+                isComposerExpanded = true
+            },
             onMicPermissionResult = composerViewModel::onMicPermissionResult,
             onDismissMicPermissionMessage = composerViewModel::dismissMicPermissionMessage,
             onOpenAppSettings = composerViewModel::openAppSettings,
         )
+
         ComposerOverlayHost(
             overlay = composerState.overlay,
             mediaStore = mediaStore,
@@ -158,15 +214,16 @@ fun AllTimelineScreen(
             onPick = composerViewModel::requestPick,
             onOpenLibraryFromCamera = composerViewModel::openLibraryChoice,
         )
+
         val gallery = navState.gallery
         val viewer = navState.viewer
         if (gallery != null) {
             MomentMediaGallery(
                 state = gallery,
                 mediaStore = mediaStore,
-                onOpenItem = { idx ->
+                onOpenItem = { index ->
                     ActivePlayback.stopActive()
-                    navState = navState.openFromGallery(idx)
+                    navState = navState.openFromGallery(index)
                 },
                 onClose = {
                     ActivePlayback.stopActive()
@@ -179,7 +236,7 @@ fun AllTimelineScreen(
             MediaViewer(
                 state = viewer,
                 mediaStore = mediaStore,
-                onIndexChange = { idx -> navState = navState.copy(viewer = viewer.withCurrent(idx)) },
+                onIndexChange = { index -> navState = navState.copy(viewer = viewer.withCurrent(index)) },
                 onClose = {
                     ActivePlayback.stopActive()
                     navState = navState.closeViewer()
@@ -187,14 +244,33 @@ fun AllTimelineScreen(
             )
         }
     }
+
+    TimelineCreationDialog(
+        state = timelineState.creation,
+        onNameChange = timelineViewModel::updateTimelineName,
+        onCreate = timelineViewModel::createTimeline,
+        onDismiss = timelineViewModel::dismissTimelineCreation,
+    )
+
+    pendingTimelineSwitch?.let { target ->
+        DiscardTimelineDraftDialog(
+            onDiscard = {
+                pendingTimelineSwitch = null
+                completeTimelineSwitch(target)
+            },
+            onKeepEditing = { pendingTimelineSwitch = null },
+        )
+    }
 }
 
 @Composable
-fun AllTimelineContent(
-    timelineState: AllTimelineUiState,
+private fun TimelineContent(
+    timelineState: TimelineScreenState,
     composerState: MomentComposerState,
     clock: Clock,
     mediaStore: MediaStore,
+    onSelectTimeline: (CurrentTimeline) -> Unit,
+    onAddTimeline: () -> Unit,
     onToggleFavorite: (MomentId, Boolean) -> Unit,
     onOpenMedia: (List<MomentAttachmentPresentation>, Int) -> Unit,
     onMenuClick: () -> Unit,
@@ -203,7 +279,8 @@ fun AllTimelineContent(
     onContentChange: (String) -> Unit,
     onPendingTagChange: (String) -> Unit,
     onCommitPendingTag: () -> Unit,
-    onRemoveTag: (com.vaibhav.relive.domain.model.Tag) -> Unit,
+    onRemoveTag: (Tag) -> Unit,
+    onToggleTimelineAssignment: (TimelineId) -> Unit,
     onToggleAddMedia: () -> Unit,
     onMicTap: () -> Unit,
     onCameraTap: () -> Unit,
@@ -229,6 +306,14 @@ fun AllTimelineContent(
             .background(colors.bgCanvas),
     ) {
         TimelineHeader(onMenuClick = onMenuClick, onSearchClick = onSearchClick)
+        TimelineSelector(
+            timelines = timelineState.customTimelines,
+            selected = timelineState.currentTimeline,
+            enabled = !composerState.isSaving,
+            onSelect = onSelectTimeline,
+            onAdd = onAddTimeline,
+            modifier = Modifier.padding(bottom = dims.spacing.sm),
+        )
 
         Box(
             modifier = Modifier
@@ -236,10 +321,12 @@ fun AllTimelineContent(
                 .padding(horizontal = dims.timeline.horizontalPadding)
                 .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime)),
         ) {
-            val moments: List<MomentPresentation> = when (timelineState) {
-                AllTimelineUiState.Loading -> emptyList()
-                AllTimelineUiState.Empty -> emptyList()
-                is AllTimelineUiState.Loaded -> timelineState.moments
+            val moments: List<MomentPresentation> = when (val state = timelineState.moments) {
+                TimelineMomentsState.Loading, TimelineMomentsState.Empty -> emptyList()
+                is TimelineMomentsState.Loaded -> state.moments
+            }
+            val customName = (timelineState.currentTimeline as? CurrentTimeline.Custom)?.let { current ->
+                timelineState.customTimelines.firstOrNull { it.id == current.id }?.name
             }
 
             val railInset = remember(dims.timeline.contentInset, dims.timeline.railWidth) {
@@ -253,80 +340,90 @@ fun AllTimelineContent(
                     .background(colors.borderMuted)
                     .align(Alignment.TopStart),
             )
-            val listState = rememberLazyListState()
-            var lastSeenCount by remember { mutableIntStateOf(-1) }
-            LaunchedEffect(moments.size) {
-                val target = moments.size
-                if (lastSeenCount == -1) {
-                    listState.scrollToItem(target)
-                } else if (target > lastSeenCount) {
-                    listState.animateScrollToItem(target)
+
+            key(timelineState.currentTimeline) {
+                val listState = rememberLazyListState()
+                var lastSeenCount by remember { mutableIntStateOf(-1) }
+                LaunchedEffect(moments.size) {
+                    val target = if (customName != null && moments.isEmpty()) 0 else moments.size
+                    if (lastSeenCount == -1) {
+                        listState.scrollToItem(target)
+                    } else if (moments.size > lastSeenCount) {
+                        listState.animateScrollToItem(target)
+                    }
+                    lastSeenCount = moments.size
                 }
-                lastSeenCount = target
-            }
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = dims.spacing.huge),
-            ) {
-                items(items = moments, key = { it.id.value }) { moment ->
-                    MomentCard(
-                        moment = moment,
-                        mediaStore = mediaStore,
-                        onToggleFavorite = { newValue -> onToggleFavorite(moment.id, newValue) },
-                        onOpenMedia = onOpenMedia,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-                item(key = "composer") {
-                    AnimatedContent(
-                        targetState = isComposerExpanded,
-                        transitionSpec = {
-                            val expandMs = 320
-                            val collapseMs = 260
-                            val enter = expandVertically(
-                                animationSpec = tween(expandMs, easing = FastOutSlowInEasing),
-                                expandFrom = Alignment.Top,
-                            ) + fadeIn(animationSpec = tween(expandMs, easing = FastOutSlowInEasing))
-                            val exit = shrinkVertically(
-                                animationSpec = tween(collapseMs, easing = FastOutSlowInEasing),
-                                shrinkTowards = Alignment.Top,
-                            ) + fadeOut(animationSpec = tween(collapseMs, easing = FastOutSlowInEasing))
-                            enter togetherWith exit
-                        },
-                        label = "composer-expand",
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { expanded ->
-                        if (expanded) {
-                            MomentComposer(
-                                state = composerState,
-                                clock = clock,
-                                mediaStore = mediaStore,
-                                onTitleChange = onTitleChange,
-                                onContentChange = onContentChange,
-                                onPendingTagChange = onPendingTagChange,
-                                onCommitPendingTag = onCommitPendingTag,
-                                onRemoveTag = onRemoveTag,
-                                onToggleAddMedia = onToggleAddMedia,
-                                onMicTap = onMicTap,
-                                onCameraTap = onCameraTap,
-                                onLibraryTap = onLibraryTap,
-                                onStopRecording = onStopRecording,
-                                onCancelRecording = onCancelRecording,
-                                onRemoveAttachment = onRemoveAttachment,
-                                onRetryAttachment = onRetryAttachment,
-                                onReset = onReset,
-                                onKeepMoment = onKeepMoment,
-                                onMicPermissionResult = onMicPermissionResult,
-                                onDismissMicPermissionMessage = onDismissMicPermissionMessage,
-                                onOpenAppSettings = onOpenAppSettings,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        } else {
-                            CollapsedComposerMarker(
-                                onExpand = onExpandComposer,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = dims.spacing.huge),
+                ) {
+                    items(items = moments, key = { it.id.value }) { moment ->
+                        MomentCard(
+                            moment = moment,
+                            mediaStore = mediaStore,
+                            onToggleFavorite = { value -> onToggleFavorite(moment.id, value) },
+                            onOpenMedia = onOpenMedia,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    if (customName != null && timelineState.moments == TimelineMomentsState.Empty) {
+                        item(key = "custom-empty") {
+                            EmptyCustomTimelinePlaceholder(timelineName = customName)
+                        }
+                    }
+                    item(key = "composer") {
+                        AnimatedContent(
+                            targetState = isComposerExpanded,
+                            transitionSpec = {
+                                val expandMs = 320
+                                val collapseMs = 260
+                                val enter = expandVertically(
+                                    animationSpec = tween(expandMs, easing = FastOutSlowInEasing),
+                                    expandFrom = Alignment.Top,
+                                ) + fadeIn(animationSpec = tween(expandMs, easing = FastOutSlowInEasing))
+                                val exit = shrinkVertically(
+                                    animationSpec = tween(collapseMs, easing = FastOutSlowInEasing),
+                                    shrinkTowards = Alignment.Top,
+                                ) + fadeOut(animationSpec = tween(collapseMs, easing = FastOutSlowInEasing))
+                                enter togetherWith exit
+                            },
+                            label = "composer-expand",
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { expanded ->
+                            if (expanded) {
+                                MomentComposer(
+                                    state = composerState,
+                                    customTimelines = timelineState.customTimelines,
+                                    clock = clock,
+                                    mediaStore = mediaStore,
+                                    onTitleChange = onTitleChange,
+                                    onContentChange = onContentChange,
+                                    onPendingTagChange = onPendingTagChange,
+                                    onCommitPendingTag = onCommitPendingTag,
+                                    onRemoveTag = onRemoveTag,
+                                    onToggleTimelineAssignment = onToggleTimelineAssignment,
+                                    onToggleAddMedia = onToggleAddMedia,
+                                    onMicTap = onMicTap,
+                                    onCameraTap = onCameraTap,
+                                    onLibraryTap = onLibraryTap,
+                                    onStopRecording = onStopRecording,
+                                    onCancelRecording = onCancelRecording,
+                                    onRemoveAttachment = onRemoveAttachment,
+                                    onRetryAttachment = onRetryAttachment,
+                                    onReset = onReset,
+                                    onKeepMoment = onKeepMoment,
+                                    onMicPermissionResult = onMicPermissionResult,
+                                    onDismissMicPermissionMessage = onDismissMicPermissionMessage,
+                                    onOpenAppSettings = onOpenAppSettings,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            } else {
+                                CollapsedComposerMarker(
+                                    onExpand = onExpandComposer,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
                         }
                     }
                 }

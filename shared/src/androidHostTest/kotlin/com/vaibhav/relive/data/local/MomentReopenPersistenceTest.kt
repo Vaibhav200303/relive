@@ -3,7 +3,10 @@ package com.vaibhav.relive.data.local
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.vaibhav.relive.data.local.db.ReliveDatabase
 import com.vaibhav.relive.data.local.repository.SqlDelightMomentRepository
+import com.vaibhav.relive.data.local.repository.SqlDelightTimelineRepository
 import com.vaibhav.relive.domain.model.MomentId
+import com.vaibhav.relive.domain.model.TimelineId
+import com.vaibhav.relive.domain.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import java.io.File
@@ -66,6 +69,38 @@ class MomentReopenPersistenceTest {
             val all = SqlDelightMomentRepository(db, Dispatchers.Unconfined).listAll()
             assertEquals(1, all.size)
             assertEquals("persist-me", all.single().id.value)
+        }
+    }
+
+    @Test fun customTimelineAndMembershipSurviveDriverReopen() = runTest {
+        val timelineId = TimelineId("family")
+
+        openDriver(create = true).use { driver ->
+            val db = ReliveDatabaseFactory.create(driver)
+            val timelines = SqlDelightTimelineRepository(db, Dispatchers.Unconfined)
+            val moments = SqlDelightMomentRepository(db, Dispatchers.Unconfined)
+            timelines.createCustom(sampleCustomTimeline(timelineId.value, "Family"), Instant(1L))
+            moments.insert(
+                sampleMoment(id = "family-moment", title = "Sunday lunch"),
+                timelineIds = setOf(timelineId),
+            )
+        }
+
+        openDriver(create = false).use { driver ->
+            val db = ReliveDatabaseFactory.create(driver)
+            val timelines = SqlDelightTimelineRepository(db, Dispatchers.Unconfined)
+            val moments = SqlDelightMomentRepository(db, Dispatchers.Unconfined)
+
+            assertEquals("Family", timelines.findCustom(timelineId)?.name)
+            assertEquals(listOf(timelineId), timelines.timelinesFor(MomentId("family-moment")))
+            assertEquals(
+                listOf("family-moment"),
+                moments.listInTimeline(timelineId).map { it.id.value },
+            )
+            assertEquals(
+                listOf("family-moment"),
+                moments.listAll().map { it.id.value },
+            )
         }
     }
 

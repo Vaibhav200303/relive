@@ -17,6 +17,7 @@ import com.vaibhav.relive.platform.media.ProcessedMedia
 import com.vaibhav.relive.platform.media.RawMedia
 import com.vaibhav.relive.platform.media.RecordingState
 import com.vaibhav.relive.platform.permission.MicPermissionResult
+import com.vaibhav.relive.presentation.timeline.CurrentTimeline
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -57,6 +58,96 @@ class MomentComposerViewModelTest {
         vm.keepMoment()
         assertEquals(1, repo.inserts.size)
         assertEquals("A", repo.inserts.single().first.title)
+    }
+
+    @Test
+    fun createInAllWithoutAssignmentSavesNoCustomMembership() = runTest {
+        val repo = RecordingRepository()
+        val vm = newViewModel(repo)
+
+        vm.prepareForTimeline(CurrentTimeline.All)
+        vm.updateTitle("Only in All")
+        vm.keepMoment()
+
+        assertTrue(repo.inserts.single().second.isEmpty())
+    }
+
+    @Test
+    fun createInCustomAlwaysIncludesCurrentTimeline() = runTest {
+        val repo = RecordingRepository()
+        val vm = newViewModel(repo)
+        val family = TimelineId("family")
+
+        vm.prepareForTimeline(CurrentTimeline.Custom(family))
+        vm.updateTitle("Family day")
+        vm.keepMoment()
+
+        assertEquals(setOf(family), repo.inserts.single().second)
+    }
+
+    @Test
+    fun createInAllCanAssignMultipleCustomTimelines() = runTest {
+        val repo = RecordingRepository()
+        val vm = newViewModel(repo)
+        val family = TimelineId("family")
+        val travel = TimelineId("travel")
+
+        vm.toggleTimelineAssignment(family)
+        vm.toggleTimelineAssignment(travel)
+        vm.updateTitle("A shared Moment")
+        vm.keepMoment()
+
+        assertEquals(setOf(family, travel), repo.inserts.single().second)
+        assertTrue(vm.state.value.selectedTimelineIds.isEmpty())
+    }
+
+    @Test
+    fun failedSavePreservesDraftAndTimelineAssignment() = runTest {
+        val repo = RecordingRepository(failWith = RuntimeException("db"))
+        val vm = newViewModel(repo)
+        val family = TimelineId("family")
+
+        vm.toggleTimelineAssignment(family)
+        vm.updateTitle("Keep me")
+        vm.keepMoment()
+
+        assertIs<SaveState.Failure>(vm.state.value.saveState)
+        assertEquals("Keep me", vm.state.value.title)
+        assertEquals(setOf(family), vm.state.value.selectedTimelineIds)
+    }
+
+    @Test
+    fun timelineContextDoesNotChangeUnderNonEmptyDraft() = runTest {
+        val vm = newViewModel(RecordingRepository())
+        vm.updateTitle("Draft")
+
+        vm.prepareForTimeline(CurrentTimeline.Custom(TimelineId("family")))
+
+        assertEquals(CurrentTimeline.All, vm.state.value.timelineContext)
+        assertTrue(vm.state.value.selectedTimelineIds.isEmpty())
+    }
+
+    @Test
+    fun optionalTimelineSelectionCountsAsUserDraft() = runTest {
+        val vm = newViewModel(RecordingRepository())
+
+        vm.toggleTimelineAssignment(TimelineId("family"))
+
+        assertTrue(vm.state.value.hasUserDraft)
+    }
+
+    @Test
+    fun resetKeepsCurrentCustomMembershipDefault() = runTest {
+        val vm = newViewModel(RecordingRepository())
+        val family = TimelineId("family")
+        vm.prepareForTimeline(CurrentTimeline.Custom(family))
+        vm.updateTitle("Draft")
+
+        vm.reset()
+
+        assertFalse(vm.state.value.hasUserDraft)
+        assertEquals(CurrentTimeline.Custom(family), vm.state.value.timelineContext)
+        assertEquals(setOf(family), vm.state.value.selectedTimelineIds)
     }
 
     @Test
