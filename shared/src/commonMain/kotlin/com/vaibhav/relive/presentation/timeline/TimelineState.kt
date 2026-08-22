@@ -6,6 +6,8 @@ import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.Tag
 import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.TimelineId
+import com.vaibhav.relive.domain.model.ReliveLocation
+import com.vaibhav.relive.domain.time.Instant
 
 sealed interface CurrentTimeline {
     data object All : CurrentTimeline
@@ -35,11 +37,14 @@ sealed interface TimelineMomentsState {
 
 data class MomentPresentation(
     val id: MomentId,
+    val createdAt: Instant,
+    val updatedAt: Instant?,
     val formattedDate: String,
     val formattedTime: String,
     val title: String,
     val content: String,
     val locationLabel: String?,
+    val location: ReliveLocation?,
     val isFavorite: Boolean,
     val tags: List<Tag>,
     val attachments: List<MomentAttachmentPresentation>,
@@ -53,4 +58,5 @@ data class MomentPresentation(
 data class MomentAttachmentPresentation(
     val storageRef: MediaStorageRef,
     val type: MediaType,
+    val id: String = "",
 )

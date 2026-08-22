@@ -59,7 +59,7 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 - Membership rules: create-in-custom → All + that timeline; create-in-All → optional assignment to custom timelines.
 - **Exit:** moments appear in the correct timelines without duplication; membership tests pass.
 
-## Phase 6 — Edit / forget rules  ☐
+## Phase 6 — Edit / forget rules  ☑
 
 - Long-press within 4 days shows Edit / Forget; hidden after 4 days (keyed on `createdAt`).
 - Inline editing (add/remove media while editing); tap-outside save that does not trigger on control interactions.

@@ -2,6 +2,8 @@ package com.vaibhav.relive.presentation.composer
 
 import com.vaibhav.relive.domain.id.IdGenerator
 import com.vaibhav.relive.domain.model.MediaStorageRef
+import com.vaibhav.relive.domain.model.MediaAttachment
+import com.vaibhav.relive.domain.model.MediaAttachmentId
 import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.domain.model.Moment
 import com.vaibhav.relive.domain.model.MomentId
@@ -625,11 +627,95 @@ class MomentComposerViewModelTest {
         assertFalse(recorder.stopped)
     }
 
+    @Test
+    fun editPreservesIdentityAndCleansRemovedSavedFileOnlyAfterUpdate() = runTest {
+        val store = FakeMediaStore()
+        val repo = RecordingRepository()
+        val vm = newViewModel(repo, clockValue = Instant(100L), store = store)
+        val original = Moment(
+            id = MomentId("saved"), createdAt = Instant(0L), title = "Before",
+            attachments = listOf(
+                MediaAttachment(MediaAttachmentId("attachment"), MediaType.Image, MediaStorageRef("saved.jpg"), 0),
+            ),
+        )
+
+        assertTrue(vm.beginEdit(original))
+        vm.removeAttachment("attachment")
+        vm.updateTitle("After")
+        vm.keepMoment()
+
+        assertEquals("saved", repo.updates.single().id.value)
+        assertEquals(Instant(0L), repo.updates.single().createdAt)
+        assertEquals("After", repo.updates.single().title)
+        assertEquals(listOf(MediaStorageRef("saved.jpg")), store.deleted)
+    }
+
+    @Test
+    fun expiredMomentCannotEnterEdit() = runTest {
+        val vm = newViewModel(RecordingRepository(), clockValue = Instant(4 * 24 * 60 * 60 * 1000L))
+        assertFalse(vm.beginEdit(Moment(MomentId("saved"), Instant(0L), title = "Saved")))
+        assertFalse(vm.state.value.isEditing)
+    }
+
+    @Test
+    fun activeEditMaySaveAfterExpiry() = runTest {
+        var now = Instant(4 * 24 * 60 * 60 * 1000L - 1)
+        val repo = RecordingRepository()
+        val vm = newViewModel(repo, clock = Clock { now })
+        val original = Moment(MomentId("saved"), Instant(0L), title = "Before")
+
+        assertTrue(vm.beginEdit(original))
+        now = Instant(4 * 24 * 60 * 60 * 1000L)
+        vm.updateTitle("After")
+        vm.keepMoment()
+
+        assertEquals("saved", repo.updates.single().id.value)
+    }
+
+    @Test
+    fun failedEditUpdateKeepsOriginalMediaAndDraft() = runTest {
+        val store = FakeMediaStore()
+        val original = Moment(
+            id = MomentId("saved"), createdAt = Instant(0L), title = "Before",
+            attachments = listOf(MediaAttachment(MediaAttachmentId("attachment"), MediaType.Image, MediaStorageRef("saved.jpg"), 0)),
+        )
+        val repo = RecordingRepository(failWith = RuntimeException("db"), persisted = original)
+        val vm = newViewModel(repo, clockValue = Instant(1L), store = store)
+
+        assertTrue(vm.beginEdit(original))
+        vm.removeAttachment("attachment")
+        vm.updateTitle("After")
+        vm.keepMoment()
+
+        assertEquals(original, repo.persisted)
+        assertTrue(store.deleted.isEmpty())
+        assertIs<SaveState.Failure>(vm.state.value.saveState)
+        assertTrue(vm.state.value.isEditing)
+        assertEquals(0, vm.state.value.attachments.size)
+    }
+
+    @Test
+    fun editPreservesFavorite() = runTest {
+        val repo = RecordingRepository()
+        val vm = newViewModel(repo, clockValue = Instant(1L))
+        val original = Moment(MomentId("saved"), Instant(0L), title = "Before", isFavorite = true)
+
+        assertTrue(vm.beginEdit(original))
+        vm.updateTitle("After")
+        vm.keepMoment()
+
+        val updated = repo.updates.single()
+        assertEquals(original.id, updated.id)
+        assertEquals(original.createdAt, updated.createdAt)
+        assertTrue(updated.isFavorite)
+    }
+
     // --- helpers ---
 
     private fun TestScope.newViewModel(
         repo: MomentRepository,
         clockValue: Instant = Instant(0L),
+        clock: Clock = Clock { clockValue },
         store: MediaStore = FakeMediaStore(),
         processor: MediaProcessor = FakeMediaProcessor(store as? FakeMediaStore ?: FakeMediaStore()),
         recorderFactory: () -> AudioRecorder = { error("not used") },
@@ -639,7 +725,7 @@ class MomentComposerViewModelTest {
         var counter = 0
         return MomentComposerViewModel(
             momentRepository = repo,
-            clock = Clock { clockValue },
+            clock = clock,
             idGenerator = IdGenerator { "id-${counter++}" },
             scope = testScope,
             mediaStore = store,
@@ -653,8 +739,10 @@ class MomentComposerViewModelTest {
 private class RecordingRepository(
     private val failWith: Throwable? = null,
     private val gateBeforeInsert: CompletableDeferred<Unit>? = null,
+    var persisted: Moment? = null,
 ) : MomentRepository {
     val inserts: MutableList<Pair<Moment, Set<TimelineId>>> = mutableListOf()
+    val updates: MutableList<Moment> = mutableListOf()
 
     override suspend fun insert(moment: Moment, timelineIds: Set<TimelineId>) {
         gateBeforeInsert?.await()
@@ -662,7 +750,11 @@ private class RecordingRepository(
         inserts += moment to timelineIds
     }
     override suspend fun findById(id: MomentId): Moment? = inserts.firstOrNull { it.first.id == id }?.first
-    override suspend fun updateEditable(moment: Moment) = Unit
+    override suspend fun updateEditable(moment: Moment) {
+        failWith?.let { throw it }
+        updates += moment
+        persisted = moment
+    }
     override suspend fun setFavorite(id: MomentId, isFavorite: Boolean) = Unit
     override suspend fun delete(id: MomentId) = Unit
     override suspend fun listAll(): List<Moment> = inserts.map { it.first }

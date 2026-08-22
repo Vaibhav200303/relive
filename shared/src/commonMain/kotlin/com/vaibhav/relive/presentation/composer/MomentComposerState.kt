@@ -2,6 +2,7 @@ package com.vaibhav.relive.presentation.composer
 
 import com.vaibhav.relive.domain.model.MediaStorageRef
 import com.vaibhav.relive.domain.model.MediaType
+import com.vaibhav.relive.domain.model.Moment
 import com.vaibhav.relive.domain.model.MomentValidation
 import com.vaibhav.relive.domain.model.ReliveLocation
 import com.vaibhav.relive.domain.model.Tag
@@ -21,6 +22,8 @@ import com.vaibhav.relive.presentation.timeline.CurrentTimeline
  * failed Keep Moment preserves the drafts so a retry does not recompress.
  */
 data class MomentComposerState(
+    /** Non-null only while this composer is transforming an existing Moment inline. */
+    val editingMoment: Moment? = null,
     val timelineContext: CurrentTimeline = CurrentTimeline.All,
     val selectedTimelineIds: Set<TimelineId> = emptySet(),
     val title: String = "",
@@ -38,6 +41,7 @@ data class MomentComposerState(
     val saveState: SaveState = SaveState.Idle,
     val mediaError: String? = null,
 ) {
+    val isEditing: Boolean get() = editingMoment != null
     val isSaving: Boolean get() = saveState is SaveState.Saving
     val isRecording: Boolean get() = recording != null
     val hasProcessingAttachments: Boolean
@@ -46,8 +50,17 @@ data class MomentComposerState(
         get() = attachments.any { it.status is DraftMediaStatus.Failed }
     val allAttachmentsReady: Boolean
         get() = attachments.all { it.status is DraftMediaStatus.Ready }
+    /** Whether an active edit can be saved without producing an invalid/processing state. */
+    val canSaveActiveEdit: Boolean
+        get() = isEditing &&
+            !isSaving &&
+            !isRecording &&
+            !hasProcessingAttachments &&
+            !hasFailedAttachments &&
+            (title.isNotBlank() || content.isNotBlank() || attachments.isNotEmpty())
     val hasUserDraft: Boolean
-        get() = title.isNotBlank() ||
+        get() = editingMoment != null ||
+            title.isNotBlank() ||
             content.isNotBlank() ||
             tags.isNotEmpty() ||
             pendingTagInput.isNotBlank() ||
@@ -88,6 +101,8 @@ data class DraftAttachment(
      * thumbnail cache stays warm and covers the extraction window.
      */
     val sourcePath: String? = null,
+    /** Existing Moment media is never owned by this draft and must not be deleted on discard. */
+    val existingAttachmentId: String? = null,
 )
 
 /** Explicit lifecycle for a [DraftAttachment]. */

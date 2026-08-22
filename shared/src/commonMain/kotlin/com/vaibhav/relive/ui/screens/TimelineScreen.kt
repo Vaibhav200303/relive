@@ -9,6 +9,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -38,7 +41,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import com.vaibhav.relive.domain.id.IdGenerator
+import com.vaibhav.relive.domain.policy.EditWindow
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.Tag
 import com.vaibhav.relive.domain.model.TimelineId
@@ -52,6 +64,7 @@ import com.vaibhav.relive.platform.media.rememberMediaPickerHandle
 import com.vaibhav.relive.platform.permission.MicPermissionResult
 import com.vaibhav.relive.presentation.composer.MomentComposerState
 import com.vaibhav.relive.presentation.composer.MomentComposerViewModel
+import com.vaibhav.relive.presentation.composer.ComposerOverlay
 import com.vaibhav.relive.presentation.composer.SaveState
 import com.vaibhav.relive.presentation.timeline.CurrentTimeline
 import com.vaibhav.relive.presentation.timeline.MomentAttachmentPresentation
@@ -59,6 +72,7 @@ import com.vaibhav.relive.presentation.timeline.MomentPresentation
 import com.vaibhav.relive.presentation.timeline.TimelineMomentsState
 import com.vaibhav.relive.presentation.timeline.TimelineScreenState
 import com.vaibhav.relive.presentation.timeline.TimelineViewModel
+import com.vaibhav.relive.presentation.timeline.toMoment
 import com.vaibhav.relive.presentation.viewer.TimelineMediaNavState
 import com.vaibhav.relive.presentation.viewer.closeGallery
 import com.vaibhav.relive.presentation.viewer.closeViewer
@@ -77,6 +91,13 @@ import com.vaibhav.relive.ui.components.timeline.TimelineSelector
 import com.vaibhav.relive.ui.components.viewer.MediaViewer
 import com.vaibhav.relive.ui.components.viewer.MomentMediaGallery
 import com.vaibhav.relive.ui.theme.ReliveTheme
+
+private fun timelineViewModelCanEdit(moment: MomentPresentation, clock: Clock): Boolean =
+    EditWindow.isEditable(moment.toMoment(), clock)
+
+internal fun cleanupForgottenAttachments(moment: com.vaibhav.relive.domain.model.Moment, mediaStore: MediaStore) {
+    moment.attachments.forEach { attachment -> runCatching { mediaStore.delete(attachment.storageRef) } }
+}
 
 @Composable
 fun TimelineScreen(
@@ -127,12 +148,20 @@ fun TimelineScreen(
     var isComposerExpanded by remember { mutableStateOf(false) }
     var pendingTimelineSwitch by remember { mutableStateOf<CurrentTimeline?>(null) }
     var wasSaving by remember { mutableStateOf(false) }
+    var wasEditingWhenSaving by remember { mutableStateOf(false) }
+    var momentToForget by remember { mutableStateOf<MomentPresentation?>(null) }
+    var editorBounds by remember { mutableStateOf<Rect?>(null) }
+
+    LaunchedEffect(composerState.isEditing) {
+        if (!composerState.isEditing) editorBounds = null
+    }
 
     LaunchedEffect(composerState.saveState) {
         val nowSaving = composerState.saveState is SaveState.Saving
         if (wasSaving && composerState.saveState is SaveState.Idle) {
-            isComposerExpanded = false
+            if (!wasEditingWhenSaving) isComposerExpanded = false
         }
+        if (nowSaving) wasEditingWhenSaving = composerState.isEditing
         wasSaving = nowSaving
     }
 
@@ -162,7 +191,32 @@ fun TimelineScreen(
         onClear = composerViewModel::clearPendingMediaAction,
     )
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    val outsideTapSaveEnabled = composerState.canSaveActiveEdit &&
+        composerState.overlay == ComposerOverlay.None &&
+        composerState.pendingMediaAction == null &&
+        !composerState.pendingMicPermissionRequest &&
+        momentToForget == null &&
+        pendingTimelineSwitch == null
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(editorBounds, outsideTapSaveEnabled) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(
+                        requireUnconsumed = false,
+                        pass = PointerEventPass.Initial,
+                    )
+                    val up = waitForUpOrCancellation(pass = PointerEventPass.Initial)
+                        ?: return@awaitEachGesture
+                    val wasTap = up.uptimeMillis - down.uptimeMillis < viewConfiguration.longPressTimeoutMillis &&
+                        (up.position - down.position).getDistance() <= viewConfiguration.touchSlop
+                    if (wasTap && outsideTapSaveEnabled && isTapOutsideEditor(editorBounds, up.position)) {
+                        composerViewModel.keepMoment()
+                    }
+                }
+            },
+    ) {
         TimelineContent(
             timelineState = timelineState,
             composerState = composerState,
@@ -171,6 +225,14 @@ fun TimelineScreen(
             onSelectTimeline = ::requestTimelineSwitch,
             onAddTimeline = timelineViewModel::showTimelineCreation,
             onToggleFavorite = timelineViewModel::setFavorite,
+            onEditMoment = { moment ->
+                if (timelineViewModel.canEditOrForget(moment.toMoment()) &&
+                    composerViewModel.beginEdit(moment.toMoment())
+                ) {
+                    ActivePlayback.stopActive()
+                }
+            },
+            onForgetMoment = { moment -> momentToForget = moment },
             onOpenMedia = { list, index ->
                 ActivePlayback.stopActive()
                 navState = navState.openFromCollage(list, index)
@@ -189,7 +251,10 @@ fun TimelineScreen(
             onLibraryTap = composerViewModel::openLibraryChoice,
             onStopRecording = composerViewModel::stopRecording,
             onCancelRecording = composerViewModel::cancelRecording,
-            onRemoveAttachment = composerViewModel::removeAttachment,
+            onRemoveAttachment = { draftId ->
+                if (composerState.isEditing) ActivePlayback.stopActive()
+                composerViewModel.removeAttachment(draftId)
+            },
             onRetryAttachment = composerViewModel::retryAttachment,
             onReset = {
                 composerViewModel.reset()
@@ -198,12 +263,15 @@ fun TimelineScreen(
             onKeepMoment = composerViewModel::keepMoment,
             isComposerExpanded = isComposerExpanded,
             onExpandComposer = {
-                composerViewModel.prepareForTimeline(timelineState.currentTimeline)
-                isComposerExpanded = true
+                if (!composerState.hasUserDraft) {
+                    composerViewModel.prepareForTimeline(timelineState.currentTimeline)
+                    isComposerExpanded = true
+                }
             },
             onMicPermissionResult = composerViewModel::onMicPermissionResult,
             onDismissMicPermissionMessage = composerViewModel::dismissMicPermissionMessage,
             onOpenAppSettings = composerViewModel::openAppSettings,
+            onEditorBoundsChanged = { editorBounds = it },
         )
 
         ComposerOverlayHost(
@@ -261,6 +329,28 @@ fun TimelineScreen(
             onKeepEditing = { pendingTimelineSwitch = null },
         )
     }
+
+    momentToForget?.let { moment ->
+        AlertDialog(
+            onDismissRequest = { momentToForget = null },
+            title = { Text("Forget this moment?") },
+            text = { Text("This permanently removes it from Relive.") },
+            dismissButton = { TextButton(onClick = { momentToForget = null }) { Text("Cancel") } },
+            confirmButton = {
+                TextButton(onClick = {
+                    ActivePlayback.stopActive()
+                    timelineViewModel.forget(
+                        moment = moment.toMoment(),
+                        onDeleted = { deleted ->
+                            cleanupForgottenAttachments(deleted, mediaStore)
+                            momentToForget = null
+                        },
+                        onFailure = { momentToForget = null },
+                    )
+                }) { Text("Forget") }
+            },
+        )
+    }
 }
 
 @Composable
@@ -272,6 +362,8 @@ private fun TimelineContent(
     onSelectTimeline: (CurrentTimeline) -> Unit,
     onAddTimeline: () -> Unit,
     onToggleFavorite: (MomentId, Boolean) -> Unit,
+    onEditMoment: (MomentPresentation) -> Unit,
+    onForgetMoment: (MomentPresentation) -> Unit,
     onOpenMedia: (List<MomentAttachmentPresentation>, Int) -> Unit,
     onMenuClick: () -> Unit,
     onSearchClick: () -> Unit,
@@ -294,6 +386,7 @@ private fun TimelineContent(
     onMicPermissionResult: (MicPermissionResult) -> Unit,
     onDismissMicPermissionMessage: () -> Unit,
     onOpenAppSettings: () -> Unit,
+    onEditorBoundsChanged: (Rect) -> Unit,
     isComposerExpanded: Boolean,
     onExpandComposer: () -> Unit,
 ) {
@@ -359,13 +452,47 @@ private fun TimelineContent(
                     contentPadding = PaddingValues(bottom = dims.spacing.huge),
                 ) {
                     items(items = moments, key = { it.id.value }) { moment ->
-                        MomentCard(
-                            moment = moment,
-                            mediaStore = mediaStore,
-                            onToggleFavorite = { value -> onToggleFavorite(moment.id, value) },
-                            onOpenMedia = onOpenMedia,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                        if (composerState.editingMoment?.id == moment.id) {
+                            MomentComposer(
+                                state = composerState,
+                                customTimelines = emptyList(),
+                                clock = clock,
+                                mediaStore = mediaStore,
+                                onTitleChange = onTitleChange,
+                                onContentChange = onContentChange,
+                                onPendingTagChange = onPendingTagChange,
+                                onCommitPendingTag = onCommitPendingTag,
+                                onRemoveTag = onRemoveTag,
+                                onToggleTimelineAssignment = onToggleTimelineAssignment,
+                                onToggleAddMedia = onToggleAddMedia,
+                                onMicTap = onMicTap,
+                                onCameraTap = onCameraTap,
+                                onLibraryTap = onLibraryTap,
+                                onStopRecording = onStopRecording,
+                                onCancelRecording = onCancelRecording,
+                                onRemoveAttachment = onRemoveAttachment,
+                                onRetryAttachment = onRetryAttachment,
+                                onReset = onReset,
+                                onKeepMoment = onKeepMoment,
+                                onMicPermissionResult = onMicPermissionResult,
+                                onDismissMicPermissionMessage = onDismissMicPermissionMessage,
+                                onOpenAppSettings = onOpenAppSettings,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .onGloballyPositioned { onEditorBoundsChanged(it.boundsInRoot()) },
+                            )
+                        } else {
+                            MomentCard(
+                                moment = moment,
+                                mediaStore = mediaStore,
+                                onToggleFavorite = { value -> onToggleFavorite(moment.id, value) },
+                                onOpenMedia = onOpenMedia,
+                                canEditOrForget = timelineViewModelCanEdit(moment, clock),
+                                onEdit = { onEditMoment(moment) },
+                                onForget = { onForgetMoment(moment) },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
                     }
                     if (customName != null && timelineState.moments == TimelineMomentsState.Empty) {
                         item(key = "custom-empty") {
