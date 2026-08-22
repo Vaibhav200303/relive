@@ -5,11 +5,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -43,6 +45,7 @@ import platform.AVFAudio.AVAudioPCMBuffer
 import platform.AVFAudio.AVAudioPlayer
 import platform.AVFoundation.AVAsset
 import platform.AVFoundation.AVAssetImageGenerator
+import platform.AVFoundation.AVLayerVideoGravityResizeAspect
 import platform.AVFoundation.AVPlayer
 import platform.AVFoundation.AVPlayerLayer
 import platform.AVFoundation.duration
@@ -75,28 +78,71 @@ actual fun RelivedImage(ref: MediaStorageRef, mediaStore: MediaStore, modifier: 
 
 @OptIn(ExperimentalForeignApi::class)
 @Composable
-actual fun RelivedVideo(ref: MediaStorageRef, mediaStore: MediaStore, modifier: Modifier) {
+actual fun RelivedVideo(
+    ref: MediaStorageRef,
+    mediaStore: MediaStore,
+    modifier: Modifier,
+    posterFallbackPath: String?,
+) {
     val path = mediaStore.resolveAbsolutePath(ref)
     val player = remember(path) { AVPlayer(uRL = NSURL.fileURLWithPath(path)) }
     var playing by remember(path) { mutableStateOf(false) }
+    // Rotation-aware natural size so the inner surface fits without stretch.
+    val natural = rememberVideoNaturalSizeFor(ref, mediaStore)
+    val aspect = natural?.let {
+        if (it.widthPx > 0 && it.heightPx > 0) it.widthPx.toFloat() / it.heightPx.toFloat() else null
+    }
+    val playerLayer = remember(path) {
+        AVPlayerLayer.playerLayerWithPlayer(player).apply {
+            setVideoGravity(AVLayerVideoGravityResizeAspect)
+        }
+    }
     DisposableEffect(path) { onDispose { player.pause() } }
-    Box(modifier = modifier.background(Color.Black)) {
-        UIKitView(
-            factory = {
-                val view = UIView()
-                val layer = AVPlayerLayer.playerLayerWithPlayer(player)
-                layer.frame = view.bounds
-                view.layer.addSublayer(layer)
-                view
-            },
-            modifier = Modifier.fillMaxSize().clickable {
-                if (playing) { player.pause(); playing = false }
-                else { player.play(); playing = true }
-            },
-        )
+    Box(modifier = modifier.background(Color.Black), contentAlignment = Alignment.Center) {
+        val inner = if (aspect != null) {
+            Modifier
+                .fillMaxSize()
+                .wrapContentSize(Alignment.Center)
+                .aspectRatio(aspect, matchHeightConstraintsFirst = aspect < 1f)
+        } else Modifier.fillMaxSize()
+        Box(modifier = inner) {
+            UIKitView(
+                factory = {
+                    val view = UIView()
+                    playerLayer.frame = view.bounds
+                    view.layer.addSublayer(playerLayer)
+                    view
+                },
+                update = { view ->
+                    // Keep the AVPlayerLayer sized to the current view bounds
+                    // so the fit-gravity letterboxes into the aspect-correct
+                    // inner box rather than a stale frame.
+                    playerLayer.frame = view.bounds
+                },
+                modifier = Modifier.fillMaxSize().clickable {
+                    if (playing) { player.pause(); playing = false }
+                    else { player.play(); playing = true }
+                },
+            )
+            // Poster overlay so the ready surface never renders as a bare
+            // black rectangle before first playback. Source-file thumbnail
+            // paints instantly from the composer's warm cache; ready-file
+            // thumbnail extracts on a background dispatcher and replaces it.
+            // Both hidden while playing so the AVPlayerLayer shows through.
+            if (!playing && posterFallbackPath != null) {
+                VideoSourceThumbnail(
+                    sourcePath = posterFallbackPath,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                VideoSourceThumbnail(
+                    sourcePath = path,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
         if (!playing) {
             Box(
-                modifier = Modifier.align(Alignment.Center).size(56.dp)
+                modifier = Modifier.size(56.dp)
                     .clip(CircleShape).background(Color(0x99000000)),
                 contentAlignment = Alignment.Center,
             ) { Text("▶", color = Color.White) }
@@ -201,6 +247,118 @@ actual fun RelivedVideoTile(ref: MediaStorageRef, mediaStore: MediaStore, modifi
                 .background(Color(0x99000000)),
             contentAlignment = Alignment.Center,
         ) { Text("▶", color = Color.White) }
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+@Composable
+actual fun RelivedTimelineInlineVideo(
+    ref: MediaStorageRef,
+    mediaStore: MediaStore,
+    onOpenFullScreen: () -> Unit,
+    modifier: Modifier,
+) {
+    val path = mediaStore.resolveAbsolutePath(ref)
+    val key = ref.value
+    var player: AVPlayer? by remember(path) { mutableStateOf(null) }
+    var playerLayer: AVPlayerLayer? by remember(path) { mutableStateOf(null) }
+    var playing by remember(path) { mutableStateOf(false) }
+    val stopSelf: () -> Unit = remember(path) {
+        {
+            try { if (playing) player?.pause() } catch (_: Throwable) {}
+            playing = false
+        }
+    }
+    val cached = IosVideoThumbnailCache.get(key)
+    val poster by produceState<UIImage?>(initialValue = cached, key1 = key) {
+        if (value != null) return@produceState
+        val img = withContext(Dispatchers.Default) { extractVideoFrame(path) }
+        if (img != null) {
+            IosVideoThumbnailCache.put(key, img)
+            value = img
+        }
+    }
+    val releasePlayer: () -> Unit = {
+        try { player?.pause() } catch (_: Throwable) {}
+        playerLayer = null
+        player = null
+        playing = false
+        ActivePlayback.release(stopSelf)
+    }
+    DisposableEffect(path) { onDispose { releasePlayer() } }
+    Box(
+        modifier = modifier
+            .background(Color.Black)
+            .clickable {
+                releasePlayer()
+                onOpenFullScreen()
+            }
+            .semantics { contentDescription = "Open video full screen" },
+        contentAlignment = Alignment.Center,
+    ) {
+        if (!playing) {
+            val f = poster
+            if (f != null) {
+                UIKitView(
+                    factory = {
+                        val iv = UIImageView()
+                        iv.contentMode = UIViewContentMode.UIViewContentModeScaleAspectFit
+                        iv.clipsToBounds = true
+                        iv.image = f
+                        iv
+                    },
+                    update = { it.image = f },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+        val activeLayer = playerLayer
+        if (activeLayer != null) {
+            UIKitView(
+                factory = {
+                    val view = UIView()
+                    activeLayer.frame = view.bounds
+                    view.layer.addSublayer(activeLayer)
+                    view
+                },
+                update = { view -> activeLayer.frame = view.bounds },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(CircleShape)
+                .background(Color(0x99000000))
+                .clickable {
+                    val existing = player
+                    if (existing != null) {
+                        if (playing) {
+                            existing.pause()
+                            playing = false
+                            ActivePlayback.release(stopSelf)
+                        } else {
+                            existing.play()
+                            playing = true
+                            ActivePlayback.claim(stopSelf)
+                        }
+                    } else {
+                        val mp = AVPlayer(uRL = NSURL.fileURLWithPath(path))
+                        val layer = AVPlayerLayer.playerLayerWithPlayer(mp).apply {
+                            setVideoGravity(AVLayerVideoGravityResizeAspect)
+                        }
+                        ActivePlayback.claim(stopSelf)
+                        player = mp
+                        playerLayer = layer
+                        mp.play()
+                        playing = true
+                    }
+                }
+                .semantics {
+                    contentDescription = if (playing) "Pause video" else "Play video"
+                },
+            contentAlignment = Alignment.Center,
+        ) { Text(if (playing) "❚❚" else "▶", color = Color.White) }
     }
 }
 
@@ -330,6 +488,43 @@ actual fun extractWaveform(
 }
 
 @OptIn(ExperimentalForeignApi::class)
+actual fun readImageNaturalSize(ref: MediaStorageRef, mediaStore: MediaStore): NaturalSizePx? {
+    val path = mediaStore.resolveAbsolutePath(ref)
+    val data = NSFileManager.defaultManager.contentsAtPath(path) ?: return null
+    val image = UIImage.imageWithData(data) ?: return null
+    // UIImage.size already reflects orientation for display.
+    return image.size.useContents {
+        val w = width.toInt()
+        val h = height.toInt()
+        if (w > 0 && h > 0) NaturalSizePx(w, h) else null
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+actual fun readVideoNaturalSize(ref: MediaStorageRef, mediaStore: MediaStore): NaturalSizePx? =
+    readVideoNaturalSizeFromPath(mediaStore.resolveAbsolutePath(ref))
+
+@OptIn(ExperimentalForeignApi::class)
+actual fun readVideoNaturalSizeFromPath(path: String): NaturalSizePx? {
+    // Extract the first frame with preferredTransform applied so orientation
+    // is already baked into the UIImage's size. Cached upstream so this
+    // runs at most once per ref/path.
+    val frame = try {
+        val asset = AVAsset.assetWithURL(NSURL.fileURLWithPath(path))
+        val gen = AVAssetImageGenerator(asset).apply { appliesPreferredTrackTransform = true }
+        val cg = gen.copyCGImageAtTime(CMTimeMake(0, 1), null, null)
+        cg?.let { UIImage.imageWithCGImage(it) }
+    } catch (_: Throwable) {
+        null
+    } ?: return null
+    return frame.size.useContents {
+        val w = width.toInt()
+        val h = height.toInt()
+        if (w > 0 && h > 0) NaturalSizePx(w, h) else null
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class)
 actual fun readMediaDurationMs(ref: MediaStorageRef, mediaStore: MediaStore): Long? {
     val path = mediaStore.resolveAbsolutePath(ref)
     val asset = AVAsset.assetWithURL(NSURL.fileURLWithPath(path))
@@ -411,6 +606,52 @@ private object IosVideoThumbnailCache {
         val cur = map
         map = if (cur.size < CAPACITY) cur + (key to value)
         else cur.entries.drop(cur.size - CAPACITY + 1).associate { it.key to it.value } + (key to value)
+    }
+}
+
+/** Cache for pre-processing source video thumbnails (composer placeholder). */
+private object IosSourceVideoThumbnailCache {
+    private const val CAPACITY = 32
+    @Volatile private var map: Map<String, UIImage> = emptyMap()
+    fun get(key: String): UIImage? = map[key]
+    fun put(key: String, value: UIImage) {
+        val cur = map
+        map = if (cur.size < CAPACITY) cur + (key to value)
+        else cur.entries.drop(cur.size - CAPACITY + 1).associate { it.key to it.value } + (key to value)
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+@Composable
+actual fun VideoSourceThumbnail(sourcePath: String?, modifier: Modifier) {
+    if (sourcePath == null) {
+        Box(modifier = modifier)
+        return
+    }
+    val cached = IosSourceVideoThumbnailCache.get(sourcePath)
+    val image by produceState<UIImage?>(initialValue = cached, key1 = sourcePath) {
+        if (value != null) return@produceState
+        val img = withContext(Dispatchers.Default) { extractVideoFrame(sourcePath) }
+        if (img != null) {
+            IosSourceVideoThumbnailCache.put(sourcePath, img)
+            value = img
+        }
+    }
+    val current = image
+    if (current != null) {
+        UIKitView(
+            factory = {
+                val iv = UIImageView()
+                iv.contentMode = UIViewContentMode.UIViewContentModeScaleAspectFill
+                iv.clipsToBounds = true
+                iv.image = current
+                iv
+            },
+            update = { it.image = current },
+            modifier = modifier,
+        )
+    } else {
+        Box(modifier = modifier)
     }
 }
 

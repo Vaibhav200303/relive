@@ -65,6 +65,16 @@ data class DraftAttachment(
     val draftId: String,
     val type: MediaType,
     val status: DraftMediaStatus,
+    /**
+     * Local path of the pre-processing source, when available. Two composer-
+     * preview uses: (1) probe source video metadata so the Processing
+     * placeholder shrink-wraps to the same bounds as the ready video, and
+     * (2) act as the instant poster fallback for the ready video surface so
+     * the Processing→Ready transition does not flash black while the ready
+     * file's own thumbnail extracts. Retained through Ready — the source
+     * thumbnail cache stays warm and covers the extraction window.
+     */
+    val sourcePath: String? = null,
 )
 
 /** Explicit lifecycle for a [DraftAttachment]. */

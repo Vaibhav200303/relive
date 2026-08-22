@@ -51,13 +51,30 @@ data class ReliveTimelineDimensions(
 data class ReliveMediaDimensions(
     val ratioWide: Float = 2f,
     val sepiaAmount: Float = 0.3f,
-    // Adaptive collage (ADR-0019).
+    // Adaptive collage (ADR-0019). Multi-media collages only: outer border
+    // and internal tile dividers share the same weight so adjacent tiles
+    // yield ONE ~4dp separator rather than two overlapping strokes.
     val collageGap: Dp = 4.dp,
+    val collageBorder: Dp = 4.dp,
     val collageSingleMaxHeight: Dp = 420.dp,
     val collageTileAspectSquare: Float = 1f,
     val collageDominantAspect: Float = 4f / 3f,
     val collageVideoAspect: Float = 16f / 9f,
     val collageAudioAspect: Float = 4f / 3f,
+    // Composer (new-moment) adaptive preview. Both are MAXIMUMS — the
+    // preview shrink-wraps around media that would otherwise render
+    // smaller. Never used as forced dimensions.
+    val composerPreviewMaxHeight: Dp = 420.dp,
+    val composerPlaceholderFallbackHeight: Dp = 180.dp,
+    val composerPlaceholderFallbackAspect: Float = 4f / 3f,
+    // Timeline single-media adaptive preview. MAX bounds only — the tile
+    // shrink-wraps around media that fits, and scales proportionally when
+    // either bound is exceeded. Multi-media collages continue to use the
+    // collage* tokens above.
+    val timelineSinglePreviewMaxHeight: Dp = 420.dp,
+    val timelineSingleAudioHeight: Dp = 200.dp,
+    val timelineSingleFallbackHeight: Dp = 180.dp,
+    val timelineSingleFallbackAspect: Float = 4f / 3f,
 )
 
 @Immutable

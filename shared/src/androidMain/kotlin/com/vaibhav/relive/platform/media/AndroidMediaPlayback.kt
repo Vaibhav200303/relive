@@ -17,11 +17,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -81,42 +83,84 @@ actual fun RelivedImage(ref: MediaStorageRef, mediaStore: MediaStore, modifier: 
 }
 
 @Composable
-actual fun RelivedVideo(ref: MediaStorageRef, mediaStore: MediaStore, modifier: Modifier) {
+actual fun RelivedVideo(
+    ref: MediaStorageRef,
+    mediaStore: MediaStore,
+    modifier: Modifier,
+    posterFallbackPath: String?,
+) {
     val path = mediaStore.resolveAbsolutePath(ref)
     var player: MediaPlayer? by remember(path) { mutableStateOf(null) }
     var playing by remember(path) { mutableStateOf(false) }
+    // Rotation-aware natural size drives the inner surface aspect so the
+    // decoded frame is never stretched to the outer bounds. Paused thumbnail
+    // and playing surface share this same inner box, so preview size does
+    // not jump on Play.
+    val natural = rememberVideoNaturalSizeFor(ref, mediaStore)
+    val aspect = natural?.let {
+        if (it.widthPx > 0 && it.heightPx > 0) it.widthPx.toFloat() / it.heightPx.toFloat() else null
+    }
 
-    Box(modifier = modifier.background(Color.Black)) {
-        AndroidView(
-            factory = { ctx ->
-                val surface = SurfaceView(ctx)
-                surface.holder.addCallback(object : SurfaceHolder.Callback {
-                    override fun surfaceCreated(holder: SurfaceHolder) {
-                        val mp = MediaPlayer().apply {
-                            setDataSource(path)
-                            setDisplay(holder)
-                            setOnPreparedListener { /* wait for user tap */ }
-                            prepareAsync()
+    Box(modifier = modifier.background(Color.Black), contentAlignment = Alignment.Center) {
+        val inner = if (aspect != null) {
+            // matchHeightConstraintsFirst for portrait so the inner box
+            // never overflows the composer's height ceiling.
+            Modifier
+                .fillMaxSize()
+                .wrapContentSize(Alignment.Center)
+                .aspectRatio(aspect, matchHeightConstraintsFirst = aspect < 1f)
+        } else Modifier.fillMaxSize()
+        Box(modifier = inner) {
+            AndroidView(
+                factory = { ctx ->
+                    val surface = SurfaceView(ctx)
+                    surface.holder.addCallback(object : SurfaceHolder.Callback {
+                        override fun surfaceCreated(holder: SurfaceHolder) {
+                            val mp = MediaPlayer().apply {
+                                setDataSource(path)
+                                setDisplay(holder)
+                                setOnPreparedListener { /* wait for user tap */ }
+                                prepareAsync()
+                            }
+                            player = mp
                         }
-                        player = mp
-                    }
-                    override fun surfaceChanged(h: SurfaceHolder, f: Int, w: Int, ht: Int) {}
-                    override fun surfaceDestroyed(holder: SurfaceHolder) {
-                        player?.release(); player = null
-                    }
-                })
-                surface
-            },
-            modifier = Modifier.fillMaxSize().clickable {
-                val mp = player ?: return@clickable
-                if (mp.isPlaying) { mp.pause(); playing = false }
-                else { mp.start(); playing = true }
-            },
-        )
+                        override fun surfaceChanged(h: SurfaceHolder, f: Int, w: Int, ht: Int) {}
+                        override fun surfaceDestroyed(holder: SurfaceHolder) {
+                            player?.release(); player = null
+                        }
+                    })
+                    surface
+                },
+                modifier = Modifier.fillMaxSize().clickable {
+                    val mp = player ?: return@clickable
+                    if (mp.isPlaying) { mp.pause(); playing = false }
+                    else { mp.start(); playing = true }
+                },
+            )
+            // Poster overlay so the ready surface never renders as a bare
+            // black rectangle before first playback. Two layered thumbnails
+            // (path-keyed cache): the pre-processing source poster below,
+            // painted instantly from the composer's already-warm cache to
+            // avoid a Processing→Ready black flash; the processed video's
+            // own first frame above, extracted on a background dispatcher
+            // and replacing the fallback once ready. Both are hidden while
+            // the player is actively playing so the decoded frames show
+            // through. Non-composer callers pass posterFallbackPath = null
+            // and get no poster overlay (existing behavior preserved).
+            if (!playing && posterFallbackPath != null) {
+                VideoSourceThumbnail(
+                    sourcePath = posterFallbackPath,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                VideoSourceThumbnail(
+                    sourcePath = path,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
         if (!playing) {
             Box(
                 modifier = Modifier
-                    .align(Alignment.Center)
                     .size(56.dp)
                     .clip(CircleShape)
                     .background(Color(0x99000000)),
@@ -235,6 +279,138 @@ actual fun RelivedVideoTile(ref: MediaStorageRef, mediaStore: MediaStore, modifi
                 .background(Color(0x99000000)),
             contentAlignment = Alignment.Center,
         ) { Text("▶", color = Color.White) }
+    }
+}
+
+@Composable
+actual fun RelivedTimelineInlineVideo(
+    ref: MediaStorageRef,
+    mediaStore: MediaStore,
+    onOpenFullScreen: () -> Unit,
+    modifier: Modifier,
+) {
+    val path = mediaStore.resolveAbsolutePath(ref)
+    val key = ref.value
+    var player: MediaPlayer? by remember(path) { mutableStateOf(null) }
+    var playing by remember(path) { mutableStateOf(false) }
+    val stopSelf: () -> Unit = remember(path) {
+        {
+            try { if (player?.isPlaying == true) player?.pause() } catch (_: Throwable) {}
+            playing = false
+        }
+    }
+    // Reuse the same thumbnail cache the static tile uses so the poster
+    // paints instantly on first frame.
+    val cached = AndroidVideoThumbnailCache.get(key)
+    val poster by produceState<Bitmap?>(initialValue = cached, key1 = key) {
+        if (value != null) return@produceState
+        val bmp = withContext(Dispatchers.Default) { extractVideoFrame(path) }
+        if (bmp != null) {
+            AndroidVideoThumbnailCache.put(key, bmp)
+            value = bmp
+        }
+    }
+    val releasePlayer: () -> Unit = {
+        try { player?.release() } catch (_: Throwable) {}
+        player = null
+        playing = false
+        ActivePlayback.release(stopSelf)
+    }
+    DisposableEffect(path) {
+        onDispose { releasePlayer() }
+    }
+    Box(
+        modifier = modifier
+            .background(Color.Black)
+            .clickable {
+                releasePlayer()
+                onOpenFullScreen()
+            }
+            .semantics { contentDescription = "Open video full screen" },
+        contentAlignment = Alignment.Center,
+    ) {
+        // Poster is drawn only while paused so the SurfaceView shows through
+        // during playback.
+        if (!playing) {
+            val f = poster
+            if (f != null) {
+                Image(
+                    bitmap = f.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit,
+                )
+            }
+        }
+        if (playing || player != null) {
+            AndroidView(
+                factory = { ctx ->
+                    val surface = SurfaceView(ctx)
+                    surface.holder.addCallback(object : SurfaceHolder.Callback {
+                        override fun surfaceCreated(holder: SurfaceHolder) {
+                            val existing = player
+                            if (existing != null) {
+                                try { existing.setDisplay(holder) } catch (_: Throwable) {}
+                                return
+                            }
+                            val mp = MediaPlayer().apply {
+                                setDataSource(path)
+                                setDisplay(holder)
+                                setOnPreparedListener { start(); playing = true }
+                                setOnCompletionListener {
+                                    playing = false
+                                    ActivePlayback.release(stopSelf)
+                                }
+                                prepareAsync()
+                            }
+                            player = mp
+                        }
+                        override fun surfaceChanged(h: SurfaceHolder, f: Int, w: Int, ht: Int) {}
+                        override fun surfaceDestroyed(holder: SurfaceHolder) {
+                            try { player?.setDisplay(null) } catch (_: Throwable) {}
+                        }
+                    })
+                    surface
+                },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        // Central Play/Pause target sits above the surface/poster and
+        // intercepts touches independently of the body clickable so tapping
+        // the button never routes to full-screen navigation.
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(CircleShape)
+                .background(Color(0x99000000))
+                .clickable {
+                    val existing = player
+                    if (existing != null) {
+                        try {
+                            if (existing.isPlaying) {
+                                existing.pause()
+                                playing = false
+                                ActivePlayback.release(stopSelf)
+                            } else {
+                                existing.start()
+                                playing = true
+                                ActivePlayback.claim(stopSelf)
+                            }
+                        } catch (_: Throwable) { releasePlayer() }
+                    } else {
+                        // First tap: flip playing so the AndroidView composes;
+                        // its surfaceCreated builds the MediaPlayer and starts
+                        // playback via the OnPreparedListener. Claim ownership
+                        // now so any prior audio/video stops immediately.
+                        ActivePlayback.claim(stopSelf)
+                        playing = true
+                    }
+                }
+                .semantics {
+                    contentDescription = if (playing) "Pause video" else "Play video"
+                },
+            contentAlignment = Alignment.Center,
+        ) { Text(if (playing) "❚❚" else "▶", color = Color.White) }
     }
 }
 
@@ -462,6 +638,43 @@ private fun decodePcmEnvelope(path: String, targetBuckets: Int): FloatArray? {
     }
 }
 
+actual fun readImageNaturalSize(ref: MediaStorageRef, mediaStore: MediaStore): NaturalSizePx? {
+    val path = mediaStore.resolveAbsolutePath(ref)
+    return try {
+        val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(path, opts)
+        val w = opts.outWidth
+        val h = opts.outHeight
+        if (w <= 0 || h <= 0) null
+        else {
+            val (ow, oh) = orientedDimensions(path, w, h)
+            NaturalSizePx(ow, oh)
+        }
+    } catch (_: Throwable) {
+        null
+    }
+}
+
+actual fun readVideoNaturalSize(ref: MediaStorageRef, mediaStore: MediaStore): NaturalSizePx? =
+    readVideoNaturalSizeFromPath(mediaStore.resolveAbsolutePath(ref))
+
+actual fun readVideoNaturalSizeFromPath(path: String): NaturalSizePx? {
+    val retriever = MediaMetadataRetriever()
+    return try {
+        retriever.setDataSource(path)
+        val w = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 0
+        val h = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 0
+        val rot = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
+        if (w <= 0 || h <= 0) null
+        else if (rot == 90 || rot == 270) NaturalSizePx(h, w)
+        else NaturalSizePx(w, h)
+    } catch (_: Throwable) {
+        null
+    } finally {
+        try { retriever.release() } catch (_: Throwable) {}
+    }
+}
+
 actual fun readMediaDurationMs(ref: MediaStorageRef, mediaStore: MediaStore): Long? {
     val path = mediaStore.resolveAbsolutePath(ref)
     val retriever = MediaMetadataRetriever()
@@ -550,6 +763,50 @@ private object AndroidVideoThumbnailCache {
         val cur = map
         map = if (cur.size < CAPACITY) cur + (key to value)
         else cur.entries.drop(cur.size - CAPACITY + 1).associate { it.key to it.value } + (key to value)
+    }
+}
+
+/**
+ * Separate cache for thumbnails extracted from a pre-processing source
+ * file (composer placeholder). Keyed by absolute path so it does not
+ * collide with the ref-keyed processed-video thumbnail cache above.
+ */
+private object AndroidSourceVideoThumbnailCache {
+    private const val CAPACITY = 32
+    @Volatile private var map: Map<String, Bitmap> = emptyMap()
+    fun get(key: String): Bitmap? = map[key]
+    fun put(key: String, value: Bitmap) {
+        val cur = map
+        map = if (cur.size < CAPACITY) cur + (key to value)
+        else cur.entries.drop(cur.size - CAPACITY + 1).associate { it.key to it.value } + (key to value)
+    }
+}
+
+@Composable
+actual fun VideoSourceThumbnail(sourcePath: String?, modifier: Modifier) {
+    if (sourcePath == null) {
+        Box(modifier = modifier)
+        return
+    }
+    val cached = AndroidSourceVideoThumbnailCache.get(sourcePath)
+    val frame by produceState<Bitmap?>(initialValue = cached, key1 = sourcePath) {
+        if (value != null) return@produceState
+        val bmp = withContext(Dispatchers.Default) { extractVideoFrame(sourcePath) }
+        if (bmp != null) {
+            AndroidSourceVideoThumbnailCache.put(sourcePath, bmp)
+            value = bmp
+        }
+    }
+    val f = frame
+    if (f != null) {
+        Image(
+            bitmap = f.asImageBitmap(),
+            contentDescription = null,
+            modifier = modifier,
+            contentScale = ContentScale.Crop,
+        )
+    } else {
+        Box(modifier = modifier)
     }
 }
 
