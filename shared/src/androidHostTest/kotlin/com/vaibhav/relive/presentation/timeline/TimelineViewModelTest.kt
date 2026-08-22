@@ -3,6 +3,10 @@ package com.vaibhav.relive.presentation.timeline
 import com.vaibhav.relive.domain.id.IdGenerator
 import com.vaibhav.relive.domain.model.Moment
 import com.vaibhav.relive.domain.model.MomentId
+import com.vaibhav.relive.domain.model.MediaAttachment
+import com.vaibhav.relive.domain.model.MediaAttachmentId
+import com.vaibhav.relive.domain.model.MediaStorageRef
+import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.domain.model.ThemeReference
 import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.TimelineId
@@ -194,13 +198,74 @@ class TimelineViewModelTest {
         assertTrue(vm.state.value.customTimelines.isEmpty())
     }
 
+    @Test
+    fun forgetDeletesEveryMembershipBeforeTheSuccessCallback() = runTest {
+        val family = TimelineId("family")
+        val travel = TimelineId("travel")
+        val target = moment("target", 1L).copy(
+            attachments = listOf(MediaAttachment(MediaAttachmentId("a"), MediaType.Image, MediaStorageRef("a.jpg"), 0)),
+        )
+        val other = moment("other", 2L)
+        val moments = FakeMomentRepository(
+            initialAll = listOf(other, target),
+            initialByTimeline = mapOf(family to listOf(target), travel to listOf(target)),
+        )
+        val vm = newViewModel(momentRepository = moments)
+        var deleted: Moment? = null
+
+        vm.forget(target, onDeleted = { deleted = it }, onFailure = { error("unexpected failure") })
+
+        assertEquals(target, deleted)
+        assertEquals(listOf(other), moments.listAll())
+        assertTrue(moments.listInTimeline(family).isEmpty())
+        assertTrue(moments.listInTimeline(travel).isEmpty())
+        assertEquals(listOf(MomentId("target")), moments.deleted)
+    }
+
+    @Test
+    fun forgetFailureLeavesDataAndDoesNotCallSuccessCallback() = runTest {
+        val family = TimelineId("family")
+        val target = moment("target", 1L)
+        val moments = FakeMomentRepository(
+            initialAll = listOf(target),
+            initialByTimeline = mapOf(family to listOf(target)),
+            deleteFailure = IllegalStateException("db"),
+        )
+        val vm = newViewModel(momentRepository = moments)
+        var success = false
+        var failure = false
+
+        vm.forget(target, onDeleted = { success = true }, onFailure = { failure = true })
+
+        assertFalse(success)
+        assertTrue(failure)
+        assertEquals(listOf(target), moments.listAll())
+        assertEquals(listOf(target), moments.listInTimeline(family))
+    }
+
+    @Test
+    fun forgetRechecksEligibilityAtConfirmationTime() = runTest {
+        var now = Instant(4 * 24 * 60 * 60 * 1000L - 1)
+        val target = moment("target", 0L)
+        val moments = FakeMomentRepository(initialAll = listOf(target))
+        val vm = newViewModel(momentRepository = moments, clock = Clock { now })
+        now = Instant(4 * 24 * 60 * 60 * 1000L)
+        var failure = false
+
+        vm.forget(target, onDeleted = { error("expired Forget must not delete") }, onFailure = { failure = true })
+
+        assertTrue(failure)
+        assertEquals(listOf(target), moments.listAll())
+    }
+
     private fun TestScope.newViewModel(
         momentRepository: FakeMomentRepository = FakeMomentRepository(),
         timelineRepository: FakeTimelineRepository = FakeTimelineRepository(),
+        clock: Clock = Clock { Instant(42L) },
     ): TimelineViewModel = TimelineViewModel(
         momentRepository = momentRepository,
         timelineRepository = timelineRepository,
-        clock = Clock { Instant(42L) },
+        clock = clock,
         idGenerator = IdGenerator { "timeline-1" },
         scope = TestScope(UnconfinedTestDispatcher(testScheduler)),
     )
@@ -218,12 +283,14 @@ class TimelineViewModelTest {
 private class FakeMomentRepository(
     initialAll: List<Moment> = emptyList(),
     initialByTimeline: Map<TimelineId, List<Moment>> = emptyMap(),
+    private val deleteFailure: Throwable? = null,
 ) : MomentRepository {
     private val all = MutableStateFlow(initialAll)
     private val byTimeline = initialByTimeline
         .mapValuesTo(mutableMapOf()) { MutableStateFlow(it.value) }
 
     val favoriteChanges = mutableListOf<Pair<MomentId, Boolean>>()
+    val deleted = mutableListOf<MomentId>()
 
     override suspend fun insert(moment: Moment, timelineIds: Set<TimelineId>) {
         all.value = newestFirst(all.value + moment)
@@ -255,6 +322,8 @@ private class FakeMomentRepository(
     }
 
     override suspend fun delete(id: MomentId) {
+        deleteFailure?.let { throw it }
+        deleted += id
         all.value = all.value.filterNot { it.id == id }
         byTimeline.values.forEach { flow -> flow.value = flow.value.filterNot { it.id == id } }
     }

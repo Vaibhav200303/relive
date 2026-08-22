@@ -4,6 +4,7 @@ import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.ReliveLocation
 import com.vaibhav.relive.domain.model.Tag
+import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.time.Instant
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
@@ -151,6 +152,22 @@ class MomentPersistenceTest {
         val mutated = sampleMoment(id = "e2", createdAtMs = 999L, title = "y")
         assertFailsWith<IllegalStateException> { fx.moments.updateEditable(mutated) }
         assertEquals(Instant(200L), fx.moments.findById(MomentId("e2"))!!.createdAt)
+    }
+
+    @Test fun editingMomentPreservesCustomTimelineMembershipsWithoutDuplication() = runTest {
+        fx.timelines.createCustom(sampleCustomTimeline("family", "Family"), Instant(1L))
+        fx.timelines.createCustom(sampleCustomTimeline("travel", "Travel"), Instant(1L))
+        val original = sampleMoment(id = "shared", createdAtMs = 1L, title = "Before", isFavorite = true)
+        fx.moments.insert(original, setOf(TimelineId("family"), TimelineId("travel")))
+
+        fx.moments.updateEditable(original.copy(title = "After", updatedAt = Instant(2L)))
+
+        assertEquals(listOf(MomentId("shared")), fx.moments.listAll().map { it.id })
+        assertEquals(listOf(MomentId("shared")), fx.moments.listInTimeline(TimelineId("family")).map { it.id })
+        assertEquals(listOf(MomentId("shared")), fx.moments.listInTimeline(TimelineId("travel")).map { it.id })
+        assertEquals(1L, fx.database.membershipsQueries.countMembership("shared", "family").executeAsOne())
+        assertEquals(1L, fx.database.membershipsQueries.countMembership("shared", "travel").executeAsOne())
+        assertEquals("After", fx.moments.findById(MomentId("shared"))!!.title)
     }
 
     @Test fun updatedAtRemainsNullWhenNotSet() = runTest {

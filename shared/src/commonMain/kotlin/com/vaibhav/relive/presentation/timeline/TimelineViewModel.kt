@@ -7,6 +7,7 @@ import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.repository.MomentRepository
 import com.vaibhav.relive.domain.repository.TimelineRepository
+import com.vaibhav.relive.domain.policy.EditWindow
 import com.vaibhav.relive.domain.time.Clock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -49,6 +50,24 @@ class TimelineViewModel(
 
     fun setFavorite(id: MomentId, isFavorite: Boolean) {
         scope.launch { momentRepository.setFavorite(id, isFavorite) }
+    }
+
+    fun canEditOrForget(moment: Moment): Boolean = EditWindow.isEditable(moment, clock)
+
+    /** Checks the policy again at the destructive boundary before touching persistence. */
+    fun forget(moment: Moment, onDeleted: (Moment) -> Unit, onFailure: () -> Unit) {
+        if (!EditWindow.isForgettable(moment, clock)) {
+            onFailure()
+            return
+        }
+        scope.launch {
+            try {
+                momentRepository.delete(moment.id)
+                onDeleted(moment)
+            } catch (_: Throwable) {
+                onFailure()
+            }
+        }
     }
 
     fun showTimelineCreation() {

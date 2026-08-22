@@ -11,6 +11,7 @@ import com.vaibhav.relive.domain.model.MomentValidation
 import com.vaibhav.relive.domain.model.Tag
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.repository.MomentRepository
+import com.vaibhav.relive.domain.policy.EditWindow
 import com.vaibhav.relive.domain.time.Clock
 import com.vaibhav.relive.platform.media.AudioRecorder
 import com.vaibhav.relive.platform.media.MediaProcessor
@@ -354,7 +355,7 @@ class MomentComposerViewModel(
         }
         rawByDraftId.remove(draftId)
         val status = existing.status
-        if (status is DraftMediaStatus.Ready) {
+        if (status is DraftMediaStatus.Ready && existing.existingAttachmentId == null) {
             runCatching { mediaStore.delete(status.storageRef) }
         }
     }
@@ -378,8 +379,33 @@ class MomentComposerViewModel(
         _state.value = freshStateFor(current.timelineContext)
         drafts.forEach { att ->
             val s = att.status
-            if (s is DraftMediaStatus.Ready) runCatching { mediaStore.delete(s.storageRef) }
+            if (s is DraftMediaStatus.Ready && att.existingAttachmentId == null) {
+                runCatching { mediaStore.delete(s.storageRef) }
+            }
         }
+    }
+
+    /** Starts a separate, unpersisted inline draft for an eligible saved Moment. */
+    fun beginEdit(moment: Moment): Boolean {
+        if (!EditWindow.isEditable(moment, clock)) return false
+        if (_state.value.hasUserDraft || _state.value.isSaving) return false
+        _state.value = MomentComposerState(
+            editingMoment = moment,
+            timelineContext = _state.value.timelineContext,
+            title = moment.title,
+            content = moment.content,
+            tags = moment.tags,
+            location = moment.location,
+            attachments = moment.attachments.sortedBy { it.sortIndex }.map { attachment ->
+                DraftAttachment(
+                    draftId = attachment.id.value,
+                    type = attachment.type,
+                    status = DraftMediaStatus.Ready(attachment.storageRef),
+                    existingAttachmentId = attachment.id.value,
+                )
+            },
+        )
+        return true
     }
 
     fun keepMoment() {
@@ -402,17 +428,21 @@ class MomentComposerViewModel(
         val readyAttachments = snapshot.attachments.mapIndexedNotNull { index, draft ->
             val status = draft.status as? DraftMediaStatus.Ready ?: return@mapIndexedNotNull null
             MediaAttachment(
-                id = MediaAttachmentId(idGenerator.newId()),
+                id = draft.existingAttachmentId?.let(::MediaAttachmentId)
+                    ?: MediaAttachmentId(idGenerator.newId()),
                 type = draft.type,
                 storageRef = status.storageRef,
                 sortIndex = index,
             )
         }
+        val editing = snapshot.editingMoment
         val moment = Moment(
-            id = MomentId(idGenerator.newId()),
-            createdAt = now,
+            id = editing?.id ?: MomentId(idGenerator.newId()),
+            createdAt = editing?.createdAt ?: now,
+            updatedAt = editing?.let { now },
             title = snapshot.title,
             content = snapshot.content,
+            isFavorite = editing?.isFavorite ?: false,
             location = snapshot.location,
             tags = snapshot.tags,
             attachments = readyAttachments,
@@ -430,11 +460,20 @@ class MomentComposerViewModel(
 
         scope.launch {
             try {
-                val timelineIds = when (val context = snapshot.timelineContext) {
-                    CurrentTimeline.All -> snapshot.selectedTimelineIds
-                    is CurrentTimeline.Custom -> snapshot.selectedTimelineIds + context.id
+                if (editing == null) {
+                    val timelineIds = when (val context = snapshot.timelineContext) {
+                        CurrentTimeline.All -> snapshot.selectedTimelineIds
+                        is CurrentTimeline.Custom -> snapshot.selectedTimelineIds + context.id
+                    }
+                    momentRepository.insert(moment, timelineIds)
+                } else {
+                    momentRepository.updateEditable(moment)
+                    // Only after the transaction succeeds may removed persisted media be cleaned up.
+                    val remaining = moment.attachments.map { it.id }.toSet()
+                    editing.attachments
+                        .filterNot { it.id in remaining }
+                        .forEach { attachment -> runCatching { mediaStore.delete(attachment.storageRef) } }
                 }
-                momentRepository.insert(moment, timelineIds)
                 rawByDraftId.clear()
                 _state.value = freshStateFor(snapshot.timelineContext)
             } catch (t: Throwable) {

@@ -112,7 +112,7 @@ fun MomentComposer(
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
 
-    val now = clock.now()
+    val now = state.editingMoment?.createdAt ?: clock.now()
 
     Row(
         modifier = modifier
@@ -193,7 +193,7 @@ fun MomentComposer(
 
             Spacer(Modifier.height(dims.spacing.lg))
 
-            if (state.timelineContext == CurrentTimeline.All && customTimelines.isNotEmpty()) {
+            if (!state.isEditing && state.timelineContext == CurrentTimeline.All && customTimelines.isNotEmpty()) {
                 ComposerTimelineAssignments(
                     timelines = customTimelines,
                     selectedIds = state.selectedTimelineIds,
@@ -246,6 +246,7 @@ fun MomentComposer(
                 enabled = !state.isSaving && !state.isRecording && !state.hasProcessingAttachments,
                 isSaving = state.isSaving,
                 isProcessingMedia = state.hasProcessingAttachments,
+                isEditing = state.isEditing,
                 onClick = onKeepMoment,
             )
         }
@@ -662,15 +663,16 @@ private fun KeepMomentAction(
     enabled: Boolean,
     isSaving: Boolean,
     isProcessingMedia: Boolean,
+    isEditing: Boolean,
     onClick: () -> Unit,
 ) {
     val colors = ReliveTheme.colors
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
     val label = when {
-        isSaving -> "Keeping…"
+        isSaving -> if (isEditing) "Saving…" else "Keeping…"
         isProcessingMedia -> "Processing media…"
-        else -> "Keep Moment"
+        else -> if (isEditing) "Save changes" else "Keep Moment"
     }
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -689,7 +691,7 @@ private fun KeepMomentAction(
                     onClick = onClick,
                 )
                 .padding(dims.spacing.sm)
-                .semantics { contentDescription = "Keep moment" },
+                .semantics { contentDescription = if (isEditing) "Save changes" else "Keep moment" },
         )
     }
 }

@@ -206,6 +206,14 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 - [ ] × has proper touch target (48dp).
 - [ ] Waveform shows real live amplitude.
 
+### Phase 6 — Edit / forget (physical-device checklist complete)
+- [x] Long-press and accessibility actions offer Edit / Forget only before `createdAt + 4 days`; verify the exact boundary is ineligible.
+- [x] Edit saves inline without changing Moment identity, creation time, favorite state, or custom-timeline memberships; an edit already open may save after expiry.
+- [x] Tap outside the edit container saves; every editor control (text, tags, media, recording, playback, location, favorite) does not.
+- [x] Removing existing media deletes its file only after a successful edit; failed edits leave the original moment and media intact.
+- [x] Forget requires confirmation, removes the Moment from All and every custom timeline, and only then attempts attachment-file cleanup; playback stops before edit, Forget, and media deletion.
+- [x] Attempting a timeline switch, composer opening, or a second edit while an edit is dirty does not silently discard it.
+
 ---
 
 ## Conventions
