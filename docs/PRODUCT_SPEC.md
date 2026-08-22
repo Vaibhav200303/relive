@@ -43,6 +43,8 @@ Users may create **custom timelines** representing chapters of their life, such 
 
 All timelines — built-in and custom — use the **same timeline UI and interaction model**. A timeline may have its own visual theme, but its information architecture and interactions must remain consistent across all timelines.
 
+Timeline Home is the navigation root. Selecting All or a custom timeline opens the shared timeline detail experience scoped to that selection; returning goes back to Timeline Home.
+
 ### Moment / timeline relationship
 
 - A moment is **stored only once**.

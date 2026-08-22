@@ -24,20 +24,32 @@ class TimelineViewModel(
     private val clock: Clock,
     private val idGenerator: IdGenerator,
     private val scope: CoroutineScope,
+    initialTimeline: CurrentTimeline = CurrentTimeline.All,
 ) {
 
-    private val _state = MutableStateFlow(TimelineScreenState())
+    private val _state = MutableStateFlow(TimelineScreenState(currentTimeline = initialTimeline))
     val state: StateFlow<TimelineScreenState> = _state.asStateFlow()
 
     private var momentsJob: Job? = null
+    private val creationController = TimelineCreationController(
+        timelineRepository = timelineRepository,
+        clock = clock,
+        idGenerator = idGenerator,
+        scope = scope,
+    )
 
     init {
+        scope.launch {
+            creationController.state.collect { creation ->
+                _state.update { it.copy(creation = creation) }
+            }
+        }
         scope.launch {
             timelineRepository.observeCustom().collect { timelines ->
                 _state.update { it.copy(customTimelines = timelines) }
             }
         }
-        observe(CurrentTimeline.All)
+        observe(initialTimeline)
     }
 
     fun selectTimeline(timeline: CurrentTimeline) {
@@ -71,66 +83,19 @@ class TimelineViewModel(
     }
 
     fun showTimelineCreation() {
-        _state.update {
-            it.copy(creation = TimelineCreationState(isVisible = true))
-        }
+        creationController.show()
     }
 
     fun dismissTimelineCreation() {
-        if (_state.value.creation.isSaving) return
-        _state.update { it.copy(creation = TimelineCreationState()) }
+        creationController.dismiss()
     }
 
     fun updateTimelineName(value: String) {
-        _state.update {
-            it.copy(
-                creation = it.creation.copy(
-                    name = value,
-                    errorMessage = null,
-                ),
-            )
-        }
+        creationController.updateName(value)
     }
 
     fun createTimeline() {
-        val creation = _state.value.creation
-        if (creation.isSaving) return
-        val trimmed = creation.name.trim()
-        val validationError = when {
-            trimmed.isEmpty() -> "Enter a timeline name."
-            trimmed.length > Timeline.Custom.MAX_NAME_LENGTH ->
-                "Use ${Timeline.Custom.MAX_NAME_LENGTH} characters or fewer."
-            else -> null
-        }
-        if (validationError != null) {
-            _state.update {
-                it.copy(creation = it.creation.copy(errorMessage = validationError))
-            }
-            return
-        }
-
-        _state.update { it.copy(creation = it.creation.copy(isSaving = true)) }
-        scope.launch {
-            try {
-                timelineRepository.createCustom(
-                    timeline = Timeline.Custom(
-                        id = TimelineId(idGenerator.newId()),
-                        name = trimmed,
-                    ),
-                    createdAt = clock.now(),
-                )
-                _state.update { it.copy(creation = TimelineCreationState()) }
-            } catch (_: Throwable) {
-                _state.update {
-                    it.copy(
-                        creation = it.creation.copy(
-                            isSaving = false,
-                            errorMessage = "Couldn't create this timeline. Try again.",
-                        ),
-                    )
-                }
-            }
-        }
+        creationController.create()
     }
 
     private fun observe(timeline: CurrentTimeline) {

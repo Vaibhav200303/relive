@@ -27,6 +27,7 @@ import com.vaibhav.relive.ui.theme.ReliveTheme
 fun TimelineHeader(
     onMenuClick: () -> Unit,
     onSearchClick: () -> Unit,
+    onBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val colors = ReliveTheme.colors
@@ -46,12 +47,16 @@ fun TimelineHeader(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             IconButton(
-                onClick = onMenuClick,
+                onClick = onBack ?: onMenuClick,
                 modifier = Modifier
                     .size(dims.minTouchTarget)
-                    .semantics { contentDescription = "Settings" },
+                    .semantics { contentDescription = if (onBack == null) "Settings" else "Back to Timeline Home" },
             ) {
-                GearGlyph(size = dims.icon.lg, color = colors.textSecondary, strokeWidth = dims.stroke.icon)
+                if (onBack == null) {
+                    GearGlyph(size = dims.icon.lg, color = colors.textSecondary, strokeWidth = dims.stroke.icon)
+                } else {
+                    BackGlyph(size = dims.icon.lg, color = colors.textSecondary, strokeWidth = dims.stroke.icon)
+                }
             }
             IconButton(
                 onClick = onSearchClick,

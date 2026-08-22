@@ -53,8 +53,9 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 - Platform GPS implementations behind the Phase 3 interfaces: Android location APIs; iOS Core Location; reverse geocoding via `PlaceResolver`. Handle permission denied / permanently denied / services disabled / unavailable / timeout — composer continues in every case. Permission requested only when needed; no background tracking.
 - **Exit:** moments with multiple attachments render as an adaptive collage; detected location works and degrades gracefully; location + media tests pass.
 
-## Phase 5 — Custom timelines  ☑
+## Phase 5 — Custom timelines + Timeline Home  ☑
 
+- Timeline Home is the app root: it lists the All card plus visual custom-timeline cards, opens the existing scoped timeline detail, and exposes Create Timeline from the top app bar.
 - Create custom timelines; home screen lists All + custom timelines.
 - Membership rules: create-in-custom → All + that timeline; create-in-All → optional assignment to custom timelines.
 - **Exit:** moments appear in the correct timelines without duplication; membership tests pass.

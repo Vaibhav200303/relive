@@ -48,6 +48,13 @@ data class ReliveTimelineDimensions(
 )
 
 @Immutable
+data class ReliveTimelineHomeDimensions(
+    val allMediaHeight: Dp = 300.dp,
+    val customMediaHeight: Dp = 232.dp,
+    val mediaFadeHeight: Dp = 64.dp,
+)
+
+@Immutable
 data class ReliveMediaDimensions(
     val ratioWide: Float = 2f,
     val sepiaAmount: Float = 0.3f,
@@ -84,6 +91,7 @@ data class ReliveDimensions(
     val icon: ReliveIconSizes = ReliveIconSizes(),
     val stroke: ReliveStrokes = ReliveStrokes(),
     val timeline: ReliveTimelineDimensions = ReliveTimelineDimensions(),
+    val timelineHome: ReliveTimelineHomeDimensions = ReliveTimelineHomeDimensions(),
     val media: ReliveMediaDimensions = ReliveMediaDimensions(),
     val minTouchTarget: Dp = 48.dp,
 )

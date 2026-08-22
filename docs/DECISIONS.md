@@ -344,6 +344,15 @@ Format for each entry:
 
 ---
 
+## ADR-0024 — Timeline Home is the navigation root
+
+- **Date:** 2026-08-22 · **Status:** Accepted
+- **Context:** Relive supports All plus custom timelines, but the former in-detail selector was the only entry point. The product needs a memory-oriented collection layer without redesigning the approved Timeline detail UI.
+- **Decision:** Timeline Home is the root screen. It renders a bounded, reactive summary for All and every custom timeline, then opens the existing `TimelineScreen` scoped to the selected timeline. Timeline detail retains its selector and receives a minimal Back affordance when entered from Home. Summary previews select at most four image/video attachments ordered by Moment `createdAt` descending then attachment `sortIndex` ascending; All remains a logical query.
+- **Consequences:** The app has a clear Home → detail hierarchy while Moment ownership and membership remain unchanged. The read projection avoids per-card full-Moment hydration and uses existing thumbnail/cache infrastructure. Home remains the single creation entry point for this phase; no profile, settings, menu, or bottom navigation is introduced.
+
+---
+
 ## Template for new decisions
 
 ```
