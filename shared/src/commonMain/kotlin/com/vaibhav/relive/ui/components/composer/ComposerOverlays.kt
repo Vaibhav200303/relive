@@ -36,7 +36,7 @@ import com.vaibhav.relive.ui.theme.ReliveTheme
 /**
  * Presents the composer's active overlay — camera surface or library
  * choice sheet — and delivers results back to the view-model. Consumed as a
- * sibling of the timeline `LazyColumn` in [AllTimelineScreen].
+ * sibling of the timeline `LazyColumn` in the timeline screen.
  */
 @Composable
 internal fun ComposerOverlayHost(

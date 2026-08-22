@@ -5,6 +5,8 @@ import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.domain.model.MomentValidation
 import com.vaibhav.relive.domain.model.ReliveLocation
 import com.vaibhav.relive.domain.model.Tag
+import com.vaibhav.relive.domain.model.TimelineId
+import com.vaibhav.relive.presentation.timeline.CurrentTimeline
 
 /**
  * Immutable snapshot of the inline composer. Preserves user input verbatim;
@@ -19,6 +21,8 @@ import com.vaibhav.relive.domain.model.Tag
  * failed Keep Moment preserves the drafts so a retry does not recompress.
  */
 data class MomentComposerState(
+    val timelineContext: CurrentTimeline = CurrentTimeline.All,
+    val selectedTimelineIds: Set<TimelineId> = emptySet(),
     val title: String = "",
     val content: String = "",
     val tags: List<Tag> = emptyList(),
@@ -42,6 +46,15 @@ data class MomentComposerState(
         get() = attachments.any { it.status is DraftMediaStatus.Failed }
     val allAttachmentsReady: Boolean
         get() = attachments.all { it.status is DraftMediaStatus.Ready }
+    val hasUserDraft: Boolean
+        get() = title.isNotBlank() ||
+            content.isNotBlank() ||
+            tags.isNotEmpty() ||
+            pendingTagInput.isNotBlank() ||
+            location != null ||
+            attachments.isNotEmpty() ||
+            recording != null ||
+            (timelineContext == CurrentTimeline.All && selectedTimelineIds.isNotEmpty())
 }
 
 /** Recoverable UI hint about microphone-permission status. */

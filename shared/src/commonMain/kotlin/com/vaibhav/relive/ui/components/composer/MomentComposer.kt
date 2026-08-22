@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -37,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.ImeAction
@@ -45,6 +48,8 @@ import androidx.compose.ui.unit.sp
 import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.domain.model.MomentValidation
 import com.vaibhav.relive.domain.model.Tag
+import com.vaibhav.relive.domain.model.Timeline
+import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.time.Clock
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.platform.permission.MicPermissionAdapter
@@ -56,6 +61,7 @@ import com.vaibhav.relive.presentation.composer.MomentComposerState
 import com.vaibhav.relive.presentation.composer.SaveState
 import com.vaibhav.relive.presentation.date.EditorialDateFormatter
 import com.vaibhav.relive.presentation.date.EditorialTimeFormatter
+import com.vaibhav.relive.presentation.timeline.CurrentTimeline
 import com.vaibhav.relive.ui.theme.ReliveTheme
 
 /**
@@ -71,6 +77,7 @@ import com.vaibhav.relive.ui.theme.ReliveTheme
 @Composable
 fun MomentComposer(
     state: MomentComposerState,
+    customTimelines: List<Timeline.Custom>,
     clock: Clock,
     mediaStore: MediaStore,
     onTitleChange: (String) -> Unit,
@@ -78,6 +85,7 @@ fun MomentComposer(
     onPendingTagChange: (String) -> Unit,
     onCommitPendingTag: () -> Unit,
     onRemoveTag: (Tag) -> Unit,
+    onToggleTimelineAssignment: (TimelineId) -> Unit,
     onToggleAddMedia: () -> Unit,
     onMicTap: () -> Unit,
     onCameraTap: () -> Unit,
@@ -185,6 +193,16 @@ fun MomentComposer(
 
             Spacer(Modifier.height(dims.spacing.lg))
 
+            if (state.timelineContext == CurrentTimeline.All && customTimelines.isNotEmpty()) {
+                ComposerTimelineAssignments(
+                    timelines = customTimelines,
+                    selectedIds = state.selectedTimelineIds,
+                    enabled = !state.isSaving,
+                    onToggle = onToggleTimelineAssignment,
+                )
+                Spacer(Modifier.height(dims.spacing.lg))
+            }
+
             // Attachments (if any) — above the recorder & Add Media.
             if (state.attachments.isNotEmpty()) {
                 DraftAttachmentColumn(
@@ -230,6 +248,55 @@ fun MomentComposer(
                 isProcessingMedia = state.hasProcessingAttachments,
                 onClick = onKeepMoment,
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ComposerTimelineAssignments(
+    timelines: List<Timeline.Custom>,
+    selectedIds: Set<TimelineId>,
+    enabled: Boolean,
+    onToggle: (TimelineId) -> Unit,
+) {
+    val colors = ReliveTheme.colors
+    val type = ReliveTheme.typography
+    val dims = ReliveTheme.dimensions
+    Column(verticalArrangement = Arrangement.spacedBy(dims.spacing.xs)) {
+        Text(
+            text = "TIMELINES · OPTIONAL",
+            style = type.eyebrow,
+            color = colors.textMuted,
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm),
+            verticalArrangement = Arrangement.spacedBy(dims.spacing.xs),
+        ) {
+            timelines.forEach { timeline ->
+                val selected = timeline.id in selectedIds
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .heightIn(min = dims.minTouchTarget)
+                        .clip(CircleShape)
+                        .background(if (selected) colors.surfaceCard else colors.bgCanvas)
+                        .border(dims.stroke.hairline, colors.border, CircleShape)
+                        .toggleable(
+                            value = selected,
+                            enabled = enabled,
+                            role = Role.Checkbox,
+                            onValueChange = { onToggle(timeline.id) },
+                        )
+                        .padding(horizontal = dims.spacing.md),
+                ) {
+                    Text(
+                        text = if (selected) "✓ ${timeline.name}" else timeline.name,
+                        style = type.tag,
+                        color = if (selected) colors.accent else colors.textSecondary,
+                    )
+                }
+            }
         }
     }
 }

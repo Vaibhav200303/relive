@@ -9,6 +9,7 @@ import com.vaibhav.relive.domain.model.Moment
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.MomentValidation
 import com.vaibhav.relive.domain.model.Tag
+import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.repository.MomentRepository
 import com.vaibhav.relive.domain.time.Clock
 import com.vaibhav.relive.platform.media.AudioRecorder
@@ -19,6 +20,7 @@ import com.vaibhav.relive.platform.media.RecordingState
 import com.vaibhav.relive.platform.media.createAudioRecorder
 import com.vaibhav.relive.platform.permission.MicPermissionResult
 import com.vaibhav.relive.platform.system.openAppSettings as platformOpenAppSettings
+import com.vaibhav.relive.presentation.timeline.CurrentTimeline
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -64,6 +66,33 @@ class MomentComposerViewModel(
     // Keeps the original RawMedia around per draftId so Retry does not need
     // the picker or camera again.
     private val rawByDraftId = mutableMapOf<String, RawMedia>()
+
+    // -- timeline membership --------------------------------------------
+
+    /** Binds a clean draft to the timeline where the composer was opened. */
+    fun prepareForTimeline(timeline: CurrentTimeline) {
+        if (_state.value.hasUserDraft) return
+        _state.value = freshStateFor(timeline)
+    }
+
+    /** Optional multi-assignment is exposed only while composing from All. */
+    fun toggleTimelineAssignment(timelineId: TimelineId) {
+        _state.update { current ->
+            if (current.timelineContext != CurrentTimeline.All || current.isSaving) {
+                current
+            } else {
+                val selected = if (timelineId in current.selectedTimelineIds) {
+                    current.selectedTimelineIds - timelineId
+                } else {
+                    current.selectedTimelineIds + timelineId
+                }
+                current.copy(
+                    selectedTimelineIds = selected,
+                    saveState = current.saveState.clearedOnEdit(),
+                )
+            }
+        }
+    }
 
     // -- text/tag ---------------------------------------------------------
 
@@ -342,10 +371,11 @@ class MomentComposerViewModel(
     // -- reset / keep -----------------------------------------------------
 
     fun reset() {
-        val drafts = _state.value.attachments
+        val current = _state.value
+        val drafts = current.attachments
         cancelRecording()
         rawByDraftId.clear()
-        _state.value = MomentComposerState()
+        _state.value = freshStateFor(current.timelineContext)
         drafts.forEach { att ->
             val s = att.status
             if (s is DraftMediaStatus.Ready) runCatching { mediaStore.delete(s.storageRef) }
@@ -400,14 +430,27 @@ class MomentComposerViewModel(
 
         scope.launch {
             try {
-                momentRepository.insert(moment, emptySet())
+                val timelineIds = when (val context = snapshot.timelineContext) {
+                    CurrentTimeline.All -> snapshot.selectedTimelineIds
+                    is CurrentTimeline.Custom -> snapshot.selectedTimelineIds + context.id
+                }
+                momentRepository.insert(moment, timelineIds)
                 rawByDraftId.clear()
-                _state.value = MomentComposerState()
+                _state.value = freshStateFor(snapshot.timelineContext)
             } catch (t: Throwable) {
                 _state.update { it.copy(saveState = SaveState.Failure(t)) }
             }
         }
     }
+
+    private fun freshStateFor(timeline: CurrentTimeline): MomentComposerState =
+        MomentComposerState(
+            timelineContext = timeline,
+            selectedTimelineIds = when (timeline) {
+                CurrentTimeline.All -> emptySet()
+                is CurrentTimeline.Custom -> setOf(timeline.id)
+            },
+        )
 
     companion object {
         /** Bounded concurrency so multiple large videos never all run at once. */
