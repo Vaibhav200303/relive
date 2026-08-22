@@ -6,12 +6,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -42,7 +40,9 @@ internal fun LiveRecorderCard(
     val colors = ReliveTheme.colors
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
-    Box(
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(dims.spacing.md),
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(dims.radii.md))
@@ -54,28 +54,21 @@ internal fun LiveRecorderCard(
             )
             .padding(dims.spacing.md),
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(dims.spacing.md),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            StopSquare(onStop = onStop)
-            WaveformCanvas(
-                amplitudes = recording.amplitudes,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(36.dp),
-            )
-            Text(
-                text = formatDuration(recording.durationMs),
-                style = type.eyebrow,
-                color = colors.textSecondary,
-            )
-        }
+        StopSquare(onStop = onStop)
+        WaveformCanvas(
+            amplitudes = recording.amplitudes,
+            modifier = Modifier
+                .weight(1f)
+                .height(36.dp),
+        )
+        Text(
+            text = formatDuration(recording.durationMs),
+            style = type.eyebrow,
+            color = colors.textSecondary,
+        )
         IconButton(
             onClick = onCancel,
             modifier = Modifier
-                .align(Alignment.TopEnd)
                 .size(dims.minTouchTarget)
                 .semantics { contentDescription = "Discard recording" },
         ) {
