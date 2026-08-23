@@ -129,6 +129,8 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 ### Inline composer expansion
 - [ ] Collapsed state shows only `+` timeline marker.
 - [ ] Tapping `+` smoothly expands the composer in place (no modal/sheet).
+- [ ] Global `New` shows All settled/collapsed before the same smooth in-place expansion; no navigation flash, archive-wide scroll, or upward content jump.
+- [ ] Global-entry title focus follows composer entry and does not cause an abrupt simultaneous navigation/layout/IME change.
 - [ ] `×` resets fields and smoothly collapses.
 - [ ] Keep Moment resets fields and collapses.
 - [ ] Keep Moment reads as the primary Material 3 action and has enabled, disabled, and pressed feedback.
@@ -203,7 +205,9 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 - [ ] Processing → Ready does not cause a size jump (video).
 
 ### Camera orientation and feedback
+- [ ] With Android system auto-rotate both on and off, rotating the device leaves every Relive surface in portrait.
 - [ ] Photo review shows correct orientation on first frame (no rotate-then-correct snap).
+- [ ] Portrait-locked camera captures rear/front photos and videos that review, persist, and replay with correct orientation metadata.
 - [ ] Shutter sound plays on real capture success only.
 - [ ] Video start tone completes before mic opens (no bleed into recording).
 - [ ] Video stop tone plays after mic releases.

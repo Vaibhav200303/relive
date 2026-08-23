@@ -96,8 +96,8 @@ Opacity variants are drawn from the opacity scale (§15), not arbitrary values.
 
 | Token             | Value     | Usage                                 |
 | ----------------- | --------- | ------------------------------------- |
-| `color.surface.card` | `#EFECE5` | media container / tag chip surface |
-| `color.surface.card.translucent` | `#EFECE5` @ ~50% | dashed "Add media" surface |
+| `color.surface.card` | `#EFECE5` | media container / tag chip / composer media-action surface |
+| `color.surface.card.translucent` | `#EFECE5` @ ~50% | quiet secondary surface treatment |
 
 Surfaces are used sparingly — the product avoids excessive cards.
 
@@ -161,9 +161,12 @@ Reference anchors: screen horizontal padding ≈ `24dp`; vertical gap between mo
 | -------------- | ------- | ------------------------- |
 | `radius.sm`    | `8dp`   | inner media image corners |
 | `radius.md`    | `12dp`  | media container, chips-as-pills baseline |
+| `radius.lg`    | `20dp`  | expressive composer media-action container |
 | `radius.pill`  | `999dp` | tag chips, circular buttons |
 
 Search uses the same `radius.pill` container shape. `search.container.height` is `56dp`; the inner controls retain the global `48dp` minimum touch target.
+
+The expanded composer keeps one `radius.lg` media-action container using `color.surface.card`, a hairline muted border, and tokenized internal spacing. Its **Voice**, **Camera**, and **Media** actions occupy equal width, use aligned `icon.lg` Relive/Material-style microphone, photo-camera, and gallery glyphs, and retain at least `48dp` touch targets. The actions share one surface rather than becoming three elevated or independently colored pills. Press feedback comes from the Material interaction indication under Relive colors.
 
 ---
 
@@ -255,6 +258,8 @@ Single-media Moments use adaptive natural sizing: the container shrink-wraps aro
 | `motion.slow`     | `360ms` | larger transitions (planned)       |
 
 Values *(planned)* — confirm against the reference feel during implementation. Motion is subtle and supports the calm, editorial tone.
+
+The inline composer uses the same tokenized vertical expand/fade transition whether invoked from the timeline rail `+` or global `New`: `motion.slow` for entry and `motion.standard` for collapse with `ease.standard`. Global entry first presents one settled collapsed frame, then begins expansion; title focus follows on the next frame so navigation, layout, expansion, and IME do not all appear as one abrupt state change.
 
 ---
 

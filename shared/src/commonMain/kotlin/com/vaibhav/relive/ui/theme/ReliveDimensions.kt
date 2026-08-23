@@ -20,6 +20,7 @@ data class ReliveSpacing(
 data class ReliveRadii(
     val sm: Dp = 8.dp,
     val md: Dp = 12.dp,
+    val lg: Dp = 20.dp,
     val pill: Dp = 999.dp,
 )
 

@@ -310,6 +310,7 @@ The composer is **collapsed by default**. In the collapsed state:
 - The `×` reset button resets all fields and **collapses** the composer.
 - A successful **Keep Moment** resets all fields and **collapses** the composer.
 - Keyboard behavior keeps the active composer usable above the IME (see ADR-0016).
+- Entry from global `+ New` waits for All's content projection and one collapsed composed frame, then runs this same expansion transition and requests first-field focus after the expanding composer enters composition. It uses no arbitrary delay; subsequent media actions do not re-request focus.
 
 ### 6.2 Composer fields
 
@@ -327,11 +328,13 @@ The expanded composer contains:
 
 ### 6.3 Add Media flow
 
-Tapping **Add Media** reveals three options:
+Tapping **Add Media** reveals three evenly distributed actions inside one rounded Relive surface:
 
-- **Mic** (audio recording)
+- **Voice** (audio recording)
 - **Camera** (photo or video)
-- **Library** (photo, video, or audio from device)
+- **Media** (the existing photo, video, or audio library choice)
+
+Before Add Media, Voice, Camera, Media, or a nested photo/video/audio picker or recorder experience opens, Relive clears composer focus and dismisses the software keyboard. Returning preserves the complete draft and does not automatically reopen the keyboard.
 
 After media is added:
 
@@ -452,6 +455,8 @@ The location abstraction and platform boundary are defined in [`ARCHITECTURE.md`
 ## 7A. Camera behavior (Android)
 
 Camera is accessed from the composer's Add Media → Camera action. The camera captures both photo and video through a single in-camera surface with a Photo/Video mode selector.
+
+The Android Relive UI is locked to portrait at the application Activity configuration, independent of the device auto-rotate setting. This is a UI constraint, not a replacement for capture orientation handling: CameraX still writes capture rotation metadata, photo review/persistence still normalizes EXIF orientation, and video playback still respects recorded metadata. Relive's equivalent iOS product requirement is portrait-only UI through the Xcode/Info.plist supported-interface-orientation configuration; that separate platform setting must be implemented and verified on macOS rather than inferred from the Android configuration.
 
 ### Layout
 
