@@ -45,6 +45,10 @@ All timelines — built-in and custom — use the **same timeline UI and interac
 
 Timeline Home is the navigation root. Selecting All or a custom timeline opens the shared timeline detail experience scoped to that selection; returning goes back to Timeline Home.
 
+### Rediscover navigation
+
+Rediscover is a second top-level destination alongside Timelines. Until Search and You are implemented, bottom navigation contains exactly **Timelines** and **Rediscover**. Timeline Home remains the root within Timelines; Timeline detail is not a top-level destination.
+
 ### Moment / timeline relationship
 
 - A moment is **stored only once**.
@@ -59,6 +63,24 @@ Membership rules:
 - If a moment is **created from All**, the user may optionally assign it to one or more custom timelines.
 
 `All` membership is logical and automatic — it is not stored as an explicit per-moment membership row. See [`ARCHITECTURE.md`](ARCHITECTURE.md) for persistence design.
+
+## 2A. Rediscover
+
+Rediscover currently begins as a system-collection root with Favorites. It is not a chronological timeline or recommendation feed.
+
+- The root renders only the Relive app bar and the Favorites system-collection card above the two-item bottom navigation.
+- Favorites is derived reactively from each Moment's persisted favorite state. It is not a custom timeline, membership, or duplicate persistence record.
+- The card cover uses up to four most recent visual attachments from favorited Moments, ordered by Moment creation time descending and attachment order within each Moment. Audio/text-only favorites use an editorial collection surface; unrelated media is never used.
+- The card's lower identity is a heart icon above the real singular/plural Moment count; it does not display a Favorites text label.
+- Opening it presents only favorited Moments in the normal chronological timeline presentation. This system-collection detail is strictly read-only: it has Back and a centered Favorites title, but no composer, creation, edit, forget, membership, or favorite-mutation controls. Media viewing and playback remain available.
+- **Deferred capability:** On This Day, From Your Past, Places, and Tags retain their local read-model implementation for a later Rediscover presentation phase, but are not collected or rendered by the current root.
+
+- **Future On This Day** returns at most 20 Moments whose current-device-local month/day match today, from a prior local year; Moments created today are excluded. February 29 matches only previous February 29 Moments.
+- **Future From Your Past** returns at most four Moments at least 90 days old, excluding On This Day. The result is deterministic for a local day and may rotate on the next day.
+- **Future Places** groups readable saved location labels only; raw coordinates, maps, and geocoding are not introduced.
+- **Future Tags** reuse the existing canonical tag system and rank tags by Moment usage.
+- No Moment content leaves the device, and no analytics, cloud, AI, or recommendation backend is used.
+- Empty sections remain quiet and editorial; Relive never substitutes sample memories.
 
 ---
 
@@ -545,6 +567,7 @@ Behavior resembles WhatsApp chat search:
 
 - Every moment has a subtle **favorite/heart** action.
 - Favorite state must **not** visually dominate the moment.
+- Rediscover's Favorites system collection is derived from this same state, so favoriting or unfavoriting elsewhere updates the collection immediately.
 
 ---
 

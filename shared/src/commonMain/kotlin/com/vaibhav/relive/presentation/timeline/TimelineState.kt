@@ -12,7 +12,23 @@ import com.vaibhav.relive.domain.time.Instant
 sealed interface CurrentTimeline {
     data object All : CurrentTimeline
 
+    /** A derived scope, never stored as a custom timeline or membership. */
+    data object Favorites : CurrentTimeline
+
     data class Custom(val id: TimelineId) : CurrentTimeline
+}
+
+/** Semantic viewing capability for normal timelines and future system collections. */
+sealed interface TimelineMode {
+    val allowsMutations: Boolean
+
+    data object Editable : TimelineMode {
+        override val allowsMutations: Boolean = true
+    }
+
+    data class ReadOnlySystemCollection(val title: String) : TimelineMode {
+        override val allowsMutations: Boolean = false
+    }
 }
 
 data class TimelineScreenState(

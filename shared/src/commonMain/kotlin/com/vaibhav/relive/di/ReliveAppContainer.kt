@@ -4,6 +4,7 @@ import com.vaibhav.relive.domain.id.IdGenerator
 import com.vaibhav.relive.domain.repository.MomentRepository
 import com.vaibhav.relive.domain.repository.TimelineRepository
 import com.vaibhav.relive.domain.repository.TimelineHomeRepository
+import com.vaibhav.relive.domain.repository.RediscoverRepository
 import com.vaibhav.relive.domain.time.Clock
 import com.vaibhav.relive.platform.media.MediaProcessor
 import com.vaibhav.relive.platform.media.MediaStore
@@ -24,6 +25,7 @@ class ReliveAppContainer(
     val momentRepository: MomentRepository,
     val timelineRepository: TimelineRepository,
     val timelineHomeRepository: TimelineHomeRepository,
+    val rediscoverRepository: RediscoverRepository,
     val clock: Clock,
     val idGenerator: IdGenerator,
     val mediaStore: MediaStore,

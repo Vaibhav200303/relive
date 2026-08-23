@@ -6,6 +6,7 @@ import com.vaibhav.relive.data.local.ReliveDatabaseFactory
 import com.vaibhav.relive.data.local.repository.SqlDelightMomentRepository
 import com.vaibhav.relive.data.local.repository.SqlDelightTimelineRepository
 import com.vaibhav.relive.data.local.repository.SqlDelightTimelineHomeRepository
+import com.vaibhav.relive.data.local.repository.SqlDelightRediscoverRepository
 import com.vaibhav.relive.domain.id.IdGenerator
 import com.vaibhav.relive.domain.repository.MomentRepository
 import com.vaibhav.relive.domain.time.Clock
@@ -36,6 +37,7 @@ fun createDefaultReliveAppContainer(
         momentRepository = momentRepository,
         timelineRepository = timelineRepository,
         timelineHomeRepository = SqlDelightTimelineHomeRepository(database),
+        rediscoverRepository = SqlDelightRediscoverRepository(database),
         clock = clock,
         idGenerator = idGenerator,
         mediaStore = mediaStore,

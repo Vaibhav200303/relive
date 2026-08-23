@@ -295,3 +295,7 @@ Opacity variants for colors come from this scale rather than one-off alpha value
 Themes are token sets. The base is **Warm Journal** (values above). **Monochrome Archive** and **Film Memory** are additional token sets that may change color, typography, borders, surfaces, timeline styling, media treatment, and subtle texture — but never navigation, structure, hierarchy, composer interaction, or search behavior (see [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) §11). A timeline may reference a theme; the UI resolves tokens from it via `ReliveTheme`.
 
 Concrete palettes for Monochrome Archive and Film Memory are *(planned)* and will be transcribed/derived when the theming phase begins, and cross-checked against any updated reference.
+
+## 20. Rediscover and top-level navigation
+
+Rediscover reuses Warm Journal typography, colors, radii, borders, and spacing. Its active root contains only the Relive app bar, Favorites system-collection card, and two-item bottom navigation; components must not introduce raw visual values. On This Day hero media, compact memory cards, and waveform bounds are deferred Rediscover presentation capabilities. The timeline reference remains authoritative for Timeline UI only, while Rediscover follows the same calm editorial visual language without reproducing the timeline rail or Moment cards.

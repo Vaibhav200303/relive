@@ -353,6 +353,33 @@ Format for each entry:
 
 ---
 
+## ADR-0025 — Rediscover is a bounded local read model and second top-level destination
+
+- **Date:** 2026-08-23 · **Status:** Accepted
+- **Context:** Timeline Home was the app-wide root under ADR-0024. Relive now needs a calm resurfacing experience without turning it into another chronological timeline, backend recommendation system, or a full archive hydration path.
+- **Decision:** Timelines and Rediscover are the two top-level destinations until Search and You are implemented. Timeline Home remains the root inside Timelines. Rediscover is a dedicated SQLDelight-backed read model: On This Day returns at most 20 current-device-local prior-year matches; From Your Past returns four deterministic daily selections at least 90 days old; Places and Tags rank existing persisted usage. No new table, cloud state, analytics, AI, or recommendation backend is introduced. Media presentation reuses passive cached primitives and opens the existing viewer on demand.
+- **Consequences:** This supersedes ADR-0024 only where it names Timeline Home as the app-wide navigation root. Rediscover never calls `MomentRepository.observeAll()` and batch-hydrates selected tags/attachments to avoid N+1 reads. A user timezone change may change anniversary eligibility, matching existing device-local editorial date formatting.
+
+---
+
+## ADR-0026 — Rediscover starts with Favorites; resurfacing sections are deferred
+
+- **Date:** 2026-08-23 · **Status:** Accepted
+- **Context:** The approved Rediscover read model is useful future infrastructure, but its On This Day, From Your Past, Places, Tags, and empty-state presentations are not the current product root.
+- **Decision:** Rediscover renders only the Relive app bar and a persisted Favorites system-collection card above the existing two-item bottom navigation. The existing SQLDelight Rediscover repository, queries, calendar seam, and tests remain preserved for a future presentation phase, but the app does not construct `RediscoverViewModel` or collect its flows while the sections are absent. Favorites alone observes persisted Moments to calculate its real count.
+- **Consequences:** The visible-section portion of ADR-0025 is superseded. No Rediscover title, subtitle, resurfacing section, or related empty state remains in the active root. The later implementation can reuse the preserved local read model without reintroducing persistence changes.
+
+---
+
+## ADR-0027 — Favorites is a reactive, read-only Rediscover system collection
+
+- **Date:** 2026-08-23 · **Status:** Accepted
+- **Context:** Favorites is the first active Rediscover feature and must remain a direct expression of Moment favorite state rather than another user-managed timeline.
+- **Decision:** SQLDelight observes the favorite count, favorited Moment scope, and a bounded four-item visual cover directly from `moments` and `media_attachments`. The card has a heart icon plus Moment count, never a visible Favorites label. Its nested detail reuses Timeline presentation through `TimelineMode.ReadOnlySystemCollection`, which removes all write affordances and rejects mutation requests at the presentation boundary while retaining media viewing/playback.
+- **Consequences:** A favorite change anywhere updates Rediscover without duplicate persistence. Normal timelines retain full mutation capability. The deferred Rediscover overview projections remain uncollected at the active root, and debug QA remains isolated to the Android debug source set.
+
+---
+
 ## Template for new decisions
 
 ```
