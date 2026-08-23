@@ -43,6 +43,12 @@ data class TimelineScreenState(
     val customTimelines: List<Timeline.Custom> = emptyList(),
     val currentTimeline: CurrentTimeline = CurrentTimeline.All,
     val moments: TimelineMomentsState = TimelineMomentsState.Loading,
+    val dateNavigation: DateNavigationState? = null,
+)
+
+data class DateNavigationState(
+    val momentId: MomentId?,
+    val message: String?,
 )
 
 data class TimelineCreationState(

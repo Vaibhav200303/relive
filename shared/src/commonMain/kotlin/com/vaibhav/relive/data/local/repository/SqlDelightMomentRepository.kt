@@ -14,6 +14,8 @@ import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.Tag
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.repository.MomentRepository
+import com.vaibhav.relive.domain.repository.MomentDateNavigationScope
+import com.vaibhav.relive.domain.time.Instant
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -111,6 +113,38 @@ class SqlDelightMomentRepository(
             .asFlow()
             .mapToList(dispatcher)
             .map { rows -> withContext(dispatcher) { rows.map { hydrate(it) } } }
+
+    override suspend fun findDateNavigationTarget(
+        scope: MomentDateNavigationScope,
+        dayStart: Instant,
+        nextDayStart: Instant,
+    ): Moment? = withContext(dispatcher) {
+        val row = when (scope) {
+            MomentDateNavigationScope.All -> database.momentsQueries
+                .selectFirstMomentOnOrAfterInAll(dayStart.epochMilliseconds, nextDayStart.epochMilliseconds)
+                .executeAsOneOrNull()
+                ?: database.momentsQueries.selectFirstMomentAfterInAll(nextDayStart.epochMilliseconds)
+                    .executeAsOneOrNull()
+                ?: database.momentsQueries.selectLastMomentBeforeInAll(dayStart.epochMilliseconds)
+                    .executeAsOneOrNull()
+            is MomentDateNavigationScope.Custom -> database.momentsQueries
+                .selectFirstMomentOnOrAfterInTimeline(
+                    scope.timelineId.value,
+                    dayStart.epochMilliseconds,
+                    nextDayStart.epochMilliseconds,
+                )
+                .executeAsOneOrNull()
+                ?: database.momentsQueries.selectFirstMomentAfterInTimeline(
+                    scope.timelineId.value,
+                    nextDayStart.epochMilliseconds,
+                ).executeAsOneOrNull()
+                ?: database.momentsQueries.selectLastMomentBeforeInTimeline(
+                    scope.timelineId.value,
+                    dayStart.epochMilliseconds,
+                ).executeAsOneOrNull()
+        }
+        row?.let(::hydrate)
+    }
 
     override suspend fun listInTimeline(timelineId: TimelineId): List<Moment> =
         withContext(dispatcher) {

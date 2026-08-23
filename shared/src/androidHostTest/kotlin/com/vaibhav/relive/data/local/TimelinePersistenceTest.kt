@@ -6,6 +6,7 @@ import com.vaibhav.relive.domain.model.ReliveLocation
 import com.vaibhav.relive.domain.model.Tag
 import com.vaibhav.relive.domain.model.ThemeReference
 import com.vaibhav.relive.domain.model.TimelineId
+import com.vaibhav.relive.domain.repository.MomentDateNavigationScope
 import com.vaibhav.relive.domain.time.Instant
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -208,5 +209,49 @@ class TimelinePersistenceTest {
         val t = fx.timelines.findCustom(TimelineId("t1"))!!
         assertEquals("New", t.name)
         assertEquals(ThemeReference.FilmMemory, t.theme)
+    }
+
+    @Test fun dateNavigationSelectsFirstMomentOnRequestedDay() = runTest {
+        fx.moments.insert(sampleMoment("later", createdAtMs = 1_500L))
+        fx.moments.insert(sampleMoment("first", createdAtMs = 1_000L))
+
+        val target = fx.moments.findDateNavigationTarget(
+            MomentDateNavigationScope.All,
+            dayStart = Instant(1_000L),
+            nextDayStart = Instant(2_000L),
+        )
+
+        assertEquals("first", target?.id?.value)
+    }
+
+    @Test fun dateNavigationFallsForwardThenBackwardAndScopesCustomTimeline() = runTest {
+        val family = TimelineId("family")
+        fx.timelines.createCustom(sampleCustomTimeline(family.value), Instant(1L))
+        fx.moments.insert(sampleMoment("before", createdAtMs = 1_000L), setOf(family))
+        fx.moments.insert(sampleMoment("all-after", createdAtMs = 3_000L))
+
+        val allForward = fx.moments.findDateNavigationTarget(
+            MomentDateNavigationScope.All,
+            Instant(2_000L),
+            Instant(2_500L),
+        )
+        val familyBackward = fx.moments.findDateNavigationTarget(
+            MomentDateNavigationScope.Custom(family),
+            Instant(2_000L),
+            Instant(2_500L),
+        )
+
+        assertEquals("all-after", allForward?.id?.value)
+        assertEquals("before", familyBackward?.id?.value)
+    }
+
+    @Test fun dateNavigationReturnsNullForEmptyScope() = runTest {
+        assertNull(
+            fx.moments.findDateNavigationTarget(
+                MomentDateNavigationScope.All,
+                Instant(1_000L),
+                Instant(2_000L),
+            ),
+        )
     }
 }

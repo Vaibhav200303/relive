@@ -42,6 +42,45 @@ JOIN moment_timeline_memberships mtm ON mtm.moment_id = m.id
 WHERE mtm.timeline_id = :timelineId
 ORDER BY m.created_at DESC, m.id DESC;
 
+selectFirstMomentOnOrAfterInAll:
+SELECT * FROM moments
+WHERE created_at >= :start AND created_at < :end
+ORDER BY created_at ASC, id ASC
+LIMIT 1;
+
+selectFirstMomentAfterInAll:
+SELECT * FROM moments
+WHERE created_at >= :start
+ORDER BY created_at ASC, id ASC
+LIMIT 1;
+
+selectLastMomentBeforeInAll:
+SELECT * FROM moments
+WHERE created_at < :end
+ORDER BY created_at DESC, id DESC
+LIMIT 1;
+
+selectFirstMomentOnOrAfterInTimeline:
+SELECT m.* FROM moments m
+JOIN moment_timeline_memberships mtm ON mtm.moment_id = m.id
+WHERE mtm.timeline_id = :timelineId AND m.created_at >= :start AND m.created_at < :end
+ORDER BY m.created_at ASC, m.id ASC
+LIMIT 1;
+
+selectFirstMomentAfterInTimeline:
+SELECT m.* FROM moments m
+JOIN moment_timeline_memberships mtm ON mtm.moment_id = m.id
+WHERE mtm.timeline_id = :timelineId AND m.created_at >= :start
+ORDER BY m.created_at ASC, m.id ASC
+LIMIT 1;
+
+selectLastMomentBeforeInTimeline:
+SELECT m.* FROM moments m
+JOIN moment_timeline_memberships mtm ON mtm.moment_id = m.id
+WHERE mtm.timeline_id = :timelineId AND m.created_at < :end
+ORDER BY m.created_at DESC, m.id DESC
+LIMIT 1;
+
 updateMomentEditableFields:
 UPDATE moments SET
     updated_at = :updatedAt,

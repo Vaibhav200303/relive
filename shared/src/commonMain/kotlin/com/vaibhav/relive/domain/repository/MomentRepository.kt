@@ -3,6 +3,7 @@ package com.vaibhav.relive.domain.repository
 import com.vaibhav.relive.domain.model.Moment
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.TimelineId
+import com.vaibhav.relive.domain.time.Instant
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -52,8 +53,23 @@ interface MomentRepository {
      */
     fun observeSearch(query: String): Flow<List<Moment>>
 
+    /**
+     * Resolves calendar navigation with bounded, scope-aware reads.  [dayStart]
+     * and [nextDayStart] are current-device-local calendar boundaries.
+     */
+    suspend fun findDateNavigationTarget(
+        scope: MomentDateNavigationScope,
+        dayStart: Instant,
+        nextDayStart: Instant,
+    ): Moment? = null
+
     /** Moments that belong to the given custom timeline, newest first. */
     suspend fun listInTimeline(timelineId: TimelineId): List<Moment>
 
     fun observeInTimeline(timelineId: TimelineId): Flow<List<Moment>>
+}
+
+sealed interface MomentDateNavigationScope {
+    data object All : MomentDateNavigationScope
+    data class Custom(val timelineId: TimelineId) : MomentDateNavigationScope
 }

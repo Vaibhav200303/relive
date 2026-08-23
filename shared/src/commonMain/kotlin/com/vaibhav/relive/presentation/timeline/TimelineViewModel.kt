@@ -5,11 +5,14 @@ import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.repository.MomentRepository
+import com.vaibhav.relive.domain.repository.MomentDateNavigationScope
 import com.vaibhav.relive.domain.repository.TimelineRepository
 import com.vaibhav.relive.domain.repository.RediscoverRepository
 import com.vaibhav.relive.domain.policy.EditWindow
 import com.vaibhav.relive.domain.time.Clock
 import com.vaibhav.relive.presentation.date.RediscoverCalendar
+import com.vaibhav.relive.presentation.date.editorialDayMonth
+import com.vaibhav.relive.domain.model.LocalCalendarDate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
@@ -53,6 +56,30 @@ class TimelineViewModel(
     fun setFavorite(id: MomentId, isFavorite: Boolean) {
         if (!mode.allowsMutations) return
         scope.launch { momentRepository.setFavorite(id, isFavorite) }
+    }
+
+    fun jumpToDate(date: LocalCalendarDate) {
+        val targetScope = when (val timeline = _state.value.currentTimeline) {
+            CurrentTimeline.All -> MomentDateNavigationScope.All
+            is CurrentTimeline.Custom -> MomentDateNavigationScope.Custom(timeline.id)
+            else -> return
+        }
+        scope.launch {
+            val target = momentRepository.findDateNavigationTarget(
+                scope = targetScope,
+                dayStart = RediscoverCalendar.startOfDay(date),
+                nextDayStart = RediscoverCalendar.nextDayStart(date),
+            )
+            val message = target?.let {
+                val shownDate = RediscoverCalendar.localDate(it.createdAt)
+                if (shownDate == date) null else "No moments on ${date.editorialDayMonth()} — showing ${shownDate.editorialDayMonth()}."
+            } ?: "No moments in this timeline yet."
+            _state.update { it.copy(dateNavigation = DateNavigationState(target?.id, message)) }
+        }
+    }
+
+    fun consumeDateNavigation() {
+        _state.update { it.copy(dateNavigation = null) }
     }
 
     fun canEditOrForget(moment: Moment): Boolean = EditWindow.isEditable(moment, clock)

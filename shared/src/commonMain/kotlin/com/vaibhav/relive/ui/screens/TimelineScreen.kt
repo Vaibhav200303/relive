@@ -44,6 +44,8 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import com.vaibhav.relive.domain.id.IdGenerator
@@ -72,6 +74,7 @@ import com.vaibhav.relive.presentation.timeline.TimelineMomentsState
 import com.vaibhav.relive.presentation.timeline.TimelineMode
 import com.vaibhav.relive.presentation.timeline.TimelineScreenState
 import com.vaibhav.relive.presentation.timeline.TimelineViewModel
+import com.vaibhav.relive.presentation.date.RediscoverCalendar
 import com.vaibhav.relive.presentation.timeline.toMoment
 import com.vaibhav.relive.presentation.viewer.TimelineMediaNavState
 import com.vaibhav.relive.presentation.viewer.closeGallery
@@ -85,6 +88,7 @@ import com.vaibhav.relive.ui.components.composer.MomentComposer
 import com.vaibhav.relive.ui.components.timeline.EmptyCustomTimelinePlaceholder
 import com.vaibhav.relive.ui.components.timeline.MomentCard
 import com.vaibhav.relive.ui.components.timeline.TimelineHeader
+import com.vaibhav.relive.ui.components.timeline.DateNavigationPicker
 import com.vaibhav.relive.ui.components.timeline.SystemCollectionHeader
 import com.vaibhav.relive.ui.components.viewer.MediaViewer
 import com.vaibhav.relive.ui.components.viewer.MomentMediaGallery
@@ -160,6 +164,8 @@ fun TimelineScreen(
     var wasEditingWhenSaving by remember { mutableStateOf(false) }
     var momentToForget by remember { mutableStateOf<MomentPresentation?>(null) }
     var editorBounds by remember { mutableStateOf<Rect?>(null) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(composerState.isEditing) {
         if (!composerState.isEditing) editorBounds = null
@@ -172,6 +178,9 @@ fun TimelineScreen(
         }
         if (nowSaving) wasEditingWhenSaving = composerState.isEditing
         wasSaving = nowSaving
+    }
+    LaunchedEffect(timelineState.dateNavigation) {
+        timelineState.dateNavigation?.message?.let { snackbarHostState.showSnackbar(it) }
     }
 
     val pickerHandle = rememberMediaPickerHandle(mediaStore)
@@ -261,7 +270,22 @@ fun TimelineScreen(
             onDismissMicPermissionMessage = composerViewModel::dismissMicPermissionMessage,
             onOpenAppSettings = composerViewModel::openAppSettings,
             onEditorBoundsChanged = { editorBounds = it },
+            onJumpToDate = { showDatePicker = true },
+            dateNavigationTargetId = timelineState.dateNavigation?.momentId,
+            onDateNavigationHandled = timelineViewModel::consumeDateNavigation,
+            snackbarHostState = snackbarHostState,
         )
+
+        if (showDatePicker) {
+            DateNavigationPicker(
+                initialDate = RediscoverCalendar.localDate(clock.now()),
+                onDismiss = { showDatePicker = false },
+                onDateSelected = { date ->
+                    showDatePicker = false
+                    timelineViewModel.jumpToDate(date)
+                },
+            )
+        }
 
         ComposerOverlayHost(
             overlay = composerState.overlay,
@@ -382,6 +406,10 @@ private fun TimelineContent(
     onEditorBoundsChanged: (Rect) -> Unit,
     isComposerExpanded: Boolean,
     onExpandComposer: () -> Unit,
+    onJumpToDate: () -> Unit,
+    dateNavigationTargetId: MomentId?,
+    onDateNavigationHandled: () -> Unit,
+    snackbarHostState: SnackbarHostState,
 ) {
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
@@ -394,7 +422,7 @@ private fun TimelineContent(
         if (mode is TimelineMode.ReadOnlySystemCollection) {
             SystemCollectionHeader(title = mode.title, onBack = onBack ?: {})
         } else {
-            TimelineHeader(onBack = onBack)
+            TimelineHeader(onBack = onBack, onJumpToDate = onJumpToDate)
         }
 
         Box(
@@ -414,8 +442,9 @@ private fun TimelineContent(
             key(timelineState.currentTimeline) {
                 val listState = rememberLazyListState()
                 var lastSeenCount by remember { mutableIntStateOf(-1) }
-                LaunchedEffect(moments, selectedMomentId) {
-                    val selectedIndex = selectedMomentId?.let { selected ->
+                LaunchedEffect(moments, selectedMomentId, dateNavigationTargetId) {
+                    val targetId = dateNavigationTargetId ?: selectedMomentId
+                    val selectedIndex = targetId?.let { selected ->
                         moments.indexOfFirst { it.id == selected }.takeIf { it >= 0 }
                     }
                     val target = selectedIndex ?: when {
@@ -429,6 +458,9 @@ private fun TimelineContent(
                         listState.animateScrollToItem(target)
                     }
                     lastSeenCount = moments.size
+                    if (dateNavigationTargetId != null || timelineState.dateNavigation != null) {
+                        onDateNavigationHandled()
+                    }
                 }
                 LazyColumn(
                     state = listState,
@@ -548,6 +580,10 @@ private fun TimelineContent(
                     }
                 }
             }
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
         }
     }
 }
