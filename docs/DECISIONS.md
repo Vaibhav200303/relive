@@ -445,6 +445,15 @@ Format for each entry:
 - **Decision:** Search is the third top-level destination alongside Timelines and Rediscover. It opens a dedicated, autofocus screen and queries every local Moment by case-insensitive SQL `LIKE` over title and content. Results use All Timeline's chronological presentation and ordering, with a counter plus non-wrapping up/down active-match navigation. Search results are a `TimelineMode`-equivalent read-only projection: no composer, edit, forget, membership, or favorite mutation; media viewing/playback remains available. Query, active match, and scroll state live at the app root for the current process session. Tags, locations, filters, categories, ranking, history, and text highlight are deferred.
 - **Consequences:** This supersedes ADR-0006 and the old PRODUCT_SPEC §9 timeline-scoped search plan. Search adds no schema, backend, cloud, FTS, or third-party dependency. The existing MomentCard remains the presentation source of truth; text highlighting is intentionally deferred to avoid invasive card restructuring.
 
+---
+
+## ADR-0035 — Deterministic generated covers for collection-card visual fallbacks
+
+- **Date:** 2026-08-24 · **Status:** Accepted
+- **Context:** Timeline Home and Rediscover collection cards previously used editorial copy or neutral surfaces when their bounded preview data had no image/video attachment. Those treatments made audio-only and text-only memories visually inconsistent while card geometry remained fixed.
+- **Decision:** Collection-card fallback covers are rendered by one shared Compose `Brush` primitive. It deterministically hashes the logical card identity (`timeline-all`, Timeline ID, or Moment ID) into a curated tokenized palette; no gradient choice is stored. Image/video preview data always wins and reactively replaces the cover. Audio-only and text-only cards use the cover without fake media, icons, or waveform. Warm Journal uses restrained dark vibrant gradients; Monochrome Archive selects a neutral dark-gray palette. Normal Timeline MomentCard media presentation is unchanged.
+- **Consequences:** The empty visual surface language in ADR-0029 is superseded. The behavior adds no schema field, bitmap, file IO, random/session state, or dependency, and it remains stable across recomposition and app restarts.
+
 ## Template for new decisions
 
 ```

@@ -37,7 +37,7 @@ import com.vaibhav.relive.platform.media.RelivedImageTile
 import com.vaibhav.relive.platform.media.RelivedVideoTile
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeContent
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeViewModel
-import com.vaibhav.relive.presentation.timelinehome.emptyPreviewPlaceholderText
+import com.vaibhav.relive.presentation.cardcover.cardCoverStableKey
 import com.vaibhav.relive.presentation.date.TimelineCreatedDateFormatter
 import com.vaibhav.relive.ui.components.MediaToCardSurfaceFade
 import com.vaibhav.relive.ui.components.reliveCardOuterBorder
@@ -246,21 +246,16 @@ private fun TimelineHomeMediaPreview(
 ) {
     val dims = ReliveTheme.dimensions
     val attachments = summary.previewAttachments
-    val placeholderText = summary.emptyPreviewPlaceholderText()
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = dims.spacing.md)
             .height(mediaHeight)
-            .clip(androidx.compose.foundation.shape.RoundedCornerShape(0.dp))
             .background(ReliveTheme.colors.surfaceCardTranslucent),
     ) {
         when (attachments.size) {
-            0 -> TimelineHomeEditorialPlaceholder(
-                text = placeholderText.orEmpty(),
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(horizontal = dims.spacing.lg),
+            0 -> com.vaibhav.relive.ui.theme.ReliveGeneratedCover(
+                stableKey = summary.timeline.cardCoverStableKey(),
+                modifier = Modifier.matchParentSize(),
             )
             1 -> PreviewTile(attachments.single(), mediaStore, Modifier.matchParentSize())
             2 -> Row(Modifier.matchParentSize()) {
@@ -286,17 +281,6 @@ private fun TimelineHomeMediaPreview(
         }
         MediaToCardSurfaceFade(modifier = Modifier.align(Alignment.BottomCenter))
     }
-}
-
-@Composable
-private fun TimelineHomeEditorialPlaceholder(text: String, modifier: Modifier) {
-    val colors = ReliveTheme.colors
-    Text(
-        text = text,
-        style = ReliveTheme.typography.title,
-        color = colors.textPrimary,
-        modifier = modifier,
-    )
 }
 
 @Composable

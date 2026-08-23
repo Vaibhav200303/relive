@@ -32,6 +32,7 @@ data class ReliveThemeTokens(
     val typography: ReliveTypography,
     val dimensions: ReliveDimensions,
     val motion: ReliveMotion,
+    val generatedCoverPalette: ReliveGeneratedCoverPalette,
     /**
      * When true, the platform status/navigation bar icons should render in a DARK
      * appearance (for use over light Relive canvases like Warm Journal). Future dark
@@ -47,12 +48,18 @@ val WarmJournalTokens: ReliveThemeTokens = ReliveThemeTokens(
     typography = DefaultReliveTypography,
     dimensions = DefaultReliveDimensions,
     motion = DefaultReliveMotion,
+    generatedCoverPalette = WarmJournalGeneratedCoverPalette,
     systemBarIconsDark = true,
+)
+
+private val MonochromeArchiveTokens: ReliveThemeTokens = WarmJournalTokens.copy(
+    id = ReliveThemeId.MonochromeArchive,
+    generatedCoverPalette = MonochromeArchiveGeneratedCoverPalette,
 )
 
 fun reliveTokensFor(id: ReliveThemeId): ReliveThemeTokens = when (id) {
     ReliveThemeId.WarmJournal -> WarmJournalTokens
-    ReliveThemeId.MonochromeArchive,
+    ReliveThemeId.MonochromeArchive -> MonochromeArchiveTokens
     ReliveThemeId.FilmMemory -> WarmJournalTokens
 }
 
