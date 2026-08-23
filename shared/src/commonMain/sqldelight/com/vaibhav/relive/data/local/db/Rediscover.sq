@@ -37,7 +37,28 @@ WHERE CAST(strftime('%m', m.created_at / 1000, 'unixepoch', 'localtime') AS INTE
 ORDER BY m.created_at DESC, m.id DESC
 LIMIT 20;
 
--- Four evenly spaced positions in a deterministic daily rotation. The selected
+selectOnThisDayPreviewMoments:
+SELECT
+    m.*,
+    CAST(strftime('%Y', m.created_at / 1000, 'unixepoch', 'localtime') AS INTEGER) AS local_year
+FROM moments m
+WHERE CAST(strftime('%m', m.created_at / 1000, 'unixepoch', 'localtime') AS INTEGER) = :month
+  AND CAST(strftime('%d', m.created_at / 1000, 'unixepoch', 'localtime') AS INTEGER) = :day
+  AND CAST(strftime('%Y', m.created_at / 1000, 'unixepoch', 'localtime') AS INTEGER) < :year
+  AND m.created_at < :startOfToday
+ORDER BY m.created_at DESC, m.id DESC
+LIMIT :limit;
+
+selectOnThisDayMoments:
+SELECT * FROM moments m
+WHERE CAST(strftime('%m', m.created_at / 1000, 'unixepoch', 'localtime') AS INTEGER) = :month
+  AND CAST(strftime('%d', m.created_at / 1000, 'unixepoch', 'localtime') AS INTEGER) = :day
+  AND CAST(strftime('%Y', m.created_at / 1000, 'unixepoch', 'localtime') AS INTEGER) < :year
+  AND m.created_at < :startOfToday
+ORDER BY m.created_at DESC, m.id DESC
+LIMIT 20;
+
+-- Ten evenly spaced positions in a deterministic daily rotation. The selected
 -- rows stay bounded while SQLite performs the archive ordering locally.
 selectPastRediscoveryCore:
 SELECT
@@ -61,18 +82,18 @@ WITH eligible AS (
 ), counts AS (
     SELECT COUNT(*) AS total FROM eligible
 ), slots(slot) AS (
-    VALUES (0), (1), (2), (3)
+    VALUES (0), (1), (2), (3), (4), (5), (6), (7), (8), (9)
 ), targets AS (
     SELECT
         slots.slot,
         (
             (:dailySeed % CASE WHEN counts.total > 0 THEN counts.total ELSE 1 END) +
             (slots.slot * counts.total) /
-                CASE WHEN counts.total < 4 THEN CASE WHEN counts.total > 0 THEN counts.total ELSE 1 END ELSE 4 END
+                CASE WHEN counts.total < 10 THEN CASE WHEN counts.total > 0 THEN counts.total ELSE 1 END ELSE 10 END
         ) % CASE WHEN counts.total > 0 THEN counts.total ELSE 1 END AS position
     FROM counts
     CROSS JOIN slots
-    WHERE slots.slot < CASE WHEN counts.total < 4 THEN counts.total ELSE 4 END
+    WHERE slots.slot < CASE WHEN counts.total < 10 THEN counts.total ELSE 10 END
 )
 SELECT n.id, targets.slot
 FROM targets

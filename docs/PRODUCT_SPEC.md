@@ -66,7 +66,7 @@ Membership rules:
 
 ## 2A. Rediscover
 
-Rediscover currently begins as a system-collection root with Favorites. It is not a chronological timeline or recommendation feed.
+Rediscover currently begins as a system-collection root with Favorites, On This Day, and From Your Past. It is not a chronological timeline or recommendation feed.
 
 - The root renders the Relive app bar, a `FAVOURITES` editorial section, and the two-item bottom navigation.
 - Favorites is derived reactively from each Moment's persisted favorite state. It is not a custom timeline, membership, or duplicate persistence record.
@@ -74,10 +74,10 @@ Rediscover currently begins as a system-collection root with Favorites. It is no
 - Tapping a card opens the read-only Favorites timeline positioned at that Moment. `Show all` opens the complete read-only Favorites timeline. With zero favorites, the section shows `No favorite moments yet.` and `Moments you favorite will appear here.` without a row or `Show all` action.
 - The Favorites detail is strictly read-only: it has Back and a centered Favorites title, but no composer, creation, edit, forget, membership, or favorite-mutation controls. Media viewing and playback remain available.
 - The root uses a dedicated bounded read projection with batched attachment loading; it does not hydrate the full Favorites collection to render the shelf.
-- **Deferred capability:** On This Day, From Your Past, Places, and Tags retain their local read-model implementation for a later Rediscover presentation phase, but are not collected or rendered by the current root.
+- On This Day renders directly below Favorites: its editorial date is the current device-local day/month and its bounded, horizontally swipeable featured cards represent only matching dates in previous local calendar years. The current year is excluded; February 29 matches only previous February 29 Moments. A card's secondary label is the exact calendar-year anniversary, e.g. `2 YEARS AGO`. It opens a read-only system collection positioned at the selected Moment. An empty anniversary set shows `Nothing from this date—yet.` without a card.
+- From Your Past renders below On This Day as a horizontally swipeable shelf of at most ten distinct Moments. It selects only Moments at least 90 days old, excludes future timestamps and active On This Day matches, and does not exclude favorites. Selection and order are deterministic for a device-local calendar day, change with the next local day, and are read from a bounded SQL-backed projection with batched attachments. Cards use the same compact dimensions and visual framing as Favorites but show no heart. Tapping opens that day's read-only From Your Past system collection positioned at the selected Moment; the detail retains the shelf order. If no Moment is eligible, the root shows `Your archive is still taking shape.` without cards.
+- **Deferred capability:** Places and Tags retain their local read-model implementation for a later Rediscover presentation phase, but are not collected or rendered by the current root.
 
-- **Future On This Day** returns at most 20 Moments whose current-device-local month/day match today, from a prior local year; Moments created today are excluded. February 29 matches only previous February 29 Moments.
-- **Future From Your Past** returns at most four Moments at least 90 days old, excluding On This Day. The result is deterministic for a local day and may rotate on the next day.
 - **Future Places** groups readable saved location labels only; raw coordinates, maps, and geocoding are not introduced.
 - **Future Tags** reuse the existing canonical tag system and rank tags by Moment usage.
 - No Moment content leaves the device, and no analytics, cloud, AI, or recommendation backend is used.

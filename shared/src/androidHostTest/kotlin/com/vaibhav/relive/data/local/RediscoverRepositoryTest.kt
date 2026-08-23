@@ -45,6 +45,23 @@ class RediscoverRepositoryTest {
         assertFalse(overview.onThisDay.any { it.id.value == "today" })
     }
 
+    @Test fun on_this_day_preview_matches_exact_prior_year_dates_and_stays_bounded() = runTest {
+        repeat(12) { index ->
+            fx.moments.insert(sampleMoment("past-$index", utc(2025, 8, 23, 12), title = "past"))
+        }
+        fx.moments.insert(sampleMoment("today", utc(2026, 8, 23, 8), title = "today"))
+        fx.moments.insert(sampleMoment("wrong-date", utc(2024, 8, 22, 8), title = "wrong"))
+
+        val previews = fx.rediscover.observeOnThisDayPreviews(
+            today = LocalCalendarDate(2026, 8, 23),
+            startOfToday = Instant(utc(2026, 8, 23)),
+        ).first()
+
+        assertEquals(10, previews.size)
+        assertTrue(previews.all { it.localYear == 2025 })
+        assertFalse(previews.any { it.id.value == "today" || it.id.value == "wrong-date" })
+    }
+
     @Test fun places_and_tags_are_ranked_from_persisted_usage() = runTest {
         fx.moments.insert(sampleMoment(
             "pune-1", utc(2025, 1, 1), title = "one",
@@ -75,6 +92,53 @@ class RediscoverRepositoryTest {
         val overview = fx.rediscover.observeOverview(query()).first()
 
         assertEquals(listOf("old"), overview.fromYourPast.map { it.id.value })
+    }
+
+    @Test fun from_your_past_returns_every_eligible_moment_up_to_ten() = runTest {
+        assertTrue(fx.rediscover.observeFromYourPastPreviews(query()).first().isEmpty())
+
+        fx.moments.insert(sampleMoment("one", utc(2025, 1, 1)))
+        assertEquals(1, fx.rediscover.observeFromYourPastPreviews(query()).first().size)
+
+        repeat(6) { index -> fx.moments.insert(sampleMoment("seven-$index", utc(2025, 1, index + 2))) }
+        assertEquals(7, fx.rediscover.observeFromYourPastPreviews(query()).first().size)
+
+        repeat(3) { index -> fx.moments.insert(sampleMoment("ten-$index", utc(2025, 2, index + 1))) }
+        assertEquals(10, fx.rediscover.observeFromYourPastPreviews(query()).first().size)
+
+        repeat(5) { index -> fx.moments.insert(sampleMoment("fifteen-$index", utc(2025, 3, index + 1))) }
+        assertEquals(10, fx.rediscover.observeFromYourPastPreviews(query()).first().size)
+    }
+
+    @Test fun from_your_past_is_unique_deterministic_and_rotates_daily() = runTest {
+        repeat(15) { index -> fx.moments.insert(sampleMoment("old-$index", utc(2025, 1, index + 1))) }
+
+        val today = fx.rediscover.observeFromYourPastPreviews(query()).first().map { it.id.value }
+        val sameDay = fx.rediscover.observeFromYourPastPreviews(query()).first().map { it.id.value }
+        val tomorrow = fx.rediscover.observeFromYourPastPreviews(query(dailySeed = 20_260_824L)).first().map { it.id.value }
+
+        assertEquals(today, sameDay)
+        assertEquals(today.size, today.toSet().size)
+        assertEquals(10, today.size)
+        assertFalse(today == tomorrow)
+    }
+
+    @Test fun from_your_past_excludes_future_recent_and_on_this_day_moments() = runTest {
+        fx.moments.insert(sampleMoment("eligible", utc(2025, 1, 1)))
+        fx.moments.insert(sampleMoment("recent", utc(2026, 6, 1)))
+        fx.moments.insert(sampleMoment("anniversary", utc(2025, 8, 23)))
+        fx.moments.insert(sampleMoment("future", utc(2027, 1, 1)))
+
+        assertEquals(listOf("eligible"), fx.rediscover.observeFromYourPastPreviews(query()).first().map { it.id.value })
+    }
+
+    @Test fun from_your_past_detail_uses_the_same_daily_order_as_the_shelf() = runTest {
+        repeat(15) { index -> fx.moments.insert(sampleMoment("old-$index", utc(2025, 1, index + 1))) }
+
+        val shelf = fx.rediscover.observeFromYourPastPreviews(query()).first().map { it.id.value }
+        val detail = fx.rediscover.observeFromYourPastMoments(query()).first().map { it.id.value }
+
+        assertEquals(shelf, detail)
     }
 
     @Test fun favorites_are_reactive_and_only_return_favorited_moments() = runTest {
@@ -155,11 +219,11 @@ class RediscoverRepositoryTest {
         assertEquals((2..11).map { "attachment-$it" }, previews.map { it.attachments.single().id.value })
     }
 
-    private fun query(): RediscoverQuery = RediscoverQuery(
+    private fun query(dailySeed: Long = 20_260_823L): RediscoverQuery = RediscoverQuery(
         today = LocalCalendarDate(2026, 8, 23),
         startOfToday = Instant(utc(2026, 8, 23)),
         recentCutoff = Instant(utc(2026, 5, 25)),
-        dailySeed = 20_260_823L,
+        dailySeed = dailySeed,
     )
 
     private fun utc(year: Int, month: Int, day: Int, hour: Int = 0): Long = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {

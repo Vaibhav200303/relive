@@ -10,6 +10,7 @@ import com.vaibhav.relive.domain.repository.TimelineRepository
 import com.vaibhav.relive.domain.repository.RediscoverRepository
 import com.vaibhav.relive.domain.policy.EditWindow
 import com.vaibhav.relive.domain.time.Clock
+import com.vaibhav.relive.presentation.date.RediscoverCalendar
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
@@ -111,7 +112,8 @@ class TimelineViewModel(
         momentsJob?.cancel()
         momentsJob = scope.launch {
             timeline.momentsFlow().collect { moments ->
-                val presentation = moments.asReversed().map { it.toPresentation() }
+                val orderedMoments = if (timeline is CurrentTimeline.FromYourPast) moments else moments.asReversed()
+                val presentation = orderedMoments.map { it.toPresentation() }
                 _state.update { current ->
                     if (current.currentTimeline != timeline) {
                         current
@@ -132,6 +134,11 @@ class TimelineViewModel(
     private fun CurrentTimeline.momentsFlow(): Flow<List<Moment>> = when (this) {
         CurrentTimeline.All -> momentRepository.observeAll()
         CurrentTimeline.Favorites -> rediscoverRepository.observeFavoriteMoments()
+        is CurrentTimeline.OnThisDay -> rediscoverRepository.observeOnThisDayMoments(
+            today = date,
+            startOfToday = RediscoverCalendar.startOfDay(date),
+        )
+        is CurrentTimeline.FromYourPast -> rediscoverRepository.observeFromYourPastMoments(query)
         is CurrentTimeline.Custom -> momentRepository.observeInTimeline(id)
     }
 }

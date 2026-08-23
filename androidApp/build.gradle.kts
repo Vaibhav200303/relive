@@ -17,6 +17,8 @@ dependencies {
 
     implementation(libs.compose.uiToolingPreview)
     debugImplementation(libs.compose.uiTooling)
+    debugImplementation(libs.compose.foundation)
+    debugImplementation(libs.compose.material3)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlin.test)

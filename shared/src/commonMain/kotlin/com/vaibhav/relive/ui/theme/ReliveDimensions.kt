@@ -57,9 +57,14 @@ data class ReliveTimelineHomeDimensions(
 
 @Immutable
 data class ReliveRediscoverDimensions(
+    val cardOuterRadius: Dp = 20.dp,
+    val heroMediaHeight: Dp = 280.dp,
     val compactMediaHeight: Dp = 144.dp,
     val favoriteShelfCardHeight: Dp = 240.dp,
-    val favoriteShelfCardWidthFraction: Float = 0.82f,
+    val compactCardWidth: Dp = 208.dp,
+    val favoriteShelfCardWidthFraction: Float = 0.68f,
+    val onThisDayShelfCardWidthFraction: Float = 0.82f,
+    val waveformHeight: Dp = 44.dp,
 )
 
 @Immutable

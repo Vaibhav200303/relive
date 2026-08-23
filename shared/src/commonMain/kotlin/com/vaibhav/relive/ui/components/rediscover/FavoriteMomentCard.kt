@@ -38,11 +38,13 @@ fun FavoriteMomentCard(
     moment: FavoriteMomentPreview,
     mediaStore: MediaStore,
     modifier: Modifier = Modifier,
+    showFavoriteIndicator: Boolean = true,
+    semanticDescription: String = "Open favorite moment",
     onOpen: () -> Unit,
 ) {
     val dims = ReliveTheme.dimensions
     val colors = ReliveTheme.colors
-    val shape = RoundedCornerShape(20.dp)
+    val shape = RoundedCornerShape(dims.rediscover.cardOuterRadius)
     val lead = moment.attachments.minByOrNull { it.sortIndex }
     Column(
         modifier = modifier
@@ -51,7 +53,7 @@ fun FavoriteMomentCard(
             .background(colors.surfaceCard)
             .reliveCardOuterBorder(shape)
             .clickable(onClick = onOpen)
-            .semantics { contentDescription = "Open favorite moment" },
+            .semantics { contentDescription = semanticDescription },
     ) {
         Box(
             modifier = Modifier
@@ -88,7 +90,7 @@ fun FavoriteMomentCard(
                     text = title,
                     style = ReliveTheme.typography.action,
                     color = colors.textPrimary,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
@@ -99,7 +101,7 @@ fun FavoriteMomentCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Box(modifier = Modifier.padding(start = dims.spacing.md)) {
+            if (showFavoriteIndicator) Box(modifier = Modifier.padding(start = dims.spacing.md)) {
                 HeartGlyph(
                     size = dims.icon.md,
                     color = colors.accent,

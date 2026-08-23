@@ -227,8 +227,10 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 - [ ] Media, text-only, and audio cards use their appropriate compact presentation; media uses the first ordered attachment with a quiet additional-count indicator and audio never autoplays.
 - [ ] Zero favorites shows the approved two-line empty state with no shelf or `Show all`.
 - [ ] Tapping a card opens the read-only Favorites timeline at that Moment; `Show all` opens it without a selected Moment. Opening Favorites hides bottom navigation and exposes only Back, read-only timeline browsing, media viewing, and playback; Back returns to the preserved Rediscover root state.
+- [ ] On This Day matches only exact previous local calendar years, excludes the current year, preserves February 29 behavior, uses exact calendar-year labels, and loads only a bounded attachment-batched shelf preview.
+- [ ] An empty On This Day remains compact; media, text-only, and audio-only entries retain featured-card geometry; tapping routes to the selected read-only collection.
 - [ ] Timelines and Rediscover are the only visible bottom-navigation destinations; Timeline detail hides the bar and preserves Back behavior.
-- Deferred, retain coverage for future reactivation: On This Day calendar eligibility, deterministic From Your Past selection, Places/Tags ranking, empty/partial archive states, and passive media behavior.
+- Deferred, retain coverage for future reactivation: deterministic From Your Past selection, Places/Tags ranking, empty/partial archive states, and passive media behavior.
 
 ---
 
