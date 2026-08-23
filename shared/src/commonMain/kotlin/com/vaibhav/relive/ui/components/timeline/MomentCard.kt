@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -80,7 +81,7 @@ fun MomentCard(
             )
             .drawBehind {
                 val axis = dims.timeline.contentInset.toPx() / 2f
-                val markerCenter = dims.spacing.xl.toPx() + dims.timeline.dotSize.toPx() / 2f
+                val markerCenter = dims.spacing.xl.toPx() + dims.minTouchTarget.toPx() / 2f
                 drawLine(
                     color = colors.borderMuted,
                     start = androidx.compose.ui.geometry.Offset(axis, if (hasPreviousMoment) 0f else markerCenter),
@@ -102,8 +103,9 @@ fun MomentCard(
     ) {
         Box(
             modifier = Modifier
-                .width(dims.timeline.contentInset),
-            contentAlignment = Alignment.TopCenter,
+                .width(dims.timeline.contentInset)
+                .heightIn(min = dims.minTouchTarget),
+            contentAlignment = Alignment.Center,
         ) {
             Box(
                 modifier = Modifier
@@ -112,37 +114,52 @@ fun MomentCard(
                     .background(colors.accent),
             )
         }
+        Spacer(Modifier.width(dims.spacing.sm))
         Column(
             modifier = Modifier
                 .weight(1f)
                 .padding(end = dims.spacing.sm),
         ) {
-            // DATE • TIME / LOCATION
+            // DATE • TIME / LOCATION and favorite action share one metadata row.
             Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = dims.minTouchTarget),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm),
             ) {
-                Text(
-                    text = moment.formattedDate,
-                    style = type.eyebrow,
-                    color = colors.accentMuted,
-                )
-                Box(
-                    modifier = Modifier
-                        .size(3.dp)
-                        .clip(CircleShape)
-                        .background(colors.accentMuted),
-                )
-                Text(
-                    text = moment.formattedTime,
-                    style = type.eyebrow,
-                    color = colors.accentMuted,
-                )
-                if (moment.locationLabel != null) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm),
+                ) {
                     Text(
-                        text = "· ${moment.locationLabel.uppercase()}",
+                        text = moment.formattedDate,
                         style = type.eyebrow,
-                        color = colors.textMuted,
+                        color = colors.accentMuted,
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(3.dp)
+                            .clip(CircleShape)
+                            .background(colors.accentMuted),
+                    )
+                    Text(
+                        text = moment.formattedTime,
+                        style = type.eyebrow,
+                        color = colors.accentMuted,
+                    )
+                    if (moment.locationLabel != null) {
+                        Text(
+                            text = "· ${moment.locationLabel.uppercase()}",
+                            style = type.eyebrow,
+                            color = colors.textMuted,
+                        )
+                    }
+                }
+                onToggleFavorite?.let { toggle ->
+                    FavoriteHeart(
+                        isFavorite = moment.isFavorite,
+                        onToggle = { toggle(!moment.isFavorite) },
                     )
                 }
             }
@@ -201,12 +218,6 @@ fun MomentCard(
                     }
                 }
             }
-        }
-        onToggleFavorite?.let { toggle ->
-            FavoriteHeart(
-                isFavorite = moment.isFavorite,
-                onToggle = { toggle(!moment.isFavorite) },
-            )
         }
     }
         DropdownMenu(expanded = actionsOpen, onDismissRequest = { actionsOpen = false }) {
