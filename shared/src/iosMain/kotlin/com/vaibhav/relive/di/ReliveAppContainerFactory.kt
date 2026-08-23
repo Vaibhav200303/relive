@@ -5,6 +5,7 @@ import com.vaibhav.relive.data.local.ReliveDatabaseFactory
 import com.vaibhav.relive.data.local.repository.SqlDelightMomentRepository
 import com.vaibhav.relive.data.local.repository.SqlDelightTimelineRepository
 import com.vaibhav.relive.data.local.repository.SqlDelightTimelineHomeRepository
+import com.vaibhav.relive.data.local.repository.SqlDelightRediscoverRepository
 import com.vaibhav.relive.platform.media.IosMediaProcessor
 import com.vaibhav.relive.platform.media.IosMediaStore
 import com.vaibhav.relive.presentation.id.UuidGenerator
@@ -19,6 +20,7 @@ fun createDefaultReliveAppContainer(): ReliveAppContainer {
         momentRepository = SqlDelightMomentRepository(database),
         timelineRepository = SqlDelightTimelineRepository(database),
         timelineHomeRepository = SqlDelightTimelineHomeRepository(database),
+        rediscoverRepository = SqlDelightRediscoverRepository(database),
         clock = SystemClock,
         idGenerator = UuidGenerator,
         mediaStore = store,

@@ -67,26 +67,33 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 - Forget with confirmation → permanent removal.
 - **Exit:** 4-day rule enforced everywhere; edit/forget and window-boundary tests pass.
 
-## Phase 7 — Search  ☐
+## Phase 7 — Rediscover  ◐
+
+- Add the Timelines / Rediscover top-level navigation shell; do not introduce Search or You placeholders.
+- Render the Rediscover root as the Favorites system collection above the existing two-item navigation.
+- Preserve the bounded local On This Day, deterministic daily From Your Past, Places, and Tags read projections as deferred capability; do not collect or render them until their presentation phase resumes.
+- **Exit:** Favorites renders from persisted data reactively; deferred Rediscover projections remain tested and isolated from the active root.
+
+## Phase 8 — Search  ☐
 
 - Search icon transforms the app bar; timeline stays visible; All / Tags / Places filters scoped to the current timeline.
 - All-search: highlight, match count, up/down navigation, auto-scroll (WhatsApp-style).
 - Tags: filter + suggestions (current timeline). Places: filter + suggestions derived only from the current timeline's moment locations.
 - **Exit:** timeline-scoped search across title/content/tags/location; Places scoping and search tests pass.
 
-## Phase 8 — Themes & settings  ☐
+## Phase 9 — Themes & settings  ☐
 
 - Additional themes (Monochrome Archive, Film Memory) as token sets; per-timeline theme selection; themes change only presentation.
 - Settings screen: Profile, Themes, Upgrade to Pro, Export (entries present; detailed behavior deferred where unspecified).
 - **Exit:** switching themes changes only presentation; navigation/structure/interaction unchanged; theme tests pass.
 
-## Phase 9 — RevenueCat / Pro  ☐
+## Phase 10 — RevenueCat / Pro  ☐
 
 - Implement Pro entitlement behind the existing entitlement interface using RevenueCat; wire "Upgrade to Pro."
 - (Later/optional) RevenueCat Funnels + Stripe for web subscription conversion — see [`RELEASE.md`](RELEASE.md).
 - **Exit:** Pro state drives gated features; entitlement is swappable; monetization dependencies added only now.
 
-## Phase 10 — Production polish + Shipaton release  ☐
+## Phase 11 — Production polish + Shipaton release  ☐
 
 - Performance, accessibility, empty/edge states, final visual polish against the reference.
 - Release readiness per [`RELEASE.md`](RELEASE.md): Android release, iOS build/signing, screenshots/demo video, privacy checks, Shipaton submission.

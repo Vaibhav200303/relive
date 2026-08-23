@@ -7,6 +7,7 @@ import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.repository.MomentRepository
 import com.vaibhav.relive.domain.repository.TimelineRepository
+import com.vaibhav.relive.domain.repository.RediscoverRepository
 import com.vaibhav.relive.domain.policy.EditWindow
 import com.vaibhav.relive.domain.time.Clock
 import kotlinx.coroutines.CoroutineScope
@@ -21,10 +22,12 @@ import kotlinx.coroutines.launch
 class TimelineViewModel(
     private val momentRepository: MomentRepository,
     private val timelineRepository: TimelineRepository,
+    private val rediscoverRepository: RediscoverRepository,
     private val clock: Clock,
     private val idGenerator: IdGenerator,
     private val scope: CoroutineScope,
     initialTimeline: CurrentTimeline = CurrentTimeline.All,
+    private val mode: TimelineMode = TimelineMode.Editable,
 ) {
 
     private val _state = MutableStateFlow(TimelineScreenState(currentTimeline = initialTimeline))
@@ -61,6 +64,7 @@ class TimelineViewModel(
     }
 
     fun setFavorite(id: MomentId, isFavorite: Boolean) {
+        if (!mode.allowsMutations) return
         scope.launch { momentRepository.setFavorite(id, isFavorite) }
     }
 
@@ -68,6 +72,10 @@ class TimelineViewModel(
 
     /** Checks the policy again at the destructive boundary before touching persistence. */
     fun forget(moment: Moment, onDeleted: (Moment) -> Unit, onFailure: () -> Unit) {
+        if (!mode.allowsMutations) {
+            onFailure()
+            return
+        }
         if (!EditWindow.isForgettable(moment, clock)) {
             onFailure()
             return
@@ -83,6 +91,7 @@ class TimelineViewModel(
     }
 
     fun showTimelineCreation() {
+        if (!mode.allowsMutations) return
         creationController.show()
     }
 
@@ -122,6 +131,7 @@ class TimelineViewModel(
 
     private fun CurrentTimeline.momentsFlow(): Flow<List<Moment>> = when (this) {
         CurrentTimeline.All -> momentRepository.observeAll()
+        CurrentTimeline.Favorites -> rediscoverRepository.observeFavoriteMoments()
         is CurrentTimeline.Custom -> momentRepository.observeInTimeline(id)
     }
 }

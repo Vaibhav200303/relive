@@ -3,6 +3,9 @@ package com.vaibhav.relive.presentation.timeline
 import com.vaibhav.relive.domain.id.IdGenerator
 import com.vaibhav.relive.domain.model.Moment
 import com.vaibhav.relive.domain.model.MomentId
+import com.vaibhav.relive.domain.model.FavoritesCollectionSummary
+import com.vaibhav.relive.domain.model.RediscoverOverview
+import com.vaibhav.relive.domain.model.RediscoverQuery
 import com.vaibhav.relive.domain.model.MediaAttachment
 import com.vaibhav.relive.domain.model.MediaAttachmentId
 import com.vaibhav.relive.domain.model.MediaStorageRef
@@ -11,6 +14,7 @@ import com.vaibhav.relive.domain.model.ThemeReference
 import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.repository.MomentRepository
+import com.vaibhav.relive.domain.repository.RediscoverRepository
 import com.vaibhav.relive.domain.repository.TimelineRepository
 import com.vaibhav.relive.domain.time.Clock
 import com.vaibhav.relive.domain.time.Instant
@@ -258,16 +262,37 @@ class TimelineViewModelTest {
         assertEquals(listOf(target), moments.listAll())
     }
 
+    @Test
+    fun readOnlySystemCollectionRejectsFavoriteAndForgetMutations() = runTest {
+        val target = moment("favorite", 1L)
+        val moments = FakeMomentRepository(initialAll = listOf(target))
+        val vm = newViewModel(
+            momentRepository = moments,
+            mode = TimelineMode.ReadOnlySystemCollection("Favorites"),
+        )
+        var forgetRejected = false
+
+        vm.setFavorite(target.id, true)
+        vm.forget(target, onDeleted = { error("Read-only collection must not delete") }, onFailure = { forgetRejected = true })
+
+        assertTrue(moments.favoriteChanges.isEmpty())
+        assertTrue(moments.deleted.isEmpty())
+        assertTrue(forgetRejected)
+    }
+
     private fun TestScope.newViewModel(
         momentRepository: FakeMomentRepository = FakeMomentRepository(),
         timelineRepository: FakeTimelineRepository = FakeTimelineRepository(),
         clock: Clock = Clock { Instant(42L) },
+        mode: TimelineMode = TimelineMode.Editable,
     ): TimelineViewModel = TimelineViewModel(
         momentRepository = momentRepository,
         timelineRepository = timelineRepository,
+        rediscoverRepository = FakeRediscoverRepository(),
         clock = clock,
         idGenerator = IdGenerator { "timeline-1" },
         scope = TestScope(UnconfinedTestDispatcher(testScheduler)),
+        mode = mode,
     )
 
     private fun loadedMoments(vm: TimelineViewModel): List<MomentPresentation> =
@@ -278,6 +303,12 @@ class TimelineViewModelTest {
         createdAt = Instant(createdAt),
         title = id,
     )
+}
+
+private class FakeRediscoverRepository : RediscoverRepository {
+    override fun observeOverview(query: RediscoverQuery): Flow<RediscoverOverview> = error("Not used")
+    override fun observeFavoritesSummary(): Flow<FavoritesCollectionSummary> = error("Not used")
+    override fun observeFavoriteMoments(): Flow<List<Moment>> = MutableStateFlow(emptyList())
 }
 
 private class FakeMomentRepository(

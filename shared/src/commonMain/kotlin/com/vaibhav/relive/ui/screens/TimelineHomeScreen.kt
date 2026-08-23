@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -44,6 +42,7 @@ import com.vaibhav.relive.presentation.timelinehome.TimelineHomeContent
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeViewModel
 import com.vaibhav.relive.presentation.timelinehome.emptyPreviewPlaceholderText
 import com.vaibhav.relive.ui.components.timeline.TimelineCreationDialog
+import com.vaibhav.relive.ui.components.navigation.ReliveWordmarkAppBar
 import com.vaibhav.relive.ui.theme.ReliveTheme
 
 @Composable
@@ -62,7 +61,7 @@ fun TimelineHomeScreen(
     Column(
         modifier = Modifier
             .background(ReliveTheme.colors.bgCanvas)
-            .windowInsetsPadding(WindowInsets.statusBars),
+            .fillMaxWidth(),
     ) {
         TimelineHomeHeader(onCreateTimeline = viewModel::showTimelineCreation)
         when (val content = state.content) {
@@ -87,18 +86,7 @@ fun TimelineHomeScreen(
 private fun TimelineHomeHeader(onCreateTimeline: () -> Unit) {
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(colors.bgHeader)
-            .padding(horizontal = dims.spacing.md, vertical = dims.spacing.sm),
-    ) {
-        Text(
-            text = "Relive",
-            style = ReliveTheme.typography.wordmark,
-            color = colors.accent,
-            modifier = Modifier.align(Alignment.Center),
-        )
+    ReliveWordmarkAppBar {
         IconButton(
             onClick = onCreateTimeline,
             modifier = Modifier

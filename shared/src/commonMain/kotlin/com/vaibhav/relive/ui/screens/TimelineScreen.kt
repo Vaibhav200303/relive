@@ -55,6 +55,7 @@ import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.Tag
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.repository.MomentRepository
+import com.vaibhav.relive.domain.repository.RediscoverRepository
 import com.vaibhav.relive.domain.repository.TimelineRepository
 import com.vaibhav.relive.domain.time.Clock
 import com.vaibhav.relive.platform.media.ActivePlayback
@@ -71,6 +72,7 @@ import com.vaibhav.relive.presentation.timeline.CurrentTimeline
 import com.vaibhav.relive.presentation.timeline.MomentAttachmentPresentation
 import com.vaibhav.relive.presentation.timeline.MomentPresentation
 import com.vaibhav.relive.presentation.timeline.TimelineMomentsState
+import com.vaibhav.relive.presentation.timeline.TimelineMode
 import com.vaibhav.relive.presentation.timeline.TimelineScreenState
 import com.vaibhav.relive.presentation.timeline.TimelineViewModel
 import com.vaibhav.relive.presentation.timeline.toMoment
@@ -88,6 +90,7 @@ import com.vaibhav.relive.ui.components.timeline.EmptyCustomTimelinePlaceholder
 import com.vaibhav.relive.ui.components.timeline.MomentCard
 import com.vaibhav.relive.ui.components.timeline.TimelineCreationDialog
 import com.vaibhav.relive.ui.components.timeline.TimelineHeader
+import com.vaibhav.relive.ui.components.timeline.SystemCollectionHeader
 import com.vaibhav.relive.ui.components.timeline.TimelineSelector
 import com.vaibhav.relive.ui.components.viewer.MediaViewer
 import com.vaibhav.relive.ui.components.viewer.MomentMediaGallery
@@ -104,29 +107,35 @@ internal fun cleanupForgottenAttachments(moment: com.vaibhav.relive.domain.model
 fun TimelineScreen(
     momentRepository: MomentRepository,
     timelineRepository: TimelineRepository,
+    rediscoverRepository: RediscoverRepository,
     clock: Clock,
     idGenerator: IdGenerator,
     mediaStore: MediaStore,
     mediaProcessor: MediaProcessor,
     initialTimeline: CurrentTimeline = CurrentTimeline.All,
+    mode: TimelineMode = TimelineMode.Editable,
     onBackToTimelineHome: (() -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
     val timelineViewModel = remember(
         momentRepository,
         timelineRepository,
+        rediscoverRepository,
         clock,
         idGenerator,
         scope,
         initialTimeline,
+        mode,
     ) {
         TimelineViewModel(
             momentRepository = momentRepository,
             timelineRepository = timelineRepository,
+            rediscoverRepository = rediscoverRepository,
             clock = clock,
             idGenerator = idGenerator,
             scope = scope,
             initialTimeline = initialTimeline,
+            mode = mode,
         )
     }
     val composerViewModel = remember(
@@ -198,7 +207,7 @@ fun TimelineScreen(
         onClear = composerViewModel::clearPendingMediaAction,
     )
 
-    val outsideTapSaveEnabled = composerState.canSaveActiveEdit &&
+    val outsideTapSaveEnabled = mode.allowsMutations && composerState.canSaveActiveEdit &&
         composerState.overlay == ComposerOverlay.None &&
         composerState.pendingMediaAction == null &&
         !composerState.pendingMicPermissionRequest &&
@@ -227,13 +236,14 @@ fun TimelineScreen(
         TimelineContent(
             timelineState = timelineState,
             composerState = composerState,
+            mode = mode,
             clock = clock,
             mediaStore = mediaStore,
             onSelectTimeline = ::requestTimelineSwitch,
             onAddTimeline = timelineViewModel::showTimelineCreation,
             onToggleFavorite = timelineViewModel::setFavorite,
             onEditMoment = { moment ->
-                if (timelineViewModel.canEditOrForget(moment.toMoment()) &&
+                if (mode.allowsMutations && timelineViewModel.canEditOrForget(moment.toMoment()) &&
                     composerViewModel.beginEdit(moment.toMoment())
                 ) {
                     ActivePlayback.stopActive()
@@ -321,12 +331,14 @@ fun TimelineScreen(
         }
     }
 
-    TimelineCreationDialog(
-        state = timelineState.creation,
-        onNameChange = timelineViewModel::updateTimelineName,
-        onCreate = timelineViewModel::createTimeline,
-        onDismiss = timelineViewModel::dismissTimelineCreation,
-    )
+    if (mode.allowsMutations) {
+        TimelineCreationDialog(
+            state = timelineState.creation,
+            onNameChange = timelineViewModel::updateTimelineName,
+            onCreate = timelineViewModel::createTimeline,
+            onDismiss = timelineViewModel::dismissTimelineCreation,
+        )
+    }
 
     pendingTimelineSwitch?.let { target ->
         DiscardTimelineDraftDialog(
@@ -338,7 +350,7 @@ fun TimelineScreen(
         )
     }
 
-    momentToForget?.let { moment ->
+    if (mode.allowsMutations) momentToForget?.let { moment ->
         AlertDialog(
             onDismissRequest = { momentToForget = null },
             title = { Text("Forget this moment?") },
@@ -362,9 +374,32 @@ fun TimelineScreen(
 }
 
 @Composable
+private fun SystemCollectionEmptyState() {
+    val dims = ReliveTheme.dimensions
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = dims.spacing.huge, horizontal = dims.timeline.contentInset),
+    ) {
+        Text(
+            text = "No favorite moments yet.",
+            style = ReliveTheme.typography.title,
+            color = ReliveTheme.colors.textPrimary,
+        )
+        Text(
+            text = "Moments you favorite will appear here.",
+            style = ReliveTheme.typography.subtitle,
+            color = ReliveTheme.colors.textSecondary,
+            modifier = Modifier.padding(top = dims.spacing.sm),
+        )
+    }
+}
+
+@Composable
 private fun TimelineContent(
     timelineState: TimelineScreenState,
     composerState: MomentComposerState,
+    mode: TimelineMode,
     clock: Clock,
     mediaStore: MediaStore,
     onSelectTimeline: (CurrentTimeline) -> Unit,
@@ -407,15 +442,19 @@ private fun TimelineContent(
             .fillMaxSize()
             .background(colors.bgCanvas),
     ) {
-        TimelineHeader(onMenuClick = onMenuClick, onSearchClick = onSearchClick, onBack = onBack)
-        TimelineSelector(
-            timelines = timelineState.customTimelines,
-            selected = timelineState.currentTimeline,
-            enabled = !composerState.isSaving,
-            onSelect = onSelectTimeline,
-            onAdd = onAddTimeline,
-            modifier = Modifier.padding(bottom = dims.spacing.sm),
-        )
+        if (mode is TimelineMode.ReadOnlySystemCollection) {
+            SystemCollectionHeader(title = mode.title, onBack = onBack ?: {})
+        } else {
+            TimelineHeader(onMenuClick = onMenuClick, onSearchClick = onSearchClick, onBack = onBack)
+            TimelineSelector(
+                timelines = timelineState.customTimelines,
+                selected = timelineState.currentTimeline,
+                enabled = !composerState.isSaving,
+                onSelect = onSelectTimeline,
+                onAdd = onAddTimeline,
+                modifier = Modifier.padding(bottom = dims.spacing.sm),
+            )
+        }
 
         Box(
             modifier = Modifier
@@ -494,21 +533,29 @@ private fun TimelineContent(
                             MomentCard(
                                 moment = moment,
                                 mediaStore = mediaStore,
-                                onToggleFavorite = { value -> onToggleFavorite(moment.id, value) },
+                                onToggleFavorite = if (mode.allowsMutations) {
+                                    { value -> onToggleFavorite(moment.id, value) }
+                                } else {
+                                    null
+                                },
                                 onOpenMedia = onOpenMedia,
-                                canEditOrForget = timelineViewModelCanEdit(moment, clock),
+                                canEditOrForget = mode.allowsMutations && timelineViewModelCanEdit(moment, clock),
                                 onEdit = { onEditMoment(moment) },
                                 onForget = { onForgetMoment(moment) },
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         }
                     }
-                    if (customName != null && timelineState.moments == TimelineMomentsState.Empty) {
+                    if (mode is TimelineMode.ReadOnlySystemCollection && timelineState.moments == TimelineMomentsState.Empty) {
+                        item(key = "system-collection-empty") {
+                            SystemCollectionEmptyState()
+                        }
+                    } else if (customName != null && timelineState.moments == TimelineMomentsState.Empty) {
                         item(key = "custom-empty") {
                             EmptyCustomTimelinePlaceholder(timelineName = customName)
                         }
                     }
-                    item(key = "composer") {
+                    if (mode.allowsMutations) item(key = "composer") {
                         AnimatedContent(
                             targetState = isComposerExpanded,
                             transitionSpec = {

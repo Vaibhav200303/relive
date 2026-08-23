@@ -10,8 +10,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-
-        val container = createDefaultReliveAppContainer(context = applicationContext)
+        val container = createDefaultReliveAppContainer(applicationContext)
         setContent { App(container) }
     }
 }

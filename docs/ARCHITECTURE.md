@@ -245,3 +245,7 @@ Both debug and release builds use **persistent SQLDelight/SQLite storage** (ADR-
 ## 13. Testing seams
 
 The layering above is designed for testability: pure domain logic, a `Clock` for the 4-day rule, repository interfaces for fakes, and platform capabilities behind interfaces for substitution in tests. See [`TESTING.md`](TESTING.md).
+
+## 14. Rediscover read model
+
+Rediscover is a read-model feature. `RediscoverRepository` exposes the active reactive Favorites system collection plus bounded deferred local projections for On This Day, From Your Past, Places, and Tags. Favorites reads its count, favorited Moment scope, and up-to-four visual cover attachments in SQL; it has no custom-timeline row, duplicate membership, or table. SQLDelight reads core Moment rows, then batch-loads their tags and attachments to avoid query-per-card behavior. Current-device-local calendar conversion is isolated behind a presentation `expect/actual` seam, while SQLite applies the same local-calendar rule for bounded eligibility queries. Rediscover has no persistence tables, backend, or recommendation state.

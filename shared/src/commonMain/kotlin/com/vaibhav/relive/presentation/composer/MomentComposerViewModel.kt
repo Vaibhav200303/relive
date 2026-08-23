@@ -463,6 +463,7 @@ class MomentComposerViewModel(
                 if (editing == null) {
                     val timelineIds = when (val context = snapshot.timelineContext) {
                         CurrentTimeline.All -> snapshot.selectedTimelineIds
+                        CurrentTimeline.Favorites -> error("System collections are read-only")
                         is CurrentTimeline.Custom -> snapshot.selectedTimelineIds + context.id
                     }
                     momentRepository.insert(moment, timelineIds)
@@ -487,6 +488,7 @@ class MomentComposerViewModel(
             timelineContext = timeline,
             selectedTimelineIds = when (timeline) {
                 CurrentTimeline.All -> emptySet()
+                CurrentTimeline.Favorites -> emptySet()
                 is CurrentTimeline.Custom -> setOf(timeline.id)
             },
         )

@@ -221,6 +221,14 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 - [x] Forget requires confirmation, removes the Moment from All and every custom timeline, and only then attempts attachment-file cleanup; playback stops before edit, Forget, and media deletion.
 - [x] Attempting a timeline switch, composer opening, or a second edit while an edit is dirty does not silently discard it.
 
+### Rediscover
+- [ ] The active root renders only the Relive app bar, Favorites system-collection card, and the two-item bottom navigation.
+- [ ] Favorites reflects persisted favorite state without showing resurfacing sections or their empty states.
+- [ ] Favorites cover uses only its own image/video attachments (up to four, newest Moment first); zero or audio/text-only favorites use the editorial placeholder.
+- [ ] Opening Favorites hides bottom navigation and exposes only Back, read-only timeline browsing, media viewing, and playback; Back returns to the preserved Rediscover root state.
+- [ ] Timelines and Rediscover are the only visible bottom-navigation destinations; Timeline detail hides the bar and preserves Back behavior.
+- Deferred, retain coverage for future reactivation: On This Day calendar eligibility, deterministic From Your Past selection, Places/Tags ranking, empty/partial archive states, and passive media behavior.
+
 ---
 
 ## Conventions

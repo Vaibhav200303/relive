@@ -47,7 +47,7 @@ import com.vaibhav.relive.ui.theme.ReliveTheme
 fun MomentCard(
     moment: MomentPresentation,
     mediaStore: MediaStore,
-    onToggleFavorite: (Boolean) -> Unit,
+    onToggleFavorite: ((Boolean) -> Unit)?,
     onOpenMedia: (List<MomentAttachmentPresentation>, Int) -> Unit,
     canEditOrForget: Boolean,
     onEdit: () -> Unit,
@@ -178,10 +178,12 @@ fun MomentCard(
                 }
             }
         }
-        FavoriteHeart(
-            isFavorite = moment.isFavorite,
-            onToggle = { onToggleFavorite(!moment.isFavorite) },
-        )
+        onToggleFavorite?.let { toggle ->
+            FavoriteHeart(
+                isFavorite = moment.isFavorite,
+                onToggle = { toggle(!moment.isFavorite) },
+            )
+        }
     }
         DropdownMenu(expanded = actionsOpen, onDismissRequest = { actionsOpen = false }) {
             DropdownMenuItem(text = { Text("Edit") }, onClick = { actionsOpen = false; onEdit() })
