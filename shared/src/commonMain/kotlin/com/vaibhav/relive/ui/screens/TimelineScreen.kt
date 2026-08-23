@@ -256,8 +256,6 @@ fun TimelineScreen(
                 ActivePlayback.stopActive()
                 navState = navState.openFromCollage(list, index)
             },
-            onMenuClick = { },
-            onSearchClick = { },
             onBack = onBackToTimelineHome,
             onTitleChange = composerViewModel::updateTitle,
             onContentChange = composerViewModel::updateContent,
@@ -411,8 +409,6 @@ private fun TimelineContent(
     onEditMoment: (MomentPresentation) -> Unit,
     onForgetMoment: (MomentPresentation) -> Unit,
     onOpenMedia: (List<MomentAttachmentPresentation>, Int) -> Unit,
-    onMenuClick: () -> Unit,
-    onSearchClick: () -> Unit,
     onBack: (() -> Unit)?,
     onTitleChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
@@ -448,7 +444,7 @@ private fun TimelineContent(
         if (mode is TimelineMode.ReadOnlySystemCollection) {
             SystemCollectionHeader(title = mode.title, onBack = onBack ?: {})
         } else {
-            TimelineHeader(onMenuClick = onMenuClick, onSearchClick = onSearchClick, onBack = onBack)
+            TimelineHeader(onBack = onBack)
             TimelineSelector(
                 timelines = timelineState.customTimelines,
                 selected = timelineState.currentTimeline,

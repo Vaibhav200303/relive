@@ -106,7 +106,7 @@ import java.util.concurrent.Executor
 /**
  * WhatsApp-style minimal camera. Full-screen preview under a compact black
  * control bar. The shutter is the fixed geometric center of the screen;
- * gallery/filter live to its left, switch-camera to its right, and zoom
+ * gallery lives to its left, switch-camera to its right, and zoom
  * presets sit directly above on the same center axis. Photo/Video mode
  * selector sits below and above the system navigation area. Flash is a
  * small secondary control in the upper-left of the preview.
@@ -670,13 +670,8 @@ actual fun CameraCaptureSurface(
                     .padding(horizontal = 20.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                if (!isReviewing) Row(
-                    modifier = Modifier.align(Alignment.CenterStart),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
+                if (!isReviewing) {
                     GalleryButton(onClick = onOpenGallery)
-                    FilterButton(onClick = { /* Retro filters — reserved for a future phase. */ })
                 }
                 if (isReviewing) {
                     RetakeButton(onClick = retake)
@@ -1081,21 +1076,6 @@ private fun GalleryButton(onClick: () -> Unit) {
 }
 
 @Composable
-private fun FilterButton(onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(48.dp)
-            .clip(CircleShape)
-            .background(Color(0x80000000))
-            .clickable(onClick = onClick)
-            .semantics { contentDescription = "Retro filters" },
-        contentAlignment = Alignment.Center,
-    ) {
-        SparkleGlyph(size = 22.dp, color = Color.White, strokeWidth = 1.8.dp)
-    }
-}
-
-@Composable
 private fun ShutterButton(
     mode: CameraMode,
     isRecording: Boolean,
@@ -1350,24 +1330,6 @@ private fun GalleryGlyph(size: Dp, color: Color, strokeWidth: Dp) {
             radius = px * 0.06f,
             center = Offset(front.left + front.width * 0.30f, front.top + front.height * 0.30f),
         )
-    }
-}
-
-/** Sparkle / magic-wand-adjacent glyph representing the future retro filters. */
-@Composable
-private fun SparkleGlyph(size: Dp, color: Color, strokeWidth: Dp) {
-    Canvas(modifier = Modifier.size(size)) {
-        val px = size.toPx()
-        val sw = strokeWidth.toPx()
-        fun spark(cx: Float, cy: Float, r: Float) {
-            drawLine(color, Offset(cx - r, cy), Offset(cx + r, cy), strokeWidth = sw)
-            drawLine(color, Offset(cx, cy - r), Offset(cx, cy + r), strokeWidth = sw)
-            drawLine(color, Offset(cx - r * 0.6f, cy - r * 0.6f), Offset(cx + r * 0.6f, cy + r * 0.6f), strokeWidth = sw * 0.7f)
-            drawLine(color, Offset(cx - r * 0.6f, cy + r * 0.6f), Offset(cx + r * 0.6f, cy - r * 0.6f), strokeWidth = sw * 0.7f)
-        }
-        spark(px * 0.36f, px * 0.36f, px * 0.20f)
-        spark(px * 0.72f, px * 0.66f, px * 0.14f)
-        spark(px * 0.70f, px * 0.24f, px * 0.08f)
     }
 }
 

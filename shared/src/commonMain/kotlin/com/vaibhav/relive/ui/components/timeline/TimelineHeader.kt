@@ -1,9 +1,7 @@
 package com.vaibhav.relive.ui.components.timeline
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -19,14 +17,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.vaibhav.relive.ui.theme.ReliveTheme
 
-/**
- * Reference-matching app header: menu on the left, centered serif italic wordmark,
- * search on the right. Buttons occupy the min touch target; glyphs sit inside.
- */
+/** Timeline detail header with optional back navigation and a centered wordmark. */
 @Composable
 fun TimelineHeader(
-    onMenuClick: () -> Unit,
-    onSearchClick: () -> Unit,
     onBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -37,34 +30,18 @@ fun TimelineHeader(
         modifier = modifier
             .fillMaxWidth()
             .background(colors.bgHeader)
-            .windowInsetsPadding(WindowInsets.statusBars),
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .padding(horizontal = dims.spacing.md, vertical = dims.spacing.sm),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = dims.spacing.md, vertical = dims.spacing.sm),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
+        if (onBack != null) {
             IconButton(
-                onClick = onBack ?: onMenuClick,
+                onClick = onBack,
                 modifier = Modifier
                     .size(dims.minTouchTarget)
-                    .semantics { contentDescription = if (onBack == null) "Settings" else "Back to Timeline Home" },
+                    .align(Alignment.CenterStart)
+                    .semantics { contentDescription = "Back to Timeline Home" },
             ) {
-                if (onBack == null) {
-                    GearGlyph(size = dims.icon.lg, color = colors.textSecondary, strokeWidth = dims.stroke.icon)
-                } else {
-                    BackGlyph(size = dims.icon.lg, color = colors.textSecondary, strokeWidth = dims.stroke.icon)
-                }
-            }
-            IconButton(
-                onClick = onSearchClick,
-                modifier = Modifier
-                    .size(dims.minTouchTarget)
-                    .semantics { contentDescription = "Search" },
-            ) {
-                SearchGlyph(size = dims.icon.md, color = colors.textSecondary, strokeWidth = dims.stroke.icon)
+                BackGlyph(size = dims.icon.lg, color = colors.textSecondary, strokeWidth = dims.stroke.icon)
             }
         }
         Text(
