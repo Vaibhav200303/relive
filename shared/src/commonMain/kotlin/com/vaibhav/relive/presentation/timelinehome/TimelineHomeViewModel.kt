@@ -48,6 +48,10 @@ class TimelineHomeViewModel(
         _navigation.tryEmit(timeline)
     }
 
+    fun updateSearchQuery(value: String) {
+        _state.update { it.copy(query = value) }
+    }
+
     fun showTimelineCreation() = creation.show()
     fun dismissTimelineCreation() = creation.dismiss()
     fun updateTimelineName(value: String) = creation.updateName(value)

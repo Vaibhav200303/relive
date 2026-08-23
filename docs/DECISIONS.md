@@ -454,6 +454,20 @@ Format for each entry:
 - **Decision:** Collection-card fallback covers are rendered by one shared Compose `Brush` primitive. It deterministically hashes the logical card identity (`timeline-all`, Timeline ID, or Moment ID) into a curated tokenized palette; no gradient choice is stored. Image/video preview data always wins and reactively replaces the cover. Audio-only and text-only cards use the cover without fake media, icons, or waveform. Warm Journal uses restrained dark vibrant gradients; Monochrome Archive selects a neutral dark-gray palette. Normal Timeline MomentCard media presentation is unchanged.
 - **Consequences:** The empty visual surface language in ADR-0029 is superseded. The behavior adds no schema field, bitmap, file IO, random/session state, or dependency, and it remains stable across recomposition and app restarts.
 
+## ADR-0036 — Local custom-timeline name filtering on Timeline Home
+
+- **Date:** 2026-08-24 · **Status:** Accepted
+- **Context:** Global Search intentionally searches Moment title/content, while Timeline Home needs a small way to narrow its bounded custom-timeline cards without hydrating Moments or expanding archive-search scope.
+- **Decision:** Timeline Home filters its already-observed summaries in presentation state using live, case-insensitive partial matching over custom timeline names only. Filtering preserves repository order, excludes the logical All timeline, and adds no SQL search query. The capsule follows the global Search container language but contains only a search glyph and `Search timelines...`; Timeline Home has no Back or Calendar action because neither navigation behavior belongs to this inline filter.
+- **Consequences:** Query state remains process-local with the Timeline Home ViewModel, underlying ordering is unchanged, Moment fields cannot influence matches, and global Search remains untouched.
+
+## ADR-0037 — Omit empty On This Day from Rediscover
+
+- **Date:** 2026-08-24 · **Status:** Accepted
+- **Context:** The previous Rediscover behavior rendered an On This Day heading, date, and quiet empty message even when its bounded projection contained no eligible anniversary Moments. This reserved a large visual section for no content.
+- **Decision:** Render On This Day only when its existing eligibility projection returns at least one Moment. When empty, omit its heading, date, placeholder, shelf, and reserved spacing; From Your Past follows Favorites using normal section spacing. When present, retain the approved section and expanded spacing before From Your Past.
+- **Consequences:** Eligibility, previous-year matching, February 29 behavior, card presentation, and read-only navigation are unchanged. This supersedes only the empty On This Day presentation described by the Phase 7 acceptance text.
+
 ## Template for new decisions
 
 ```

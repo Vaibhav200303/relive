@@ -1,6 +1,10 @@
 package com.vaibhav.relive.presentation.timelinehome
 
 import com.vaibhav.relive.domain.id.IdGenerator
+import com.vaibhav.relive.domain.model.MediaAttachment
+import com.vaibhav.relive.domain.model.MediaAttachmentId
+import com.vaibhav.relive.domain.model.MediaStorageRef
+import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.domain.model.ThemeReference
 import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.TimelineHomeSummary
@@ -9,16 +13,75 @@ import com.vaibhav.relive.domain.repository.TimelineHomeRepository
 import com.vaibhav.relive.domain.repository.TimelineRepository
 import com.vaibhav.relive.domain.time.Clock
 import com.vaibhav.relive.domain.time.Instant
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.async
-import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class TimelineHomeViewModelTest {
+    @Test
+    fun blankQueryReturnsEveryCustomTimelineInObservedOrder() {
+        val state = loadedState(query = "")
+
+        assertEquals(listOf("Trips", "College", "Family"), state.visibleCustomSummaries.map { it.name })
+    }
+
+    @Test
+    fun matchingIsCaseInsensitive() {
+        val state = loadedState(query = "fAmIlY")
+
+        assertEquals(listOf("Family"), state.visibleCustomSummaries.map { it.name })
+    }
+
+    @Test
+    fun matchingAcceptsPartialTimelineNames() {
+        val state = loadedState(query = "oll")
+
+        assertEquals(listOf("College"), state.visibleCustomSummaries.map { it.name })
+    }
+
+    @Test
+    fun unmatchedQueryReturnsNoTimelines() {
+        val state = loadedState(query = "work")
+
+        assertEquals(emptyList(), state.visibleCustomSummaries)
+    }
+
+    @Test
+    fun matchingPreservesNewestFirstObservedOrder() {
+        val state = loadedState(query = "i")
+
+        assertEquals(listOf("Trips", "Family"), state.visibleCustomSummaries.map { it.name })
+    }
+
+    @Test
+    fun allIsNeverIncludedInTimelineSearchResults() {
+        val state = loadedState(query = "")
+
+        assertEquals(false, state.visibleCustomSummaries.any { it.timeline == Timeline.All })
+    }
+
+    @Test
+    fun previewDataDoesNotAffectTimelineNameMatching() {
+        val attachment = MediaAttachment(
+            id = MediaAttachmentId("secret-memory"),
+            type = MediaType.Image,
+            storageRef = MediaStorageRef("secret-memory-content"),
+            sortIndex = 0,
+        )
+        val family = summary("family", "Family", createdAt = 1, attachments = listOf(attachment))
+        val state = TimelineHomeState(
+            content = TimelineHomeContent.Loaded(listOf(family)),
+            query = "secret-memory",
+        )
+
+        assertEquals(emptyList(), state.visibleCustomSummaries)
+    }
+
     @Test
     fun creatingATimelineNavigatesToThePersistedCustomTimeline() = runTest {
         val repository = FakeTimelineRepository()
@@ -38,6 +101,30 @@ class TimelineHomeViewModelTest {
         assertEquals(Timeline.Custom(TimelineId("newest"), "Japan 2026"), destination.await())
         assertEquals(Instant(23), repository.created.single().second)
     }
+
+    private fun loadedState(query: String): TimelineHomeState = TimelineHomeState(
+        content = TimelineHomeContent.Loaded(
+            listOf(
+                TimelineHomeSummary(Timeline.All, momentCount = 4, previewAttachments = emptyList()),
+                summary("trips", "Trips", createdAt = 3),
+                summary("college", "College", createdAt = 2),
+                summary("family", "Family", createdAt = 1),
+            ),
+        ),
+        query = query,
+    )
+
+    private fun summary(
+        id: String,
+        name: String,
+        createdAt: Long,
+        attachments: List<MediaAttachment> = emptyList(),
+    ) = TimelineHomeSummary(
+        timeline = Timeline.Custom(TimelineId(id), name),
+        momentCount = 1,
+        previewAttachments = attachments,
+        createdAt = Instant(createdAt),
+    )
 }
 
 private class FakeTimelineHomeRepository : TimelineHomeRepository {

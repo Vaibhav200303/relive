@@ -452,7 +452,9 @@ private fun TimelineContent(
                         mode.allowsMutations -> moments.size
                         else -> moments.lastIndex.coerceAtLeast(0)
                     }
-                    if (lastSeenCount == -1) {
+                    if (dateNavigationTargetId != null) {
+                        listState.animateScrollToItem(target)
+                    } else if (lastSeenCount == -1) {
                         listState.scrollToItem(target)
                     } else if (moments.size > lastSeenCount) {
                         listState.animateScrollToItem(target)
