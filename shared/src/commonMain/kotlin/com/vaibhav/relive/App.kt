@@ -35,7 +35,7 @@ import com.vaibhav.relive.presentation.search.SearchViewModel
 
 private sealed interface TimelinesDestination {
     data object TimelineHome : TimelinesDestination
-    data class TimelineDetail(val scope: CurrentTimeline) : TimelinesDestination
+    data class TimelineDetail(val scope: CurrentTimeline, val selectedMomentId: MomentId? = null) : TimelinesDestination
 }
 
 private sealed interface RediscoverDestination {
@@ -92,6 +92,7 @@ fun App(
                 mediaStore = container.mediaStore,
                 mediaProcessor = container.mediaProcessor,
                 initialTimeline = active.scope,
+                selectedMomentId = active.selectedMomentId,
                 onBackToTimelineHome = { timelinesDestination = TimelinesDestination.TimelineHome },
             )
             TimelinesDestination.TimelineHome -> if (
@@ -186,7 +187,12 @@ fun App(
                             viewModel = searchViewModel,
                             mediaStore = container.mediaStore,
                             listState = searchListState,
+                            clock = container.clock,
                             onBack = { topLevel = searchReturnDestination },
+                            onOpenAllAtMoment = { momentId ->
+                                timelinesDestination = TimelinesDestination.TimelineDetail(CurrentTimeline.All, momentId)
+                                topLevel = ReliveTopLevelDestination.Timelines
+                            },
                         )
                     }
                 }

@@ -2,6 +2,7 @@ package com.vaibhav.relive.ui.components.timeline
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -21,6 +22,7 @@ import com.vaibhav.relive.ui.theme.ReliveTheme
 @Composable
 fun TimelineHeader(
     onBack: (() -> Unit)? = null,
+    onJumpToDate: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val colors = ReliveTheme.colors
@@ -50,5 +52,20 @@ fun TimelineHeader(
             color = colors.accent,
             modifier = Modifier.align(Alignment.Center),
         )
+        if (onJumpToDate != null) {
+            Row(
+                modifier = Modifier.align(Alignment.CenterEnd),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(
+                    onClick = onJumpToDate,
+                    modifier = Modifier
+                        .size(dims.minTouchTarget)
+                        .semantics { contentDescription = "Jump to date" },
+                ) {
+                    CalendarGlyph(dims.icon.lg, colors.textSecondary, dims.stroke.icon)
+                }
+            }
+        }
     }
 }

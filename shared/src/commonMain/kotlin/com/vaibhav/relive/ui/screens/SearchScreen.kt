@@ -44,6 +44,8 @@ import androidx.compose.ui.unit.dp
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.presentation.search.SearchViewModel
 import com.vaibhav.relive.ui.components.timeline.BackGlyph
+import com.vaibhav.relive.ui.components.timeline.CalendarGlyph
+import com.vaibhav.relive.ui.components.timeline.DateNavigationPicker
 import com.vaibhav.relive.ui.components.timeline.MomentCard
 import com.vaibhav.relive.ui.components.viewer.MediaViewer
 import com.vaibhav.relive.ui.components.viewer.MomentMediaGallery
@@ -54,18 +56,23 @@ import com.vaibhav.relive.presentation.viewer.closeGallery
 import com.vaibhav.relive.presentation.viewer.closeViewer
 import com.vaibhav.relive.presentation.viewer.openFromCollage
 import com.vaibhav.relive.presentation.viewer.openFromGallery
+import com.vaibhav.relive.presentation.date.RediscoverCalendar
+import com.vaibhav.relive.domain.time.Clock
 
 @Composable
 fun SearchScreen(
     viewModel: SearchViewModel,
     mediaStore: MediaStore,
     listState: LazyListState,
+    clock: Clock,
     onBack: () -> Unit,
+    onOpenAllAtMoment: (com.vaibhav.relive.domain.model.MomentId?) -> Unit,
 ) {
     val state by viewModel.state.collectAsState()
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     var navState by remember { mutableStateOf(TimelineMediaNavState.Idle) }
+    var showDatePicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
@@ -79,6 +86,12 @@ fun SearchScreen(
     }
     LaunchedEffect(state.query) {
         if (state.query.isBlank()) listState.scrollToItem(0)
+    }
+    LaunchedEffect(state.dateNavigation) {
+        state.dateNavigation?.let { navigation ->
+            onOpenAllAtMoment(navigation.momentId)
+            viewModel.consumeDateNavigation()
+        }
     }
 
     Box(Modifier.fillMaxSize()) {
@@ -99,6 +112,7 @@ fun SearchScreen(
                 viewModel.selectNext()
                 keyboard?.show()
             },
+            onJumpToDate = { showDatePicker = true },
         )
         Box(
             modifier = Modifier
@@ -156,6 +170,16 @@ fun SearchScreen(
             )
         }
     }
+    if (showDatePicker) {
+        DateNavigationPicker(
+            initialDate = RediscoverCalendar.localDate(clock.now()),
+            onDismiss = { showDatePicker = false },
+            onDateSelected = { date ->
+                showDatePicker = false
+                viewModel.jumpToDate(date)
+            },
+        )
+    }
 }
 
 @Composable
@@ -169,6 +193,7 @@ private fun SearchHeader(
     onClear: () -> Unit,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
+    onJumpToDate: () -> Unit,
 ) {
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
@@ -255,6 +280,13 @@ private fun SearchHeader(
                     enabled = nextEnabled,
                     modifier = Modifier.semantics { contentDescription = "Next search result" },
                 ) { Text("↓", color = colors.textPrimary) }
+            } else {
+                IconButton(
+                    onClick = onJumpToDate,
+                    modifier = Modifier.semantics { contentDescription = "Jump to date" },
+                ) {
+                    CalendarGlyph(dims.icon.lg, colors.textPrimary, dims.stroke.icon)
+                }
             }
         }
     }

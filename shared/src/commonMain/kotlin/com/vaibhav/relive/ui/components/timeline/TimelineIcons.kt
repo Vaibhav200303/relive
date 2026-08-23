@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -108,6 +109,30 @@ fun BackGlyph(size: Dp, color: Color, strokeWidth: Dp) {
         drawLine(color, Offset(px * 0.80f, center), Offset(px * 0.22f, center), stroke)
         drawLine(color, Offset(px * 0.22f, center), Offset(px * 0.48f, px * 0.24f), stroke)
         drawLine(color, Offset(px * 0.22f, center), Offset(px * 0.48f, px * 0.76f), stroke)
+    }
+}
+
+@Composable
+internal fun CalendarGlyph(size: Dp, color: Color, strokeWidth: Dp) {
+    Canvas(modifier = Modifier.size(size)) {
+        val px = size.toPx()
+        val stroke = strokeWidth.toPx()
+        val left = px * 0.16f
+        val right = px * 0.84f
+        val top = px * 0.25f
+        val bottom = px * 0.84f
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(left, top),
+            size = Size(right - left, bottom - top),
+            cornerRadius = CornerRadius(px * 0.08f),
+            style = Stroke(stroke),
+        )
+        drawLine(color, Offset(left, px * 0.43f), Offset(right, px * 0.43f), stroke)
+        drawLine(color, Offset(px * 0.34f, px * 0.12f), Offset(px * 0.34f, px * 0.33f), stroke)
+        drawLine(color, Offset(px * 0.66f, px * 0.12f), Offset(px * 0.66f, px * 0.33f), stroke)
+        drawCircle(color, px * 0.045f, Offset(px * 0.36f, px * 0.61f))
+        drawCircle(color, px * 0.045f, Offset(px * 0.64f, px * 0.61f))
     }
 }
 

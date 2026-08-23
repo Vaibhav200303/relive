@@ -31,4 +31,22 @@ actual object RediscoverCalendar {
         calendar.add(Calendar.DAY_OF_MONTH, 1)
         return (calendar.timeInMillis - instant.epochMilliseconds).coerceAtLeast(1L)
     }
+
+    actual fun nextDayStart(date: LocalCalendarDate): Instant = Instant(
+        Calendar.getInstance(TimeZone.getDefault()).apply {
+            clear()
+            set(date.year, date.month - 1, date.day, 0, 0, 0)
+            add(Calendar.DAY_OF_MONTH, 1)
+        }.timeInMillis,
+    )
+
+    actual fun pickerMillis(date: LocalCalendarDate): Long = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+        clear()
+        set(date.year, date.month - 1, date.day, 0, 0, 0)
+    }.timeInMillis
+
+    actual fun dateFromPickerMillis(millis: Long): LocalCalendarDate =
+        Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = millis }.let {
+            LocalCalendarDate(it.get(Calendar.YEAR), it.get(Calendar.MONTH) + 1, it.get(Calendar.DAY_OF_MONTH))
+        }
 }

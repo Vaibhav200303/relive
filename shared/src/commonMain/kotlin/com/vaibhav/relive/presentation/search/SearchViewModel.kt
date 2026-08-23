@@ -2,6 +2,9 @@ package com.vaibhav.relive.presentation.search
 
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.repository.MomentRepository
+import com.vaibhav.relive.domain.repository.MomentDateNavigationScope
+import com.vaibhav.relive.domain.model.LocalCalendarDate
+import com.vaibhav.relive.presentation.date.RediscoverCalendar
 import com.vaibhav.relive.presentation.timeline.MomentPresentation
 import com.vaibhav.relive.presentation.timeline.toPresentation
 import kotlinx.coroutines.CoroutineScope
@@ -17,10 +20,13 @@ data class SearchState(
     val query: String = "",
     val results: List<MomentPresentation> = emptyList(),
     val activeIndex: Int? = null,
+    val dateNavigation: SearchDateNavigation? = null,
 ) {
     val activeMomentId: MomentId? get() = activeIndex?.let(results::getOrNull)?.id
     val resultCount: Int get() = results.size
 }
+
+data class SearchDateNavigation(val momentId: MomentId?)
 
 class SearchViewModel(
     private val momentRepository: MomentRepository,
@@ -53,6 +59,21 @@ class SearchViewModel(
     fun selectPrevious() = moveActiveBy(-1)
 
     fun clear() = updateQuery("")
+
+    fun jumpToDate(date: LocalCalendarDate) {
+        scope.launch {
+            val target = momentRepository.findDateNavigationTarget(
+                scope = MomentDateNavigationScope.All,
+                dayStart = RediscoverCalendar.startOfDay(date),
+                nextDayStart = RediscoverCalendar.nextDayStart(date),
+            )
+            _state.update { it.copy(dateNavigation = SearchDateNavigation(target?.id)) }
+        }
+    }
+
+    fun consumeDateNavigation() {
+        _state.update { it.copy(dateNavigation = null) }
+    }
 
     private fun moveActiveBy(delta: Int) {
         _state.update { current ->

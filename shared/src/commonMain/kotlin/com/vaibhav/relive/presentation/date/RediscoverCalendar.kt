@@ -8,6 +8,9 @@ expect object RediscoverCalendar {
     fun localDate(instant: Instant): LocalCalendarDate
     fun startOfDay(date: LocalCalendarDate): Instant
     fun millisecondsUntilNextDay(instant: Instant): Long
+    fun nextDayStart(date: LocalCalendarDate): Instant
+    fun pickerMillis(date: LocalCalendarDate): Long
+    fun dateFromPickerMillis(millis: Long): LocalCalendarDate
 }
 
 fun LocalCalendarDate.editorialDayMonth(): String {
