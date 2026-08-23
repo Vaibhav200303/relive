@@ -1,0 +1,43 @@
+CREATE TABLE profile_metadata (
+    singleton INTEGER NOT NULL PRIMARY KEY CHECK (singleton = 1),
+    created_at INTEGER NOT NULL
+);
+
+CREATE TRIGGER profile_metadata_created_at_immutable
+BEFORE UPDATE OF created_at ON profile_metadata
+BEGIN
+    SELECT RAISE(ABORT, 'profile created_at is immutable');
+END;
+
+CREATE TRIGGER profile_metadata_row_immutable
+BEFORE DELETE ON profile_metadata
+BEGIN
+    SELECT RAISE(ABORT, 'profile metadata cannot be deleted');
+END;
+
+-- This insert belongs to the initial schema only. A migrated database receives
+-- the table through 1.sqm without this row, so its unknown original creation
+-- time is never fabricated.
+INSERT INTO profile_metadata (singleton, created_at)
+VALUES (1, CAST(strftime('%s', 'now') AS INTEGER) * 1000);
+
+selectProfileCreatedAt:
+SELECT created_at FROM profile_metadata WHERE singleton = 1;
+
+selectProfileStatistics:
+WITH meaningful_places AS (
+    SELECT DISTINCT
+        NULLIF(TRIM(location_display_name), '') AS display_name,
+        NULLIF(TRIM(location_locality), '') AS locality,
+        NULLIF(TRIM(location_region), '') AS region,
+        NULLIF(TRIM(location_country), '') AS country
+    FROM moments
+    WHERE NULLIF(TRIM(location_display_name), '') IS NOT NULL
+       OR NULLIF(TRIM(location_locality), '') IS NOT NULL
+       OR NULLIF(TRIM(location_region), '') IS NOT NULL
+       OR NULLIF(TRIM(location_country), '') IS NOT NULL
+)
+SELECT
+    (SELECT COUNT(*) FROM moments) AS moment_count,
+    (SELECT COUNT(*) FROM custom_timelines) AS timeline_count,
+    (SELECT COUNT(*) FROM meaningful_places) AS place_count;

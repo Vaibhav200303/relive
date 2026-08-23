@@ -24,9 +24,12 @@ import com.vaibhav.relive.domain.model.RediscoverQuery
 import com.vaibhav.relive.presentation.timeline.CurrentTimeline
 import com.vaibhav.relive.presentation.timeline.TimelineMode
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeViewModel
+import com.vaibhav.relive.presentation.profile.ProfileViewModel
+import com.vaibhav.relive.presentation.profile.ProfileNavigationState
 import com.vaibhav.relive.ui.components.navigation.ReliveBottomBar
 import com.vaibhav.relive.ui.components.navigation.ReliveTopLevelDestination
 import com.vaibhav.relive.platform.media.ActivePlayback
+import com.vaibhav.relive.ui.screens.ProfileScreen
 
 private sealed interface TimelinesDestination {
     data object TimelineHome : TimelinesDestination
@@ -65,10 +68,16 @@ fun App(
         }
         val homeListState = rememberLazyListState()
         val rediscoverListState = rememberLazyListState()
+        val profileViewModel = remember(container, scope) { ProfileViewModel(container.profileRepository, scope) }
         var topLevel by remember { mutableStateOf(ReliveTopLevelDestination.Timelines) }
         var timelinesDestination by remember { mutableStateOf<TimelinesDestination>(TimelinesDestination.TimelineHome) }
         var rediscoverDestination by remember { mutableStateOf<RediscoverDestination>(RediscoverDestination.Root) }
-        when (val active = timelinesDestination) {
+        var profileNavigation by remember { mutableStateOf(ProfileNavigationState()) }
+        if (profileNavigation.isOpen) {
+            ProfileScreen(viewModel = profileViewModel, onBack = {
+                profileNavigation = profileNavigation.returnToTimelineHome()
+            })
+        } else when (val active = timelinesDestination) {
             is TimelinesDestination.TimelineDetail -> TimelineScreen(
                 momentRepository = container.momentRepository,
                 timelineRepository = container.timelineRepository,
@@ -146,6 +155,7 @@ fun App(
                                     },
                                 )
                             },
+                            onOpenProfile = { profileNavigation = profileNavigation.openProfile() },
                         )
                         ReliveTopLevelDestination.Rediscover -> RediscoverScreen(
                             repository = container.rediscoverRepository,

@@ -416,6 +416,15 @@ Format for each entry:
 
 ---
 
+## ADR-0032 — Profile is an auxiliary destination with truthful installation dating
+
+- **Date:** 2026-08-23 · **Status:** Accepted
+- **Context:** Profile needs a joining date and archive statistics without changing the two top-level destinations or deriving installation identity from Moment activity.
+- **Decision:** Timeline Home opens Profile as an auxiliary destination with a visible Back affordance; Profile is not placed in bottom navigation and Timeline Home retains its list state beneath it. A singleton `profile_metadata` record is inserted exactly once by the fresh SQLDelight schema. The migration creates the table without a row, so existing installations retain an unknown joining date and Profile hides its Since line. Profile statistics are reactive SQL count/distinct projections: all Moments, persisted custom timelines only, and distinct readable persisted location tuples.
+- **Consequences:** No migration-time, oldest-Moment, or current-launch date is fabricated. Profile does not hydrate the complete Moment archive just to calculate its statistics. Settings rows remain presentation-only until their real destinations are implemented.
+
+---
+
 ## Template for new decisions
 
 ```

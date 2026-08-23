@@ -606,14 +606,9 @@ Themes **must NOT** change:
 
 ## 12. Settings
 
-Settings currently contains:
+Profile is an auxiliary destination opened from Timeline Home's profile affordance; it is not a bottom-navigation destination. It shows a neutral identity placeholder, installation joining date when known, informational Moment/custom-Timeline/place counts, and the approved Profile IA: Appearance & themes; Media & storage; Backup; Location; Rediscover notifications; Privacy & security; Help & feedback; About Relive. Profile-row functionality remains deferred unless a real destination exists.
 
-- **Profile**
-- **Themes**
-- **Upgrade to Pro**
-- **Export**
-
-Detailed functionality will be defined later. **Do not invent behavior beyond what is currently specified.**
+Future Settings entries remain Themes, Upgrade to Pro, and Export. Detailed functionality is defined only when separately specified.
 
 ---
 
