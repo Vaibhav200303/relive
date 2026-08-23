@@ -202,6 +202,8 @@ The plus-circle is integrated into the rail (bordered, canvas fill) and becomes 
 
 ---
 
+`profile.avatar.size` is `80dp` for the neutral circular Profile placeholder.
+
 ## 14. Media dimensions and presentation
 
 ~~`media.ratio.square` and `media.carousel.peek` are superseded by [`DECISIONS.md`](DECISIONS.md) ADR-0019 (adaptive visual collage).~~

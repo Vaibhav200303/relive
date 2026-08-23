@@ -68,6 +68,11 @@ data class ReliveRediscoverDimensions(
 )
 
 @Immutable
+data class ReliveProfileDimensions(
+    val avatarSize: Dp = 80.dp,
+)
+
+@Immutable
 data class ReliveMediaDimensions(
     val ratioWide: Float = 2f,
     val sepiaAmount: Float = 0.3f,
@@ -106,6 +111,7 @@ data class ReliveDimensions(
     val timeline: ReliveTimelineDimensions = ReliveTimelineDimensions(),
     val timelineHome: ReliveTimelineHomeDimensions = ReliveTimelineHomeDimensions(),
     val rediscover: ReliveRediscoverDimensions = ReliveRediscoverDimensions(),
+    val profile: ReliveProfileDimensions = ReliveProfileDimensions(),
     val media: ReliveMediaDimensions = ReliveMediaDimensions(),
     val minTouchTarget: Dp = 48.dp,
 )

@@ -7,6 +7,7 @@ import com.vaibhav.relive.data.local.repository.SqlDelightTagRepository
 import com.vaibhav.relive.data.local.repository.SqlDelightTimelineRepository
 import com.vaibhav.relive.data.local.repository.SqlDelightTimelineHomeRepository
 import com.vaibhav.relive.data.local.repository.SqlDelightRediscoverRepository
+import com.vaibhav.relive.data.local.repository.SqlDelightProfileRepository
 import com.vaibhav.relive.domain.model.MediaAttachment
 import com.vaibhav.relive.domain.model.MediaAttachmentId
 import com.vaibhav.relive.domain.model.MediaStorageRef
@@ -31,6 +32,7 @@ internal class TestFixture {
     val timelineHome = SqlDelightTimelineHomeRepository(database, Dispatchers.Unconfined)
     val tags = SqlDelightTagRepository(database, Dispatchers.Unconfined)
     val rediscover = SqlDelightRediscoverRepository(database, Dispatchers.Unconfined)
+    val profile = SqlDelightProfileRepository(database, Dispatchers.Unconfined)
 
     fun close() = driver.close()
 }

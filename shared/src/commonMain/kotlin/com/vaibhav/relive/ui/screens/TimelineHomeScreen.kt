@@ -52,6 +52,7 @@ fun TimelineHomeScreen(
     mediaStore: MediaStore,
     listState: LazyListState,
     onOpenTimeline: (Timeline) -> Unit,
+    onOpenProfile: () -> Unit,
 ) {
     val state by viewModel.state.collectAsState()
     val creation by viewModel.creationState.collectAsState()
@@ -64,7 +65,7 @@ fun TimelineHomeScreen(
             .background(ReliveTheme.colors.bgCanvas)
             .fillMaxWidth(),
     ) {
-        TimelineHomeHeader(onCreateTimeline = viewModel::showTimelineCreation)
+        TimelineHomeHeader(onCreateTimeline = viewModel::showTimelineCreation, onOpenProfile = onOpenProfile)
         when (val content = state.content) {
             TimelineHomeContent.Loading -> TimelineHomeLoading()
             is TimelineHomeContent.Loaded -> TimelineHomeContent(
@@ -84,10 +85,19 @@ fun TimelineHomeScreen(
 }
 
 @Composable
-private fun TimelineHomeHeader(onCreateTimeline: () -> Unit) {
+private fun TimelineHomeHeader(onCreateTimeline: () -> Unit, onOpenProfile: () -> Unit) {
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
     ReliveWordmarkAppBar {
+        IconButton(
+            onClick = onOpenProfile,
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .size(dims.minTouchTarget)
+                .semantics { contentDescription = "Open Profile" },
+        ) {
+            ProfileAffordanceGlyph()
+        }
         IconButton(
             onClick = onCreateTimeline,
             modifier = Modifier
@@ -97,6 +107,25 @@ private fun TimelineHomeHeader(onCreateTimeline: () -> Unit) {
         ) {
             Text(text = "+", style = ReliveTheme.typography.title, color = colors.accent)
         }
+    }
+}
+
+@Composable
+private fun ProfileAffordanceGlyph() {
+    val colors = ReliveTheme.colors
+    val dims = ReliveTheme.dimensions
+    androidx.compose.foundation.Canvas(Modifier.size(dims.icon.lg)) {
+        val stroke = androidx.compose.ui.graphics.drawscope.Stroke(width = dims.stroke.icon.toPx())
+        drawCircle(colors.textSecondary, radius = size.minDimension * 0.2f, center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height * 0.32f), style = stroke)
+        drawArc(
+            color = colors.textSecondary,
+            startAngle = 200f,
+            sweepAngle = 140f,
+            useCenter = false,
+            topLeft = androidx.compose.ui.geometry.Offset(size.width * 0.2f, size.height * 0.36f),
+            size = androidx.compose.ui.geometry.Size(size.width * 0.6f, size.height * 0.48f),
+            style = stroke,
+        )
     }
 }
 

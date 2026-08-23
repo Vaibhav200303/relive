@@ -87,6 +87,10 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 - Settings screen: Profile, Themes, Upgrade to Pro, Export (entries present; detailed behavior deferred where unspecified).
 - **Exit:** switching themes changes only presentation; navigation/structure/interaction unchanged; theme tests pass.
 
+### Approved Phase override — Profile foundation
+
+- Profile is implemented as an auxiliary destination from Timeline Home, never a bottom-navigation destination. Its joining date is a singleton local `profile_metadata.created_at` written only for fresh databases; migrated databases retain an absent date and hide the Since line.
+
 ## Phase 10 — RevenueCat / Pro  ☐
 
 - Implement Pro entitlement behind the existing entitlement interface using RevenueCat; wire "Upgrade to Pro."
