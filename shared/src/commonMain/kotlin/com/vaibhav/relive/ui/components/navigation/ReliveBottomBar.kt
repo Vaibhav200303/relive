@@ -24,7 +24,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import com.vaibhav.relive.ui.theme.ReliveTheme
 
-enum class ReliveTopLevelDestination { Timelines, Rediscover }
+enum class ReliveTopLevelDestination { Timelines, Rediscover, Search }
 
 @Composable
 fun ReliveBottomBar(
@@ -43,6 +43,7 @@ fun ReliveBottomBar(
             val label = when (destination) {
                 ReliveTopLevelDestination.Timelines -> "Timelines"
                 ReliveTopLevelDestination.Rediscover -> "Rediscover"
+                ReliveTopLevelDestination.Search -> "Search"
             }
             val isSelected = selected == destination
             val tint = if (isSelected) colors.accent else colors.textMuted
@@ -78,10 +79,20 @@ private fun DestinationGlyph(destination: ReliveTopLevelDestination, tint: Color
                     drawRect(tint, topLeft = androidx.compose.ui.geometry.Offset(inset + x * (cell + inset), inset + y * (cell + inset)), size = androidx.compose.ui.geometry.Size(cell, cell), style = stroke)
                 }
             }
-        } else {
+        } else if (destination == ReliveTopLevelDestination.Rediscover) {
             drawCircle(tint, radius = size.width * 0.34f, style = stroke)
             drawLine(tint, androidx.compose.ui.geometry.Offset(size.width * 0.5f, size.height * 0.5f), androidx.compose.ui.geometry.Offset(size.width * 0.5f, size.height * 0.27f), strokeWidth = stroke.width)
             drawLine(tint, androidx.compose.ui.geometry.Offset(size.width * 0.5f, size.height * 0.5f), androidx.compose.ui.geometry.Offset(size.width * 0.68f, size.height * 0.62f), strokeWidth = stroke.width)
+        } else {
+            val radius = size.width * 0.25f
+            val center = androidx.compose.ui.geometry.Offset(size.width * 0.42f, size.height * 0.42f)
+            drawCircle(tint, radius = radius, center = center, style = stroke)
+            drawLine(
+                tint,
+                start = center + androidx.compose.ui.geometry.Offset(radius * 0.7f, radius * 0.7f),
+                end = androidx.compose.ui.geometry.Offset(size.width * 0.86f, size.height * 0.86f),
+                strokeWidth = stroke.width,
+            )
         }
     }
 }

@@ -760,6 +760,7 @@ private class RecordingRepository(
     override suspend fun listAll(): List<Moment> = inserts.map { it.first }
     private val emptyFlow = MutableStateFlow<List<Moment>>(emptyList()).asStateFlow()
     override fun observeAll(): Flow<List<Moment>> = emptyFlow
+    override fun observeSearch(query: String): Flow<List<Moment>> = emptyFlow
     override suspend fun listInTimeline(timelineId: TimelineId): List<Moment> = emptyList()
     override fun observeInTimeline(timelineId: TimelineId): Flow<List<Moment>> = emptyFlow
 }

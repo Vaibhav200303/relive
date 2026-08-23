@@ -45,6 +45,13 @@ interface MomentRepository {
     /** Same ordering as [listAll], emitting a fresh snapshot on any relevant change. */
     fun observeAll(): Flow<List<Moment>>
 
+    /**
+     * Local, case-insensitive title/content search. Results use the repository's
+     * normal newest-first ordering; presentation reverses them to the All
+     * timeline's oldest-first order.
+     */
+    fun observeSearch(query: String): Flow<List<Moment>>
+
     /** Moments that belong to the given custom timeline, newest first. */
     suspend fun listInTimeline(timelineId: TimelineId): List<Moment>
 

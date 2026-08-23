@@ -30,6 +30,8 @@ import com.vaibhav.relive.ui.components.navigation.ReliveBottomBar
 import com.vaibhav.relive.ui.components.navigation.ReliveTopLevelDestination
 import com.vaibhav.relive.platform.media.ActivePlayback
 import com.vaibhav.relive.ui.screens.ProfileScreen
+import com.vaibhav.relive.ui.screens.SearchScreen
+import com.vaibhav.relive.presentation.search.SearchViewModel
 
 private sealed interface TimelinesDestination {
     data object TimelineHome : TimelinesDestination
@@ -68,8 +70,11 @@ fun App(
         }
         val homeListState = rememberLazyListState()
         val rediscoverListState = rememberLazyListState()
+        val searchListState = rememberLazyListState()
+        val searchViewModel = remember(container, scope) { SearchViewModel(container.momentRepository, scope) }
         val profileViewModel = remember(container, scope) { ProfileViewModel(container.profileRepository, scope) }
         var topLevel by remember { mutableStateOf(ReliveTopLevelDestination.Timelines) }
+        var searchReturnDestination by remember { mutableStateOf(ReliveTopLevelDestination.Timelines) }
         var timelinesDestination by remember { mutableStateOf<TimelinesDestination>(TimelinesDestination.TimelineHome) }
         var rediscoverDestination by remember { mutableStateOf<RediscoverDestination>(RediscoverDestination.Root) }
         var profileNavigation by remember { mutableStateOf(ProfileNavigationState()) }
@@ -159,9 +164,13 @@ fun App(
                         )
                         ReliveTopLevelDestination.Rediscover -> RediscoverScreen(
                             repository = container.rediscoverRepository,
+                            timelineHomeRepository = container.timelineHomeRepository,
                             clock = container.clock,
                             mediaStore = container.mediaStore,
                             listState = rediscoverListState,
+                            onOpenAll = {
+                                timelinesDestination = TimelinesDestination.TimelineDetail(CurrentTimeline.All)
+                            },
                             onOpenFavorites = { selectedMomentId ->
                                 rediscoverDestination = RediscoverDestination.Favorites(selectedMomentId)
                             },
@@ -173,10 +182,19 @@ fun App(
                             },
                             debugControls = rediscoverDebugControls,
                         )
+                        ReliveTopLevelDestination.Search -> SearchScreen(
+                            viewModel = searchViewModel,
+                            mediaStore = container.mediaStore,
+                            listState = searchListState,
+                            onBack = { topLevel = searchReturnDestination },
+                        )
                     }
                 }
                 ReliveBottomBar(selected = topLevel, onSelect = {
                     ActivePlayback.stopActive()
+                    if (it == ReliveTopLevelDestination.Search && topLevel != ReliveTopLevelDestination.Search) {
+                        searchReturnDestination = topLevel
+                    }
                     topLevel = it
                 })
             }

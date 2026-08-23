@@ -1,5 +1,7 @@
 package com.vaibhav.relive.domain.model
 
+import com.vaibhav.relive.domain.time.Instant
+
 /**
  * Bounded read model for the Timeline Home. It deliberately contains only
  * the information needed to render a collection card, not full Moments.
@@ -8,6 +10,7 @@ data class TimelineHomeSummary(
     val timeline: Timeline,
     val momentCount: Long,
     val previewAttachments: List<MediaAttachment>,
+    val createdAt: Instant? = null,
 ) {
     init {
         require(momentCount >= 0) { "momentCount must not be negative" }
@@ -16,6 +19,9 @@ data class TimelineHomeSummary(
         }
         require(previewAttachments.all { it.type != MediaType.Audio }) {
             "Timeline Home previews include visual media only"
+        }
+        require((timeline is Timeline.Custom) == (createdAt != null)) {
+            "Only custom timelines expose a persisted creation time"
         }
     }
 

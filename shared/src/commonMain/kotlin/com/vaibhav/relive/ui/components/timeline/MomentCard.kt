@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -31,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
@@ -52,6 +54,8 @@ fun MomentCard(
     canEditOrForget: Boolean,
     onEdit: () -> Unit,
     onForget: () -> Unit,
+    hasPreviousMoment: Boolean,
+    isActive: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val colors = ReliveTheme.colors
@@ -63,6 +67,27 @@ fun MomentCard(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .then(
+                if (isActive) {
+                    Modifier.border(
+                        width = dims.stroke.hairline,
+                        color = colors.accentMuted,
+                        shape = RoundedCornerShape(dims.radii.md),
+                    )
+                } else {
+                    Modifier
+                },
+            )
+            .drawBehind {
+                val axis = dims.timeline.contentInset.toPx() / 2f
+                val markerCenter = dims.spacing.xl.toPx() + dims.timeline.dotSize.toPx() / 2f
+                drawLine(
+                    color = colors.borderMuted,
+                    start = androidx.compose.ui.geometry.Offset(axis, if (hasPreviousMoment) 0f else markerCenter),
+                    end = androidx.compose.ui.geometry.Offset(axis, size.height),
+                    strokeWidth = dims.timeline.railWidth.toPx(),
+                )
+            }
             .padding(vertical = dims.spacing.xl)
             .combinedClickable(onClick = {}, onLongClick = { if (canEditOrForget) actionsOpen = true })
             .semantics {
@@ -77,8 +102,7 @@ fun MomentCard(
     ) {
         Box(
             modifier = Modifier
-                .width(dims.timeline.contentInset)
-                .padding(top = dims.spacing.xs),
+                .width(dims.timeline.contentInset),
             contentAlignment = Alignment.TopCenter,
         ) {
             Box(

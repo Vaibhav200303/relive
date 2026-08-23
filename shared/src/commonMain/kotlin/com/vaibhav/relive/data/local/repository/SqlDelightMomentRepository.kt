@@ -106,6 +106,12 @@ class SqlDelightMomentRepository(
             .mapToList(dispatcher)
             .map { rows -> withContext(dispatcher) { rows.map { hydrate(it) } } }
 
+    override fun observeSearch(query: String): Flow<List<Moment>> =
+        database.momentsQueries.selectMomentsMatchingQuery(query)
+            .asFlow()
+            .mapToList(dispatcher)
+            .map { rows -> withContext(dispatcher) { rows.map { hydrate(it) } } }
+
     override suspend fun listInTimeline(timelineId: TimelineId): List<Moment> =
         withContext(dispatcher) {
             database.momentsQueries.selectMomentsInTimeline(timelineId.value)

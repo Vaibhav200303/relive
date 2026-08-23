@@ -30,6 +30,12 @@ SELECT * FROM moments WHERE id = :id;
 selectAllMoments:
 SELECT * FROM moments ORDER BY created_at DESC, id DESC;
 
+selectMomentsMatchingQuery:
+SELECT * FROM moments
+WHERE title LIKE '%' || :query || '%' COLLATE NOCASE
+   OR content LIKE '%' || :query || '%' COLLATE NOCASE
+ORDER BY created_at DESC, id DESC;
+
 selectMomentsInTimeline:
 SELECT m.* FROM moments m
 JOIN moment_timeline_memberships mtm ON mtm.moment_id = m.id

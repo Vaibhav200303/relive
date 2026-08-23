@@ -1,6 +1,5 @@
 package com.vaibhav.relive.presentation.timeline
 
-import com.vaibhav.relive.domain.id.IdGenerator
 import com.vaibhav.relive.domain.model.Moment
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.Timeline
@@ -25,7 +24,6 @@ class TimelineViewModel(
     private val timelineRepository: TimelineRepository,
     private val rediscoverRepository: RediscoverRepository,
     private val clock: Clock,
-    private val idGenerator: IdGenerator,
     private val scope: CoroutineScope,
     initialTimeline: CurrentTimeline = CurrentTimeline.All,
     private val mode: TimelineMode = TimelineMode.Editable,
@@ -35,19 +33,7 @@ class TimelineViewModel(
     val state: StateFlow<TimelineScreenState> = _state.asStateFlow()
 
     private var momentsJob: Job? = null
-    private val creationController = TimelineCreationController(
-        timelineRepository = timelineRepository,
-        clock = clock,
-        idGenerator = idGenerator,
-        scope = scope,
-    )
-
     init {
-        scope.launch {
-            creationController.state.collect { creation ->
-                _state.update { it.copy(creation = creation) }
-            }
-        }
         scope.launch {
             timelineRepository.observeCustom().collect { timelines ->
                 _state.update { it.copy(customTimelines = timelines) }
@@ -89,23 +75,6 @@ class TimelineViewModel(
                 onFailure()
             }
         }
-    }
-
-    fun showTimelineCreation() {
-        if (!mode.allowsMutations) return
-        creationController.show()
-    }
-
-    fun dismissTimelineCreation() {
-        creationController.dismiss()
-    }
-
-    fun updateTimelineName(value: String) {
-        creationController.updateName(value)
-    }
-
-    fun createTimeline() {
-        creationController.create()
     }
 
     private fun observe(timeline: CurrentTimeline) {

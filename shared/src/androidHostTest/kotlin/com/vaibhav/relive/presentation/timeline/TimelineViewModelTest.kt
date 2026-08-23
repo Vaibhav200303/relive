@@ -1,6 +1,5 @@
 package com.vaibhav.relive.presentation.timeline
 
-import com.vaibhav.relive.domain.id.IdGenerator
 import com.vaibhav.relive.domain.model.Moment
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.FavoritesCollectionSummary
@@ -57,21 +56,6 @@ class TimelineViewModelTest {
 
         assertEquals(CurrentTimeline.All, vm.state.value.currentTimeline)
         assertEquals(TimelineMomentsState.Empty, vm.state.value.moments)
-    }
-
-    @Test
-    fun createdTimelineAppearsInCustomTimelineList() = runTest {
-        val timelines = FakeTimelineRepository()
-        val vm = newViewModel(timelineRepository = timelines)
-
-        vm.showTimelineCreation()
-        vm.updateTimelineName("Family")
-        vm.createTimeline()
-
-        assertEquals(listOf("Family"), vm.state.value.customTimelines.map { it.name })
-        assertEquals("timeline-1", vm.state.value.customTimelines.single().id.value)
-        assertEquals(Instant(42L), timelines.created.single().second)
-        assertEquals(TimelineCreationState(), vm.state.value.creation)
     }
 
     @Test
@@ -156,50 +140,6 @@ class TimelineViewModelTest {
         vm.selectTimeline(CurrentTimeline.Custom(TimelineId("empty")))
 
         assertEquals(TimelineMomentsState.Empty, vm.state.value.moments)
-    }
-
-    @Test
-    fun timelineCreationTrimsNameBeforePersistence() = runTest {
-        val timelines = FakeTimelineRepository()
-        val vm = newViewModel(timelineRepository = timelines)
-
-        vm.showTimelineCreation()
-        vm.updateTimelineName("  Japan 2026  ")
-        vm.createTimeline()
-
-        assertEquals("Japan 2026", timelines.created.single().first.name)
-    }
-
-    @Test
-    fun blankTimelineNameIsRejectedAndPreserved() = runTest {
-        val timelines = FakeTimelineRepository()
-        val vm = newViewModel(timelineRepository = timelines)
-
-        vm.showTimelineCreation()
-        vm.updateTimelineName("   ")
-        vm.createTimeline()
-
-        assertTrue(timelines.created.isEmpty())
-        assertEquals("   ", vm.state.value.creation.name)
-        assertNotNull(vm.state.value.creation.errorMessage)
-        assertTrue(vm.state.value.creation.isVisible)
-        assertFalse(vm.state.value.creation.isSaving)
-    }
-
-    @Test
-    fun failedTimelineCreationPreservesEnteredName() = runTest {
-        val timelines = FakeTimelineRepository(createFailure = IllegalStateException("database unavailable"))
-        val vm = newViewModel(timelineRepository = timelines)
-
-        vm.showTimelineCreation()
-        vm.updateTimelineName("Family")
-        vm.createTimeline()
-
-        assertEquals("Family", vm.state.value.creation.name)
-        assertNotNull(vm.state.value.creation.errorMessage)
-        assertTrue(vm.state.value.creation.isVisible)
-        assertFalse(vm.state.value.creation.isSaving)
-        assertTrue(vm.state.value.customTimelines.isEmpty())
     }
 
     @Test
@@ -290,7 +230,6 @@ class TimelineViewModelTest {
         timelineRepository = timelineRepository,
         rediscoverRepository = FakeRediscoverRepository(),
         clock = clock,
-        idGenerator = IdGenerator { "timeline-1" },
         scope = TestScope(UnconfinedTestDispatcher(testScheduler)),
         mode = mode,
     )
@@ -374,6 +313,8 @@ private class FakeMomentRepository(
     override suspend fun listAll(): List<Moment> = all.value
 
     override fun observeAll(): Flow<List<Moment>> = all.asStateFlow()
+
+    override fun observeSearch(query: String): Flow<List<Moment>> = MutableStateFlow(emptyList())
 
     override suspend fun listInTimeline(timelineId: TimelineId): List<Moment> =
         timelineFlow(timelineId).value

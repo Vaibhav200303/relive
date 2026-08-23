@@ -38,9 +38,11 @@ import com.vaibhav.relive.platform.media.RelivedVideoTile
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeContent
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeViewModel
 import com.vaibhav.relive.presentation.timelinehome.emptyPreviewPlaceholderText
+import com.vaibhav.relive.presentation.date.ProfileSinceFormatter
 import com.vaibhav.relive.ui.components.MediaToCardSurfaceFade
 import com.vaibhav.relive.ui.components.reliveCardOuterBorder
 import com.vaibhav.relive.ui.components.timeline.TimelineCreationDialog
+import com.vaibhav.relive.ui.components.composer.PlusGlyph
 import com.vaibhav.relive.ui.components.navigation.ReliveWordmarkAppBar
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import androidx.compose.ui.unit.dp
@@ -105,7 +107,11 @@ private fun TimelineHomeHeader(onCreateTimeline: () -> Unit, onOpenProfile: () -
                 .size(dims.minTouchTarget)
                 .semantics { contentDescription = "Create timeline" },
         ) {
-            Text(text = "+", style = ReliveTheme.typography.title, color = colors.accent)
+            PlusGlyph(
+                size = dims.timelineHome.createTimelineGlyphSize,
+                color = colors.accent,
+                strokeWidth = dims.stroke.iconBold,
+            )
         }
     }
 }
@@ -142,7 +148,6 @@ private fun TimelineHomeContent(
     onOpenTimeline: (Timeline) -> Unit,
 ) {
     val dims = ReliveTheme.dimensions
-    val all = summaries.firstOrNull { it.timeline == Timeline.All }
     val custom = summaries.filter { it.timeline is Timeline.Custom }
     LazyColumn(
         state = listState,
@@ -154,13 +159,8 @@ private fun TimelineHomeContent(
         ),
         verticalArrangement = Arrangement.spacedBy(dims.spacing.xl),
     ) {
-        all?.let { summary ->
-            item(key = "all") {
-                TimelineHomeCard(summary, mediaStore, onClick = { onOpenTimeline(summary.timeline) })
-            }
-        }
         item(key = "your-timeline-heading") {
-            Text("YOUR TIMELINE", style = ReliveTheme.typography.eyebrow, color = ReliveTheme.colors.accentMuted)
+            Text("YOUR TIMELINE", style = ReliveTheme.typography.title, color = ReliveTheme.colors.accentMuted)
         }
         if (custom.isEmpty()) {
             item(key = "empty-custom-timelines") { TimelineHomeEmptyCustomState() }
@@ -173,7 +173,7 @@ private fun TimelineHomeContent(
 }
 
 @Composable
-private fun TimelineHomeCard(
+internal fun TimelineHomeCard(
     summary: TimelineHomeSummary,
     mediaStore: MediaStore,
     onClick: () -> Unit,
@@ -204,12 +204,23 @@ private fun TimelineHomeCard(
             modifier = Modifier.padding(dims.spacing.lg),
             verticalArrangement = Arrangement.spacedBy(dims.spacing.xs),
         ) {
-            Text(summary.name, style = ReliveTheme.typography.title, color = colors.textPrimary)
-            Text(
-                text = "${summary.momentCount} ${if (summary.momentCount == 1L) "moment" else "moments"}",
-                style = ReliveTheme.typography.subtitle,
-                color = colors.textSecondary,
-            )
+            Text(summary.name, style = ReliveTheme.typography.title, color = colors.textPrimary, maxLines = 2)
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "${summary.momentCount} ${if (summary.momentCount == 1L) "moment" else "moments"}",
+                    style = ReliveTheme.typography.subtitle,
+                    color = colors.textSecondary,
+                    modifier = Modifier.weight(1f),
+                )
+                summary.createdAt?.let { createdAt ->
+                    Text(
+                        text = "Created ${ProfileSinceFormatter.format(createdAt)}",
+                        style = ReliveTheme.typography.tag,
+                        color = colors.textMuted,
+                        maxLines = 1,
+                    )
+                }
+            }
         }
     }
 }

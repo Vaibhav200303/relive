@@ -36,6 +36,8 @@ import com.vaibhav.relive.domain.model.LocalCalendarDate
 import com.vaibhav.relive.domain.model.FavoriteMomentPreview
 import com.vaibhav.relive.domain.model.RediscoverQuery
 import com.vaibhav.relive.domain.repository.RediscoverRepository
+import com.vaibhav.relive.domain.repository.TimelineHomeRepository
+import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.time.Clock
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.presentation.date.RediscoverCalendar
@@ -52,14 +54,18 @@ import kotlinx.coroutines.delay
 @Composable
 fun RediscoverScreen(
     repository: RediscoverRepository,
+    timelineHomeRepository: TimelineHomeRepository,
     clock: Clock,
     mediaStore: MediaStore,
     listState: LazyListState,
+    onOpenAll: () -> Unit,
     onOpenFavorites: (MomentId?) -> Unit,
     onOpenOnThisDay: (MomentId, LocalCalendarDate) -> Unit,
     onOpenFromYourPast: (MomentId?, RediscoverQuery) -> Unit,
     debugControls: (@Composable () -> Unit)? = null,
 ) {
+    val timelineSummaries by timelineHomeRepository.observeSummaries().collectAsState(emptyList())
+    val allSummary = timelineSummaries.firstOrNull { it.timeline == Timeline.All }
     val previews by repository.observeFavoritePreviews().collectAsState(emptyList())
     var today by remember(clock) { mutableStateOf(RediscoverCalendar.localDate(clock.now())) }
     LaunchedEffect(today) {
@@ -90,6 +96,17 @@ fun RediscoverScreen(
         contentPadding = PaddingValues(bottom = dims.spacing.huge),
     ) {
         item(key = "relive-app-bar") { ReliveWordmarkAppBar() }
+        allSummary?.let { summary ->
+            item(key = "all") {
+                Box(modifier = Modifier.padding(horizontal = dims.spacing.xl, vertical = dims.spacing.md)) {
+                    TimelineHomeCard(
+                        summary = summary,
+                        mediaStore = mediaStore,
+                        onClick = onOpenAll,
+                    )
+                }
+            }
+        }
         item(key = "favorites-heading") {
             Text(
                 text = "FAVOURITES",
