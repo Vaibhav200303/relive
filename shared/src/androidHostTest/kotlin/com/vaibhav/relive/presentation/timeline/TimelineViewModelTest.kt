@@ -13,6 +13,7 @@ import com.vaibhav.relive.domain.model.ThemeReference
 import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.repository.MomentRepository
+import com.vaibhav.relive.domain.repository.MomentDateNavigationScope
 import com.vaibhav.relive.domain.repository.RediscoverRepository
 import com.vaibhav.relive.domain.repository.TimelineRepository
 import com.vaibhav.relive.domain.time.Clock
@@ -220,6 +221,99 @@ class TimelineViewModelTest {
         assertTrue(forgetRejected)
     }
 
+    @Test
+    fun allTimelineCalendarSelectsTheFirstMomentOnTheExactDate() = runTest {
+        val date = com.vaibhav.relive.domain.model.LocalCalendarDate(2026, 8, 24)
+        val start = com.vaibhav.relive.presentation.date.RediscoverCalendar.startOfDay(date)
+        val moments = FakeMomentRepository(
+            initialAll = listOf(
+                moment("later", start.epochMilliseconds + 2_000L),
+                moment("first", start.epochMilliseconds + 1_000L),
+            ),
+        )
+        val vm = newViewModel(momentRepository = moments)
+
+        vm.jumpToDate(date)
+
+        assertEquals(MomentId("first"), vm.state.value.dateNavigation?.momentId)
+        assertEquals(listOf<MomentDateNavigationScope>(MomentDateNavigationScope.All), moments.dateNavigationScopes)
+    }
+
+    @Test
+    fun customTimelineCalendarKeepsTheCustomScopeForAnExactDate() = runTest {
+        val family = TimelineId("family")
+        val date = com.vaibhav.relive.domain.model.LocalCalendarDate(2026, 8, 24)
+        val start = com.vaibhav.relive.presentation.date.RediscoverCalendar.startOfDay(date)
+        val customMoment = moment("family", start.epochMilliseconds + 1_000L)
+        val moments = FakeMomentRepository(
+            initialAll = listOf(moment("all", start.epochMilliseconds), customMoment),
+            initialByTimeline = mapOf(family to listOf(customMoment)),
+        )
+        val vm = newViewModel(momentRepository = moments)
+        vm.selectTimeline(CurrentTimeline.Custom(family))
+
+        vm.jumpToDate(date)
+
+        assertEquals(CurrentTimeline.Custom(family), vm.state.value.currentTimeline)
+        assertEquals(MomentId("family"), vm.state.value.dateNavigation?.momentId)
+        assertEquals(listOf<MomentDateNavigationScope>(MomentDateNavigationScope.Custom(family)), moments.dateNavigationScopes)
+    }
+
+    @Test
+    fun calendarMissingDateSelectsTheNextAvailableMoment() = runTest {
+        val date = com.vaibhav.relive.domain.model.LocalCalendarDate(2026, 8, 24)
+        val next = com.vaibhav.relive.presentation.date.RediscoverCalendar.nextDayStart(date)
+        val moments = FakeMomentRepository(initialAll = listOf(moment("next", next.epochMilliseconds)))
+        val vm = newViewModel(momentRepository = moments)
+
+        vm.jumpToDate(date)
+
+        assertEquals(MomentId("next"), vm.state.value.dateNavigation?.momentId)
+        assertEquals("No moments on 24 August — showing 25 August.", vm.state.value.dateNavigation?.message)
+    }
+
+    @Test
+    fun calendarMissingDateWithNoNextSelectsThePreviousMoment() = runTest {
+        val date = com.vaibhav.relive.domain.model.LocalCalendarDate(2026, 8, 24)
+        val start = com.vaibhav.relive.presentation.date.RediscoverCalendar.startOfDay(date)
+        val moments = FakeMomentRepository(initialAll = listOf(moment("previous", start.epochMilliseconds - 1L)))
+        val vm = newViewModel(momentRepository = moments)
+
+        vm.jumpToDate(date)
+
+        assertEquals(MomentId("previous"), vm.state.value.dateNavigation?.momentId)
+        assertEquals("No moments on 24 August — showing 23 August.", vm.state.value.dateNavigation?.message)
+    }
+
+    @Test
+    fun calendarEmptyTimelineKeepsTheSnackbarFallback() = runTest {
+        val vm = newViewModel()
+
+        vm.jumpToDate(com.vaibhav.relive.domain.model.LocalCalendarDate(2026, 8, 24))
+
+        assertEquals(null, vm.state.value.dateNavigation?.momentId)
+        assertEquals("No moments in this timeline yet.", vm.state.value.dateNavigation?.message)
+    }
+
+    @Test
+    fun customTimelineCalendarDoesNotResolveAnAllOnlyMoment() = runTest {
+        val family = TimelineId("family")
+        val date = com.vaibhav.relive.domain.model.LocalCalendarDate(2026, 8, 24)
+        val start = com.vaibhav.relive.presentation.date.RediscoverCalendar.startOfDay(date)
+        val familyNext = moment("family-next", com.vaibhav.relive.presentation.date.RediscoverCalendar.nextDayStart(date).epochMilliseconds)
+        val moments = FakeMomentRepository(
+            initialAll = listOf(moment("all-exact", start.epochMilliseconds), familyNext),
+            initialByTimeline = mapOf(family to listOf(familyNext)),
+        )
+        val vm = newViewModel(momentRepository = moments)
+        vm.selectTimeline(CurrentTimeline.Custom(family))
+
+        vm.jumpToDate(date)
+
+        assertEquals(MomentId("family-next"), vm.state.value.dateNavigation?.momentId)
+        assertEquals("No moments on 24 August — showing 25 August.", vm.state.value.dateNavigation?.message)
+    }
+
     private fun TestScope.newViewModel(
         momentRepository: FakeMomentRepository = FakeMomentRepository(),
         timelineRepository: FakeTimelineRepository = FakeTimelineRepository(),
@@ -315,6 +409,26 @@ private class FakeMomentRepository(
     override fun observeAll(): Flow<List<Moment>> = all.asStateFlow()
 
     override fun observeSearch(query: String): Flow<List<Moment>> = MutableStateFlow(emptyList())
+
+    val dateNavigationScopes = mutableListOf<MomentDateNavigationScope>()
+
+    override suspend fun findDateNavigationTarget(
+        scope: MomentDateNavigationScope,
+        dayStart: Instant,
+        nextDayStart: Instant,
+    ): Moment? {
+        dateNavigationScopes += scope
+        val scopedMoments = when (scope) {
+            MomentDateNavigationScope.All -> all.value
+            is MomentDateNavigationScope.Custom -> timelineFlow(scope.timelineId).value
+        }
+        val chronological = scopedMoments.sortedWith(
+            compareBy<Moment> { it.createdAt.epochMilliseconds }.thenBy { it.id.value },
+        )
+        return chronological.firstOrNull { it.createdAt >= dayStart && it.createdAt < nextDayStart }
+            ?: chronological.firstOrNull { it.createdAt >= nextDayStart }
+            ?: chronological.lastOrNull { it.createdAt < dayStart }
+    }
 
     override suspend fun listInTimeline(timelineId: TimelineId): List<Moment> =
         timelineFlow(timelineId).value

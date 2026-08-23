@@ -1,14 +1,14 @@
 package com.vaibhav.relive.ui.screens
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,6 +27,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -35,18 +40,16 @@ import com.vaibhav.relive.domain.model.TimelineHomeSummary
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.platform.media.RelivedImageTile
 import com.vaibhav.relive.platform.media.RelivedVideoTile
-import com.vaibhav.relive.presentation.timelinehome.TimelineHomeContent
-import com.vaibhav.relive.presentation.timelinehome.TimelineHomeViewModel
 import com.vaibhav.relive.presentation.cardcover.cardCoverStableKey
 import com.vaibhav.relive.presentation.date.TimelineCreatedDateFormatter
+import com.vaibhav.relive.presentation.timelinehome.TimelineHomeContent
+import com.vaibhav.relive.presentation.timelinehome.TimelineHomeViewModel
 import com.vaibhav.relive.ui.components.MediaToCardSurfaceFade
-import com.vaibhav.relive.ui.components.reliveCardOuterBorder
-import com.vaibhav.relive.ui.components.timeline.TimelineCreationDialog
 import com.vaibhav.relive.ui.components.composer.PlusGlyph
 import com.vaibhav.relive.ui.components.navigation.ReliveWordmarkAppBar
+import com.vaibhav.relive.ui.components.reliveCardOuterBorder
+import com.vaibhav.relive.ui.components.timeline.TimelineCreationDialog
 import com.vaibhav.relive.ui.theme.ReliveTheme
-import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.shape.RoundedCornerShape
 
 @Composable
 fun TimelineHomeScreen(
@@ -68,10 +71,16 @@ fun TimelineHomeScreen(
             .fillMaxWidth(),
     ) {
         TimelineHomeHeader(onCreateTimeline = viewModel::showTimelineCreation, onOpenProfile = onOpenProfile)
+        TimelineHomeSearchBar(
+            query = state.query,
+            onQueryChange = viewModel::updateSearchQuery,
+        )
         when (val content = state.content) {
             TimelineHomeContent.Loading -> TimelineHomeLoading()
             is TimelineHomeContent.Loaded -> TimelineHomeContent(
-                summaries = content.summaries,
+                hasCustomTimelines = state.customSummaries.isNotEmpty(),
+                summaries = state.visibleCustomSummaries,
+                query = state.query,
                 mediaStore = mediaStore,
                 listState = listState,
                 onOpenTimeline = viewModel::selectTimeline,
@@ -117,6 +126,75 @@ private fun TimelineHomeHeader(onCreateTimeline: () -> Unit, onOpenProfile: () -
 }
 
 @Composable
+private fun TimelineHomeSearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+) {
+    val colors = ReliveTheme.colors
+    val dims = ReliveTheme.dimensions
+    val shape = RoundedCornerShape(dims.radii.pill)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(colors.bgHeader)
+            .padding(horizontal = dims.spacing.xl, vertical = dims.spacing.sm)
+            .height(dims.search.containerHeight)
+            .clip(shape)
+            .background(colors.surfaceCard)
+            .border(dims.stroke.hairline, colors.borderMuted, shape)
+            .padding(horizontal = dims.spacing.xs),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(dims.spacing.xs),
+    ) {
+        TimelineSearchGlyph()
+        BasicTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            modifier = Modifier
+                .weight(1f)
+                .semantics { contentDescription = "Search timelines" },
+            textStyle = ReliveTheme.typography.body.copy(color = colors.textPrimary),
+            cursorBrush = SolidColor(colors.accent),
+            singleLine = true,
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
+                    if (query.isEmpty()) {
+                        Text(
+                            text = "Search timelines...",
+                            style = ReliveTheme.typography.body,
+                            color = colors.textMuted,
+                        )
+                    }
+                    innerTextField()
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun TimelineSearchGlyph() {
+    val dims = ReliveTheme.dimensions
+    val color = ReliveTheme.colors.textPrimary
+    Canvas(
+        modifier = Modifier
+            .padding(start = dims.spacing.md, end = dims.spacing.sm)
+            .size(dims.icon.lg),
+    ) {
+        val strokeWidth = dims.stroke.icon.toPx()
+        val radius = size.minDimension * 0.28f
+        val center = Offset(size.width * 0.43f, size.height * 0.43f)
+        drawCircle(color = color, radius = radius, center = center, style = Stroke(strokeWidth))
+        drawLine(
+            color = color,
+            start = center + Offset(radius * 0.7f, radius * 0.7f),
+            end = Offset(size.width * 0.86f, size.height * 0.86f),
+            strokeWidth = strokeWidth,
+        )
+    }
+}
+
+@Composable
 private fun ProfileAffordanceGlyph() {
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
@@ -142,13 +220,14 @@ private fun TimelineHomeLoading() {
 
 @Composable
 private fun TimelineHomeContent(
+    hasCustomTimelines: Boolean,
     summaries: List<TimelineHomeSummary>,
+    query: String,
     mediaStore: MediaStore,
     listState: LazyListState,
     onOpenTimeline: (Timeline) -> Unit,
 ) {
     val dims = ReliveTheme.dimensions
-    val custom = summaries.filter { it.timeline is Timeline.Custom }
     LazyColumn(
         state = listState,
         contentPadding = PaddingValues(
@@ -162,10 +241,20 @@ private fun TimelineHomeContent(
         item(key = "your-timeline-heading") {
             Text("YOUR TIMELINE", style = ReliveTheme.typography.title, color = ReliveTheme.colors.accentMuted)
         }
-        if (custom.isEmpty()) {
-            item(key = "empty-custom-timelines") { TimelineHomeEmptyCustomState() }
+        if (summaries.isEmpty()) {
+            if (query.isNotBlank() || hasCustomTimelines) {
+                item(key = "no-matching-custom-timelines") {
+                    Text(
+                        text = "No timelines found.",
+                        style = ReliveTheme.typography.subtitle,
+                        color = ReliveTheme.colors.textSecondary,
+                    )
+                }
+            } else {
+                item(key = "empty-custom-timelines") { TimelineHomeEmptyCustomState() }
+            }
         } else {
-            items(custom, key = { (it.timeline as Timeline.Custom).id.value }) { summary ->
+            items(summaries, key = { (it.timeline as Timeline.Custom).id.value }) { summary ->
                 TimelineHomeCard(summary, mediaStore, onClick = { onOpenTimeline(summary.timeline) })
             }
         }

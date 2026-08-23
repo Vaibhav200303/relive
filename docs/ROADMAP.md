@@ -57,6 +57,7 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 
 - Timeline Home is the app root: it lists the All card plus visual custom-timeline cards, opens the existing scoped timeline detail, and exposes Create Timeline from the top app bar.
 - Create custom timelines; home screen lists All + custom timelines.
+- Filter the already-observed custom Timeline Home cards by live, case-insensitive partial name matching while preserving newest-first order; All and Moment content remain outside this local filter.
 - Membership rules: create-in-custom → All + that timeline; create-in-All → optional assignment to custom timelines.
 - **Exit:** moments appear in the correct timelines without duplication; membership tests pass.
 
@@ -71,7 +72,7 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 
 - Add the Timelines / Rediscover top-level navigation shell; do not introduce Search or You placeholders.
 - Render the Rediscover root as a `FAVOURITES` section with a bounded, horizontally swipeable row of individual favorited-Moment cards and a `Show all` action above the existing two-item navigation. The empty state remains visible when no favorites exist.
-- Render the bounded local On This Day shelf directly below Favorites: previous-year local-date matches only, exact calendar-year labels, compact empty state, and selected-Moment read-only navigation. Render From Your Past below On This Day: deterministic daily local selection of up to ten Moments at least 90 days old, excluding current On This Day matches and future timestamps, with the same compact card family as Favorites and read-only selected-Moment navigation. Preserve Places and Tags as deferred capability.
+- Render the bounded local On This Day shelf directly below Favorites when at least one eligible previous-year local-date match exists, with exact calendar-year labels and selected-Moment read-only navigation; omit the complete section and its spacing when empty. Render From Your Past below On This Day when present, or directly after Favorites with normal spacing when absent: deterministic daily local selection of up to ten Moments at least 90 days old, excluding current On This Day matches and future timestamps, with the same compact card family as Favorites and read-only selected-Moment navigation. Preserve Places and Tags as deferred capability.
 - **Exit:** The bounded Favorites, On This Day, and From Your Past shelves render reactively from persisted data, each opens its read-only system collection at a selected Moment, and deferred Rediscover projections remain tested and isolated from the active root.
 
 ## Phase 8 — Search  ◐

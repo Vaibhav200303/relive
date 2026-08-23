@@ -43,6 +43,8 @@ import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.presentation.date.RediscoverCalendar
 import com.vaibhav.relive.presentation.date.anniversaryYearLabel
 import com.vaibhav.relive.presentation.date.editorialDayMonth
+import com.vaibhav.relive.presentation.rediscover.RediscoverSectionSpacing
+import com.vaibhav.relive.presentation.rediscover.rediscoverSectionLayout
 import com.vaibhav.relive.ui.components.navigation.ReliveWordmarkAppBar
 import com.vaibhav.relive.ui.components.rediscover.FavoriteMomentCard
 import com.vaibhav.relive.ui.components.rediscover.OnThisDayMomentCard
@@ -89,6 +91,7 @@ fun RediscoverScreen(
         .collectAsState(emptyList())
     var debugOpen by remember { mutableStateOf(false) }
     val dims = ReliveTheme.dimensions
+    val sectionLayout = rediscoverSectionLayout(onThisDayPreviews.size)
 
     LazyColumn(
         state = listState,
@@ -168,32 +171,27 @@ fun RediscoverScreen(
                 }
             }
         }
-        item(key = "on-this-day-heading") {
-            Text(
-                text = "ON THIS DAY",
-                style = ReliveTheme.typography.title,
-                color = ReliveTheme.colors.accentMuted,
-                modifier = Modifier.padding(start = dims.spacing.xl, end = dims.spacing.xl, top = dims.spacing.xl),
-            )
-        }
-        item(key = "on-this-day-date") {
-            Text(
-                text = today.editorialDayMonth(),
-                style = ReliveTheme.typography.title,
-                color = ReliveTheme.colors.textPrimary,
-                modifier = Modifier.padding(horizontal = dims.spacing.xl, vertical = dims.spacing.xs),
-            )
-        }
-        if (onThisDayPreviews.isEmpty()) {
-            item(key = "on-this-day-empty") {
+        if (sectionLayout.showOnThisDay) {
+            item(key = "on-this-day-heading") {
                 Text(
-                    text = "Nothing from this date—yet.",
-                    style = ReliveTheme.typography.subtitle,
-                    color = ReliveTheme.colors.textSecondary,
-                    modifier = Modifier.padding(horizontal = dims.spacing.xl, vertical = dims.spacing.sm),
+                    text = "ON THIS DAY",
+                    style = ReliveTheme.typography.title,
+                    color = ReliveTheme.colors.accentMuted,
+                    modifier = Modifier.padding(
+                        start = dims.spacing.xl,
+                        end = dims.spacing.xl,
+                        top = dims.spacing.xl,
+                    ),
                 )
             }
-        } else {
+            item(key = "on-this-day-date") {
+                Text(
+                    text = today.editorialDayMonth(),
+                    style = ReliveTheme.typography.title,
+                    color = ReliveTheme.colors.textPrimary,
+                    modifier = Modifier.padding(horizontal = dims.spacing.xl, vertical = dims.spacing.xs),
+                )
+            }
             item(key = "on-this-day-shelf") {
                 BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                     LazyRow(
@@ -214,11 +212,15 @@ fun RediscoverScreen(
             }
         }
         item(key = "from-your-past-heading") {
+            val topSpacing = when (sectionLayout.fromYourPastSpacing) {
+                RediscoverSectionSpacing.Normal -> dims.spacing.xl
+                RediscoverSectionSpacing.Expanded -> dims.spacing.xxl
+            }
             Text(
                 text = "FROM YOUR PAST",
                 style = ReliveTheme.typography.title,
                 color = ReliveTheme.colors.accentMuted,
-                modifier = Modifier.padding(start = dims.spacing.xl, end = dims.spacing.xl, top = dims.spacing.xxl),
+                modifier = Modifier.padding(start = dims.spacing.xl, end = dims.spacing.xl, top = topSpacing),
             )
         }
         item(key = "from-your-past-subtitle") {
