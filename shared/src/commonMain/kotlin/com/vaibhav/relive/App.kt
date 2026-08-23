@@ -20,6 +20,7 @@ import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.theme.ReliveThemeId
 import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.MomentId
+import com.vaibhav.relive.domain.model.RediscoverQuery
 import com.vaibhav.relive.presentation.timeline.CurrentTimeline
 import com.vaibhav.relive.presentation.timeline.TimelineMode
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeViewModel
@@ -35,6 +36,14 @@ private sealed interface TimelinesDestination {
 private sealed interface RediscoverDestination {
     data object Root : RediscoverDestination
     data class Favorites(val selectedMomentId: MomentId?) : RediscoverDestination
+    data class OnThisDay(
+        val selectedMomentId: MomentId,
+        val date: com.vaibhav.relive.domain.model.LocalCalendarDate,
+    ) : RediscoverDestination
+    data class FromYourPast(
+        val selectedMomentId: MomentId?,
+        val query: RediscoverQuery,
+    ) : RediscoverDestination
 }
 
 @Composable
@@ -88,6 +97,40 @@ fun App(
                     selectedMomentId = favorites.selectedMomentId,
                     onBackToTimelineHome = { rediscoverDestination = RediscoverDestination.Root },
                 )
+            } else if (
+                topLevel == ReliveTopLevelDestination.Rediscover && rediscoverDestination is RediscoverDestination.OnThisDay
+            ) {
+                val onThisDay = rediscoverDestination as RediscoverDestination.OnThisDay
+                TimelineScreen(
+                    momentRepository = container.momentRepository,
+                    timelineRepository = container.timelineRepository,
+                    rediscoverRepository = container.rediscoverRepository,
+                    clock = container.clock,
+                    idGenerator = container.idGenerator,
+                    mediaStore = container.mediaStore,
+                    mediaProcessor = container.mediaProcessor,
+                    initialTimeline = CurrentTimeline.OnThisDay(onThisDay.date),
+                    mode = TimelineMode.ReadOnlySystemCollection(title = "On This Day"),
+                    selectedMomentId = onThisDay.selectedMomentId,
+                    onBackToTimelineHome = { rediscoverDestination = RediscoverDestination.Root },
+                )
+            } else if (
+                topLevel == ReliveTopLevelDestination.Rediscover && rediscoverDestination is RediscoverDestination.FromYourPast
+            ) {
+                val fromYourPast = rediscoverDestination as RediscoverDestination.FromYourPast
+                TimelineScreen(
+                    momentRepository = container.momentRepository,
+                    timelineRepository = container.timelineRepository,
+                    rediscoverRepository = container.rediscoverRepository,
+                    clock = container.clock,
+                    idGenerator = container.idGenerator,
+                    mediaStore = container.mediaStore,
+                    mediaProcessor = container.mediaProcessor,
+                    initialTimeline = CurrentTimeline.FromYourPast(fromYourPast.query),
+                    mode = TimelineMode.ReadOnlySystemCollection(title = "From Your Past"),
+                    selectedMomentId = fromYourPast.selectedMomentId,
+                    onBackToTimelineHome = { rediscoverDestination = RediscoverDestination.Root },
+                )
             } else Column(Modifier.fillMaxSize()) {
                 Box(Modifier.weight(1f)) {
                     when (topLevel) {
@@ -106,10 +149,17 @@ fun App(
                         )
                         ReliveTopLevelDestination.Rediscover -> RediscoverScreen(
                             repository = container.rediscoverRepository,
+                            clock = container.clock,
                             mediaStore = container.mediaStore,
                             listState = rediscoverListState,
                             onOpenFavorites = { selectedMomentId ->
                                 rediscoverDestination = RediscoverDestination.Favorites(selectedMomentId)
+                            },
+                            onOpenOnThisDay = { selectedMomentId, date ->
+                                rediscoverDestination = RediscoverDestination.OnThisDay(selectedMomentId, date)
+                            },
+                            onOpenFromYourPast = { selectedMomentId, query ->
+                                rediscoverDestination = RediscoverDestination.FromYourPast(selectedMomentId, query)
                             },
                             debugControls = rediscoverDebugControls,
                         )

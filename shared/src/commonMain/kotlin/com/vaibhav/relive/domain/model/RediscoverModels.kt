@@ -31,6 +31,25 @@ data class FavoriteMomentPreview(
     val attachments: List<MediaAttachment>,
 )
 
+/** A bounded featured-memory projection for the active On This Day shelf. */
+data class OnThisDayMomentPreview(
+    val id: MomentId,
+    val createdAt: Instant,
+    val localYear: Int,
+    val title: String,
+    val content: String,
+    val attachments: List<MediaAttachment>,
+)
+
+/** A bounded daily-resurfacing projection for a Moment from the older archive. */
+data class FromYourPastMomentPreview(
+    val id: MomentId,
+    val createdAt: Instant,
+    val title: String,
+    val content: String,
+    val attachments: List<MediaAttachment>,
+)
+
 /** A device-local Gregorian calendar date used only to form Rediscover reads. */
 data class LocalCalendarDate(
     val year: Int,

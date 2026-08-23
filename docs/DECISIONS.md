@@ -398,6 +398,24 @@ Format for each entry:
 
 ---
 
+## ADR-0030 — On This Day is a bounded, read-only calendar anniversary collection
+
+- **Date:** 2026-08-23 · **Status:** Accepted
+- **Context:** Rediscover now needs its next shipped collection without changing the established local-first archive or the existing Favorites behavior.
+- **Decision:** On This Day queries a bounded, attachment-batched local projection for Moments whose current-device-local month/day matches today in a previous local calendar year. The current year is excluded; February 29 remains exact. Root cards are horizontally swipeable featured cards with stable media/text/audio dimensions and exact calendar-year labels. Tapping opens the existing read-only system-collection timeline at the selected Moment.
+- **Consequences:** No membership, duplicate Moment, mutation controls, autoplay, or full-archive hydration is introduced. Places and Tags remain deferred; From Your Past is subsequently activated by ADR-0031.
+
+---
+
+## ADR-0031 — From Your Past is a ten-Moment deterministic daily system collection
+
+- **Date:** 2026-08-23 · **Status:** Accepted
+- **Context:** ADR-0025 described an earlier deferred From Your Past projection with a limit of four Moments. Rediscover now needs that local resurfacing collection while preserving the approved Favorites, On This Day, navigation, and read-only system-collection architecture.
+- **Decision:** From Your Past renders below On This Day and returns up to ten distinct Moments from a bounded SQL-backed query. Eligible Moments are at least 90 days old, are not future timestamps, and are not currently eligible for On This Day. A local-date-derived seed makes selection and its order stable for a local day and rotates it on the next day; no recommendations are persisted. The shelf reuses the compact Favorites card geometry and media treatment but has no heart. A card opens the exact daily selection in `TimelineMode.ReadOnlySystemCollection`, positioned at that Moment and retaining shelf order.
+- **Consequences:** This supersedes ADR-0025 only for From Your Past's limit, which changes from four to ten, and its deferred presentation status. No backend, membership, mutation path, autoplay, or archive hydration in Compose is introduced. Places and Tags remain deferred.
+
+---
+
 ## Template for new decisions
 
 ```

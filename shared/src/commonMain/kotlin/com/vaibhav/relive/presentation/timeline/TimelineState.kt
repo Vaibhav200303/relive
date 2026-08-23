@@ -7,6 +7,8 @@ import com.vaibhav.relive.domain.model.Tag
 import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.model.ReliveLocation
+import com.vaibhav.relive.domain.model.LocalCalendarDate
+import com.vaibhav.relive.domain.model.RediscoverQuery
 import com.vaibhav.relive.domain.time.Instant
 
 sealed interface CurrentTimeline {
@@ -14,6 +16,12 @@ sealed interface CurrentTimeline {
 
     /** A derived scope, never stored as a custom timeline or membership. */
     data object Favorites : CurrentTimeline
+
+    /** A derived, local-calendar collection; never stored as membership. */
+    data class OnThisDay(val date: LocalCalendarDate) : CurrentTimeline
+
+    /** A derived, deterministic daily-resurfacing collection; never stored as membership. */
+    data class FromYourPast(val query: RediscoverQuery) : CurrentTimeline
 
     data class Custom(val id: TimelineId) : CurrentTimeline
 }

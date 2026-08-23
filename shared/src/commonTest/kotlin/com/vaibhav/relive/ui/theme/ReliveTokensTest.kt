@@ -92,6 +92,15 @@ class ReliveTokensTest {
     }
 
     @Test
+    fun rediscoverShelfWidthsPreserveTheFeaturedHierarchy() {
+        val rediscover = DefaultReliveDimensions.rediscover
+        assertEquals(20.dp, rediscover.cardOuterRadius)
+        assertEquals(0.68f, rediscover.favoriteShelfCardWidthFraction)
+        assertTrue(rediscover.onThisDayShelfCardWidthFraction > rediscover.favoriteShelfCardWidthFraction)
+        assertEquals(240.dp, rediscover.favoriteShelfCardHeight)
+    }
+
+    @Test
     fun mediaTokensMatchDesignSystem() {
         val m = DefaultReliveDimensions.media
         assertEquals(2f, m.ratioWide)

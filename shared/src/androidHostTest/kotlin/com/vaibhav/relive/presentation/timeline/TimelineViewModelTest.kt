@@ -310,6 +310,17 @@ private class FakeRediscoverRepository : RediscoverRepository {
     override fun observeFavoritesSummary(): Flow<FavoritesCollectionSummary> = error("Not used")
     override fun observeFavoriteMoments(): Flow<List<Moment>> = MutableStateFlow(emptyList())
     override fun observeFavoritePreviews(limit: Int) = error("Not used")
+    override fun observeOnThisDayPreviews(
+        today: com.vaibhav.relive.domain.model.LocalCalendarDate,
+        startOfToday: Instant,
+        limit: Int,
+    ) = error("Not used")
+    override fun observeOnThisDayMoments(
+        today: com.vaibhav.relive.domain.model.LocalCalendarDate,
+        startOfToday: Instant,
+    ): Flow<List<Moment>> = MutableStateFlow(emptyList())
+    override fun observeFromYourPastPreviews(query: RediscoverQuery) = error("Not used")
+    override fun observeFromYourPastMoments(query: RediscoverQuery): Flow<List<Moment>> = MutableStateFlow(emptyList())
 }
 
 private class FakeMomentRepository(
