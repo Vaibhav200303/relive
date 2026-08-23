@@ -25,13 +25,13 @@ import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.platform.media.RelivedImageTile
 import com.vaibhav.relive.platform.media.RelivedVideoTile
+import com.vaibhav.relive.presentation.cardcover.firstVisualPreviewAttachment
 import com.vaibhav.relive.presentation.date.EditorialDateFormatter
 import com.vaibhav.relive.presentation.date.EditorialTimeFormatter
 import com.vaibhav.relive.ui.components.MediaToCardSurfaceFade
 import com.vaibhav.relive.ui.components.reliveCardOuterBorder
 import com.vaibhav.relive.ui.components.timeline.HeartGlyph
 import com.vaibhav.relive.ui.theme.ReliveTheme
-import androidx.compose.ui.unit.dp
 
 @Composable
 fun FavoriteMomentCard(
@@ -45,7 +45,7 @@ fun FavoriteMomentCard(
     val dims = ReliveTheme.dimensions
     val colors = ReliveTheme.colors
     val shape = RoundedCornerShape(dims.rediscover.cardOuterRadius)
-    val lead = moment.attachments.minByOrNull { it.sortIndex }
+    val lead = moment.attachments.firstVisualPreviewAttachment()
     Column(
         modifier = modifier
             .height(dims.rediscover.favoriteShelfCardHeight)
@@ -58,9 +58,7 @@ fun FavoriteMomentCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = dims.spacing.md)
                 .height(dims.rediscover.compactMediaHeight)
-                .clip(RoundedCornerShape(0.dp)),
         ) {
             if (lead?.type == MediaType.Image || lead?.type == MediaType.Video) {
                 FavoriteMomentLead(
@@ -69,7 +67,10 @@ fun FavoriteMomentCard(
                     mediaStore = mediaStore,
                 )
             } else {
-                FavoriteMomentPlaceholder()
+                com.vaibhav.relive.ui.theme.ReliveGeneratedCover(
+                    stableKey = moment.id.value,
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
         }
         Row(
@@ -111,16 +112,6 @@ fun FavoriteMomentCard(
             }
         }
     }
-}
-
-@Composable
-private fun FavoriteMomentPlaceholder() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .fillMaxSize()
-            .background(ReliveTheme.colors.surfaceCardTranslucent),
-    )
 }
 
 @Composable

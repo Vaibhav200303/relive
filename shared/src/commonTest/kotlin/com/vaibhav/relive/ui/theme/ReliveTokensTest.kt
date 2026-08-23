@@ -9,7 +9,6 @@ import androidx.compose.ui.unit.sp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
-import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class ReliveTokensTest {
@@ -162,11 +161,10 @@ class ReliveTokensTest {
     }
 
     @Test
-    fun warmJournalIsTheOnlyResolvedThemeInPhase0() {
+    fun generatedCoverPalettesRespectTheActiveTheme() {
         assertEquals(ReliveThemeId.WarmJournal, WarmJournalTokens.id)
-        assertSame(WarmJournalTokens, reliveTokensFor(ReliveThemeId.WarmJournal))
-        // Placeholder theme ids resolve to Warm Journal until their token sets exist.
-        assertSame(WarmJournalTokens, reliveTokensFor(ReliveThemeId.MonochromeArchive))
-        assertSame(WarmJournalTokens, reliveTokensFor(ReliveThemeId.FilmMemory))
+        assertEquals(WarmJournalGeneratedCoverPalette, reliveTokensFor(ReliveThemeId.WarmJournal).generatedCoverPalette)
+        assertEquals(MonochromeArchiveGeneratedCoverPalette, reliveTokensFor(ReliveThemeId.MonochromeArchive).generatedCoverPalette)
+        assertEquals(WarmJournalGeneratedCoverPalette, reliveTokensFor(ReliveThemeId.FilmMemory).generatedCoverPalette)
     }
 }

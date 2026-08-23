@@ -22,10 +22,10 @@ import com.vaibhav.relive.domain.model.OnThisDayMomentPreview
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.platform.media.RelivedImageTile
 import com.vaibhav.relive.platform.media.RelivedVideoTile
+import com.vaibhav.relive.presentation.cardcover.firstVisualPreviewAttachment
 import com.vaibhav.relive.ui.components.MediaToCardSurfaceFade
 import com.vaibhav.relive.ui.components.reliveCardOuterBorder
 import com.vaibhav.relive.ui.theme.ReliveTheme
-import androidx.compose.ui.unit.dp
 
 @Composable
 fun OnThisDayMomentCard(
@@ -38,7 +38,7 @@ fun OnThisDayMomentCard(
     val dims = ReliveTheme.dimensions
     val colors = ReliveTheme.colors
     val shape = RoundedCornerShape(dims.rediscover.cardOuterRadius)
-    val lead = moment.attachments.minByOrNull { it.sortIndex }
+    val lead = moment.attachments.firstVisualPreviewAttachment()
     Column(
         modifier = modifier
             .clip(shape)
@@ -50,14 +50,15 @@ fun OnThisDayMomentCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = dims.spacing.md)
                 .height(dims.rediscover.heroMediaHeight)
-                .clip(RoundedCornerShape(0.dp)),
         ) {
             when (lead?.type) {
                 MediaType.Image -> RelivedImageTile(lead.storageRef, mediaStore, Modifier.fillMaxSize())
                 MediaType.Video -> RelivedVideoTile(lead.storageRef, mediaStore, Modifier.fillMaxSize())
-                else -> Box(Modifier.fillMaxSize().background(colors.surfaceCardTranslucent))
+                else -> com.vaibhav.relive.ui.theme.ReliveGeneratedCover(
+                    stableKey = moment.id.value,
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
             MediaToCardSurfaceFade(modifier = Modifier.align(Alignment.BottomCenter))
         }

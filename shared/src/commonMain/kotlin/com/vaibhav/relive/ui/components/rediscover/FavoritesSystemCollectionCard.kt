@@ -26,6 +26,7 @@ import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.platform.media.RelivedImageTile
 import com.vaibhav.relive.platform.media.RelivedVideoTile
+import com.vaibhav.relive.ui.theme.ReliveGeneratedCover
 import com.vaibhav.relive.ui.components.timeline.HeartGlyph
 import com.vaibhav.relive.ui.theme.ReliveTheme
 
@@ -84,12 +85,7 @@ private fun FavoritesMediaPreview(
             .background(ReliveTheme.colors.surfaceCardTranslucent),
     ) {
         when (attachments.size) {
-            0 -> Text(
-                text = if (momentCount == 0L) "A place for beloved moments." else "The memories you hold close.",
-                style = ReliveTheme.typography.subtitle,
-                color = ReliveTheme.colors.textMuted,
-                modifier = Modifier.align(Alignment.Center),
-            )
+            0 -> ReliveGeneratedCover("timeline-favorites", Modifier.matchParentSize())
             1 -> FavoritesPreviewTile(attachments.single(), mediaStore, Modifier.matchParentSize())
             2 -> Row(Modifier.matchParentSize()) {
                 FavoritesPreviewTile(attachments[0], mediaStore, Modifier.weight(1f))
