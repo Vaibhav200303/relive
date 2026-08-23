@@ -364,7 +364,7 @@ Format for each entry:
 
 ## ADR-0026 — Rediscover starts with Favorites; resurfacing sections are deferred
 
-- **Date:** 2026-08-23 · **Status:** Accepted
+- **Date:** 2026-08-23 · **Status:** Superseded by ADR-0028
 - **Context:** The approved Rediscover read model is useful future infrastructure, but its On This Day, From Your Past, Places, Tags, and empty-state presentations are not the current product root.
 - **Decision:** Rediscover renders only the Relive app bar and a persisted Favorites system-collection card above the existing two-item bottom navigation. The existing SQLDelight Rediscover repository, queries, calendar seam, and tests remain preserved for a future presentation phase, but the app does not construct `RediscoverViewModel` or collect its flows while the sections are absent. Favorites alone observes persisted Moments to calculate its real count.
 - **Consequences:** The visible-section portion of ADR-0025 is superseded. No Rediscover title, subtitle, resurfacing section, or related empty state remains in the active root. The later implementation can reuse the preserved local read model without reintroducing persistence changes.
@@ -373,10 +373,28 @@ Format for each entry:
 
 ## ADR-0027 — Favorites is a reactive, read-only Rediscover system collection
 
-- **Date:** 2026-08-23 · **Status:** Accepted
+- **Date:** 2026-08-23 · **Status:** Superseded by ADR-0028
 - **Context:** Favorites is the first active Rediscover feature and must remain a direct expression of Moment favorite state rather than another user-managed timeline.
 - **Decision:** SQLDelight observes the favorite count, favorited Moment scope, and a bounded four-item visual cover directly from `moments` and `media_attachments`. The card has a heart icon plus Moment count, never a visible Favorites label. Its nested detail reuses Timeline presentation through `TimelineMode.ReadOnlySystemCollection`, which removes all write affordances and rejects mutation requests at the presentation boundary while retaining media viewing/playback.
 - **Consequences:** A favorite change anywhere updates Rediscover without duplicate persistence. Normal timelines retain full mutation capability. The deferred Rediscover overview projections remain uncollected at the active root, and debug QA remains isolated to the Android debug source set.
+
+---
+
+## ADR-0028 — Rediscover Favorites is a bounded per-Moment shelf
+
+- **Date:** 2026-08-23 · **Status:** Accepted
+- **Context:** The original Favorites collection card hid individual memories behind a single aggregate surface. Rediscover should instead provide a compact, editorial shelf that lets a person enter the read-only Favorites timeline at a specific memory without changing favorite persistence or collection semantics.
+- **Decision:** Rediscover renders a `FAVOURITES` heading, followed by a horizontally swipeable row of at most ten individual favorited-Moment cards and a text `Show all` action. Each card uses the full Favorites timeline's chronological ordering, first ordered attachment as its lead visual, and an attachment-count indicator when needed. Tapping a card opens the read-only Favorites timeline positioned at that Moment; `Show all` opens the same timeline without a selected Moment. With no favorites, Rediscover shows the approved two-line empty state and no row or action. The shelf is fed by a dedicated bounded SQLDelight projection that batch-loads its attachments, rather than hydrating the complete collection or issuing per-Moment attachment reads.
+- **Consequences:** The single aggregate Favorites card and its visual-cover query are superseded. Favorite state remains the only source of truth; no memberships, mutation controls, passive players, or full-resolution image decoding are added. The Favorites detail remains read-only and Back restores the Rediscover root's saved scroll state.
+
+---
+
+## ADR-0029 — Compact Favorite shelf cards share a fixed visual region
+
+- **Date:** 2026-08-23 · **Status:** Accepted
+- **Context:** ADR-0028 specified attachment-led compact cards, including no empty media frame for text-only Moments. The horizontal shelf now needs stable card geometry so image/video, text-only, and audio-only Favorites swipe as one visual collection.
+- **Decision:** In the compact Rediscover Favorites shelf only, every card has the same fixed card and visual-region height. Image/video cards render the first ordered attachment. Text-only and audio-only cards render the existing theme-aware card surface as an empty visual placeholder; they contain no fake media, icon, or illustration. The lower region retains Moment information and a non-interactive favorite-status heart. Normal Timeline presentation and the read-only Favorites timeline are unchanged.
+- **Consequences:** This supersedes ADR-0028 only for compact text-only/audio-only shelf media treatment. It does not introduce new data, behavior, media handling, or favorite mutation paths.
 
 ---
 

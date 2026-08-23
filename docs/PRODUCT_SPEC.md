@@ -68,11 +68,12 @@ Membership rules:
 
 Rediscover currently begins as a system-collection root with Favorites. It is not a chronological timeline or recommendation feed.
 
-- The root renders only the Relive app bar and the Favorites system-collection card above the two-item bottom navigation.
+- The root renders the Relive app bar, a `FAVOURITES` editorial section, and the two-item bottom navigation.
 - Favorites is derived reactively from each Moment's persisted favorite state. It is not a custom timeline, membership, or duplicate persistence record.
-- The card cover uses up to four most recent visual attachments from favorited Moments, ordered by Moment creation time descending and attachment order within each Moment. Audio/text-only favorites use an editorial collection surface; unrelated media is never used.
-- The card's lower identity is a heart icon above the real singular/plural Moment count; it does not display a Favorites text label.
-- Opening it presents only favorited Moments in the normal chronological timeline presentation. This system-collection detail is strictly read-only: it has Back and a centered Favorites title, but no composer, creation, edit, forget, membership, or favorite-mutation controls. Media viewing and playback remain available.
+- The section shows at most ten individual favorited-Moment cards in the same chronological ordering as the full Favorites timeline. Every compact shelf card shares one fixed visual-region height: image/video cards use their first ordered attachment as the lead visual and quietly show an additional-attachment count; text-only and audio-only cards use the theme-aware empty visual surface with no fake media, icon, or illustration. This compact-shelf exception does not change normal Timeline presentation.
+- Tapping a card opens the read-only Favorites timeline positioned at that Moment. `Show all` opens the complete read-only Favorites timeline. With zero favorites, the section shows `No favorite moments yet.` and `Moments you favorite will appear here.` without a row or `Show all` action.
+- The Favorites detail is strictly read-only: it has Back and a centered Favorites title, but no composer, creation, edit, forget, membership, or favorite-mutation controls. Media viewing and playback remain available.
+- The root uses a dedicated bounded read projection with batched attachment loading; it does not hydrate the full Favorites collection to render the shelf.
 - **Deferred capability:** On This Day, From Your Past, Places, and Tags retain their local read-model implementation for a later Rediscover presentation phase, but are not collected or rendered by the current root.
 
 - **Future On This Day** returns at most 20 Moments whose current-device-local month/day match today, from a prior local year; Moments created today are excluded. February 29 matches only previous February 29 Moments.
@@ -567,7 +568,7 @@ Behavior resembles WhatsApp chat search:
 
 - Every moment has a subtle **favorite/heart** action.
 - Favorite state must **not** visually dominate the moment.
-- Rediscover's Favorites system collection is derived from this same state, so favoriting or unfavoriting elsewhere updates the collection immediately.
+- Rediscover's bounded Favorites shelf and full read-only Favorites timeline are derived from this same state, so favoriting or unfavoriting elsewhere updates both immediately.
 
 ---
 

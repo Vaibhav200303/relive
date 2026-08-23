@@ -19,6 +19,7 @@ import com.vaibhav.relive.ui.screens.RediscoverScreen
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.theme.ReliveThemeId
 import com.vaibhav.relive.domain.model.Timeline
+import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.presentation.timeline.CurrentTimeline
 import com.vaibhav.relive.presentation.timeline.TimelineMode
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeViewModel
@@ -33,7 +34,7 @@ private sealed interface TimelinesDestination {
 
 private sealed interface RediscoverDestination {
     data object Root : RediscoverDestination
-    data object Favorites : RediscoverDestination
+    data class Favorites(val selectedMomentId: MomentId?) : RediscoverDestination
 }
 
 @Composable
@@ -71,8 +72,9 @@ fun App(
                 onBackToTimelineHome = { timelinesDestination = TimelinesDestination.TimelineHome },
             )
             TimelinesDestination.TimelineHome -> if (
-                topLevel == ReliveTopLevelDestination.Rediscover && rediscoverDestination == RediscoverDestination.Favorites
+                topLevel == ReliveTopLevelDestination.Rediscover && rediscoverDestination is RediscoverDestination.Favorites
             ) {
+                val favorites = rediscoverDestination as RediscoverDestination.Favorites
                 TimelineScreen(
                     momentRepository = container.momentRepository,
                     timelineRepository = container.timelineRepository,
@@ -83,6 +85,7 @@ fun App(
                     mediaProcessor = container.mediaProcessor,
                     initialTimeline = CurrentTimeline.Favorites,
                     mode = TimelineMode.ReadOnlySystemCollection(title = "Favorites"),
+                    selectedMomentId = favorites.selectedMomentId,
                     onBackToTimelineHome = { rediscoverDestination = RediscoverDestination.Root },
                 )
             } else Column(Modifier.fillMaxSize()) {
@@ -105,7 +108,9 @@ fun App(
                             repository = container.rediscoverRepository,
                             mediaStore = container.mediaStore,
                             listState = rediscoverListState,
-                            onOpenFavorites = { rediscoverDestination = RediscoverDestination.Favorites },
+                            onOpenFavorites = { selectedMomentId ->
+                                rediscoverDestination = RediscoverDestination.Favorites(selectedMomentId)
+                            },
                             debugControls = rediscoverDebugControls,
                         )
                     }

@@ -70,9 +70,9 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 ## Phase 7 — Rediscover  ◐
 
 - Add the Timelines / Rediscover top-level navigation shell; do not introduce Search or You placeholders.
-- Render the Rediscover root as the Favorites system collection above the existing two-item navigation.
+- Render the Rediscover root as a `FAVOURITES` section with a bounded, horizontally swipeable row of individual favorited-Moment cards and a `Show all` action above the existing two-item navigation. The empty state remains visible when no favorites exist.
 - Preserve the bounded local On This Day, deterministic daily From Your Past, Places, and Tags read projections as deferred capability; do not collect or render them until their presentation phase resumes.
-- **Exit:** Favorites renders from persisted data reactively; deferred Rediscover projections remain tested and isolated from the active root.
+- **Exit:** The bounded Favorites shelf renders from persisted data reactively, opens the read-only Favorites timeline (at a selected Moment when requested), and deferred Rediscover projections remain tested and isolated from the active root.
 
 ## Phase 8 — Search  ☐
 

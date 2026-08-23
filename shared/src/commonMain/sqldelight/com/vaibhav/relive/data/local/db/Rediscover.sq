@@ -9,6 +9,12 @@ SELECT * FROM moments
 WHERE is_favorite = 1
 ORDER BY created_at DESC, id DESC;
 
+selectFavoritePreviewMoments:
+SELECT * FROM moments
+WHERE is_favorite = 1
+ORDER BY created_at DESC, id DESC
+LIMIT :limit;
+
 selectFavoriteVisualAttachments:
 SELECT a.* FROM media_attachments a
 JOIN moments m ON m.id = a.moment_id

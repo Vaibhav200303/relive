@@ -114,6 +114,7 @@ fun TimelineScreen(
     mediaProcessor: MediaProcessor,
     initialTimeline: CurrentTimeline = CurrentTimeline.All,
     mode: TimelineMode = TimelineMode.Editable,
+    selectedMomentId: MomentId? = null,
     onBackToTimelineHome: (() -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
@@ -237,6 +238,7 @@ fun TimelineScreen(
             timelineState = timelineState,
             composerState = composerState,
             mode = mode,
+            selectedMomentId = selectedMomentId,
             clock = clock,
             mediaStore = mediaStore,
             onSelectTimeline = ::requestTimelineSwitch,
@@ -400,6 +402,7 @@ private fun TimelineContent(
     timelineState: TimelineScreenState,
     composerState: MomentComposerState,
     mode: TimelineMode,
+    selectedMomentId: MomentId?,
     clock: Clock,
     mediaStore: MediaStore,
     onSelectTimeline: (CurrentTimeline) -> Unit,
@@ -485,8 +488,15 @@ private fun TimelineContent(
             key(timelineState.currentTimeline) {
                 val listState = rememberLazyListState()
                 var lastSeenCount by remember { mutableIntStateOf(-1) }
-                LaunchedEffect(moments.size) {
-                    val target = if (customName != null && moments.isEmpty()) 0 else moments.size
+                LaunchedEffect(moments, selectedMomentId) {
+                    val selectedIndex = selectedMomentId?.let { selected ->
+                        moments.indexOfFirst { it.id == selected }.takeIf { it >= 0 }
+                    }
+                    val target = selectedIndex ?: when {
+                        customName != null && moments.isEmpty() -> 0
+                        mode.allowsMutations -> moments.size
+                        else -> moments.lastIndex.coerceAtLeast(0)
+                    }
                     if (lastSeenCount == -1) {
                         listState.scrollToItem(target)
                     } else if (moments.size > lastSeenCount) {
