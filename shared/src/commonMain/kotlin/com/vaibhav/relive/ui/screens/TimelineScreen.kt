@@ -1,7 +1,7 @@
 package com.vaibhav.relive.ui.screens
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -36,6 +36,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
@@ -43,6 +44,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -75,6 +78,7 @@ import com.vaibhav.relive.presentation.timeline.TimelineMode
 import com.vaibhav.relive.presentation.timeline.TimelineScreenState
 import com.vaibhav.relive.presentation.timeline.TimelineViewModel
 import com.vaibhav.relive.presentation.date.RediscoverCalendar
+import com.vaibhav.relive.presentation.navigation.shouldExpandQuickCaptureComposer
 import com.vaibhav.relive.presentation.timeline.toMoment
 import com.vaibhav.relive.presentation.viewer.TimelineMediaNavState
 import com.vaibhav.relive.presentation.viewer.closeGallery
@@ -113,6 +117,7 @@ fun TimelineScreen(
     initialTimeline: CurrentTimeline = CurrentTimeline.All,
     mode: TimelineMode = TimelineMode.Editable,
     selectedMomentId: MomentId? = null,
+    openComposerOnEnter: Boolean = false,
     onBackToTimelineHome: (() -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
@@ -165,7 +170,37 @@ fun TimelineScreen(
     var momentToForget by remember { mutableStateOf<MomentPresentation?>(null) }
     var editorBounds by remember { mutableStateOf<Rect?>(null) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var requestComposerFocus by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    val dismissKeyboardThen: (() -> Unit) -> Unit = { action ->
+        focusManager.clearFocus(force = true)
+        keyboardController?.hide()
+        action()
+    }
+
+    val quickCaptureDestinationSettled = timelineState.moments != TimelineMomentsState.Loading
+    LaunchedEffect(openComposerOnEnter, timelineState.currentTimeline, quickCaptureDestinationSettled) {
+        if (mode.allowsMutations && shouldExpandQuickCaptureComposer(
+                requested = openComposerOnEnter,
+                currentTimeline = timelineState.currentTimeline,
+                isAlreadyExpanded = isComposerExpanded,
+                isDestinationSettled = quickCaptureDestinationSettled,
+            )
+        ) {
+            // Render All once with the normal collapsed marker so the existing
+            // AnimatedContent observes a real false -> true transition.
+            withFrameNanos { }
+            if (isComposerExpanded) return@LaunchedEffect
+            composerViewModel.prepareForTimeline(CurrentTimeline.All)
+            isComposerExpanded = true
+            // Focus only after the expanding composer has entered composition.
+            withFrameNanos { }
+            requestComposerFocus = true
+        }
+    }
 
     LaunchedEffect(composerState.isEditing) {
         if (!composerState.isEditing) editorBounds = null
@@ -243,10 +278,10 @@ fun TimelineScreen(
             onCommitPendingTag = composerViewModel::commitPendingTag,
             onRemoveTag = composerViewModel::removeTag,
             onToggleTimelineAssignment = composerViewModel::toggleTimelineAssignment,
-            onToggleAddMedia = composerViewModel::toggleAddMedia,
-            onMicTap = composerViewModel::requestMicPermission,
-            onCameraTap = composerViewModel::openCamera,
-            onLibraryTap = composerViewModel::openLibraryChoice,
+            onToggleAddMedia = { dismissKeyboardThen(composerViewModel::toggleAddMedia) },
+            onMicTap = { dismissKeyboardThen(composerViewModel::requestMicPermission) },
+            onCameraTap = { dismissKeyboardThen(composerViewModel::openCamera) },
+            onLibraryTap = { dismissKeyboardThen(composerViewModel::openLibraryChoice) },
             onStopRecording = composerViewModel::stopRecording,
             onCancelRecording = composerViewModel::cancelRecording,
             onRemoveAttachment = { draftId ->
@@ -263,9 +298,11 @@ fun TimelineScreen(
             onExpandComposer = {
                 if (!composerState.hasUserDraft) {
                     composerViewModel.prepareForTimeline(timelineState.currentTimeline)
-                    isComposerExpanded = true
                 }
+                isComposerExpanded = true
             },
+            requestComposerFocus = requestComposerFocus,
+            onComposerFocusHandled = { requestComposerFocus = false },
             onMicPermissionResult = composerViewModel::onMicPermissionResult,
             onDismissMicPermissionMessage = composerViewModel::dismissMicPermissionMessage,
             onOpenAppSettings = composerViewModel::openAppSettings,
@@ -292,8 +329,12 @@ fun TimelineScreen(
             mediaStore = mediaStore,
             onCaptured = composerViewModel::processRaw,
             onDismiss = composerViewModel::dismissOverlay,
-            onPick = composerViewModel::requestPick,
-            onOpenLibraryFromCamera = composerViewModel::openLibraryChoice,
+            onPick = { mediaType ->
+                dismissKeyboardThen { composerViewModel.requestPick(mediaType) }
+            },
+            onOpenLibraryFromCamera = {
+                dismissKeyboardThen(composerViewModel::openLibraryChoice)
+            },
         )
 
         val gallery = navState.gallery
@@ -406,6 +447,8 @@ private fun TimelineContent(
     onEditorBoundsChanged: (Rect) -> Unit,
     isComposerExpanded: Boolean,
     onExpandComposer: () -> Unit,
+    requestComposerFocus: Boolean,
+    onComposerFocusHandled: () -> Unit,
     onJumpToDate: () -> Unit,
     dateNavigationTargetId: MomentId?,
     onDateNavigationHandled: () -> Unit,
@@ -413,6 +456,7 @@ private fun TimelineContent(
 ) {
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
+    val motion = ReliveTheme.motion
 
     Column(
         modifier = Modifier
@@ -530,17 +574,27 @@ private fun TimelineContent(
                         AnimatedContent(
                             targetState = isComposerExpanded,
                             transitionSpec = {
-                                val expandMs = 320
-                                val collapseMs = 260
+                                val expandMs = motion.durations.slowMillis
+                                val collapseMs = motion.durations.standardMillis
                                 val enter = expandVertically(
-                                    animationSpec = tween(expandMs, easing = FastOutSlowInEasing),
+                                    animationSpec = tween(expandMs, easing = motion.easings.standard),
                                     expandFrom = Alignment.Top,
-                                ) + fadeIn(animationSpec = tween(expandMs, easing = FastOutSlowInEasing))
+                                ) + fadeIn(animationSpec = tween(expandMs, easing = motion.easings.standard))
                                 val exit = shrinkVertically(
-                                    animationSpec = tween(collapseMs, easing = FastOutSlowInEasing),
+                                    animationSpec = tween(collapseMs, easing = motion.easings.standard),
                                     shrinkTowards = Alignment.Top,
-                                ) + fadeOut(animationSpec = tween(collapseMs, easing = FastOutSlowInEasing))
-                                enter togetherWith exit
+                                ) + fadeOut(animationSpec = tween(collapseMs, easing = motion.easings.standard))
+                                (enter togetherWith exit).using(
+                                    SizeTransform(
+                                        clip = false,
+                                        sizeAnimationSpec = { _, _ ->
+                                            tween(
+                                                durationMillis = if (targetState) expandMs else collapseMs,
+                                                easing = motion.easings.standard,
+                                            )
+                                        },
+                                    ),
+                                )
                             },
                             label = "composer-expand",
                             modifier = Modifier.fillMaxWidth(),
@@ -570,6 +624,8 @@ private fun TimelineContent(
                                     onMicPermissionResult = onMicPermissionResult,
                                     onDismissMicPermissionMessage = onDismissMicPermissionMessage,
                                     onOpenAppSettings = onOpenAppSettings,
+                                    requestInitialFocus = requestComposerFocus,
+                                    onInitialFocusHandled = onComposerFocusHandled,
                                     modifier = Modifier.fillMaxWidth(),
                                 )
                             } else {

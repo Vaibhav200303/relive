@@ -468,6 +468,15 @@ Format for each entry:
 - **Decision:** Render On This Day only when its existing eligibility projection returns at least one Moment. When empty, omit its heading, date, placeholder, shelf, and reserved spacing; From Your Past follows Favorites using normal section spacing. When present, retain the approved section and expanded spacing before From Your Past.
 - **Consequences:** Eligibility, previous-year matching, February 29 behavior, card presentation, and read-only navigation are unchanged. This supersedes only the empty On This Day presentation described by the Phase 7 acceptance text.
 
+---
+
+## ADR-0038 — Sequenced quick capture, portrait Android UI, and expressive media actions
+
+- **Date:** 2026-08-24 · **Status:** Accepted
+- **Context:** Quick capture could update the destination's composer state before All produced a visible settled frame, making the otherwise-approved inline transition appear abrupt. Android device rotation could also reconfigure the entire archive and capture surface, while the composer's functional Mic/Camera/Library reveal lacked the approved expressive hierarchy and equal action geometry.
+- **Decision:** Global quick capture waits until All's Moment projection is no longer loading, yields one collapsed composed frame, and then changes the existing composer's target state; focus is requested on the following frame. Both global entry and the rail `+` use the same `AnimatedContent` vertical expand/fade transition with Relive slow/standard durations and standard easing. Android declares `MainActivity` portrait-only in the manifest; Compose never forces orientation and no sensor loop is added. CameraX capture, EXIF normalization, and recorded-video metadata handling remain unchanged. Portrait-only UI is also the iOS product requirement, but its supported-interface-orientation configuration remains a separately verified Xcode/Info.plist concern. The Add Media reveal remains one rounded `radius.lg` Relive card surface with three equal-width actions labeled Voice, Camera, and Media, using microphone, photo-camera, and gallery glyphs, Material press indication, exact action semantics, and `48dp` minimum targets.
+- **Consequences:** Navigation, timeline position, composer identity, draft/persistence behavior, media capabilities, attachment previews, and keyboard-first media launching remain unchanged. Android rotation no longer recreates Relive into landscape, while capture orientation continues through its existing metadata pipeline. No dependency, schema change, Compose orientation forcing, iOS project mutation, or second animation system is introduced.
+
 ## Template for new decisions
 
 ```
