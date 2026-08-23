@@ -431,6 +431,20 @@ Format for each entry:
 
 ---
 
+## ADR-0033 — Timeline navigation is home-scoped and All lives in Rediscover
+
+- **Date:** 2026-08-23 · **Status:** Accepted
+- **Context:** The original Timeline Home and in-detail selector made two locations responsible for timeline switching, while the collection root now needs All beside the existing Rediscover collections.
+- **Decision:** Timeline Home lists custom timelines only. Creating a custom timeline persists it, orders it newest-created-first (with id as the deterministic timestamp-tie break), and opens that exact editable timeline immediately. Timeline detail contains no selector or create-timeline control; Back returns to the prior root. The existing All summary card/read projection is rendered first in Rediscover and opens editable All, followed by Favourites, On This Day, and From Your Past. Custom cards expose their persisted creation date. The timeline rail ends at the composer plus marker, and Keep Moment is a Relive-colored Material 3 primary button.
+- **Consequences:** This supersedes the Timeline Home placement portions of ADR-0021 and any TimelineScreen-owned switching behavior. All remains logical and editable; system Rediscover collections remain read-only. No Moment persistence or membership behavior changes.
+
+## ADR-0034 — Global, read-only Search v1
+
+- **Date:** 2026-08-23 · **Status:** Accepted
+- **Context:** The previous Phase 8 plan placed a complex, timeline-scoped search transform in every timeline header, including filters, Tags, Places, and suggestions. That conflicts with the need for a focused archive search and duplicates timeline-specific UI.
+- **Decision:** Search is the third top-level destination alongside Timelines and Rediscover. It opens a dedicated, autofocus screen and queries every local Moment by case-insensitive SQL `LIKE` over title and content. Results use All Timeline's chronological presentation and ordering, with a counter plus non-wrapping up/down active-match navigation. Search results are a `TimelineMode`-equivalent read-only projection: no composer, edit, forget, membership, or favorite mutation; media viewing/playback remains available. Query, active match, and scroll state live at the app root for the current process session. Tags, locations, filters, categories, ranking, history, and text highlight are deferred.
+- **Consequences:** This supersedes ADR-0006 and the old PRODUCT_SPEC §9 timeline-scoped search plan. Search adds no schema, backend, cloud, FTS, or third-party dependency. The existing MomentCard remains the presentation source of truth; text highlighting is intentionally deferred to avoid invasive card restructuring.
+
 ## Template for new decisions
 
 ```

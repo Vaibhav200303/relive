@@ -39,6 +39,9 @@ class TimelineHomeViewModel(
                 _state.update { it.copy(content = TimelineHomeContent.Loaded(summaries)) }
             }
         }
+        scope.launch {
+            creation.createdTimelines.collect { timeline -> _navigation.emit(timeline) }
+        }
     }
 
     fun selectTimeline(timeline: Timeline) {

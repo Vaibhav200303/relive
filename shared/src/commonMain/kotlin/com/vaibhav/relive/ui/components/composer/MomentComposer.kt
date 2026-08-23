@@ -32,12 +32,15 @@ import androidx.compose.ui.focus.onFocusEvent
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
@@ -117,13 +120,13 @@ fun MomentComposer(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .drawBehind { drawComposerRail(colors.borderMuted, dims, dims.timeline.plusSize) }
             .padding(vertical = dims.spacing.xl),
         verticalAlignment = Alignment.Top,
     ) {
         Box(
             modifier = Modifier
-                .width(dims.timeline.contentInset)
-                .padding(top = dims.spacing.xs),
+                .width(dims.timeline.contentInset),
             contentAlignment = Alignment.TopCenter,
         ) {
             Box(
@@ -317,13 +320,13 @@ fun CollapsedComposerMarker(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .drawBehind { drawComposerRail(colors.borderMuted, dims, dims.minTouchTarget) }
             .padding(vertical = dims.spacing.xl),
         verticalAlignment = Alignment.Top,
     ) {
         Box(
             modifier = Modifier
-                .width(dims.timeline.contentInset)
-                .padding(top = dims.spacing.xs),
+                .width(dims.timeline.contentInset),
             contentAlignment = Alignment.TopCenter,
         ) {
             Box(
@@ -362,6 +365,21 @@ fun CollapsedComposerMarker(
     }
 }
 
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawComposerRail(
+    color: androidx.compose.ui.graphics.Color,
+    dims: com.vaibhav.relive.ui.theme.ReliveDimensions,
+    markerSize: androidx.compose.ui.unit.Dp,
+) {
+    val axis = dims.timeline.contentInset.toPx() / 2f
+    val markerCenter = dims.spacing.xl.toPx() + markerSize.toPx() / 2f
+    drawLine(
+        color = color,
+        start = androidx.compose.ui.geometry.Offset(axis, 0f),
+        end = androidx.compose.ui.geometry.Offset(axis, markerCenter.coerceAtMost(size.height)),
+        strokeWidth = dims.timeline.railWidth.toPx(),
+    )
+}
+
 @Composable
 private fun ComposerDateTimeRow(date: String, time: String, modifier: Modifier = Modifier) {
     val colors = ReliveTheme.colors
@@ -370,7 +388,7 @@ private fun ComposerDateTimeRow(date: String, time: String, modifier: Modifier =
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm),
-        modifier = modifier,
+        modifier = modifier.heightIn(min = dims.timeline.plusSize),
     ) {
         Text(text = date, style = type.eyebrow, color = colors.textMuted)
         Box(
@@ -679,20 +697,21 @@ private fun KeepMomentAction(
         horizontalArrangement = Arrangement.End,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Text(
-            text = label,
-            style = type.action,
-            color = if (enabled) colors.accent else colors.textMuted,
+        Button(
+            onClick = onClick,
+            enabled = enabled,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = colors.accent,
+                contentColor = colors.textOnAccent,
+                disabledContainerColor = colors.surfaceCard,
+                disabledContentColor = colors.textMuted,
+            ),
             modifier = Modifier
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    enabled = enabled,
-                    onClick = onClick,
-                )
-                .padding(dims.spacing.sm)
+                .heightIn(min = dims.minTouchTarget)
                 .semantics { contentDescription = if (isEditing) "Save changes" else "Keep moment" },
-        )
+        ) {
+            Text(text = label, style = type.action)
+        }
     }
 }
 

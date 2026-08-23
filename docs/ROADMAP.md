@@ -74,12 +74,12 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 - Render the bounded local On This Day shelf directly below Favorites: previous-year local-date matches only, exact calendar-year labels, compact empty state, and selected-Moment read-only navigation. Render From Your Past below On This Day: deterministic daily local selection of up to ten Moments at least 90 days old, excluding current On This Day matches and future timestamps, with the same compact card family as Favorites and read-only selected-Moment navigation. Preserve Places and Tags as deferred capability.
 - **Exit:** The bounded Favorites, On This Day, and From Your Past shelves render reactively from persisted data, each opens its read-only system collection at a selected Moment, and deferred Rediscover projections remain tested and isolated from the active root.
 
-## Phase 8 — Search  ☐
+## Phase 8 — Search  ◐
 
-- Search icon transforms the app bar; timeline stays visible; All / Tags / Places filters scoped to the current timeline.
-- All-search: highlight, match count, up/down navigation, auto-scroll (WhatsApp-style).
-- Tags: filter + suggestions (current timeline). Places: filter + suggestions derived only from the current timeline's moment locations.
-- **Exit:** timeline-scoped search across title/content/tags/location; Places scoping and search tests pass.
+- Add Search as a top-level destination with a dedicated, autofocus search screen.
+- Search globally and locally across Moment title/content using case-insensitive SQL `LIKE`; results retain All Timeline ordering and presentation.
+- Provide match count, up/down active-match navigation, scroll-to-Moment, and read-only results. Filters, categories, Places, Tags, ranking, history, and AI search remain out of scope for v1.
+- **Exit:** Search v1 is SQL-backed, globally scoped, read-only, state-preserving across top-level tabs, and covered by focused search/navigation tests.
 
 ## Phase 9 — Themes & settings  ☐
 

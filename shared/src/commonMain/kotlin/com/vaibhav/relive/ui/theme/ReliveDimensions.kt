@@ -53,6 +53,7 @@ data class ReliveTimelineHomeDimensions(
     val allMediaHeight: Dp = 300.dp,
     val customMediaHeight: Dp = 232.dp,
     val mediaFadeHeight: Dp = 64.dp,
+    val createTimelineGlyphSize: Dp = 32.dp,
 )
 
 @Immutable
@@ -70,6 +71,11 @@ data class ReliveRediscoverDimensions(
 @Immutable
 data class ReliveProfileDimensions(
     val avatarSize: Dp = 80.dp,
+)
+
+@Immutable
+data class ReliveSearchDimensions(
+    val containerHeight: Dp = 56.dp,
 )
 
 @Immutable
@@ -112,6 +118,7 @@ data class ReliveDimensions(
     val timelineHome: ReliveTimelineHomeDimensions = ReliveTimelineHomeDimensions(),
     val rediscover: ReliveRediscoverDimensions = ReliveRediscoverDimensions(),
     val profile: ReliveProfileDimensions = ReliveProfileDimensions(),
+    val search: ReliveSearchDimensions = ReliveSearchDimensions(),
     val media: ReliveMediaDimensions = ReliveMediaDimensions(),
     val minTouchTarget: Dp = 48.dp,
 )

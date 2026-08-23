@@ -7,6 +7,7 @@ import com.vaibhav.relive.domain.model.Tag
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.time.Instant
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.flow.first
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -181,5 +182,22 @@ class MomentPersistenceTest {
         fx.moments.insert(sampleMoment(id = "c", createdAtMs = 2_000L, title = "c"))
         val ids = fx.moments.listAll().map { it.id.value }
         assertEquals(listOf("b", "c", "a"), ids)
+    }
+
+    @Test fun searchMatchesTitleAndContentCaseInsensitivelyInChronologicalRepositoryOrder() = runTest {
+        fx.moments.insert(sampleMoment(id = "old", createdAtMs = 1L, title = "Keys"))
+        fx.moments.insert(sampleMoment(id = "new", createdAtMs = 2L, content = "Lost my KEYS today"))
+        fx.moments.insert(sampleMoment(id = "other", createdAtMs = 3L, title = "Notebook"))
+
+        assertEquals(
+            listOf("new", "old"),
+            fx.moments.observeSearch("keys").first().map { it.id.value },
+        )
+    }
+
+    @Test fun searchWithNoMatchReturnsNoMoments() = runTest {
+        fx.moments.insert(sampleMoment(id = "one", title = "Morning"))
+
+        assertTrue(fx.moments.observeSearch("night").first().isEmpty())
     }
 }

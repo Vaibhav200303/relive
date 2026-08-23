@@ -43,7 +43,7 @@ Users may create **custom timelines** representing chapters of their life, such 
 
 All timelines — built-in and custom — use the **same timeline UI and interaction model**. A timeline may have its own visual theme, but its information architecture and interactions must remain consistent across all timelines.
 
-Timeline Home is the navigation root. Selecting All or a custom timeline opens the shared timeline detail experience scoped to that selection; returning goes back to Timeline Home.
+Timeline Home is the navigation root for custom timelines. Selecting a custom timeline opens the shared timeline detail experience scoped to that selection; returning goes back to Timeline Home. The logical All timeline is entered from the first Rediscover collection card.
 
 ### Rediscover navigation
 
@@ -66,9 +66,9 @@ Membership rules:
 
 ## 2A. Rediscover
 
-Rediscover currently begins as a system-collection root with Favorites, On This Day, and From Your Past. It is not a chronological timeline or recommendation feed.
+Rediscover currently begins as a system-collection root with All, Favorites, On This Day, and From Your Past. It is not a chronological timeline or recommendation feed.
 
-- The root renders the Relive app bar, a `FAVOURITES` editorial section, and the two-item bottom navigation.
+- The root renders the Relive app bar, the editable All timeline card, a `FAVOURITES` editorial section, and the two-item bottom navigation. All uses the same bounded summary/preview card as before and opens the normal editable All timeline.
 - Favorites is derived reactively from each Moment's persisted favorite state. It is not a custom timeline, membership, or duplicate persistence record.
 - The section shows at most ten individual favorited-Moment cards in the same chronological ordering as the full Favorites timeline. Every compact shelf card shares one fixed visual-region height: image/video cards use their first ordered attachment as the lead visual and quietly show an additional-attachment count; text-only and audio-only cards use the theme-aware empty visual surface with no fake media, icon, or illustration. This compact-shelf exception does not change normal Timeline presentation.
 - Tapping a card opens the read-only Favorites timeline positioned at that Moment. `Show all` opens the complete read-only Favorites timeline. With zero favorites, the section shows `No favorite moments yet.` and `Moments you favorite will appear here.` without a row or `Show all` action.
@@ -291,7 +291,7 @@ Timeline collage → Moment media gallery → tap item → Full-screen viewer
 
 ## 6. Creating a moment
 
-Creation happens **inline inside the current timeline**. The composer sits at the chronological end of the timeline (after the newest moment).
+Creation happens **inline inside the current timeline**. The composer sits at the chronological end of the timeline (after the newest moment). Its rail terminates at the center of the final plus marker; no rail continues below it.
 
 ### 6.1 Composer collapse/expand behavior
 
@@ -316,7 +316,7 @@ The expanded composer contains:
 - **tags** (see §4.2 for tag behavior)
 - **media attachments**
 - **Add Media** control
-- primary action: **Keep Moment**
+- primary action: **Keep Moment**, rendered as a theme-aware Material 3 primary button
 - reset/cancel **`×`** at the top-right
 
 ### 6.3 Add Media flow
@@ -513,54 +513,15 @@ Long-pressing a moment shows:
 
 ## 9. Search
 
-Search **always operates within the currently selected timeline**.
+Search v1 is a dedicated top-level destination. It searches the complete local archive, not a selected timeline.
 
-- Pressing the search icon transforms the app bar into a search interface.
-- The timeline **remains visible**.
-- Below the search field, show filters:
-  - **All**
-  - **Tags**
-  - **Places**
+- The autofocus `Search memories...` field performs a debounced, case-insensitive SQL search across Moment title and content.
+- Empty queries show `Find anything you've saved.` and never render the whole archive. No results show `No moments found.`
+- Matches retain the same chronological ordering and full timeline rail/card/media presentation as All Timeline, but are strictly read-only. Media viewing/playback remains available.
+- The first match is active. The `N / total` counter and up/down controls move through matches without wrapping and scroll the active Moment into view.
+- Search state (query, result selection, and scroll position) persists while switching top-level destinations during the app session.
 
-The meaning of these filters is **scoped to the current timeline**.
-
-Example — if the current timeline is `Japan 2026`:
-
-- **All** searches title/content/tags/location **only inside** Japan 2026
-- **Tags** searches/filters tags present **inside** Japan 2026
-- **Places** searches/filters locations present **inside** Japan 2026
-
-If the current timeline is `All`, the search scope is **every saved moment**.
-
-### 9.1 All search
-
-Search across:
-
-- title
-- content
-- tags
-- location
-
-Behavior resembles WhatsApp chat search:
-
-- matching text is **highlighted**
-- the current **match count** is displayed
-- **up/down arrows** navigate matches
-- the timeline **automatically scrolls** to the relevant matching moment
-
-### 9.2 Tags
-
-- Only matching moments remain visible.
-- Provide matching **tag suggestions** while typing.
-- Filtered results retain the **same timeline UI**.
-
-### 9.3 Places
-
-- Only matching locations remain visible.
-- Provide matching **saved-location suggestions** while typing.
-- Places suggestions are derived **only** from locations represented by moments in the **current timeline**.
-- Selecting/searching a place filters to matching moments while preserving the normal timeline presentation.
-- Filtered results retain the **same timeline UI**.
+Filters, chips, categories, Tags/Places tabs, suggestions, search history, relevance ranking, AI search, and timeline-name results are not part of Search v1. Text highlighting is deferred unless it can be added without restructuring MomentCard.
 
 ---
 

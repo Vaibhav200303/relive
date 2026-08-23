@@ -58,6 +58,9 @@ class TimelineHomeRepositoryTest {
         assertEquals(listOf("n0", "n1", "n2", "o0"), familySummary.previewAttachments.map { it.id.value })
         assertEquals(listOf("n0", "n1", "n2"), tripsSummary.previewAttachments.map { it.id.value })
         assertTrue(all.previewAttachments.none { it.type == MediaType.Audio })
+        assertEquals(Instant(1), familySummary.createdAt)
+        assertEquals(Instant(2), tripsSummary.createdAt)
+        assertEquals(listOf(trips, family), summaries.mapNotNull { (it.timeline as? Timeline.Custom)?.id })
     }
 
     @Test fun empty_and_audio_only_timelines_have_no_visual_preview() = runTest {

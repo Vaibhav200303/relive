@@ -43,7 +43,6 @@ data class TimelineScreenState(
     val customTimelines: List<Timeline.Custom> = emptyList(),
     val currentTimeline: CurrentTimeline = CurrentTimeline.All,
     val moments: TimelineMomentsState = TimelineMomentsState.Loading,
-    val creation: TimelineCreationState = TimelineCreationState(),
 )
 
 data class TimelineCreationState(

@@ -3,6 +3,7 @@ package com.vaibhav.relive.presentation.timelinehome
 import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.TimelineHomeSummary
 import com.vaibhav.relive.domain.model.TimelineId
+import com.vaibhav.relive.domain.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -46,5 +47,6 @@ class TimelineHomePlaceholderTest {
         timeline = Timeline.Custom(TimelineId("timeline"), name),
         momentCount = momentCount,
         previewAttachments = emptyList(),
+        createdAt = Instant(0),
     )
 }

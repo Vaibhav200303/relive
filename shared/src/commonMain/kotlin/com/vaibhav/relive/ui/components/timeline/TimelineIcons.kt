@@ -100,7 +100,7 @@ internal fun SearchGlyph(size: Dp, color: Color, strokeWidth: Dp) {
 }
 
 @Composable
-internal fun BackGlyph(size: Dp, color: Color, strokeWidth: Dp) {
+fun BackGlyph(size: Dp, color: Color, strokeWidth: Dp) {
     Canvas(modifier = Modifier.size(size)) {
         val px = size.toPx()
         val center = px / 2f

@@ -48,6 +48,12 @@ internal class DebugSampleMomentRepository : MomentRepository {
 
     override fun observeAll(): Flow<List<Moment>> = state.asStateFlow()
 
+    override fun observeSearch(query: String): Flow<List<Moment>> = state.asStateFlow().map { moments ->
+        moments.filter { moment ->
+            moment.title.contains(query, ignoreCase = true) || moment.content.contains(query, ignoreCase = true)
+        }
+    }
+
     override suspend fun listInTimeline(timelineId: TimelineId): List<Moment> = emptyList()
 
     override fun observeInTimeline(timelineId: TimelineId): Flow<List<Moment>> =

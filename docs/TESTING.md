@@ -43,12 +43,13 @@ Verify the local storage layer against its contract:
 
 ## 3. Search tests
 
-Search is always scoped to the current timeline ([`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) §9).
+Search v1 is global and local ([`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) §9).
 
-- **All-search** matches across title, content, tags, and location within scope; returns match positions/count for highlight + navigation; ordering supports auto-scroll to the matching moment.
-- **Tags**: only matching moments remain; suggestions come from tags present in the current timeline.
-- **Places**: only matching locations remain; suggestions derive **only** from locations of moments in the current timeline (§6 Places scoping).
-- Scope correctness: a query in `Japan 2026` must not return moments outside it; the same query on `All` covers every moment.
+- Empty query and no-match states remain empty; the archive is never loaded into Compose for filtering.
+- SQL search matches title/content case-insensitively and preserves chronological All Timeline ordering in presentation.
+- The first result is active; Next/Previous do not pass their bounds; query changes and clear reset active state; the active result targets the correct Moment ID for scroll.
+- Search is read-only: no composer, edit, Forget, membership, or favorite mutation; media viewer/playback remains available.
+- Query, active result, and scroll position survive a same-session top-level tab switch.
 
 ## 4. 4-day rule tests
 
@@ -130,7 +131,9 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 - [ ] Tapping `+` smoothly expands the composer in place (no modal/sheet).
 - [ ] `×` resets fields and smoothly collapses.
 - [ ] Keep Moment resets fields and collapses.
+- [ ] Keep Moment reads as the primary Material 3 action and has enabled, disabled, and pressed feedback.
 - [ ] Keyboard opens without obscuring the active field (IME insets).
+- [ ] Timeline rail reaches the final plus center but never renders below it; date/time, dots, and plus share the rail axis at normal and enlarged font scales.
 
 ### Persistent debug data
 - [ ] Create a moment in a debug build, kill the process, reopen — moment persists.
@@ -138,21 +141,21 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 - [ ] No in-memory fallback silently replaces SQLDelight storage.
 
 ### Custom timelines
-- [ ] All is selected by default; custom timelines appear in the selector immediately after creation.
+- [ ] Custom timelines appear newest-created-first on Timeline Home; timestamp ties use deterministic ordering.
 - [ ] Blank timeline names are rejected; surrounding whitespace is trimmed.
 - [ ] A custom timeline with no Moments shows the editorial empty state and the inline `+` marker.
 - [ ] Creating inside a custom timeline shows the same Moment once there and once in All.
 - [ ] Creating in All with no assignment keeps the Moment out of custom timelines.
 - [ ] Assigning one or more custom timelines from All shows one shared Moment in every selected scope.
-- [ ] Switching timelines stops active playback and never changes an unfinished draft's membership silently.
+- [ ] Creating a timeline persists it and immediately opens that exact empty timeline.
 - [ ] Custom timelines and memberships survive process death, Recents removal, and a normal APK update.
 - [ ] Tags, location, favorite state, images, video, audio, gallery, and viewer behavior are unchanged in custom timelines.
 
 ### Timeline Home
-- [ ] Timeline Home opens first and retains its scroll position after returning from All or a custom timeline.
-- [ ] All shows the persisted total Moment count; each custom card shows only its own membership count.
+- [ ] Timeline Home opens first and retains its scroll position after returning from a custom timeline.
+- [ ] Timeline Home contains custom cards only; each card shows its scoped Moment count and persisted creation date.
 - [ ] Card previews contain at most four image/video attachments, ordered by latest Moment then attachment order; audio/text-only scopes show the neutral preview.
-- [ ] The Home + opens the existing Create Timeline flow; the new timeline appears reactively without leaving Home.
+- [ ] The Home + opens the existing Create Timeline flow; the new timeline appears first and opens immediately.
 - [ ] Detail Back returns to Timeline Home on Android and iOS; no profile, menu, or bottom navigation controls appear.
 
 ### Adaptive single media
@@ -222,7 +225,8 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 - [x] Attempting a timeline switch, composer opening, or a second edit while an edit is dirty does not silently discard it.
 
 ### Rediscover
-- [ ] The active root renders the Relive app bar, `FAVOURITES` heading, bounded horizontal individual-Moment shelf (at most ten), optional `Show all`, and the two-item bottom navigation.
+- [ ] The active root renders the Relive app bar, editable All card, `FAVOURITES` heading, bounded horizontal individual-Moment shelf (at most ten), optional `Show all`, and the two-item bottom navigation.
+- [ ] Rediscover order is All, Favourites, On This Day, From Your Past; All opens the editable aggregate timeline.
 - [ ] Favorites reflects persisted favorite state in the same chronological ordering as the full Favorites timeline; the bounded shelf batch-loads attachments and does not hydrate the complete collection.
 - [ ] Media, text-only, and audio cards use their appropriate compact presentation; media uses the first ordered attachment with a quiet additional-count indicator and audio never autoplays.
 - [ ] Zero favorites shows the approved two-line empty state with no shelf or `Show all`.

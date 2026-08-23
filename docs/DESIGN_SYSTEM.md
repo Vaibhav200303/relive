@@ -163,6 +163,8 @@ Reference anchors: screen horizontal padding ≈ `24dp`; vertical gap between mo
 | `radius.md`    | `12dp`  | media container, chips-as-pills baseline |
 | `radius.pill`  | `999dp` | tag chips, circular buttons |
 
+Search uses the same `radius.pill` container shape. `search.container.height` is `56dp`; the inner controls retain the global `48dp` minimum touch target.
+
 ---
 
 ## 11. Icon sizing
@@ -300,4 +302,4 @@ Concrete palettes for Monochrome Archive and Film Memory are *(planned)* and wil
 
 ## 20. Rediscover and top-level navigation
 
-Rediscover reuses Warm Journal typography, colors, radii, borders, and spacing. Its active root contains the Relive app bar, a `FAVOURITES` section with bounded horizontally swipeable individual-Moment cards, an `ON THIS DAY` featured shelf, a `FROM YOUR PAST` shelf, and two-item bottom navigation; components must not introduce raw visual values. Favorite cards use a shared responsive 68%-width token, one-line ellipsized titles, and an attached `Show all` arrow action. On This Day uses the same section-heading language, an editorial `day month` date, and larger featured cards with stable visual regions for media, text-only, and audio-only Moments. From Your Past reuses the Favorite card family and dimensions, including its visual region and metadata layout, without a heart indicator. The timeline reference remains authoritative for Timeline UI only, while Rediscover follows the same calm editorial visual language without reproducing the timeline rail or Moment cards.
+Rediscover reuses Warm Journal typography, colors, radii, borders, and spacing. Its active root contains the Relive app bar, the existing editable All timeline summary card, a `FAVOURITES` section with bounded horizontally swipeable individual-Moment cards, an `ON THIS DAY` featured shelf, a `FROM YOUR PAST` shelf, and bottom navigation. Search is the third top-level destination: its Material 3 search field, counter, and up/down controls use Relive theme colors, typography, minimum touch targets, and calm active treatment; results retain Timeline presentation. Components must not introduce raw visual values. Favorite cards use a shared responsive 68%-width token, one-line ellipsized titles, and an attached `Show all` arrow action. On This Day uses the same section-heading language, an editorial `day month` date, and larger featured cards with stable visual regions for media, text-only, and audio-only Moments. From Your Past reuses the Favorite card family and dimensions, including its visual region and metadata layout, without a heart indicator. The timeline reference remains authoritative for Timeline UI only, while Rediscover follows the same calm editorial visual language without reproducing the timeline rail or Moment cards.

@@ -7,6 +7,9 @@ import com.vaibhav.relive.domain.repository.TimelineRepository
 import com.vaibhav.relive.domain.time.Clock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -21,6 +24,8 @@ class TimelineCreationController(
 ) {
     private val _state = MutableStateFlow(TimelineCreationState())
     val state: StateFlow<TimelineCreationState> = _state.asStateFlow()
+    private val _createdTimelines = MutableSharedFlow<Timeline.Custom>(extraBufferCapacity = 1)
+    val createdTimelines: SharedFlow<Timeline.Custom> = _createdTimelines.asSharedFlow()
 
     fun show() {
         _state.update { TimelineCreationState(isVisible = true) }
@@ -52,11 +57,13 @@ class TimelineCreationController(
         _state.update { it.copy(isSaving = true) }
         scope.launch {
             try {
+                val timeline = Timeline.Custom(TimelineId(idGenerator.newId()), trimmed)
                 timelineRepository.createCustom(
-                    timeline = Timeline.Custom(TimelineId(idGenerator.newId()), trimmed),
+                    timeline = timeline,
                     createdAt = clock.now(),
                 )
                 _state.value = TimelineCreationState()
+                _createdTimelines.emit(timeline)
             } catch (_: Throwable) {
                 _state.update {
                     it.copy(isSaving = false, errorMessage = "Couldn't create this timeline. Try again.")

@@ -16,18 +16,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.union
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -85,13 +82,10 @@ import com.vaibhav.relive.ui.components.composer.CollapsedComposerMarker
 import com.vaibhav.relive.ui.components.composer.ComposerOverlayHost
 import com.vaibhav.relive.ui.components.composer.MediaPickerDriver
 import com.vaibhav.relive.ui.components.composer.MomentComposer
-import com.vaibhav.relive.ui.components.timeline.DiscardTimelineDraftDialog
 import com.vaibhav.relive.ui.components.timeline.EmptyCustomTimelinePlaceholder
 import com.vaibhav.relive.ui.components.timeline.MomentCard
-import com.vaibhav.relive.ui.components.timeline.TimelineCreationDialog
 import com.vaibhav.relive.ui.components.timeline.TimelineHeader
 import com.vaibhav.relive.ui.components.timeline.SystemCollectionHeader
-import com.vaibhav.relive.ui.components.timeline.TimelineSelector
 import com.vaibhav.relive.ui.components.viewer.MediaViewer
 import com.vaibhav.relive.ui.components.viewer.MomentMediaGallery
 import com.vaibhav.relive.ui.theme.ReliveTheme
@@ -133,7 +127,6 @@ fun TimelineScreen(
             timelineRepository = timelineRepository,
             rediscoverRepository = rediscoverRepository,
             clock = clock,
-            idGenerator = idGenerator,
             scope = scope,
             initialTimeline = initialTimeline,
             mode = mode,
@@ -163,7 +156,6 @@ fun TimelineScreen(
 
     var navState by remember { mutableStateOf(TimelineMediaNavState.Idle) }
     var isComposerExpanded by remember { mutableStateOf(false) }
-    var pendingTimelineSwitch by remember { mutableStateOf<CurrentTimeline?>(null) }
     var wasSaving by remember { mutableStateOf(false) }
     var wasEditingWhenSaving by remember { mutableStateOf(false) }
     var momentToForget by remember { mutableStateOf<MomentPresentation?>(null) }
@@ -182,24 +174,6 @@ fun TimelineScreen(
         wasSaving = nowSaving
     }
 
-    fun completeTimelineSwitch(target: CurrentTimeline) {
-        ActivePlayback.stopActive()
-        navState = TimelineMediaNavState.Idle
-        composerViewModel.reset()
-        composerViewModel.prepareForTimeline(target)
-        isComposerExpanded = false
-        timelineViewModel.selectTimeline(target)
-    }
-
-    fun requestTimelineSwitch(target: CurrentTimeline) {
-        if (target == timelineState.currentTimeline || composerState.isSaving) return
-        if (composerState.hasUserDraft) {
-            pendingTimelineSwitch = target
-        } else {
-            completeTimelineSwitch(target)
-        }
-    }
-
     val pickerHandle = rememberMediaPickerHandle(mediaStore)
     MediaPickerDriver(
         pending = composerState.pendingMediaAction,
@@ -212,8 +186,7 @@ fun TimelineScreen(
         composerState.overlay == ComposerOverlay.None &&
         composerState.pendingMediaAction == null &&
         !composerState.pendingMicPermissionRequest &&
-        momentToForget == null &&
-        pendingTimelineSwitch == null
+        momentToForget == null
 
     Box(
         modifier = Modifier
@@ -241,8 +214,6 @@ fun TimelineScreen(
             selectedMomentId = selectedMomentId,
             clock = clock,
             mediaStore = mediaStore,
-            onSelectTimeline = ::requestTimelineSwitch,
-            onAddTimeline = timelineViewModel::showTimelineCreation,
             onToggleFavorite = timelineViewModel::setFavorite,
             onEditMoment = { moment ->
                 if (mode.allowsMutations && timelineViewModel.canEditOrForget(moment.toMoment()) &&
@@ -331,25 +302,6 @@ fun TimelineScreen(
         }
     }
 
-    if (mode.allowsMutations) {
-        TimelineCreationDialog(
-            state = timelineState.creation,
-            onNameChange = timelineViewModel::updateTimelineName,
-            onCreate = timelineViewModel::createTimeline,
-            onDismiss = timelineViewModel::dismissTimelineCreation,
-        )
-    }
-
-    pendingTimelineSwitch?.let { target ->
-        DiscardTimelineDraftDialog(
-            onDiscard = {
-                pendingTimelineSwitch = null
-                completeTimelineSwitch(target)
-            },
-            onKeepEditing = { pendingTimelineSwitch = null },
-        )
-    }
-
     if (mode.allowsMutations) momentToForget?.let { moment ->
         AlertDialog(
             onDismissRequest = { momentToForget = null },
@@ -403,8 +355,6 @@ private fun TimelineContent(
     selectedMomentId: MomentId?,
     clock: Clock,
     mediaStore: MediaStore,
-    onSelectTimeline: (CurrentTimeline) -> Unit,
-    onAddTimeline: () -> Unit,
     onToggleFavorite: (MomentId, Boolean) -> Unit,
     onEditMoment: (MomentPresentation) -> Unit,
     onForgetMoment: (MomentPresentation) -> Unit,
@@ -445,14 +395,6 @@ private fun TimelineContent(
             SystemCollectionHeader(title = mode.title, onBack = onBack ?: {})
         } else {
             TimelineHeader(onBack = onBack)
-            TimelineSelector(
-                timelines = timelineState.customTimelines,
-                selected = timelineState.currentTimeline,
-                enabled = !composerState.isSaving,
-                onSelect = onSelectTimeline,
-                onAdd = onAddTimeline,
-                modifier = Modifier.padding(bottom = dims.spacing.sm),
-            )
         }
 
         Box(
@@ -468,18 +410,6 @@ private fun TimelineContent(
             val customName = (timelineState.currentTimeline as? CurrentTimeline.Custom)?.let { current ->
                 timelineState.customTimelines.firstOrNull { it.id == current.id }?.name
             }
-
-            val railInset = remember(dims.timeline.contentInset, dims.timeline.railWidth) {
-                (dims.timeline.contentInset - dims.timeline.railWidth) / 2
-            }
-            Box(
-                modifier = Modifier
-                    .offset(x = railInset)
-                    .width(dims.timeline.railWidth)
-                    .fillMaxHeight()
-                    .background(colors.borderMuted)
-                    .align(Alignment.TopStart),
-            )
 
             key(timelineState.currentTimeline) {
                 val listState = rememberLazyListState()
@@ -505,7 +435,7 @@ private fun TimelineContent(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = dims.spacing.huge),
                 ) {
-                    items(items = moments, key = { it.id.value }) { moment ->
+                    itemsIndexed(items = moments, key = { _, moment -> moment.id.value }) { index, moment ->
                         if (composerState.editingMoment?.id == moment.id) {
                             MomentComposer(
                                 state = composerState,
@@ -548,6 +478,7 @@ private fun TimelineContent(
                                 canEditOrForget = mode.allowsMutations && timelineViewModelCanEdit(moment, clock),
                                 onEdit = { onEditMoment(moment) },
                                 onForget = { onForgetMoment(moment) },
+                                hasPreviousMoment = index > 0,
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         }

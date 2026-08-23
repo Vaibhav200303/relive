@@ -13,6 +13,7 @@ import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.TimelineHomeSummary
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.repository.TimelineHomeRepository
+import com.vaibhav.relive.domain.time.Instant
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -42,6 +43,7 @@ class SqlDelightTimelineHomeRepository(
             TimelineHomeSummary(
                 timeline = timeline,
                 momentCount = count.moment_count,
+                createdAt = count.created_at?.let(::Instant),
                 previewAttachments = previewsByScope[count.scope_key].orEmpty().map { preview ->
                     MediaAttachment(
                         id = MediaAttachmentId(preview.id),
