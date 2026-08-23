@@ -449,7 +449,7 @@ Camera is accessed from the composer's Add Media → Camera action. The camera c
 
 ### Layout
 
-- Full-screen preview with flash icon (upper-left), zoom controls, main control row (Gallery / Filter / Shutter / Switch), and Photo/Video selector.
+- Full-screen preview with flash icon (upper-left), zoom controls, main control row (Gallery / Shutter / Switch), and Photo/Video selector.
 - Shutter button is the fixed geometric center of the main control row.
 - All controls use `WindowInsets.safeDrawing` — no hardcoded status/nav bar heights.
 

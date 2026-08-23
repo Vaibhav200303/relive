@@ -232,6 +232,12 @@ Format for each entry:
 - **Feedback policy.** Unchanged from the prior addendum — `ToneGenerator` on `STREAM_MUSIC` for photo/video-start/video-stop, ordered so the start tone completes before CameraX opens the mic. Photo captures also guard against a re-entrant tap while a capture is in flight so a double-tap never enqueues two shutter events.
 - **No new dependencies.**
 
+### Addendum — Capture filter removal
+
+- **Date:** 2026-08-23 · **Status:** Accepted, supersedes the Retro filter portion of the WhatsApp-style camera polish addendum.
+- **Decision:** Remove the inert Retro filter control from the Android photo and video capture UI. The main control row now contains Gallery, the geometrically centered shutter, and camera switch only.
+- **Consequences:** No filter icon, label, semantics, callback, or touch target remains. Photo and video capture behavior, camera controls, review flow, and media processing are unchanged. No filter-processing architecture is introduced or removed.
+
 ---
 
 ## ADR-0019 — Timeline media uses an adaptive visual collage
