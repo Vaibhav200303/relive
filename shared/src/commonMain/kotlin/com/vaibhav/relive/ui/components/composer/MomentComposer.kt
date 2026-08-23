@@ -120,14 +120,15 @@ fun MomentComposer(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .drawBehind { drawComposerRail(colors.borderMuted, dims, dims.timeline.plusSize) }
+            .drawBehind { drawComposerRail(colors.borderMuted, dims, dims.minTouchTarget) }
             .padding(vertical = dims.spacing.xl),
         verticalAlignment = Alignment.Top,
     ) {
         Box(
             modifier = Modifier
-                .width(dims.timeline.contentInset),
-            contentAlignment = Alignment.TopCenter,
+                .width(dims.timeline.contentInset)
+                .heightIn(min = dims.minTouchTarget),
+            contentAlignment = Alignment.Center,
         ) {
             Box(
                 modifier = Modifier
@@ -148,6 +149,7 @@ fun MomentComposer(
                 )
             }
         }
+        Spacer(Modifier.width(dims.spacing.sm))
 
         Column(
             modifier = Modifier
@@ -155,15 +157,16 @@ fun MomentComposer(
                 .padding(end = dims.spacing.sm),
         ) {
             Row(
-                verticalAlignment = Alignment.Top,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = dims.minTouchTarget),
             ) {
                 ComposerDateTimeRow(
                     date = EditorialDateFormatter.format(now),
                     time = EditorialTimeFormatter.format(now),
-                    modifier = Modifier.weight(1f),
                 )
+                Spacer(Modifier.weight(1f))
                 ResetButton(onReset = onReset, enabled = !state.isSaving)
             }
 

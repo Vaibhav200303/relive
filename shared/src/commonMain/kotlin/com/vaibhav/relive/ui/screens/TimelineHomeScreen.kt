@@ -38,7 +38,7 @@ import com.vaibhav.relive.platform.media.RelivedVideoTile
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeContent
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeViewModel
 import com.vaibhav.relive.presentation.timelinehome.emptyPreviewPlaceholderText
-import com.vaibhav.relive.presentation.date.ProfileSinceFormatter
+import com.vaibhav.relive.presentation.date.TimelineCreatedDateFormatter
 import com.vaibhav.relive.ui.components.MediaToCardSurfaceFade
 import com.vaibhav.relive.ui.components.reliveCardOuterBorder
 import com.vaibhav.relive.ui.components.timeline.TimelineCreationDialog
@@ -214,7 +214,7 @@ internal fun TimelineHomeCard(
                 )
                 summary.createdAt?.let { createdAt ->
                     Text(
-                        text = "Created ${ProfileSinceFormatter.format(createdAt)}",
+                        text = TimelineCreatedDateFormatter.format(createdAt),
                         style = ReliveTheme.typography.tag,
                         color = colors.textMuted,
                         maxLines = 1,
