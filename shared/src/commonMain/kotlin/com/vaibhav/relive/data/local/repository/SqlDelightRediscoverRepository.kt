@@ -6,6 +6,7 @@ import com.vaibhav.relive.data.PersistenceMappingException
 import com.vaibhav.relive.data.local.db.ReliveDatabase
 import com.vaibhav.relive.data.local.mapper.toDomain
 import com.vaibhav.relive.domain.model.FavoritesCollectionSummary
+import com.vaibhav.relive.domain.model.FavoriteMomentPreview
 import com.vaibhav.relive.domain.model.MediaAttachment
 import com.vaibhav.relive.domain.model.Moment
 import com.vaibhav.relive.domain.model.MomentId
@@ -47,6 +48,16 @@ class SqlDelightRediscoverRepository(
             .asFlow()
             .mapToList(dispatcher)
             .map { rows -> withContext(dispatcher) { rows.map(::hydrateMoment) } }
+
+    override fun observeFavoritePreviews(limit: Int): Flow<List<FavoriteMomentPreview>> {
+        require(limit in 1..RediscoverRepository.MAX_FAVORITE_PREVIEWS) {
+            "Favorite preview limit must be within 1..${RediscoverRepository.MAX_FAVORITE_PREVIEWS}"
+        }
+        return database.rediscoverQueries.selectFavoritePreviewMoments(limit.toLong())
+            .asFlow()
+            .mapToList(dispatcher)
+            .flatMapLatest(::hydrateFavoritePreviews)
+    }
 
     override fun observeOverview(query: RediscoverQuery): Flow<RediscoverOverview> {
         val count = database.rediscoverQueries.rediscoverMomentCount()
@@ -106,6 +117,31 @@ class SqlDelightRediscoverRepository(
                 )
             }
         }
+    }
+
+    private fun hydrateFavoritePreviews(
+        rows: List<com.vaibhav.relive.data.local.db.Moments>,
+    ): Flow<List<FavoriteMomentPreview>> {
+        if (rows.isEmpty()) return flowOf(emptyList())
+        val ids = rows.map { it.id }
+        return database.rediscoverQueries.selectRediscoverAttachmentsForMomentIds(ids)
+            .asFlow()
+            .mapToList(dispatcher)
+            .map { attachments ->
+                val attachmentsByMoment = attachments.groupBy { it.moment_id }
+                    .mapValues { (_, values) -> values.map { it.toDomain() } }
+                // Timeline presentation reverses the canonical newest-first query;
+                // keep the shelf in that same chronological reading order.
+                rows.asReversed().map { row ->
+                    FavoriteMomentPreview(
+                        id = MomentId(row.id),
+                        createdAt = Instant(row.created_at),
+                        title = row.title,
+                        content = row.content,
+                        attachments = attachmentsByMoment[row.id].orEmpty(),
+                    )
+                }
+            }
     }
 
     private fun hydrateMoment(row: com.vaibhav.relive.data.local.db.Moments): Moment {

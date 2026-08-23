@@ -309,6 +309,7 @@ private class FakeRediscoverRepository : RediscoverRepository {
     override fun observeOverview(query: RediscoverQuery): Flow<RediscoverOverview> = error("Not used")
     override fun observeFavoritesSummary(): Flow<FavoritesCollectionSummary> = error("Not used")
     override fun observeFavoriteMoments(): Flow<List<Moment>> = MutableStateFlow(emptyList())
+    override fun observeFavoritePreviews(limit: Int) = error("Not used")
 }
 
 private class FakeMomentRepository(

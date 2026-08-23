@@ -138,6 +138,23 @@ class RediscoverRepositoryTest {
         assertTrue(summary.previewAttachments.isEmpty())
     }
 
+    @Test fun favorite_shelf_is_bounded_and_uses_timeline_order_without_n_plus_one_reads() = runTest {
+        repeat(12) { index ->
+            fx.moments.insert(sampleMoment(
+                id = "favorite-$index",
+                createdAtMs = index.toLong(),
+                isFavorite = true,
+                attachments = listOf(sampleAttachment("attachment-$index", sortIndex = 0)),
+            ))
+        }
+
+        val previews = fx.rediscover.observeFavoritePreviews().first()
+
+        assertEquals(10, previews.size)
+        assertEquals((2..11).map { "favorite-$it" }, previews.map { it.id.value })
+        assertEquals((2..11).map { "attachment-$it" }, previews.map { it.attachments.single().id.value })
+    }
+
     private fun query(): RediscoverQuery = RediscoverQuery(
         today = LocalCalendarDate(2026, 8, 23),
         startOfToday = Instant(utc(2026, 8, 23)),

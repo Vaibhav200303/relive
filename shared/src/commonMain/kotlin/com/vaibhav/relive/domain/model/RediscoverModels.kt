@@ -22,6 +22,15 @@ data class FavoritesCollectionSummary(
     }
 }
 
+/** A bounded Rediscover shelf projection for one favorited Moment. */
+data class FavoriteMomentPreview(
+    val id: MomentId,
+    val createdAt: Instant,
+    val title: String,
+    val content: String,
+    val attachments: List<MediaAttachment>,
+)
+
 /** A device-local Gregorian calendar date used only to form Rediscover reads. */
 data class LocalCalendarDate(
     val year: Int,

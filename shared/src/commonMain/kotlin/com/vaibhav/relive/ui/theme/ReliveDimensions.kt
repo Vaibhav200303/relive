@@ -33,6 +33,7 @@ data class ReliveIconSizes(
 @Immutable
 data class ReliveStrokes(
     val hairline: Dp = 1.dp,
+    val cardOuter: Dp = 1.dp,
     val icon: Dp = 1.5.dp,
     val iconBold: Dp = 2.dp,
 )
@@ -52,6 +53,13 @@ data class ReliveTimelineHomeDimensions(
     val allMediaHeight: Dp = 300.dp,
     val customMediaHeight: Dp = 232.dp,
     val mediaFadeHeight: Dp = 64.dp,
+)
+
+@Immutable
+data class ReliveRediscoverDimensions(
+    val compactMediaHeight: Dp = 144.dp,
+    val favoriteShelfCardHeight: Dp = 240.dp,
+    val favoriteShelfCardWidthFraction: Float = 0.82f,
 )
 
 @Immutable
@@ -92,6 +100,7 @@ data class ReliveDimensions(
     val stroke: ReliveStrokes = ReliveStrokes(),
     val timeline: ReliveTimelineDimensions = ReliveTimelineDimensions(),
     val timelineHome: ReliveTimelineHomeDimensions = ReliveTimelineHomeDimensions(),
+    val rediscover: ReliveRediscoverDimensions = ReliveRediscoverDimensions(),
     val media: ReliveMediaDimensions = ReliveMediaDimensions(),
     val minTouchTarget: Dp = 48.dp,
 )

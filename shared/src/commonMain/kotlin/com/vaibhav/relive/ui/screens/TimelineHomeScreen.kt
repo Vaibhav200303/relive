@@ -1,7 +1,6 @@
 package com.vaibhav.relive.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,8 +25,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -41,9 +38,13 @@ import com.vaibhav.relive.platform.media.RelivedVideoTile
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeContent
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeViewModel
 import com.vaibhav.relive.presentation.timelinehome.emptyPreviewPlaceholderText
+import com.vaibhav.relive.ui.components.MediaToCardSurfaceFade
+import com.vaibhav.relive.ui.components.reliveCardOuterBorder
 import com.vaibhav.relive.ui.components.timeline.TimelineCreationDialog
 import com.vaibhav.relive.ui.components.navigation.ReliveWordmarkAppBar
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 @Composable
 fun TimelineHomeScreen(
@@ -155,12 +156,14 @@ private fun TimelineHomeCard(
     } else {
         dims.timelineHome.customMediaHeight
     }
+    val cardShape = RoundedCornerShape(20.dp)
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(androidx.compose.foundation.shape.RoundedCornerShape(dims.radii.md))
+            .clip(cardShape)
             .background(colors.surfaceCard)
-            .border(dims.stroke.hairline, colors.border, androidx.compose.foundation.shape.RoundedCornerShape(dims.radii.md))
+            .reliveCardOuterBorder(cardShape)
             .clickable(onClick = onClick)
     ) {
         TimelineHomeMediaPreview(
@@ -207,7 +210,9 @@ private fun TimelineHomeMediaPreview(
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = dims.spacing.md)
             .height(mediaHeight)
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(0.dp))
             .background(ReliveTheme.colors.surfaceCardTranslucent),
     ) {
         when (attachments.size) {
@@ -239,17 +244,7 @@ private fun TimelineHomeMediaPreview(
                 }
             }
         }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(dims.timelineHome.mediaFadeHeight)
-                .align(Alignment.BottomCenter)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, ReliveTheme.colors.surfaceCard),
-                    ),
-                ),
-        )
+        MediaToCardSurfaceFade(modifier = Modifier.align(Alignment.BottomCenter))
     }
 }
 
