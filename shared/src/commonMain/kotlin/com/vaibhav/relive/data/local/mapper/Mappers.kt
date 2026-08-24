@@ -98,9 +98,11 @@ internal fun Custom_timelines.toDomain(): Timeline.Custom =
         throw PersistenceMappingException("Corrupt custom_timelines row id=$id: ${e.message}", e)
     }
 
-private fun decodeTheme(raw: String): ThemeReference =
-    ThemeReference.entries.firstOrNull { it.name == raw }
+private fun decodeTheme(raw: String): ThemeReference = when (raw) {
+    "MonochromeArchive", "FilmMemory" -> ThemeReference.WarmJournal
+    else -> ThemeReference.entries.firstOrNull { it.name == raw }
         ?: throw PersistenceMappingException("Unknown theme='$raw'")
+}
 
 internal fun decodeTag(canonicalRow: String, label: String): Tag {
     val restored = Tag.ofOrNull(label)

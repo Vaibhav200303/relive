@@ -76,6 +76,9 @@ data class ReliveRediscoverDimensions(
 @Immutable
 data class ReliveProfileDimensions(
     val avatarSize: Dp = 80.dp,
+    val appearancePreviewSize: Dp = 44.dp,
+    val appearanceSelectionSize: Dp = 56.dp,
+    val appearanceItemWidth: Dp = 80.dp,
 )
 
 @Immutable

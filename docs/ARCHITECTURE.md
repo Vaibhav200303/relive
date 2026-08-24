@@ -195,7 +195,7 @@ Any future platform capability follows the same pattern: interface in shared cod
 
 ## 8. Themes
 
-Themes are a presentation concern implemented as design-token sets consumed by `ReliveTheme`. A timeline carries an optional theme id; the UI resolves tokens from it. Themes never alter navigation, timeline structure, moment hierarchy, composer interaction, or search — enforced by keeping theme data out of the domain and presentation logic. See [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) §11 and [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md).
+Themes are a presentation concern implemented as design-token sets consumed by `ReliveTheme`. Global System/Light/Dark mode and the app-default palette are stored by an `AppearanceRepository` backed by Android SharedPreferences or iOS UserDefaults; shared presentation observes only the repository contract. A custom timeline's existing nullable theme id overrides the app palette while inheriting global mode. Themes never alter navigation, timeline structure, moment hierarchy, composer interaction, media data, or search. See [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) §11 and [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md).
 
 ---
 

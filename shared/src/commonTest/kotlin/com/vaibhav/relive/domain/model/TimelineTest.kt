@@ -32,7 +32,7 @@ class TimelineTest {
     fun custom_timeline_theme_optional() {
         val t = Timeline.Custom(TimelineId("t-japan"), "Japan 2026")
         assertEquals(null, t.theme)
-        val themed = t.copy(theme = ThemeReference.FilmMemory)
+        val themed = t.copy(theme = ThemeReference.BlueHour)
         assertNotNull(themed.theme)
     }
 

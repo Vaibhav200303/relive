@@ -1,24 +1,36 @@
 package com.vaibhav.relive.ui.theme
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
+import com.vaibhav.relive.domain.model.ThemeReference
 
-/**
- * Identifier for a Relive theme variant. Only Warm Journal is implemented in Phase 0;
- * Monochrome Archive and Film Memory are placeholders reserved for later phases
- * (see docs/PRODUCT_SPEC.md §11 and docs/DESIGN_SYSTEM.md §19).
- */
+/** Identifier for a selectable Relive palette. Appearance mode is resolved separately. */
 enum class ReliveThemeId {
     WarmJournal,
-    MonochromeArchive,
-    FilmMemory,
+    Evergreen,
+    LilacDusk,
+    CrimsonKeepsake,
+    BlueHour,
+    Rosewood,
+}
+
+fun ThemeReference.toReliveThemeId(): ReliveThemeId = when (this) {
+    ThemeReference.WarmJournal -> ReliveThemeId.WarmJournal
+    ThemeReference.Evergreen -> ReliveThemeId.Evergreen
+    ThemeReference.LilacDusk -> ReliveThemeId.LilacDusk
+    ThemeReference.CrimsonKeepsake -> ReliveThemeId.CrimsonKeepsake
+    ThemeReference.BlueHour -> ReliveThemeId.BlueHour
+    ThemeReference.Rosewood -> ReliveThemeId.Rosewood
 }
 
 /**
@@ -33,6 +45,7 @@ data class ReliveThemeTokens(
     val dimensions: ReliveDimensions,
     val motion: ReliveMotion,
     val generatedCoverPalette: ReliveGeneratedCoverPalette,
+    val isDark: Boolean,
     /**
      * When true, the platform status/navigation bar icons should render in a DARK
      * appearance (for use over light Relive canvases like Warm Journal). Future dark
@@ -49,18 +62,32 @@ val WarmJournalTokens: ReliveThemeTokens = ReliveThemeTokens(
     dimensions = DefaultReliveDimensions,
     motion = DefaultReliveMotion,
     generatedCoverPalette = WarmJournalGeneratedCoverPalette,
+    isDark = false,
     systemBarIconsDark = true,
 )
 
-private val MonochromeArchiveTokens: ReliveThemeTokens = WarmJournalTokens.copy(
-    id = ReliveThemeId.MonochromeArchive,
-    generatedCoverPalette = MonochromeArchiveGeneratedCoverPalette,
-)
+fun reliveTokensFor(
+    id: ReliveThemeId,
+    isDark: Boolean = false,
+): ReliveThemeTokens {
+    if (id == ReliveThemeId.WarmJournal && !isDark) return WarmJournalTokens
+    val anchors = paletteAnchorsFor(id.toThemeReference())
+    return WarmJournalTokens.copy(
+        id = id,
+        colors = reliveColorsFor(anchors, isDark),
+        generatedCoverPalette = generatedCoverPaletteFor(anchors, isDark),
+        isDark = isDark,
+        systemBarIconsDark = !isDark,
+    )
+}
 
-fun reliveTokensFor(id: ReliveThemeId): ReliveThemeTokens = when (id) {
-    ReliveThemeId.WarmJournal -> WarmJournalTokens
-    ReliveThemeId.MonochromeArchive -> MonochromeArchiveTokens
-    ReliveThemeId.FilmMemory -> WarmJournalTokens
+private fun ReliveThemeId.toThemeReference(): ThemeReference = when (this) {
+    ReliveThemeId.WarmJournal -> ThemeReference.WarmJournal
+    ReliveThemeId.Evergreen -> ThemeReference.Evergreen
+    ReliveThemeId.LilacDusk -> ThemeReference.LilacDusk
+    ReliveThemeId.CrimsonKeepsake -> ThemeReference.CrimsonKeepsake
+    ReliveThemeId.BlueHour -> ThemeReference.BlueHour
+    ReliveThemeId.Rosewood -> ThemeReference.Rosewood
 }
 
 private val LocalReliveTokens = staticCompositionLocalOf { WarmJournalTokens }
@@ -68,31 +95,51 @@ private val LocalReliveTokens = staticCompositionLocalOf { WarmJournalTokens }
 @Composable
 fun ReliveTheme(
     themeId: ReliveThemeId = ReliveThemeId.WarmJournal,
+    darkMode: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    val baseTokens = reliveTokensFor(themeId)
+    val baseTokens = reliveTokensFor(themeId, darkMode)
     val bundledTypography = rememberReliveTypography()
-    val tokens = remember(baseTokens, bundledTypography) {
-        baseTokens.copy(typography = bundledTypography)
-    }
+    val animatedColors = animateReliveColors(baseTokens.colors, baseTokens.motion.durations.standardMillis)
+    val tokens = baseTokens.copy(typography = bundledTypography, colors = animatedColors)
     val c = tokens.colors
-    val materialScheme = lightColorScheme(
-        primary = c.accent,
-        onPrimary = c.textOnAccent,
-        secondary = c.accent,
-        onSecondary = c.textOnAccent,
-        background = c.bgCanvas,
-        onBackground = c.textPrimary,
-        surface = c.surfaceCard,
-        onSurface = c.textPrimary,
-        surfaceVariant = c.surfaceCard,
-        onSurfaceVariant = c.textSecondary,
-        surfaceContainerHigh = c.surfaceOverlay,
-        error = c.actionDestructive,
-        onError = c.textOnAccent,
-        outline = c.border,
-        outlineVariant = c.borderMuted,
-    )
+    val materialScheme = if (tokens.isDark) {
+        darkColorScheme(
+            primary = c.accent,
+            onPrimary = c.textOnAccent,
+            secondary = c.accent,
+            onSecondary = c.textOnAccent,
+            background = c.bgCanvas,
+            onBackground = c.textPrimary,
+            surface = c.surfaceCard,
+            onSurface = c.textPrimary,
+            surfaceVariant = c.surfaceCard,
+            onSurfaceVariant = c.textSecondary,
+            surfaceContainerHigh = c.surfaceOverlay,
+            error = c.actionDestructive,
+            onError = c.textOnDestructive,
+            outline = c.border,
+            outlineVariant = c.borderMuted,
+        )
+    } else {
+        lightColorScheme(
+            primary = c.accent,
+            onPrimary = c.textOnAccent,
+            secondary = c.accent,
+            onSecondary = c.textOnAccent,
+            background = c.bgCanvas,
+            onBackground = c.textPrimary,
+            surface = c.surfaceCard,
+            onSurface = c.textPrimary,
+            surfaceVariant = c.surfaceCard,
+            onSurfaceVariant = c.textSecondary,
+            surfaceContainerHigh = c.surfaceOverlay,
+            error = c.actionDestructive,
+            onError = c.textOnDestructive,
+            outline = c.border,
+            outlineVariant = c.borderMuted,
+        )
+    }
     val materialTypography = Typography(
         titleLarge = tokens.typography.title,
         titleMedium = tokens.typography.title,
@@ -114,6 +161,32 @@ fun ReliveTheme(
             content = content,
         )
     }
+}
+
+@Composable
+private fun animateReliveColors(target: ReliveColors, durationMillis: Int): ReliveColors {
+    val animation = tween<Color>(durationMillis = durationMillis)
+    @Composable
+    fun animated(color: Color): Color = animateColorAsState(color, animationSpec = animation).value
+    return ReliveColors(
+        bgCanvas = animated(target.bgCanvas),
+        bgHeader = animated(target.bgHeader),
+        textPrimary = animated(target.textPrimary),
+        textSecondary = animated(target.textSecondary),
+        textMuted = animated(target.textMuted),
+        textOnAccent = animated(target.textOnAccent),
+        textOnDestructive = animated(target.textOnDestructive),
+        accent = animated(target.accent),
+        accentMuted = animated(target.accentMuted),
+        surfaceCard = animated(target.surfaceCard),
+        surfaceFloating = animated(target.surfaceFloating),
+        surfaceOverlay = animated(target.surfaceOverlay),
+        surfaceCardTranslucent = animated(target.surfaceCardTranslucent),
+        surfaceAudio = animated(target.surfaceAudio),
+        actionDestructive = animated(target.actionDestructive),
+        border = animated(target.border),
+        borderMuted = animated(target.borderMuted),
+    )
 }
 
 /**
@@ -149,4 +222,9 @@ object ReliveTheme {
         @Composable
         @ReadOnlyComposable
         get() = LocalReliveTokens.current.motion
+
+    val isDark: Boolean
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalReliveTokens.current.isDark
 }

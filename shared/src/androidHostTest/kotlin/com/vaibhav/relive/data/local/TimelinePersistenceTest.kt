@@ -8,7 +8,14 @@ import com.vaibhav.relive.domain.model.ThemeReference
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.repository.MomentDateNavigationScope
 import com.vaibhav.relive.domain.time.Instant
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -205,10 +212,61 @@ class TimelinePersistenceTest {
     @Test fun renameAndUpdateTheme() = runTest {
         fx.timelines.createCustom(sampleCustomTimeline("t1", "Old", ThemeReference.WarmJournal), Instant(1L))
         fx.timelines.rename(TimelineId("t1"), "New")
-        fx.timelines.updateTheme(TimelineId("t1"), ThemeReference.FilmMemory)
+        fx.timelines.updateTheme(TimelineId("t1"), ThemeReference.Rosewood)
         val t = fx.timelines.findCustom(TimelineId("t1"))!!
         assertEquals("New", t.name)
-        assertEquals(ThemeReference.FilmMemory, t.theme)
+        assertEquals(ThemeReference.Rosewood, t.theme)
+    }
+
+    @Test fun legacyPlaceholderThemesDecodeAsOriginal() = runTest {
+        fx.timelines.createCustom(sampleCustomTimeline("legacy", "Legacy", null), Instant(1L))
+        fx.driver.execute(
+            identifier = null,
+            sql = "UPDATE custom_timelines SET theme = 'FilmMemory' WHERE id = 'legacy'",
+            parameters = 0,
+        )
+
+        assertEquals(ThemeReference.WarmJournal, fx.timelines.findCustom(TimelineId("legacy"))?.theme)
+
+        fx.driver.execute(
+            identifier = null,
+            sql = "UPDATE custom_timelines SET theme = 'MonochromeArchive' WHERE id = 'legacy'",
+            parameters = 0,
+        )
+        assertEquals(ThemeReference.WarmJournal, fx.timelines.findCustom(TimelineId("legacy"))?.theme)
+    }
+
+    @Test fun everySelectableThemeRoundTripsAndCanReturnToInheritance() = runTest {
+        fx.timelines.createCustom(sampleCustomTimeline("themes", "Themes", null), Instant(1L))
+
+        ThemeReference.entries.forEach { theme ->
+            fx.timelines.updateTheme(TimelineId("themes"), theme)
+            assertEquals(theme, fx.timelines.findCustom(TimelineId("themes"))?.theme)
+        }
+
+        fx.timelines.updateTheme(TimelineId("themes"), null)
+        assertEquals(null, fx.timelines.findCustom(TimelineId("themes"))?.theme)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test fun themeUpdatesAndClearingAreReactive() = runTest {
+        fx.timelines.createCustom(sampleCustomTimeline("reactive-theme", "Reactive", null), Instant(1L))
+        val themes = mutableListOf<ThemeReference?>()
+        val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            fx.timelines.observeCustom()
+                .map { timelines -> timelines.single().theme }
+                .take(3)
+                .toList(themes)
+        }
+
+        runCurrent()
+        fx.timelines.updateTheme(TimelineId("reactive-theme"), ThemeReference.BlueHour)
+        runCurrent()
+        fx.timelines.updateTheme(TimelineId("reactive-theme"), null)
+        runCurrent()
+
+        assertEquals(listOf(null, ThemeReference.BlueHour, null), themes)
+        collectJob.cancel()
     }
 
     @Test fun dateNavigationSelectsFirstMomentOnRequestedDay() = runTest {

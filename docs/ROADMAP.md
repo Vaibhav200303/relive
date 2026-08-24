@@ -83,9 +83,9 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 - Provide match count, up/down active-match navigation, scroll-to-Moment, and read-only results. Filters, categories, Places, Tags, ranking, history, and AI search remain out of scope for v1.
 - **Exit:** Search v1 is SQL-backed, globally scoped, read-only, state-preserving across top-level tabs, and covered by focused search/navigation tests.
 
-## Phase 9 — Themes & settings  ☐
+## Phase 9 — Themes & settings  ◐
 
-- Additional themes (Monochrome Archive, Film Memory) as token sets; per-timeline theme selection; themes change only presentation.
+- System/Light/Dark appearance plus Original, Evergreen, Lilac Dusk, Crimson Keepsake, Blue Hour, and Rosewood token sets; global app default with optional per-custom-timeline palette overrides; themes change only presentation.
 - Settings screen: Profile, Themes, Upgrade to Pro, Export (entries present; detailed behavior deferred where unspecified).
 - **Exit:** switching themes changes only presentation; navigation/structure/interaction unchanged; theme tests pass.
 

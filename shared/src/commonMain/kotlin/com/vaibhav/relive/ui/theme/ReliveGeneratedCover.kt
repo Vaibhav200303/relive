@@ -74,15 +74,26 @@ val WarmJournalGeneratedCoverPalette = ReliveGeneratedCoverPalette(
     ),
 )
 
-val MonochromeArchiveGeneratedCoverPalette = ReliveGeneratedCoverPalette(
-    covers = listOf(
-        ReliveGeneratedCoverColors(Color(0xFF171717), Color(0xFF353535)),
-        ReliveGeneratedCoverColors(Color(0xFF202020), Color(0xFF484848)),
-        ReliveGeneratedCoverColors(Color(0xFF111111), Color(0xFF2D2D2D)),
-        ReliveGeneratedCoverColors(Color(0xFF292929), Color(0xFF505050)),
-        ReliveGeneratedCoverColors(Color(0xFF1C1C1C), Color(0xFF3C3C3C)),
-        ReliveGeneratedCoverColors(Color(0xFF252525), Color(0xFF454545)),
-        ReliveGeneratedCoverColors(Color(0xFF151515), Color(0xFF303030)),
-        ReliveGeneratedCoverColors(Color(0xFF232323), Color(0xFF3A3A3A)),
-    ),
-)
+fun generatedCoverPaletteFor(
+    anchors: RelivePaletteAnchors,
+    isDark: Boolean,
+): ReliveGeneratedCoverPalette {
+    if (!isDark && anchors == OriginalPaletteAnchors) return WarmJournalGeneratedCoverPalette
+    return ReliveGeneratedCoverPalette(
+        covers = if (isDark) {
+            listOf(
+                ReliveGeneratedCoverColors(anchors.dark, anchors.mid),
+                ReliveGeneratedCoverColors(anchors.dark, anchors.strong),
+                ReliveGeneratedCoverColors(anchors.strong, anchors.dark),
+                ReliveGeneratedCoverColors(anchors.strong, anchors.mid),
+            )
+        } else {
+            listOf(
+                ReliveGeneratedCoverColors(anchors.strong, anchors.dark),
+                ReliveGeneratedCoverColors(anchors.dark, anchors.mid),
+                ReliveGeneratedCoverColors(anchors.mid, anchors.strong),
+                ReliveGeneratedCoverColors(anchors.dark, anchors.strong),
+            )
+        },
+    )
+}

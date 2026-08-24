@@ -314,9 +314,19 @@ Opacity variants for colors come from this scale rather than one-off alpha value
 
 ## 19. Themes
 
-Themes are token sets. The base is **Warm Journal** (values above). **Monochrome Archive** and **Film Memory** are additional token sets that may change color, typography, borders, surfaces, timeline styling, media treatment, and subtle texture — but never navigation, structure, hierarchy, composer interaction, or search behavior (see [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) §11). A timeline may reference a theme; the UI resolves tokens from it via `ReliveTheme`.
+Themes are presentation-only token sets resolved by palette plus global appearance mode. Original preserves the approved Warm Journal light tokens exactly. Evergreen, Lilac Dusk, Crimson Keepsake, Blue Hour, and Rosewood use these ordered light/mid/strong/dark anchors:
 
-The generated-cover fallback is a centralized theme token. Warm Journal uses a curated dark, rich, restrained 8-color gradient palette; Monochrome Archive uses an equivalent neutral dark-gray palette so it never introduces color. The remaining theme palettes are *(planned)* and will be transcribed/derived when the theming phase begins, and cross-checked against any updated reference.
+| Palette | Light | Mid | Strong | Dark |
+| --- | --- | --- | --- | --- |
+| Evergreen | `#D1F2EB` | `#50C878` | `#0B6E4F` | `#013220` |
+| Lilac Dusk | `#E6C7E6` | `#A3779D` | `#663399` | `#2E1A47` |
+| Crimson Keepsake | `#FBE4E3` | `#D72638` | `#98111E` | `#3F0D12` |
+| Blue Hour | `#D6E6F3` | `#A6C5D7` | `#0F52BA` | `#000926` |
+| Rosewood | `#FADADD` | `#B66E79` | `#8C4E4F` | `#3B1F1B` |
+
+Light schemes neutralize the light anchor into the canvas, use the strong anchor for accents, and the dark anchor for text. Dark schemes deepen the dark anchor into canvases/surfaces, use the mid anchor for accents, and lighten the first anchor for text. Supporting tones are opaque semantic blends; accent foregrounds select the highest-contrast candidate and destructive actions remain red. Primary text and accent content pairs meet WCAG AA. Theme changes interpolate semantic colors over `motion.duration.standard` without replacing screen composition.
+
+The generated-cover fallback is a centralized mode-aware theme token. It derives curated rich gradient pairs from the active anchors, remains deterministic for a stable identity, and never modifies stored media. The app palette is global; a custom Timeline's nullable persisted palette may override it while inheriting global System/Light/Dark mode.
 
 ### 19.1 Visual-media fallback cover
 

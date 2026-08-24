@@ -1,11 +1,13 @@
 package com.vaibhav.relive
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,7 +19,7 @@ import com.vaibhav.relive.ui.screens.TimelineScreen
 import com.vaibhav.relive.ui.screens.TimelineHomeScreen
 import com.vaibhav.relive.ui.screens.RediscoverScreen
 import com.vaibhav.relive.ui.theme.ReliveTheme
-import com.vaibhav.relive.ui.theme.ReliveThemeId
+import com.vaibhav.relive.ui.theme.toReliveThemeId
 import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.RediscoverQuery
@@ -35,6 +37,9 @@ import com.vaibhav.relive.presentation.search.SearchViewModel
 import com.vaibhav.relive.presentation.navigation.QuickCaptureSurface
 import com.vaibhav.relive.presentation.navigation.quickCaptureCommand
 import com.vaibhav.relive.presentation.composer.TimelineComposerDraftStore
+import com.vaibhav.relive.presentation.settings.AppearanceViewModel
+import com.vaibhav.relive.presentation.settings.resolveDarkMode
+import com.vaibhav.relive.presentation.settings.resolveTimelineTheme
 
 private sealed interface TimelinesDestination {
     data object TimelineHome : TimelinesDestination
@@ -64,8 +69,19 @@ fun App(
     container: ReliveAppContainer,
     rediscoverDebugControls: (@Composable () -> Unit)? = null,
 ) {
-    ReliveTheme(themeId = ReliveThemeId.WarmJournal) {
-        val scope = rememberCoroutineScope()
+    val scope = rememberCoroutineScope()
+    val appearanceViewModel = remember(container, scope) {
+        AppearanceViewModel(container.appearanceRepository, scope)
+    }
+    val appearanceState by appearanceViewModel.state.collectAsState()
+    val darkMode = resolveDarkMode(
+        mode = appearanceState.preferences.mode,
+        systemDark = isSystemInDarkTheme(),
+    )
+    ReliveTheme(
+        themeId = appearanceState.preferences.defaultTheme.toReliveThemeId(),
+        darkMode = darkMode,
+    ) {
         val composerDraftStore = remember { TimelineComposerDraftStore() }
         val homeViewModel = remember(container, scope) {
             TimelineHomeViewModel(
@@ -77,6 +93,8 @@ fun App(
             )
         }
         val homeListState = rememberLazyListState()
+        val customTimelines by remember(container) { container.timelineRepository.observeCustom() }
+            .collectAsState(emptyList())
         val rediscoverListState = rememberLazyListState()
         val searchListState = rememberLazyListState()
         val searchViewModel = remember(container, scope) { SearchViewModel(container.momentRepository, scope) }
@@ -97,27 +115,49 @@ fun App(
             }
         }
         if (profileNavigation.isOpen) {
-            ProfileScreen(viewModel = profileViewModel, onBack = {
-                profileNavigation = profileNavigation.returnToTimelineHome()
-            })
-        } else when (val active = timelinesDestination) {
-            is TimelinesDestination.TimelineDetail -> TimelineScreen(
-                momentRepository = container.momentRepository,
-                timelineRepository = container.timelineRepository,
-                rediscoverRepository = container.rediscoverRepository,
-                clock = container.clock,
-                idGenerator = container.idGenerator,
-                mediaStore = container.mediaStore,
-                mediaProcessor = container.mediaProcessor,
-                draftStore = composerDraftStore,
-                initialTimeline = active.scope,
-                selectedMomentId = active.selectedMomentId,
-                openComposerOnEnter = active.openComposerOnEnter,
-                onComposerOpenIntentConsumed = {
-                    timelinesDestination = active.copy(openComposerOnEnter = false)
+            ProfileScreen(
+                viewModel = profileViewModel,
+                appearanceViewModel = appearanceViewModel,
+                onBack = {
+                    profileNavigation = profileNavigation.returnToTimelineHome()
                 },
-                onBackToTimelineHome = { timelinesDestination = TimelinesDestination.TimelineHome },
             )
+        } else when (val active = timelinesDestination) {
+            is TimelinesDestination.TimelineDetail -> {
+                val timelineContent: @Composable () -> Unit = {
+                    TimelineScreen(
+                        momentRepository = container.momentRepository,
+                        timelineRepository = container.timelineRepository,
+                        rediscoverRepository = container.rediscoverRepository,
+                        clock = container.clock,
+                        idGenerator = container.idGenerator,
+                        mediaStore = container.mediaStore,
+                        mediaProcessor = container.mediaProcessor,
+                        draftStore = composerDraftStore,
+                        initialTimeline = active.scope,
+                        selectedMomentId = active.selectedMomentId,
+                        openComposerOnEnter = active.openComposerOnEnter,
+                        onComposerOpenIntentConsumed = {
+                            timelinesDestination = active.copy(openComposerOnEnter = false)
+                        },
+                        onBackToTimelineHome = {
+                            timelinesDestination = TimelinesDestination.TimelineHome
+                        },
+                        globalTheme = appearanceState.preferences.defaultTheme,
+                    )
+                }
+                val override = (active.scope as? CurrentTimeline.Custom)?.let { current ->
+                    customTimelines.firstOrNull { it.id == current.id }?.theme
+                }
+                ReliveTheme(
+                    themeId = resolveTimelineTheme(
+                        override = override,
+                        global = appearanceState.preferences.defaultTheme,
+                    ).toReliveThemeId(),
+                    darkMode = darkMode,
+                    content = timelineContent,
+                )
+            }
             TimelinesDestination.TimelineHome -> if (
                 topLevel == ReliveTopLevelDestination.Rediscover && rediscoverDestination is RediscoverDestination.Favorites
             ) {

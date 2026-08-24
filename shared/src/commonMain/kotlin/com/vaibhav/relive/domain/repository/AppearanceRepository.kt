@@ -1,0 +1,14 @@
+package com.vaibhav.relive.domain.repository
+
+import com.vaibhav.relive.domain.model.AppearanceMode
+import com.vaibhav.relive.domain.model.AppearancePreferences
+import com.vaibhav.relive.domain.model.ThemeReference
+import kotlinx.coroutines.flow.StateFlow
+
+interface AppearanceRepository {
+    val preferences: StateFlow<AppearancePreferences>
+
+    suspend fun setMode(mode: AppearanceMode): Result<Unit>
+
+    suspend fun setDefaultTheme(theme: ThemeReference): Result<Unit>
+}

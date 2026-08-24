@@ -1,8 +1,15 @@
 package com.vaibhav.relive.ui.theme
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+
+internal object IosStatusBarAppearance {
+    var update: ((Boolean) -> Unit)? = null
+}
 
 @Composable
 actual fun ApplyReliveSystemBars(tokens: ReliveThemeTokens) {
-    // iOS status-bar style is driven by the hosting UIViewController, not shared code.
+    SideEffect {
+        IosStatusBarAppearance.update?.invoke(tokens.systemBarIconsDark)
+    }
 }
