@@ -2,6 +2,7 @@ package com.vaibhav.relive.platform.media
 
 import com.vaibhav.relive.domain.model.MediaStorageRef
 import com.vaibhav.relive.domain.model.MediaType
+import com.vaibhav.relive.domain.model.ArchiveFileInspection
 
 /**
  * App-owned media storage. Stores only optimized/normalized files produced by
@@ -28,4 +29,16 @@ interface MediaStore {
 
     /** Byte size of the stored blob, or 0 if missing. */
     fun sizeBytes(ref: MediaStorageRef): Long
+
+    /**
+     * Inspects one Relive-managed path for archive insights. Implementations must
+     * reject references outside their managed-media root.
+     */
+    fun inspectManagedFile(ref: MediaStorageRef): ArchiveFileInspection = when {
+        !exists(ref) -> ArchiveFileInspection.Missing
+        else -> runCatching { sizeBytes(ref) }.fold(
+            onSuccess = { ArchiveFileInspection.Available(it) },
+            onFailure = { ArchiveFileInspection.Inaccessible },
+        )
+    }
 }

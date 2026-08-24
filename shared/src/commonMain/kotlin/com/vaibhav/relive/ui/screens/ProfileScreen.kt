@@ -2,6 +2,8 @@ package com.vaibhav.relive.ui.screens
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,19 +17,32 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.vaibhav.relive.platform.system.ReliveBackHandler
+import com.vaibhav.relive.domain.model.AppearanceMode
+import com.vaibhav.relive.domain.model.ThemeReference
 import com.vaibhav.relive.presentation.date.ProfileSinceFormatter
 import com.vaibhav.relive.presentation.profile.ProfileViewModel
+import com.vaibhav.relive.presentation.settings.AppearanceViewModel
+import com.vaibhav.relive.ui.components.settings.AppearanceModeControl
+import com.vaibhav.relive.ui.components.settings.RelivePalettePicker
 import com.vaibhav.relive.ui.components.timeline.BackGlyph
 import com.vaibhav.relive.ui.components.timeline.ForwardGlyph
 import com.vaibhav.relive.ui.theme.ReliveTheme
@@ -35,53 +50,123 @@ import com.vaibhav.relive.ui.theme.ReliveTheme
 @Composable
 fun ProfileScreen(
     viewModel: ProfileViewModel,
+    appearanceViewModel: AppearanceViewModel,
     onBack: () -> Unit,
+    onOpenMediaStorage: () -> Unit,
 ) {
     val state by viewModel.state.collectAsState()
+    val appearance by appearanceViewModel.state.collectAsState()
     val dims = ReliveTheme.dimensions
+    val snackbarHostState = remember { SnackbarHostState() }
     ReliveBackHandler(enabled = true, onBack = onBack)
+    LaunchedEffect(appearance.errorMessage) {
+        appearance.errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            appearanceViewModel.clearError()
+        }
+    }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().background(ReliveTheme.colors.bgCanvas),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        item(key = "profile-header") { ProfileHeader(onBack) }
-        item(key = "profile-identity") {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = dims.spacing.xl, bottom = dims.spacing.xxl),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(dims.spacing.sm),
-            ) {
-                ProfileAvatar()
-                Text(state.displayName, style = ReliveTheme.typography.title, color = ReliveTheme.colors.textPrimary)
-                Text(
-                    "Your private memory space",
-                    style = ReliveTheme.typography.subtitle,
-                    color = ReliveTheme.colors.textSecondary,
-                )
-                state.joiningDate?.let { createdAt ->
+    Box(Modifier.fillMaxSize().background(ReliveTheme.colors.bgCanvas)) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            item(key = "profile-header") { ProfileHeader(onBack) }
+            item(key = "profile-identity") {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = dims.spacing.xl, bottom = dims.spacing.xxl),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(dims.spacing.sm),
+                ) {
+                    ProfileAvatar()
+                    Text(state.displayName, style = ReliveTheme.typography.title, color = ReliveTheme.colors.textPrimary)
                     Text(
-                        "Since ${ProfileSinceFormatter.format(createdAt)}",
+                        "Your private memory space",
                         style = ReliveTheme.typography.subtitle,
-                        color = ReliveTheme.colors.textMuted,
+                        color = ReliveTheme.colors.textSecondary,
                     )
+                    state.joiningDate?.let { createdAt ->
+                        Text(
+                            "Since ${ProfileSinceFormatter.format(createdAt)}",
+                            style = ReliveTheme.typography.subtitle,
+                            color = ReliveTheme.colors.textMuted,
+                        )
+                    }
                 }
             }
+            item(key = "profile-statistics") {
+                ProfileStatistics(state.momentCount, state.customTimelineCount, state.placeCount)
+            }
+            item(key = "appearance") {
+                ProfileAppearanceSection(
+                    mode = appearance.preferences.mode,
+                    theme = appearance.preferences.defaultTheme,
+                    onModeChange = appearanceViewModel::setMode,
+                    onThemeChange = appearanceViewModel::setDefaultTheme,
+                )
+            }
+            item(key = "your-memories") {
+                ProfileSection(
+                    title = "YOUR MEMORIES",
+                    labels = listOf("Media & storage", "Backup"),
+                    onMediaStorage = onOpenMediaStorage,
+                )
+            }
+            item(key = "preferences") {
+                ProfileSection("PREFERENCES", listOf("Location", "Rediscover notifications", "Privacy & security"))
+            }
+            item(key = "relive") {
+                ProfileSection("RELIVE", listOf("Help & feedback", "About Relive"), last = true)
+            }
         }
-        item(key = "profile-statistics") { ProfileStatistics(state.momentCount, state.customTimelineCount, state.placeCount) }
-        item(key = "personalize") {
-            ProfileSection("PERSONALIZE", listOf("Appearance & themes"))
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(dims.spacing.lg),
+        ) { data ->
+            Snackbar(
+                snackbarData = data,
+                containerColor = ReliveTheme.colors.accent,
+                contentColor = ReliveTheme.colors.textOnAccent,
+            )
         }
-        item(key = "your-memories") {
-            ProfileSection("YOUR MEMORIES", listOf("Media & storage", "Backup"))
-        }
-        item(key = "preferences") {
-            ProfileSection("PREFERENCES", listOf("Location", "Rediscover notifications", "Privacy & security"))
-        }
-        item(key = "relive") {
-            ProfileSection("RELIVE", listOf("Help & feedback", "About Relive"), last = true)
+    }
+}
+
+@Composable
+private fun ProfileAppearanceSection(
+    mode: AppearanceMode,
+    theme: ThemeReference,
+    onModeChange: (AppearanceMode) -> Unit,
+    onThemeChange: (ThemeReference) -> Unit,
+) {
+    val dims = ReliveTheme.dimensions
+    val colors = ReliveTheme.colors
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = dims.spacing.xl, vertical = dims.spacing.xxl),
+        verticalArrangement = Arrangement.spacedBy(dims.spacing.md),
+    ) {
+        Text("APPEARANCE", style = ReliveTheme.typography.eyebrow, color = colors.accentMuted)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(dims.radii.lg))
+                .background(colors.surfaceCard)
+                .border(dims.stroke.hairline, colors.borderMuted, RoundedCornerShape(dims.radii.lg))
+                .padding(dims.spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(dims.spacing.lg),
+        ) {
+            AppearanceModeControl(selected = mode, onSelect = onModeChange)
+            HorizontalDivider(color = colors.borderMuted, thickness = dims.stroke.hairline)
+            RelivePalettePicker(
+                selectedTheme = theme,
+                globalTheme = theme,
+                includeUseAppTheme = false,
+                onSelect = { selected -> selected?.let(onThemeChange) },
+            )
         }
     }
 }
@@ -167,7 +252,12 @@ private fun ProfileStatistic(value: Long, label: String) {
 }
 
 @Composable
-private fun ProfileSection(title: String, labels: List<String>, last: Boolean = false) {
+private fun ProfileSection(
+    title: String,
+    labels: List<String>,
+    last: Boolean = false,
+    onMediaStorage: (() -> Unit)? = null,
+) {
     val dims = ReliveTheme.dimensions
     Column(
         modifier = Modifier
@@ -180,17 +270,23 @@ private fun ProfileSection(title: String, labels: List<String>, last: Boolean = 
             ),
     ) {
         Text(title, style = ReliveTheme.typography.eyebrow, color = ReliveTheme.colors.accentMuted)
-        labels.forEach { label -> ProfileSettingRow(label) }
+        labels.forEach { label ->
+            ProfileSettingRow(
+                label = label,
+                onClick = if (label == "Media & storage") onMediaStorage else null,
+            )
+        }
     }
 }
 
 @Composable
-private fun ProfileSettingRow(label: String) {
+private fun ProfileSettingRow(label: String, onClick: (() -> Unit)? = null) {
     val dims = ReliveTheme.dimensions
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = dims.minTouchTarget)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .semantics { contentDescription = label },
         verticalAlignment = Alignment.CenterVertically,
     ) {

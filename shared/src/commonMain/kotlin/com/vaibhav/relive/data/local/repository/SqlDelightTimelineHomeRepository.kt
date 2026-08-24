@@ -4,11 +4,11 @@ import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import com.vaibhav.relive.data.PersistenceMappingException
 import com.vaibhav.relive.data.local.db.ReliveDatabase
+import com.vaibhav.relive.data.local.mapper.decodeThemeName
 import com.vaibhav.relive.domain.model.MediaAttachment
 import com.vaibhav.relive.domain.model.MediaAttachmentId
 import com.vaibhav.relive.domain.model.MediaStorageRef
 import com.vaibhav.relive.domain.model.MediaType
-import com.vaibhav.relive.domain.model.ThemeReference
 import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.TimelineHomeSummary
 import com.vaibhav.relive.domain.model.TimelineId
@@ -37,7 +37,7 @@ class SqlDelightTimelineHomeRepository(
                 Timeline.Custom(
                     id = TimelineId(count.timeline_id ?: error("Missing custom timeline id")),
                     name = count.name,
-                    theme = count.theme?.let(::decodeTheme),
+                    theme = count.theme?.let(::decodeThemeName),
                 )
             }
             TimelineHomeSummary(
@@ -70,9 +70,6 @@ class SqlDelightTimelineHomeRepository(
                     )
                 }
             }
-
-    private fun decodeTheme(raw: String): ThemeReference = ThemeReference.entries.firstOrNull { it.name == raw }
-        ?: throw PersistenceMappingException("Unknown theme='$raw'")
 
     private fun decodeMediaType(raw: String): MediaType = MediaType.entries.firstOrNull { it.name == raw }
         ?: throw PersistenceMappingException("Unknown media_type='$raw'")

@@ -140,6 +140,7 @@ Data-layer repositories implement the domain repository interfaces and hide the 
 
 - Media binaries are stored on the device file system; the database holds **references** (paths/identifiers), not blobs, unless a later decision says otherwise.
 - Writing/reading media files is a platform capability behind an interface (§6), so shared code never touches platform file APIs directly.
+- Archive-insights reads only persisted attachment references, then asks `MediaStore` to inspect each Relive-managed file on a background dispatcher. It never walks arbitrary device storage, hydrates the complete Moment archive, or mutates media discovered to be missing.
 
 ---
 
@@ -195,7 +196,7 @@ Any future platform capability follows the same pattern: interface in shared cod
 
 ## 8. Themes
 
-Themes are a presentation concern implemented as design-token sets consumed by `ReliveTheme`. A timeline carries an optional theme id; the UI resolves tokens from it. Themes never alter navigation, timeline structure, moment hierarchy, composer interaction, or search — enforced by keeping theme data out of the domain and presentation logic. See [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) §11 and [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md).
+Themes are a presentation concern implemented as design-token sets consumed by `ReliveTheme`. Global System/Light/Dark mode and the app-default palette are stored by an `AppearanceRepository` backed by Android SharedPreferences or iOS UserDefaults; shared presentation observes only the repository contract. A custom timeline's existing nullable theme id overrides the app palette while inheriting global mode. Themes never alter navigation, timeline structure, moment hierarchy, composer interaction, media data, or search. See [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) §11 and [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md).
 
 ---
 

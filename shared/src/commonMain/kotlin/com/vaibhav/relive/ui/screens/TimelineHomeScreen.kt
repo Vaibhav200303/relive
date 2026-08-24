@@ -58,6 +58,7 @@ import com.vaibhav.relive.ui.components.timeline.TimelineCreationDialog
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.theme.toReliveThemeId
 import com.vaibhav.relive.presentation.cardcover.resolveAllTimelineCollage
 
 @Composable
@@ -330,6 +331,33 @@ internal fun TimelineHomeCard(
     mediaStore: MediaStore,
     allCollageBucket: Long = 0L,
     allCollageCandidates: List<MediaAttachment>? = null,
+    onClick: () -> Unit,
+) {
+    val override = (summary.timeline as? Timeline.Custom)?.theme
+    val themeId = override?.toReliveThemeId() ?: ReliveTheme.tokens.id
+    val darkMode = ReliveTheme.isDark
+    val content: @Composable () -> Unit = {
+        TimelineHomeCardContent(
+            summary = summary,
+            mediaStore = mediaStore,
+            allCollageBucket = allCollageBucket,
+            allCollageCandidates = allCollageCandidates,
+            onClick = onClick,
+        )
+    }
+    com.vaibhav.relive.ui.theme.ReliveTheme(
+        themeId = themeId,
+        darkMode = darkMode,
+        content = content,
+    )
+}
+
+@Composable
+private fun TimelineHomeCardContent(
+    summary: TimelineHomeSummary,
+    mediaStore: MediaStore,
+    allCollageBucket: Long,
+    allCollageCandidates: List<MediaAttachment>?,
     onClick: () -> Unit,
 ) {
     val colors = ReliveTheme.colors

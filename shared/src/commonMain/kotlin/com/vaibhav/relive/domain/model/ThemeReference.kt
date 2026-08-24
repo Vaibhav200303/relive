@@ -6,6 +6,9 @@ package com.vaibhav.relive.domain.model
  */
 enum class ThemeReference {
     WarmJournal,
-    MonochromeArchive,
-    FilmMemory,
+    Evergreen,
+    LilacDusk,
+    CrimsonKeepsake,
+    BlueHour,
+    Rosewood,
 }

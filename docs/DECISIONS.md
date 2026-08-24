@@ -518,6 +518,20 @@ Format for each entry:
 - **Decision:** Material 3 and its expressive APIs are adopted only at component boundaries where they improve interaction behavior. Relive retains its timeline, cards, search capsules, composer fields, media presentation, floating-toolbar indicator, and camera chrome. Dialogs, menus, date picker, snackbar, transparent viewer controls, and the media-library modal use Material behavior under Relive colors, type, spacing, and semantic overlay/dialog/menu tokens. Shared Compose UI uses the semantic haptic cues `Action`, `Selection`, `ToggleOn`, `ToggleOff`, `Context`, `Confirm`, and `Reject` for direct controls and one-shot outcomes. Typing, scrolling, passive animation, normal card navigation, and routine Back/Close actions have no haptic. Android camera shutter feedback remains the existing success-timed native vibration, and the native iOS camera receives no shared feedback layer.
 - **Consequences:** Relive gains consistent minimum targets, focus/error semantics, outcome feedback, and platform modal behavior without a global `MaterialExpressiveTheme`, a new dependency, a full-screen SearchBar, Add Media button groups, or pervasive spring motion. Experimental opt-ins remain local. Shared haptics may safely no-op when unsupported and must never be fired from recomposition.
 
+## ADR-0043 — Global appearance mode with nostalgic palette defaults and custom-timeline overrides
+
+- **Date:** 2026-08-24 · **Status:** Accepted
+- **Context:** Phase 9 needs an accessible light/dark appearance and a compact, nostalgic palette chooser without changing Relive's settled archive structure. The earlier Monochrome Archive and Film Memory names were conceptual placeholders and never had complete selectable token sets.
+- **Decision:** Profile exposes an inline System/Light/Dark control and six app palettes: Original (Warm Journal), Evergreen, Lilac Dusk, Crimson Keepsake, Blue Hour, and Rosewood. The global palette and mode persist in native local preferences; System follows the live OS appearance. A custom timeline may store a nullable palette override in its existing theme column and change it from its editable header; null inherits the app palette and all timelines inherit global mode. Original light preserves the approved reference tokens. Other light/dark semantic colors and deterministic cover gradients derive from the accepted four-anchor palettes, retain accessible content contrast, animate with standard Relive motion, and never alter stored media. Legacy Monochrome Archive and Film Memory persistence values decode as Original.
+- **Consequences:** Appearance changes recompose presentation tokens only; navigation, timeline geometry, Moment hierarchy, composer behavior, persistence, media, and search remain unchanged. No dependency or database migration is added. The earlier three-theme conceptual lineup in PRODUCT_SPEC §11, DESIGN_SYSTEM §19, ROADMAP Phase 9, and ADR-0010 is superseded only for selectable palette identity and global-mode behavior. Upgrade, Export, and other deferred Settings functionality remain outside this slice.
+
+## ADR-0044 — Media & Storage is read-only archive insight
+
+- **Date:** 2026-08-25 · **Status:** Accepted
+- **Context:** Profile needs a truthful way to explain the local media archive without introducing storage-management behavior.
+- **Decision:** Media & Storage calculates bytes only from persisted attachment references and Relive-owned file paths, categorizes Image/Video/Audio plus defensive unknown types, and performs file inspection away from the UI thread. Missing or inaccessible references contribute no bytes and never trigger deletion or repair. The screen is informational only: no optimization, compression controls, cleanup, deletion, storage permission, or device-wide scan is added.
+- **Consequences:** Archive totals describe persisted Relive attachments rather than arbitrary app/device files. Duplicate storage references are deduplicated for bytes, while archive counts remain attachment-record counts. The feature adds no dependency or schema migration and leaves media ingestion unchanged.
+
 ## Template for new decisions
 
 ```

@@ -3,10 +3,12 @@ package com.vaibhav.relive.di
 import com.vaibhav.relive.data.local.DatabaseDriverFactory
 import com.vaibhav.relive.data.local.ReliveDatabaseFactory
 import com.vaibhav.relive.data.local.repository.SqlDelightMomentRepository
+import com.vaibhav.relive.data.local.repository.SqlDelightArchiveInsightsRepository
 import com.vaibhav.relive.data.local.repository.SqlDelightTimelineRepository
 import com.vaibhav.relive.data.local.repository.SqlDelightTimelineHomeRepository
 import com.vaibhav.relive.data.local.repository.SqlDelightRediscoverRepository
 import com.vaibhav.relive.data.local.repository.SqlDelightProfileRepository
+import com.vaibhav.relive.data.settings.IosAppearanceRepository
 import com.vaibhav.relive.platform.media.IosMediaProcessor
 import com.vaibhav.relive.platform.media.IosMediaStore
 import com.vaibhav.relive.presentation.id.UuidGenerator
@@ -18,6 +20,8 @@ fun createDefaultReliveAppContainer(): ReliveAppContainer {
     val store = IosMediaStore()
     val processor = IosMediaProcessor(store)
     return ReliveAppContainer(
+        appearanceRepository = IosAppearanceRepository(),
+        archiveInsightsRepository = SqlDelightArchiveInsightsRepository(database, store),
         momentRepository = SqlDelightMomentRepository(database),
         timelineRepository = SqlDelightTimelineRepository(database),
         timelineHomeRepository = SqlDelightTimelineHomeRepository(database),

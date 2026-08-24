@@ -176,7 +176,81 @@ class ReliveTokensTest {
     fun generatedCoverPalettesRespectTheActiveTheme() {
         assertEquals(ReliveThemeId.WarmJournal, WarmJournalTokens.id)
         assertEquals(WarmJournalGeneratedCoverPalette, reliveTokensFor(ReliveThemeId.WarmJournal).generatedCoverPalette)
-        assertEquals(MonochromeArchiveGeneratedCoverPalette, reliveTokensFor(ReliveThemeId.MonochromeArchive).generatedCoverPalette)
-        assertEquals(WarmJournalGeneratedCoverPalette, reliveTokensFor(ReliveThemeId.FilmMemory).generatedCoverPalette)
+        ReliveThemeId.entries.drop(1).forEach { theme ->
+            assertTrue(reliveTokensFor(theme).generatedCoverPalette.covers.isNotEmpty())
+            assertTrue(reliveTokensFor(theme, isDark = true).generatedCoverPalette.covers.isNotEmpty())
+        }
+    }
+
+    @Test
+    fun suppliedPaletteAnchorsAreExact() {
+        assertEquals(Color(0xFFD1F2EB), EvergreenPaletteAnchors.light)
+        assertEquals(Color(0xFF50C878), EvergreenPaletteAnchors.mid)
+        assertEquals(Color(0xFF0B6E4F), EvergreenPaletteAnchors.strong)
+        assertEquals(Color(0xFF013220), EvergreenPaletteAnchors.dark)
+        assertEquals(Color(0xFF98111E), CrimsonKeepsakePaletteAnchors.strong)
+        assertEquals(Color(0xFF3F0D12), CrimsonKeepsakePaletteAnchors.dark)
+        assertEquals(Color(0xFF000926), BlueHourPaletteAnchors.dark)
+        assertEquals(Color(0xFF3B1F1B), RosewoodPaletteAnchors.dark)
+    }
+
+    @Test
+    fun previewsUseTheLiteralModeSpecificAnchors() {
+        RelivePaletteOptions.forEach { option ->
+            assertEquals(
+                listOf(option.anchors.light, option.anchors.strong),
+                previewGradientFor(option.anchors, isDark = false),
+            )
+            assertEquals(
+                listOf(option.anchors.dark, option.anchors.mid),
+                previewGradientFor(option.anchors, isDark = true),
+            )
+        }
+    }
+
+    @Test
+    fun everyPaletteHasDistinctLightAndDarkAccessibleContentPairs() {
+        ReliveThemeId.entries.forEach { theme ->
+            val light = reliveTokensFor(theme, isDark = false)
+            val dark = reliveTokensFor(theme, isDark = true)
+            assertTrue(light.colors.bgCanvas != dark.colors.bgCanvas)
+            assertTrue(light.systemBarIconsDark)
+            assertTrue(!dark.systemBarIconsDark)
+            listOf(light, dark).forEach { tokens ->
+                assertTrue(
+                    contrastRatio(tokens.colors.textPrimary, tokens.colors.bgCanvas) >= 4.5f,
+                    "$theme ${tokens.isDark} primary text contrast",
+                )
+                assertTrue(
+                    contrastRatio(tokens.colors.textSecondary, tokens.colors.bgCanvas) >= 4.5f,
+                    "$theme ${tokens.isDark} body text contrast",
+                )
+                assertTrue(
+                    contrastRatio(tokens.colors.textOnAccent, tokens.colors.accent) >= 4.5f,
+                    "$theme ${tokens.isDark} accent contrast=" +
+                        contrastRatio(tokens.colors.textOnAccent, tokens.colors.accent),
+                )
+                assertTrue(
+                    contrastRatio(tokens.colors.textOnDestructive, tokens.colors.actionDestructive) >= 4.5f,
+                    "$theme ${tokens.isDark} destructive action contrast",
+                )
+                assertTrue(
+                    contrastRatio(tokens.colors.accent, tokens.colors.surfaceCard) >= 3f,
+                    "$theme ${tokens.isDark} selected indicator contrast",
+                )
+                assertTrue(
+                    contrastRatio(tokens.colors.textPrimary, tokens.colors.surfaceCard) >= 4.5f,
+                    "$theme ${tokens.isDark} card content contrast",
+                )
+                assertTrue(
+                    contrastRatio(tokens.colors.textSecondary, tokens.colors.surfaceCard) >= 4.5f,
+                    "$theme ${tokens.isDark} card body contrast",
+                )
+                assertTrue(
+                    contrastRatio(tokens.colors.textPrimary, tokens.colors.surfaceOverlay) >= 4.5f,
+                    "$theme ${tokens.isDark} overlay content contrast",
+                )
+            }
+        }
     }
 }

@@ -1,6 +1,8 @@
 package com.vaibhav.relive.di
 
 import com.vaibhav.relive.domain.id.IdGenerator
+import com.vaibhav.relive.domain.repository.AppearanceRepository
+import com.vaibhav.relive.domain.repository.ArchiveInsightsRepository
 import com.vaibhav.relive.domain.repository.MomentRepository
 import com.vaibhav.relive.domain.repository.ProfileRepository
 import com.vaibhav.relive.domain.repository.TimelineRepository
@@ -23,6 +25,8 @@ import com.vaibhav.relive.platform.media.MediaStore
  * normalization).
  */
 class ReliveAppContainer(
+    val appearanceRepository: AppearanceRepository,
+    val archiveInsightsRepository: ArchiveInsightsRepository,
     val momentRepository: MomentRepository,
     val timelineRepository: TimelineRepository,
     val timelineHomeRepository: TimelineHomeRepository,

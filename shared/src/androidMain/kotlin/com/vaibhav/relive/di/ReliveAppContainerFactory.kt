@@ -4,10 +4,12 @@ import android.content.Context
 import com.vaibhav.relive.data.local.DatabaseDriverFactory
 import com.vaibhav.relive.data.local.ReliveDatabaseFactory
 import com.vaibhav.relive.data.local.repository.SqlDelightMomentRepository
+import com.vaibhav.relive.data.local.repository.SqlDelightArchiveInsightsRepository
 import com.vaibhav.relive.data.local.repository.SqlDelightTimelineRepository
 import com.vaibhav.relive.data.local.repository.SqlDelightTimelineHomeRepository
 import com.vaibhav.relive.data.local.repository.SqlDelightRediscoverRepository
 import com.vaibhav.relive.data.local.repository.SqlDelightProfileRepository
+import com.vaibhav.relive.data.settings.AndroidAppearanceRepository
 import com.vaibhav.relive.domain.id.IdGenerator
 import com.vaibhav.relive.domain.repository.MomentRepository
 import com.vaibhav.relive.domain.time.Clock
@@ -35,6 +37,8 @@ fun createDefaultReliveAppContainer(
     val mediaStore = AndroidMediaStore(app)
     val mediaProcessor = AndroidMediaProcessor(app, mediaStore)
     return ReliveAppContainer(
+        appearanceRepository = AndroidAppearanceRepository(app),
+        archiveInsightsRepository = SqlDelightArchiveInsightsRepository(database, mediaStore),
         momentRepository = momentRepository,
         timelineRepository = timelineRepository,
         timelineHomeRepository = SqlDelightTimelineHomeRepository(database),

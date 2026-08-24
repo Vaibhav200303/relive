@@ -3,6 +3,7 @@ package com.vaibhav.relive.platform.media
 import android.content.Context
 import com.vaibhav.relive.domain.model.MediaStorageRef
 import com.vaibhav.relive.domain.model.MediaType
+import com.vaibhav.relive.domain.model.ArchiveFileInspection
 import java.io.File
 import java.util.UUID
 
@@ -52,6 +53,20 @@ class AndroidMediaStore(context: Context) : MediaStore {
     override fun sizeBytes(ref: MediaStorageRef): Long {
         val f = File(root, ref.value)
         return if (f.exists()) f.length() else 0L
+    }
+
+    override fun inspectManagedFile(ref: MediaStorageRef): ArchiveFileInspection {
+        val file = runCatching { File(root, ref.value).canonicalFile }.getOrNull()
+            ?: return ArchiveFileInspection.Inaccessible
+        val rootPath = runCatching { root.canonicalFile.path }.getOrNull()
+            ?: return ArchiveFileInspection.Inaccessible
+        if (file.path != rootPath && !file.path.startsWith(rootPath + File.separator)) {
+            return ArchiveFileInspection.Inaccessible
+        }
+        if (!file.exists()) return ArchiveFileInspection.Missing
+        if (!file.isFile || !file.canRead()) return ArchiveFileInspection.Inaccessible
+        return runCatching { ArchiveFileInspection.Available(file.length()) }
+            .getOrElse { ArchiveFileInspection.Inaccessible }
     }
 
     fun newTempFile(prefix: String, suffix: String): File =

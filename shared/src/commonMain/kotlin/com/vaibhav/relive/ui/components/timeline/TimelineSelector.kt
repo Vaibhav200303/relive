@@ -149,7 +149,7 @@ fun DiscardTimelineDraftDialog(
                 },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = colors.actionDestructive,
-                    contentColor = colors.textOnAccent,
+                    contentColor = colors.textOnDestructive,
                 ),
             ) {
                 Text("Discard and switch")
