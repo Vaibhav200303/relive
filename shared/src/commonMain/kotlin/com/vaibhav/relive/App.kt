@@ -34,6 +34,7 @@ import com.vaibhav.relive.ui.screens.SearchScreen
 import com.vaibhav.relive.presentation.search.SearchViewModel
 import com.vaibhav.relive.presentation.navigation.QuickCaptureSurface
 import com.vaibhav.relive.presentation.navigation.quickCaptureCommand
+import com.vaibhav.relive.presentation.composer.TimelineComposerDraftStore
 
 private sealed interface TimelinesDestination {
     data object TimelineHome : TimelinesDestination
@@ -65,6 +66,7 @@ fun App(
 ) {
     ReliveTheme(themeId = ReliveThemeId.WarmJournal) {
         val scope = rememberCoroutineScope()
+        val composerDraftStore = remember { TimelineComposerDraftStore() }
         val homeViewModel = remember(container, scope) {
             TimelineHomeViewModel(
                 homeRepository = container.timelineHomeRepository,
@@ -107,6 +109,7 @@ fun App(
                 idGenerator = container.idGenerator,
                 mediaStore = container.mediaStore,
                 mediaProcessor = container.mediaProcessor,
+                draftStore = composerDraftStore,
                 initialTimeline = active.scope,
                 selectedMomentId = active.selectedMomentId,
                 openComposerOnEnter = active.openComposerOnEnter,
@@ -127,6 +130,7 @@ fun App(
                     idGenerator = container.idGenerator,
                     mediaStore = container.mediaStore,
                     mediaProcessor = container.mediaProcessor,
+                    draftStore = composerDraftStore,
                     initialTimeline = CurrentTimeline.Favorites,
                     mode = TimelineMode.ReadOnlySystemCollection(title = "Favorites"),
                     selectedMomentId = favorites.selectedMomentId,
@@ -144,6 +148,7 @@ fun App(
                     idGenerator = container.idGenerator,
                     mediaStore = container.mediaStore,
                     mediaProcessor = container.mediaProcessor,
+                    draftStore = composerDraftStore,
                     initialTimeline = CurrentTimeline.OnThisDay(onThisDay.date),
                     mode = TimelineMode.ReadOnlySystemCollection(title = "On This Day"),
                     selectedMomentId = onThisDay.selectedMomentId,
@@ -161,6 +166,7 @@ fun App(
                     idGenerator = container.idGenerator,
                     mediaStore = container.mediaStore,
                     mediaProcessor = container.mediaProcessor,
+                    draftStore = composerDraftStore,
                     initialTimeline = CurrentTimeline.FromYourPast(fromYourPast.query),
                     mode = TimelineMode.ReadOnlySystemCollection(title = "From Your Past"),
                     selectedMomentId = fromYourPast.selectedMomentId,

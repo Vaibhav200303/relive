@@ -2,7 +2,6 @@ package com.vaibhav.relive.ui.components.viewer
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,9 +18,9 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -124,18 +123,12 @@ private fun GalleryTopBar(count: Int, onClose: () -> Unit) {
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 8.dp),
     ) {
-        Box(
+        IconButton(
+            onClick = onClose,
             modifier = Modifier
                 .align(Alignment.CenterStart)
                 .size(48.dp)
-                .clip(CircleShape)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onClose,
-                )
                 .semantics { contentDescription = "Close media gallery" },
-            contentAlignment = Alignment.Center,
         ) { Text("✕", color = Color.White) }
         Text(
             text = "$count items",

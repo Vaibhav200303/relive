@@ -509,6 +509,15 @@ Format for each entry:
 - **Decision:** Every settled editable custom timeline whose observed Moment projection is empty expands its existing inline composer using the established animation; no opened-state flag is stored. All remains governed by its explicit global-New intent. Collection cards remove `MediaToCardSurfaceFade` entirely while preserving their deterministic generated fallback covers, media dimensions, and collage selection. Semantic tokens enlarge the lower information areas; only the title occupies flexible space with `Alignment.CenterStart`, leaving metadata in its existing lower row/area. Saved Moment location renders below date/time using the same eyebrow type, `textSecondary`, trimmed whitespace, and first-character-only capitalization derived from the persisted value.
 - **Consequences:** Returning to an unsaved empty custom timeline again offers the composer; after the first Moment exists, normal entry is collapsed. No timeline, location, or cover data is migrated or duplicated. This supersedes ADR-0038's collection-card fade decision and the prior custom-timeline one-shot entry refinement only; global quick capture, generated-cover selection, card media sizing, and persistence behavior remain unchanged.
 
+---
+
+## ADR-0042 — Selective Material 3 interaction behavior and semantic haptics
+
+- **Date:** 2026-08-24 · **Status:** Accepted
+- **Context:** Relive's approved editorial components already define its visual identity, while generic dialogs, popups, platform-choice overlays, and undersized controls need stronger focus, accessibility, feedback, and dismissal behavior. Applying an experimental expressive theme globally would risk replacing settled layout and motion decisions.
+- **Decision:** Material 3 and its expressive APIs are adopted only at component boundaries where they improve interaction behavior. Relive retains its timeline, cards, search capsules, composer fields, media presentation, floating-toolbar indicator, and camera chrome. Dialogs, menus, date picker, snackbar, transparent viewer controls, and the media-library modal use Material behavior under Relive colors, type, spacing, and semantic overlay/dialog/menu tokens. Shared Compose UI uses the semantic haptic cues `Action`, `Selection`, `ToggleOn`, `ToggleOff`, `Context`, `Confirm`, and `Reject` for direct controls and one-shot outcomes. Typing, scrolling, passive animation, normal card navigation, and routine Back/Close actions have no haptic. Android camera shutter feedback remains the existing success-timed native vibration, and the native iOS camera receives no shared feedback layer.
+- **Consequences:** Relive gains consistent minimum targets, focus/error semantics, outcome feedback, and platform modal behavior without a global `MaterialExpressiveTheme`, a new dependency, a full-screen SearchBar, Add Media button groups, or pervasive spring motion. Experimental opt-ins remain local. Shared haptics may safely no-op when unsupported and must never be fired from recomposition.
+
 ## Template for new decisions
 
 ```

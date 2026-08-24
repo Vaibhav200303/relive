@@ -314,6 +314,7 @@ The composer is **collapsed by default**. In the collapsed state:
 - Expansion and collapse are **smoothly animated** (`AnimatedContent` with expand/shrink vertical transitions).
 - The `×` reset button resets all fields and **collapses** the composer.
 - A successful **Keep Moment** resets all fields and **collapses** the composer.
+- System/visible Back preserves an unfinished draft for its current timeline and leaves/collapses without a discard dialog. Reopening that same timeline restores it during the app session; `×` remains the explicit discard-confirmation path.
 - Keyboard behavior keeps the active composer usable above the IME (see ADR-0016).
 - Entry from global `+ New` waits for All's content projection and one collapsed composed frame, then runs this same expansion transition and requests first-field focus after the expanding composer enters composition. It uses no arbitrary delay; subsequent media actions do not re-request focus.
 
@@ -328,7 +329,7 @@ The expanded composer contains:
 - **tags** (see §4.2 for tag behavior)
 - **media attachments**
 - **Add Media** control
-- primary action: **Keep Moment**, rendered as a theme-aware Material 3 primary button
+- primary action: **Keep Moment**, rendered as a prominent, centered, theme-aware Material 3 primary button
 - reset/cancel **`×`** at the top-right
 
 ### 6.3 Add Media flow

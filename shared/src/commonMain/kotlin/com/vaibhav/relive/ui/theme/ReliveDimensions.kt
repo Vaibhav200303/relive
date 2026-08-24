@@ -21,6 +21,8 @@ data class ReliveRadii(
     val sm: Dp = 8.dp,
     val md: Dp = 12.dp,
     val lg: Dp = 20.dp,
+    val dialog: Dp = 28.dp,
+    val menu: Dp = md,
     val pill: Dp = 999.dp,
 )
 
@@ -82,6 +84,12 @@ data class ReliveSearchDimensions(
 )
 
 @Immutable
+data class ReliveComposerDimensions(
+    /** Visible tag field height; its containing touch target remains 48dp. */
+    val tagVisibleHeight: Dp = 36.dp,
+)
+
+@Immutable
 data class ReliveFloatingToolbarDimensions(
     val height: Dp = 64.dp,
     val compactWidth: Dp = 64.dp,
@@ -132,6 +140,7 @@ data class ReliveDimensions(
     val rediscover: ReliveRediscoverDimensions = ReliveRediscoverDimensions(),
     val profile: ReliveProfileDimensions = ReliveProfileDimensions(),
     val search: ReliveSearchDimensions = ReliveSearchDimensions(),
+    val composer: ReliveComposerDimensions = ReliveComposerDimensions(),
     val floatingToolbar: ReliveFloatingToolbarDimensions = ReliveFloatingToolbarDimensions(),
     val media: ReliveMediaDimensions = ReliveMediaDimensions(),
     val minTouchTarget: Dp = 48.dp,

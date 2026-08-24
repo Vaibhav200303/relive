@@ -26,6 +26,8 @@ class TimelineCreationController(
     val state: StateFlow<TimelineCreationState> = _state.asStateFlow()
     private val _createdTimelines = MutableSharedFlow<Timeline.Custom>(extraBufferCapacity = 1)
     val createdTimelines: SharedFlow<Timeline.Custom> = _createdTimelines.asSharedFlow()
+    private val _outcomes = MutableSharedFlow<TimelineCreationOutcome>(extraBufferCapacity = 1)
+    val outcomes: SharedFlow<TimelineCreationOutcome> = _outcomes.asSharedFlow()
 
     fun show() {
         _state.update { TimelineCreationState(isVisible = true) }
@@ -52,6 +54,7 @@ class TimelineCreationController(
         }
         if (error != null) {
             _state.update { it.copy(errorMessage = error) }
+            _outcomes.tryEmit(TimelineCreationOutcome.Rejected)
             return
         }
         _state.update { it.copy(isSaving = true) }
@@ -63,12 +66,19 @@ class TimelineCreationController(
                     createdAt = clock.now(),
                 )
                 _state.value = TimelineCreationState()
+                _outcomes.emit(TimelineCreationOutcome.Succeeded)
                 _createdTimelines.emit(timeline)
             } catch (_: Throwable) {
                 _state.update {
                     it.copy(isSaving = false, errorMessage = "Couldn't create this timeline. Try again.")
                 }
+                _outcomes.emit(TimelineCreationOutcome.Rejected)
             }
         }
     }
+}
+
+enum class TimelineCreationOutcome {
+    Succeeded,
+    Rejected,
 }

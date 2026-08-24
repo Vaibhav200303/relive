@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -47,6 +48,9 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -68,6 +72,8 @@ import com.vaibhav.relive.platform.permission.MicPermissionResult
 import com.vaibhav.relive.platform.system.ReliveBackHandler
 import com.vaibhav.relive.presentation.composer.MomentComposerState
 import com.vaibhav.relive.presentation.composer.MomentComposerViewModel
+import com.vaibhav.relive.presentation.composer.TimelineComposerDraftStore
+import com.vaibhav.relive.presentation.composer.MomentSaveOutcome
 import com.vaibhav.relive.presentation.composer.ComposerOverlay
 import com.vaibhav.relive.presentation.composer.SaveState
 import com.vaibhav.relive.presentation.timeline.CurrentTimeline
@@ -93,9 +99,12 @@ import com.vaibhav.relive.ui.components.timeline.EmptyCustomTimelinePlaceholder
 import com.vaibhav.relive.ui.components.timeline.MomentCard
 import com.vaibhav.relive.ui.components.timeline.TimelineHeader
 import com.vaibhav.relive.ui.components.timeline.DateNavigationPicker
+import com.vaibhav.relive.ui.components.timeline.DiscardTimelineDraftDialog
 import com.vaibhav.relive.ui.components.timeline.SystemCollectionHeader
 import com.vaibhav.relive.ui.components.viewer.MediaViewer
 import com.vaibhav.relive.ui.components.viewer.MomentMediaGallery
+import com.vaibhav.relive.ui.feedback.ReliveHapticCue
+import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveTheme
 
 private fun timelineViewModelCanEdit(moment: MomentPresentation, clock: Clock): Boolean =
@@ -104,6 +113,30 @@ private fun timelineViewModelCanEdit(moment: MomentPresentation, clock: Clock): 
 internal fun cleanupForgottenAttachments(moment: com.vaibhav.relive.domain.model.Moment, mediaStore: MediaStore) {
     moment.attachments.forEach { attachment -> runCatching { mediaStore.delete(attachment.storageRef) } }
 }
+
+internal sealed interface ComposerCloseAction {
+    data object ResetAndCollapse : ComposerCloseAction
+    data object ShowDiscardConfirmation : ComposerCloseAction
+}
+
+internal data class ComposerDiscardConfirmationState(val isVisible: Boolean = false) {
+    fun onCloseRequested(hasUserDraft: Boolean): ComposerDiscardTransition =
+        if (hasUserDraft) {
+            ComposerDiscardTransition(copy(isVisible = true), ComposerCloseAction.ShowDiscardConfirmation)
+        } else {
+            ComposerDiscardTransition(copy(isVisible = false), ComposerCloseAction.ResetAndCollapse)
+        }
+
+    fun onCancelled(): ComposerDiscardConfirmationState = copy(isVisible = false)
+
+    fun onDiscarded(): ComposerDiscardTransition =
+        ComposerDiscardTransition(copy(isVisible = false), ComposerCloseAction.ResetAndCollapse)
+}
+
+internal data class ComposerDiscardTransition(
+    val state: ComposerDiscardConfirmationState,
+    val action: ComposerCloseAction,
+)
 
 @Composable
 fun TimelineScreen(
@@ -114,6 +147,7 @@ fun TimelineScreen(
     idGenerator: IdGenerator,
     mediaStore: MediaStore,
     mediaProcessor: MediaProcessor,
+    draftStore: TimelineComposerDraftStore? = null,
     initialTimeline: CurrentTimeline = CurrentTimeline.All,
     mode: TimelineMode = TimelineMode.Editable,
     selectedMomentId: MomentId? = null,
@@ -157,12 +191,18 @@ fun TimelineScreen(
             scope = scope,
             mediaStore = mediaStore,
             mediaProcessor = mediaProcessor,
+            draftStore = draftStore,
         )
     }
     val timelineState by timelineViewModel.state.collectAsState()
     val composerState by composerViewModel.state.collectAsState()
 
-    ReliveBackHandler(enabled = onBackToTimelineHome != null) { onBackToTimelineHome?.invoke() }
+    val leaveTimeline: () -> Unit = {
+        composerViewModel.preserveDraft()
+        onBackToTimelineHome?.invoke()
+        Unit
+    }
+    ReliveBackHandler(enabled = onBackToTimelineHome != null) { leaveTimeline() }
 
     var navState by remember { mutableStateOf(TimelineMediaNavState.Idle) }
     var isComposerExpanded by remember { mutableStateOf(false) }
@@ -171,8 +211,10 @@ fun TimelineScreen(
     var momentToForget by remember { mutableStateOf<MomentPresentation?>(null) }
     var editorBounds by remember { mutableStateOf<Rect?>(null) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var discardConfirmation by remember { mutableStateOf(ComposerDiscardConfirmationState()) }
     var requestComposerFocus by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val haptics = rememberReliveHaptics()
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
@@ -195,7 +237,6 @@ fun TimelineScreen(
         ) {
             // Let the destination render once in its normal collapsed state so AnimatedContent
             // observes a real false -> true transition instead of entering already open.
-            if (openComposerOnEnter) onComposerOpenIntentConsumed?.invoke()
             withFrameNanos { }
             if (isComposerExpanded) return@LaunchedEffect
             composerViewModel.prepareForTimeline(timelineState.currentTimeline)
@@ -203,6 +244,9 @@ fun TimelineScreen(
             // Focus only after the expanding composer has entered composition.
             withFrameNanos { }
             requestComposerFocus = true
+            // Clearing the route intent before this point cancels this effect during
+            // recomposition, leaving All collapsed. Consume it only after expansion.
+            if (openComposerOnEnter) onComposerOpenIntentConsumed?.invoke()
         }
     }
 
@@ -217,6 +261,16 @@ fun TimelineScreen(
         }
         if (nowSaving) wasEditingWhenSaving = composerState.isEditing
         wasSaving = nowSaving
+    }
+    LaunchedEffect(composerViewModel) {
+        composerViewModel.saveOutcomes.collect { outcome ->
+            haptics.perform(
+                when (outcome) {
+                    MomentSaveOutcome.Succeeded -> ReliveHapticCue.Confirm
+                    MomentSaveOutcome.Rejected -> ReliveHapticCue.Reject
+                },
+            )
+        }
     }
     LaunchedEffect(timelineState.dateNavigation) {
         timelineState.dateNavigation?.message?.let { snackbarHostState.showSnackbar(it) }
@@ -275,7 +329,7 @@ fun TimelineScreen(
                 ActivePlayback.stopActive()
                 navState = navState.openFromCollage(list, index)
             },
-            onBack = onBackToTimelineHome,
+            onBack = if (onBackToTimelineHome == null) null else leaveTimeline,
             onTitleChange = composerViewModel::updateTitle,
             onContentChange = composerViewModel::updateContent,
             onLocationChange = composerViewModel::updateManualLocation,
@@ -295,8 +349,12 @@ fun TimelineScreen(
             },
             onRetryAttachment = composerViewModel::retryAttachment,
             onReset = {
-                composerViewModel.reset()
-                isComposerExpanded = false
+                val transition = discardConfirmation.onCloseRequested(composerState.hasUserDraft)
+                discardConfirmation = transition.state
+                if (transition.action == ComposerCloseAction.ResetAndCollapse) {
+                    composerViewModel.reset()
+                    isComposerExpanded = false
+                }
             },
             onKeepMoment = composerViewModel::keepMoment,
             isComposerExpanded = isComposerExpanded,
@@ -375,21 +433,64 @@ fun TimelineScreen(
     if (mode.allowsMutations) momentToForget?.let { moment ->
         AlertDialog(
             onDismissRequest = { momentToForget = null },
-            title = { Text("Forget this moment?") },
-            text = { Text("This permanently removes it from Relive.") },
-            dismissButton = { TextButton(onClick = { momentToForget = null }) { Text("Cancel") } },
+            shape = RoundedCornerShape(ReliveTheme.dimensions.radii.dialog),
+            containerColor = ReliveTheme.colors.surfaceOverlay,
+            title = {
+                Text(
+                    "Forget this moment?",
+                    style = ReliveTheme.typography.title,
+                    color = ReliveTheme.colors.textPrimary,
+                )
+            },
+            text = {
+                Text(
+                    "This permanently removes it from Relive.",
+                    style = ReliveTheme.typography.body,
+                    color = ReliveTheme.colors.textSecondary,
+                )
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { momentToForget = null },
+                    colors = ButtonDefaults.textButtonColors(contentColor = ReliveTheme.colors.textSecondary),
+                ) { Text("Cancel") }
+            },
             confirmButton = {
-                TextButton(onClick = {
-                    ActivePlayback.stopActive()
-                    timelineViewModel.forget(
-                        moment = moment.toMoment(),
-                        onDeleted = { deleted ->
-                            cleanupForgottenAttachments(deleted, mediaStore)
-                            momentToForget = null
-                        },
-                        onFailure = { momentToForget = null },
-                    )
-                }) { Text("Forget") }
+                Button(
+                    onClick = {
+                        ActivePlayback.stopActive()
+                        timelineViewModel.forget(
+                            moment = moment.toMoment(),
+                            onDeleted = { deleted ->
+                                cleanupForgottenAttachments(deleted, mediaStore)
+                                haptics.perform(ReliveHapticCue.Confirm)
+                                momentToForget = null
+                            },
+                            onFailure = {
+                                haptics.perform(ReliveHapticCue.Reject)
+                                momentToForget = null
+                            },
+                        )
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = ReliveTheme.colors.actionDestructive,
+                        contentColor = ReliveTheme.colors.textOnAccent,
+                    ),
+                ) { Text("Forget") }
+            },
+        )
+    }
+
+    if (mode.allowsMutations && discardConfirmation.isVisible) {
+        DiscardTimelineDraftDialog(
+            onDiscard = {
+                val transition = discardConfirmation.onDiscarded()
+                discardConfirmation = transition.state
+                composerViewModel.reset()
+                isComposerExpanded = false
+            },
+            onKeepEditing = {
+                discardConfirmation = discardConfirmation.onCancelled()
             },
         )
     }
@@ -649,7 +750,17 @@ private fun TimelineContent(
             SnackbarHost(
                 hostState = snackbarHostState,
                 modifier = Modifier.align(Alignment.BottomCenter),
-            )
+            ) { data ->
+                Snackbar(
+                    snackbarData = data,
+                    shape = RoundedCornerShape(ReliveTheme.dimensions.radii.menu),
+                    containerColor = ReliveTheme.colors.accent,
+                    contentColor = ReliveTheme.colors.textOnAccent,
+                    actionColor = ReliveTheme.colors.textOnAccent,
+                    actionContentColor = ReliveTheme.colors.textOnAccent,
+                    dismissActionContentColor = ReliveTheme.colors.textOnAccent,
+                )
+            }
         }
     }
 }

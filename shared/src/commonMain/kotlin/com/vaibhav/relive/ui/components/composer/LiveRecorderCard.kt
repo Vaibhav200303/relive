@@ -23,6 +23,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.vaibhav.relive.presentation.composer.LiveRecording
+import com.vaibhav.relive.ui.feedback.ReliveHapticCue
+import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveTheme
 
 /**
@@ -40,6 +42,7 @@ internal fun LiveRecorderCard(
     val colors = ReliveTheme.colors
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
+    val haptics = rememberReliveHaptics()
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(dims.spacing.md),
@@ -67,7 +70,10 @@ internal fun LiveRecorderCard(
             color = colors.textSecondary,
         )
         IconButton(
-            onClick = onCancel,
+            onClick = {
+                haptics.perform(ReliveHapticCue.Action)
+                onCancel()
+            },
             modifier = Modifier
                 .size(dims.minTouchTarget)
                 .semantics { contentDescription = "Discard recording" },
@@ -81,8 +87,12 @@ internal fun LiveRecorderCard(
 private fun StopSquare(onStop: () -> Unit) {
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
+    val haptics = rememberReliveHaptics()
     IconButton(
-        onClick = onStop,
+        onClick = {
+            haptics.perform(ReliveHapticCue.ToggleOff)
+            onStop()
+        },
         modifier = Modifier
             .size(dims.minTouchTarget)
             .semantics { contentDescription = "Stop recording" },

@@ -5,10 +5,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,13 +28,14 @@ fun SystemCollectionHeader(title: String, onBack: () -> Unit) {
             .windowInsetsPadding(WindowInsets.statusBars)
             .padding(horizontal = dims.spacing.md, vertical = dims.spacing.sm),
     ) {
-        TextButton(
+        IconButton(
             onClick = onBack,
             modifier = Modifier
                 .align(Alignment.CenterStart)
+                .size(dims.minTouchTarget)
                 .semantics { contentDescription = "Back" },
         ) {
-            Text("Back", style = ReliveTheme.typography.action, color = colors.accent)
+            BackGlyph(dims.icon.lg, colors.textSecondary, dims.stroke.icon)
         }
         Text(
             text = title,

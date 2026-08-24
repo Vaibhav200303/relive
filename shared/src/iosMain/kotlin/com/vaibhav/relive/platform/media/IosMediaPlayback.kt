@@ -33,6 +33,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.vaibhav.relive.domain.model.MediaStorageRef
 import com.vaibhav.relive.ui.components.timeline.WaveformView
+import com.vaibhav.relive.ui.feedback.ReliveHapticCue
+import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.get
 import kotlinx.cinterop.useContents
@@ -85,6 +87,7 @@ actual fun RelivedVideo(
     posterFallbackPath: String?,
 ) {
     val path = mediaStore.resolveAbsolutePath(ref)
+    val haptics = rememberReliveHaptics()
     val player = remember(path) { AVPlayer(uRL = NSURL.fileURLWithPath(path)) }
     var playing by remember(path) { mutableStateOf(false) }
     // Rotation-aware natural size so the inner surface fits without stretch.
@@ -120,8 +123,15 @@ actual fun RelivedVideo(
                     playerLayer.frame = view.bounds
                 },
                 modifier = Modifier.fillMaxSize().clickable {
-                    if (playing) { player.pause(); playing = false }
-                    else { player.play(); playing = true }
+                    if (playing) {
+                        haptics.perform(ReliveHapticCue.ToggleOff)
+                        player.pause()
+                        playing = false
+                    } else {
+                        haptics.perform(ReliveHapticCue.ToggleOn)
+                        player.play()
+                        playing = true
+                    }
                 },
             )
             // Poster overlay so the ready surface never renders as a bare
@@ -154,6 +164,7 @@ actual fun RelivedVideo(
 @Composable
 actual fun RelivedAudio(ref: MediaStorageRef, mediaStore: MediaStore, modifier: Modifier) {
     val path = mediaStore.resolveAbsolutePath(ref)
+    val haptics = rememberReliveHaptics()
     val player = remember(path) {
         AVAudioPlayer(contentsOfURL = NSURL.fileURLWithPath(path), error = null).also { it.prepareToPlay() }
     }
@@ -165,8 +176,15 @@ actual fun RelivedAudio(ref: MediaStorageRef, mediaStore: MediaStore, modifier: 
             .background(Color(0x11000000))
             .padding(12.dp)
             .clickable {
-                if (player.playing) { player.pause(); playing = false }
-                else { player.play(); playing = true }
+                if (player.playing) {
+                    haptics.perform(ReliveHapticCue.ToggleOff)
+                    player.pause()
+                    playing = false
+                } else {
+                    haptics.perform(ReliveHapticCue.ToggleOn)
+                    player.play()
+                    playing = true
+                }
             },
         contentAlignment = Alignment.CenterStart,
     ) {
@@ -259,6 +277,7 @@ actual fun RelivedTimelineInlineVideo(
     modifier: Modifier,
 ) {
     val path = mediaStore.resolveAbsolutePath(ref)
+    val haptics = rememberReliveHaptics()
     val key = ref.value
     var player: AVPlayer? by remember(path) { mutableStateOf(null) }
     var playerLayer: AVPlayerLayer? by remember(path) { mutableStateOf(null) }
@@ -334,15 +353,18 @@ actual fun RelivedTimelineInlineVideo(
                     val existing = player
                     if (existing != null) {
                         if (playing) {
+                            haptics.perform(ReliveHapticCue.ToggleOff)
                             existing.pause()
                             playing = false
                             ActivePlayback.release(stopSelf)
                         } else {
+                            haptics.perform(ReliveHapticCue.ToggleOn)
                             existing.play()
                             playing = true
                             ActivePlayback.claim(stopSelf)
                         }
                     } else {
+                        haptics.perform(ReliveHapticCue.ToggleOn)
                         val mp = AVPlayer(uRL = NSURL.fileURLWithPath(path))
                         val layer = AVPlayerLayer.playerLayerWithPlayer(mp).apply {
                             setVideoGravity(AVLayerVideoGravityResizeAspect)
@@ -366,6 +388,7 @@ actual fun RelivedTimelineInlineVideo(
 @Composable
 actual fun RelivedAudioTile(ref: MediaStorageRef, mediaStore: MediaStore, modifier: Modifier) {
     val path = mediaStore.resolveAbsolutePath(ref)
+    val haptics = rememberReliveHaptics()
     val durationMs = rememberMediaDurationMs(ref, mediaStore) ?: 0L
     val envelope = rememberWaveformFor(ref, mediaStore, WaveformProcessor.bucketsFor(durationMs))
     val holder = remember(path) { IosAudioTileHolder() }
@@ -416,12 +439,15 @@ actual fun RelivedAudioTile(ref: MediaStorageRef, mediaStore: MediaStore, modifi
         ) {
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(48.dp)
                     .clip(CircleShape)
                     .background(Color(0x33FFFFFF))
                     .clickable {
                         holder.togglePlay(path)
                         val nowPlaying = holder.isPlaying()
+                        haptics.perform(
+                            if (nowPlaying) ReliveHapticCue.ToggleOn else ReliveHapticCue.ToggleOff,
+                        )
                         playing = nowPlaying
                         if (nowPlaying) ActivePlayback.claim(stopSelf)
                         else { posMs = (holder.currentTimeSec() * 1000.0).toLong(); ActivePlayback.release(stopSelf) }

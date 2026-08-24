@@ -1,6 +1,8 @@
 package com.vaibhav.relive.ui.components.timeline
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,6 +21,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.IconButton
@@ -43,6 +46,8 @@ import androidx.compose.ui.unit.dp
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.presentation.timeline.MomentAttachmentPresentation
 import com.vaibhav.relive.presentation.timeline.MomentPresentation
+import com.vaibhav.relive.ui.feedback.ReliveHapticCue
+import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveTheme
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -62,6 +67,7 @@ fun MomentCard(
     val colors = ReliveTheme.colors
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
+    val haptics = rememberReliveHaptics()
 
     var actionsOpen by remember(moment.id, canEditOrForget) { mutableStateOf(false) }
     Box {
@@ -90,12 +96,28 @@ fun MomentCard(
                 )
             }
             .padding(vertical = dims.spacing.xl)
-            .combinedClickable(onClick = {}, onLongClick = { if (canEditOrForget) actionsOpen = true })
+            .combinedClickable(
+                onClick = {},
+                onLongClick = {
+                    if (canEditOrForget) {
+                        haptics.perform(ReliveHapticCue.Context)
+                        actionsOpen = true
+                    }
+                },
+            )
             .semantics {
                 if (canEditOrForget) {
                     customActions = listOf(
-                        CustomAccessibilityAction("Edit moment") { onEdit(); true },
-                        CustomAccessibilityAction("Forget moment") { onForget(); true },
+                        CustomAccessibilityAction("Edit moment") {
+                            haptics.perform(ReliveHapticCue.Action)
+                            onEdit()
+                            true
+                        },
+                        CustomAccessibilityAction("Forget moment") {
+                            haptics.perform(ReliveHapticCue.Action)
+                            onForget()
+                            true
+                        },
                     )
                 }
             },
@@ -224,9 +246,35 @@ fun MomentCard(
             }
         }
     }
-        DropdownMenu(expanded = actionsOpen, onDismissRequest = { actionsOpen = false }) {
-            DropdownMenuItem(text = { Text("Edit") }, onClick = { actionsOpen = false; onEdit() })
-            DropdownMenuItem(text = { Text("Forget") }, onClick = { actionsOpen = false; onForget() })
+        DropdownMenu(
+            expanded = actionsOpen,
+            onDismissRequest = { actionsOpen = false },
+            shape = RoundedCornerShape(dims.radii.menu),
+            containerColor = colors.surfaceOverlay,
+            tonalElevation = 0.dp,
+            shadowElevation = dims.spacing.xs,
+            border = BorderStroke(dims.stroke.hairline, colors.borderMuted),
+        ) {
+            DropdownMenuItem(
+                text = { Text("Edit", style = type.action, color = colors.textPrimary) },
+                leadingIcon = { MomentMenuGlyph(forget = false) },
+                modifier = Modifier.heightIn(min = dims.minTouchTarget),
+                onClick = {
+                    actionsOpen = false
+                    haptics.perform(ReliveHapticCue.Action)
+                    onEdit()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("Forget", style = type.action, color = colors.actionDestructive) },
+                leadingIcon = { MomentMenuGlyph(forget = true) },
+                modifier = Modifier.heightIn(min = dims.minTouchTarget),
+                onClick = {
+                    actionsOpen = false
+                    haptics.perform(ReliveHapticCue.Action)
+                    onForget()
+                },
+            )
         }
     }
 }
@@ -254,6 +302,8 @@ private fun ExpandableContent(text: String) {
                 style = type.action,
                 color = colors.accent,
                 modifier = Modifier
+                    .heightIn(min = dims.minTouchTarget)
+                    .wrapContentHeight(Alignment.CenterVertically)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -274,8 +324,12 @@ private fun FavoriteHeart(isFavorite: Boolean, onToggle: () -> Unit) {
     val dims = ReliveTheme.dimensions
     val tint = if (isFavorite) colors.accent else colors.textMuted
     val description = if (isFavorite) "Unfavorite moment" else "Favorite moment"
+    val haptics = rememberReliveHaptics()
     IconButton(
-        onClick = onToggle,
+        onClick = {
+            haptics.perform(if (isFavorite) ReliveHapticCue.ToggleOff else ReliveHapticCue.ToggleOn)
+            onToggle()
+        },
         modifier = Modifier
             .size(dims.minTouchTarget)
             .semantics { contentDescription = description },
@@ -286,5 +340,60 @@ private fun FavoriteHeart(isFavorite: Boolean, onToggle: () -> Unit) {
             strokeWidth = dims.stroke.icon,
             filled = isFavorite,
         )
+    }
+}
+
+@Composable
+private fun MomentMenuGlyph(forget: Boolean) {
+    val colors = ReliveTheme.colors
+    val dims = ReliveTheme.dimensions
+    val tint = if (forget) colors.actionDestructive else colors.textSecondary
+    Canvas(Modifier.size(dims.icon.md)) {
+        val stroke = dims.stroke.icon.toPx()
+        if (forget) {
+            drawLine(
+                tint,
+                androidx.compose.ui.geometry.Offset(size.width * 0.3f, size.height * 0.3f),
+                androidx.compose.ui.geometry.Offset(size.width * 0.7f, size.height * 0.3f),
+                stroke,
+            )
+            drawLine(
+                tint,
+                androidx.compose.ui.geometry.Offset(size.width * 0.38f, size.height * 0.38f),
+                androidx.compose.ui.geometry.Offset(size.width * 0.42f, size.height * 0.82f),
+                stroke,
+            )
+            drawLine(
+                tint,
+                androidx.compose.ui.geometry.Offset(size.width * 0.62f, size.height * 0.38f),
+                androidx.compose.ui.geometry.Offset(size.width * 0.58f, size.height * 0.82f),
+                stroke,
+            )
+            drawLine(
+                tint,
+                androidx.compose.ui.geometry.Offset(size.width * 0.42f, size.height * 0.2f),
+                androidx.compose.ui.geometry.Offset(size.width * 0.58f, size.height * 0.2f),
+                stroke,
+            )
+        } else {
+            drawLine(
+                tint,
+                androidx.compose.ui.geometry.Offset(size.width * 0.22f, size.height * 0.76f),
+                androidx.compose.ui.geometry.Offset(size.width * 0.7f, size.height * 0.28f),
+                stroke,
+            )
+            drawLine(
+                tint,
+                androidx.compose.ui.geometry.Offset(size.width * 0.28f, size.height * 0.82f),
+                androidx.compose.ui.geometry.Offset(size.width * 0.76f, size.height * 0.34f),
+                stroke,
+            )
+            drawLine(
+                tint,
+                androidx.compose.ui.geometry.Offset(size.width * 0.22f, size.height * 0.76f),
+                androidx.compose.ui.geometry.Offset(size.width * 0.28f, size.height * 0.82f),
+                stroke,
+            )
+        }
     }
 }

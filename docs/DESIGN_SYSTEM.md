@@ -99,6 +99,8 @@ Opacity variants are drawn from the opacity scale (§15), not arbitrary values.
 | `color.surface.card` | `#EFECE5` | media container / tag chip / composer media-action surface |
 | `color.surface.card.translucent` | `#EFECE5` @ ~50% | quiet secondary surface treatment |
 | `color.surface.floating` | `#E1D8CB` | floating navigation and quick-capture controls |
+| `color.surface.overlay` | `#F6F4F0` | dialogs, menus, and modal sheets |
+| `color.action.destructive` | aliases `color.accent` | destructive actions without introducing an unapproved red |
 
 Surfaces are used sparingly — the product avoids excessive cards.
 
@@ -165,6 +167,8 @@ Reference anchors: screen horizontal padding ≈ `24dp`; vertical gap between mo
 | `radius.sm`    | `8dp`   | inner media image corners |
 | `radius.md`    | `12dp`  | media container, chips-as-pills baseline |
 | `radius.lg`    | `20dp`  | expressive composer media-action container |
+| `radius.dialog` | `28dp` | dialogs and modal-sheet top corners |
+| `radius.menu` | aliases `radius.md` | popup menus and snackbars |
 | `radius.pill`  | `999dp` | tag chips, circular buttons |
 
 Search uses the same `radius.pill` container shape. `search.container.height` is `56dp`; the inner controls retain the global `48dp` minimum touch target.
@@ -303,6 +307,8 @@ Opacity variants for colors come from this scale rather than one-off alpha value
 - Provide **content descriptions** for icon-only controls (e.g. Settings, Search, Favorite, Add media).
 - Build on **Material 3** components so platform accessibility semantics (focus, roles, announcements) are inherited, then restyle with tokens.
 - Honor reduced-motion preferences where the platform exposes them.
+- Use semantic haptic cues only for direct interaction outcomes: `Action`, `Selection`, `ToggleOn`, `ToggleOff`, `Context`, `Confirm`, and `Reject`. Do not haptic-trigger typing, scrolling, passive animation, ordinary navigation, or routine Back/Close actions.
+- Drive `Confirm` and `Reject` from one-shot success/failure outcomes, never from recomposition. Android camera capture retains its success-timed native vibration and must not receive a duplicate shared shutter haptic; the native iOS camera remains solely UIKit-controlled.
 
 ---
 

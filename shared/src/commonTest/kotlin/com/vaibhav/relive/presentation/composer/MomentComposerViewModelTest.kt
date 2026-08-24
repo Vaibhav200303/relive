@@ -26,6 +26,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -45,22 +47,28 @@ class MomentComposerViewModelTest {
     fun emptyMomentRejected() = runTest {
         val repo = RecordingRepository()
         val vm = newViewModel(repo)
+        val outcomes = mutableListOf<MomentSaveOutcome>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.saveOutcomes.toList(outcomes) }
 
         vm.keepMoment()
 
         val invalid = assertIs<SaveState.Invalid>(vm.state.value.saveState)
         assertTrue(MomentValidation.Reason.Empty in invalid.reasons)
         assertTrue(repo.inserts.isEmpty(), "empty moment must not be persisted")
+        assertEquals(listOf(MomentSaveOutcome.Rejected), outcomes)
     }
 
     @Test
     fun titleOnlySaves() = runTest {
         val repo = RecordingRepository()
         val vm = newViewModel(repo)
+        val outcomes = mutableListOf<MomentSaveOutcome>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.saveOutcomes.toList(outcomes) }
         vm.updateTitle("A")
         vm.keepMoment()
         assertEquals(1, repo.inserts.size)
         assertEquals("A", repo.inserts.single().first.title)
+        assertEquals(listOf(MomentSaveOutcome.Succeeded), outcomes)
     }
 
     @Test
@@ -151,6 +159,47 @@ class MomentComposerViewModelTest {
         assertFalse(vm.state.value.hasUserDraft)
         assertEquals(CurrentTimeline.Custom(family), vm.state.value.timelineContext)
         assertEquals(setOf(family), vm.state.value.selectedTimelineIds)
+    }
+
+    @Test
+    fun backPreservedDraftRestoresOnlyInItsOriginalTimeline() = runTest {
+        val drafts = TimelineComposerDraftStore()
+        val family = CurrentTimeline.Custom(TimelineId("family"))
+        val vm = newViewModel(RecordingRepository(), draftStore = drafts)
+        vm.prepareForTimeline(family)
+        vm.updateTitle("Family picnic")
+        vm.updateContent("Sunday")
+        vm.addTag("Family")
+        vm.updateManualLocation("Home")
+
+        vm.preserveDraft()
+
+        val restored = newViewModel(RecordingRepository(), draftStore = drafts)
+        restored.prepareForTimeline(family)
+        assertEquals("Family picnic", restored.state.value.title)
+        assertEquals("Sunday", restored.state.value.content)
+        assertEquals("family", restored.state.value.tags.single().label)
+        assertEquals(ReliveLocation(placeName = "Home"), restored.state.value.location)
+
+        val other = newViewModel(RecordingRepository(), draftStore = drafts)
+        other.prepareForTimeline(CurrentTimeline.Custom(TimelineId("college")))
+        assertFalse(other.state.value.hasUserDraft)
+    }
+
+    @Test
+    fun successfulKeepAndExplicitResetClearTimelineDraft() = runTest {
+        val drafts = TimelineComposerDraftStore()
+        val repo = RecordingRepository()
+        val vm = newViewModel(repo, draftStore = drafts)
+        vm.updateTitle("Keep me")
+        vm.preserveDraft()
+        vm.keepMoment()
+        assertNull(drafts.restore(CurrentTimeline.All))
+
+        vm.updateTitle("Discard me")
+        vm.preserveDraft()
+        vm.reset()
+        assertNull(drafts.restore(CurrentTimeline.All))
     }
 
     @Test
@@ -774,6 +823,7 @@ class MomentComposerViewModelTest {
         store: MediaStore = FakeMediaStore(),
         processor: MediaProcessor = FakeMediaProcessor(store as? FakeMediaStore ?: FakeMediaStore()),
         recorderFactory: () -> AudioRecorder = { error("not used") },
+        draftStore: TimelineComposerDraftStore? = null,
         processingConcurrency: Int = 4,
         testScope: TestScope = TestScope(UnconfinedTestDispatcher(testScheduler)),
     ): MomentComposerViewModel {
@@ -785,6 +835,7 @@ class MomentComposerViewModelTest {
             scope = testScope,
             mediaStore = store,
             mediaProcessor = processor,
+            draftStore = draftStore,
             audioRecorderFactory = recorderFactory,
             processingConcurrency = processingConcurrency,
         )

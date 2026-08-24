@@ -26,7 +26,10 @@ import com.vaibhav.relive.presentation.timeline.CurrentTimeline
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -51,12 +54,15 @@ class MomentComposerViewModel(
     private val scope: CoroutineScope,
     private val mediaStore: MediaStore,
     private val mediaProcessor: MediaProcessor,
+    private val draftStore: TimelineComposerDraftStore? = null,
     private val audioRecorderFactory: () -> AudioRecorder = { createAudioRecorder(mediaStore) },
     processingConcurrency: Int = DEFAULT_PROCESSING_CONCURRENCY,
 ) {
 
     private val _state = MutableStateFlow(MomentComposerState())
     val state: StateFlow<MomentComposerState> = _state.asStateFlow()
+    private val _saveOutcomes = MutableSharedFlow<MomentSaveOutcome>(extraBufferCapacity = 1)
+    val saveOutcomes: SharedFlow<MomentSaveOutcome> = _saveOutcomes.asSharedFlow()
 
     private var recorder: AudioRecorder? = null
     private var recorderJob: Job? = null
@@ -74,7 +80,12 @@ class MomentComposerViewModel(
     /** Binds a clean draft to the timeline where the composer was opened. */
     fun prepareForTimeline(timeline: CurrentTimeline) {
         if (_state.value.hasUserDraft) return
-        _state.value = freshStateFor(timeline)
+        _state.value = draftStore?.restore(timeline) ?: freshStateFor(timeline)
+    }
+
+    /** Preserves work before a Back navigation leaves this Timeline screen. */
+    fun preserveDraft() {
+        draftStore?.preserve(_state.value)
     }
 
     /** Optional multi-assignment is exposed only while composing from All. */
@@ -389,6 +400,7 @@ class MomentComposerViewModel(
         cancelRecording()
         rawByDraftId.clear()
         _state.value = freshStateFor(current.timelineContext)
+        draftStore?.clear(current.timelineContext)
         drafts.forEach { att ->
             val s = att.status
             if (s is DraftMediaStatus.Ready && att.existingAttachmentId == null) {
@@ -425,14 +437,17 @@ class MomentComposerViewModel(
         if (snapshot.isSaving) return
         if (snapshot.isRecording) {
             setMediaError("Stop the recording before keeping this moment.")
+            _saveOutcomes.tryEmit(MomentSaveOutcome.Rejected)
             return
         }
         if (snapshot.hasProcessingAttachments) {
             _state.update { it.copy(saveState = SaveState.AwaitingProcessing) }
+            _saveOutcomes.tryEmit(MomentSaveOutcome.Rejected)
             return
         }
         if (snapshot.hasFailedAttachments) {
             setMediaError("Retry or remove failed media before keeping.")
+            _saveOutcomes.tryEmit(MomentSaveOutcome.Rejected)
             return
         }
 
@@ -463,6 +478,7 @@ class MomentComposerViewModel(
         when (val result = MomentValidation.validate(moment)) {
             is MomentValidation.Result.Invalid -> {
                 _state.update { it.copy(saveState = SaveState.Invalid(result.reasons)) }
+                _saveOutcomes.tryEmit(MomentSaveOutcome.Rejected)
                 return
             }
             MomentValidation.Result.Ok -> Unit
@@ -491,8 +507,11 @@ class MomentComposerViewModel(
                 }
                 rawByDraftId.clear()
                 _state.value = freshStateFor(snapshot.timelineContext)
+                draftStore?.clear(snapshot.timelineContext)
+                _saveOutcomes.emit(MomentSaveOutcome.Succeeded)
             } catch (t: Throwable) {
                 _state.update { it.copy(saveState = SaveState.Failure(t)) }
+                _saveOutcomes.emit(MomentSaveOutcome.Rejected)
             }
         }
     }
@@ -513,6 +532,11 @@ class MomentComposerViewModel(
         /** Bounded concurrency so multiple large videos never all run at once. */
         const val DEFAULT_PROCESSING_CONCURRENCY: Int = 2
     }
+}
+
+enum class MomentSaveOutcome {
+    Succeeded,
+    Rejected,
 }
 
 private fun SaveState.clearedOnEdit(): SaveState = when (this) {

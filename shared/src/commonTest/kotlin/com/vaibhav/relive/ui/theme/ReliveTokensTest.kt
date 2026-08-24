@@ -20,6 +20,8 @@ class ReliveTokensTest {
         assertEquals(Color(0xFF3C3633), c.textPrimary)
         assertEquals(Color(0xFF6F4E37), c.accent)
         assertEquals(Color(0xFFEFECE5), c.surfaceCard)
+        assertEquals(Color(0xFFF6F4F0), c.surfaceOverlay)
+        assertEquals(c.accent, c.actionDestructive)
         assertEquals(Color(0xFFD5CDBF), c.border)
         assertEquals(Color.White, c.textOnAccent)
     }
@@ -64,6 +66,8 @@ class ReliveTokensTest {
         val r = DefaultReliveDimensions.radii
         assertEquals(8.dp, r.sm)
         assertEquals(12.dp, r.md)
+        assertEquals(28.dp, r.dialog)
+        assertEquals(r.md, r.menu)
         assertEquals(999.dp, r.pill)
     }
 
@@ -99,6 +103,12 @@ class ReliveTokensTest {
         assertEquals(272.dp, rediscover.favoriteShelfCardHeight)
         assertEquals(128.dp, rediscover.compactInfoAreaHeight)
         assertEquals(128.dp, rediscover.heroInfoAreaMinHeight)
+    }
+
+    @Test
+    fun compactTagFieldKeepsASeparateAccessibleTouchTarget() {
+        assertEquals(36.dp, DefaultReliveDimensions.composer.tagVisibleHeight)
+        assertTrue(DefaultReliveDimensions.composer.tagVisibleHeight < DefaultReliveDimensions.minTouchTarget)
     }
 
     @Test

@@ -47,6 +47,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.vaibhav.relive.domain.model.MediaStorageRef
 import com.vaibhav.relive.ui.components.timeline.WaveformView
+import com.vaibhav.relive.ui.feedback.ReliveHapticCue
+import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -89,6 +91,7 @@ actual fun RelivedVideo(
     modifier: Modifier,
     posterFallbackPath: String?,
 ) {
+    val haptics = rememberReliveHaptics()
     val path = mediaStore.resolveAbsolutePath(ref)
     var player: MediaPlayer? by remember(path) { mutableStateOf(null) }
     var playing by remember(path) { mutableStateOf(false) }
@@ -133,8 +136,15 @@ actual fun RelivedVideo(
                 },
                 modifier = Modifier.fillMaxSize().clickable {
                     val mp = player ?: return@clickable
-                    if (mp.isPlaying) { mp.pause(); playing = false }
-                    else { mp.start(); playing = true }
+                    if (mp.isPlaying) {
+                        haptics.perform(ReliveHapticCue.ToggleOff)
+                        mp.pause()
+                        playing = false
+                    } else {
+                        haptics.perform(ReliveHapticCue.ToggleOn)
+                        mp.start()
+                        playing = true
+                    }
                 },
             )
             // Poster overlay so the ready surface never renders as a bare
@@ -186,6 +196,7 @@ actual fun RelivedAudio(ref: MediaStorageRef, mediaStore: MediaStore, modifier: 
     val duration = remember(path) {
         try { player.duration } catch (_: Throwable) { 0 }
     }
+    val haptics = rememberReliveHaptics()
     DisposableEffect(path) { onDispose { player.release() } }
     LaunchedEffect(playing, path) {
         while (playing) {
@@ -203,13 +214,20 @@ actual fun RelivedAudio(ref: MediaStorageRef, mediaStore: MediaStore, modifier: 
     ) {
         Box(
             modifier = Modifier
-                .size(40.dp)
+                .size(48.dp)
                 .clip(CircleShape)
                 .background(Color(0xFF6F4E37))
                 .clickable {
                     try {
-                        if (player.isPlaying) { player.pause(); playing = false }
-                        else { player.start(); playing = true }
+                        if (player.isPlaying) {
+                            haptics.perform(ReliveHapticCue.ToggleOff)
+                            player.pause()
+                            playing = false
+                        } else {
+                            haptics.perform(ReliveHapticCue.ToggleOn)
+                            player.start()
+                            playing = true
+                        }
                     } catch (_: Throwable) {}
                 },
             contentAlignment = Alignment.Center,
@@ -293,6 +311,7 @@ actual fun RelivedTimelineInlineVideo(
     val key = ref.value
     var player: MediaPlayer? by remember(path) { mutableStateOf(null) }
     var playing by remember(path) { mutableStateOf(false) }
+    val haptics = rememberReliveHaptics()
     val stopSelf: () -> Unit = remember(path) {
         {
             try { if (player?.isPlaying == true) player?.pause() } catch (_: Throwable) {}
@@ -384,6 +403,7 @@ actual fun RelivedTimelineInlineVideo(
                 .clip(CircleShape)
                 .background(Color(0x99000000))
                 .clickable {
+                    haptics.perform(if (playing) ReliveHapticCue.ToggleOff else ReliveHapticCue.ToggleOn)
                     val existing = player
                     if (existing != null) {
                         try {
@@ -447,6 +467,7 @@ actual fun RelivedAudioTile(ref: MediaStorageRef, mediaStore: MediaStore, modifi
     }
     val progress = WaveformProcessor.progressFraction(pos.toLong(), durationMs)
     val label = if (playing) formatTime(pos) else formatTime(durationMs.toInt())
+    val haptics = rememberReliveHaptics()
     Box(modifier = modifier.background(Color(0xFF0A0A0A))) {
         WaveformView(
             envelope = envelope,
@@ -467,12 +488,15 @@ actual fun RelivedAudioTile(ref: MediaStorageRef, mediaStore: MediaStore, modifi
         ) {
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(48.dp)
                     .clip(CircleShape)
                     .background(Color(0x33FFFFFF))
                     .clickable {
                         if (holder.togglePlay(path)) {
                             val nowPlaying = holder.isPlaying()
+                            haptics.perform(
+                                if (nowPlaying) ReliveHapticCue.ToggleOn else ReliveHapticCue.ToggleOff,
+                            )
                             playing = nowPlaying
                             if (nowPlaying) ActivePlayback.claim(stopSelf)
                             else { pos = holder.currentPositionMs(); ActivePlayback.release(stopSelf) }

@@ -13,6 +13,7 @@ import com.vaibhav.relive.domain.repository.TimelineHomeRepository
 import com.vaibhav.relive.domain.repository.TimelineRepository
 import com.vaibhav.relive.domain.time.Clock
 import com.vaibhav.relive.domain.time.Instant
+import com.vaibhav.relive.presentation.timeline.TimelineCreationOutcome
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
@@ -95,6 +96,7 @@ class TimelineHomeViewModelTest {
         )
 
         val destination = async(start = CoroutineStart.UNDISPATCHED) { viewModel.navigation.first() }
+        val creationFeedback = async(start = CoroutineStart.UNDISPATCHED) { viewModel.creationOutcomes.first() }
         viewModel.showTimelineCreation()
         viewModel.updateTimelineName("  Japan 2026  ")
         viewModel.createTimeline()
@@ -106,7 +108,25 @@ class TimelineHomeViewModelTest {
             ),
             destination.await(),
         )
+        assertEquals(TimelineCreationOutcome.Succeeded, creationFeedback.await())
         assertEquals(Instant(23), repository.created.single().second)
+    }
+
+    @Test
+    fun invalidTimelineCreationEmitsRejectedOutcome() = runTest {
+        val viewModel = TimelineHomeViewModel(
+            homeRepository = FakeTimelineHomeRepository(),
+            timelineRepository = FakeTimelineRepository(),
+            clock = Clock { Instant(23) },
+            idGenerator = IdGenerator { "unused" },
+            scope = backgroundScope,
+        )
+        val outcome = async(start = CoroutineStart.UNDISPATCHED) { viewModel.creationOutcomes.first() }
+
+        viewModel.showTimelineCreation()
+        viewModel.createTimeline()
+
+        assertEquals(TimelineCreationOutcome.Rejected, outcome.await())
     }
 
     @Test

@@ -1,8 +1,6 @@
 package com.vaibhav.relive.ui.components.composer
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,12 +12,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -28,10 +27,11 @@ import com.vaibhav.relive.platform.media.CameraCaptureSurface
 import com.vaibhav.relive.platform.media.MediaPickerHandle
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.platform.media.RawMedia
-import com.vaibhav.relive.platform.system.ReliveBackHandler
 import com.vaibhav.relive.presentation.composer.ComposerOverlay
 import com.vaibhav.relive.presentation.composer.PendingMediaAction
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.feedback.ReliveHapticCue
+import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 
 /**
  * Presents the composer's active overlay — camera surface or library
@@ -66,8 +66,6 @@ internal fun ComposerOverlayHost(
             }
         }
         ComposerOverlay.LibraryChoice -> {
-            // System Back closes the sheet without exiting the app.
-            ReliveBackHandler(enabled = true, onBack = onDismiss)
             LibraryChoiceSheet(
                 onPickImage = { onPick(MediaType.Image) },
                 onPickVideo = { onPick(MediaType.Video) },
@@ -103,6 +101,7 @@ internal fun MediaPickerDriver(
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun LibraryChoiceSheet(
     onPickImage: () -> Unit,
     onPickVideo: () -> Unit,
@@ -112,28 +111,19 @@ private fun LibraryChoiceSheet(
     val colors = ReliveTheme.colors
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0x99000000))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onDismiss,
-            ),
-        contentAlignment = Alignment.BottomCenter,
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        shape = RoundedCornerShape(topStart = dims.radii.dialog, topEnd = dims.radii.dialog),
+        containerColor = colors.surfaceOverlay,
+        contentColor = colors.textPrimary,
+        scrimColor = Color.Black.copy(alpha = 0.6f),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(topStart = dims.radii.md, topEnd = dims.radii.md))
-                .background(colors.bgCanvas)
-                .padding(dims.spacing.lg)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = {},
-                )
+                .padding(start = dims.spacing.lg, end = dims.spacing.lg, bottom = dims.spacing.xl)
                 .semantics { contentDescription = "Choose media source" },
             verticalArrangement = Arrangement.spacedBy(dims.spacing.md),
         ) {
@@ -151,13 +141,19 @@ private fun LibraryOption(label: String, onClick: () -> Unit) {
     val colors = ReliveTheme.colors
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
-    Row(
+    val haptics = rememberReliveHaptics()
+    TextButton(
+        onClick = {
+            haptics.perform(ReliveHapticCue.Action)
+            onClick()
+        },
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = dims.spacing.md),
+            .height(dims.minTouchTarget),
     ) {
-        Text(label, style = type.action, color = colors.textPrimary)
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Text(label, style = type.action, color = colors.textPrimary)
+        }
     }
 }
 
