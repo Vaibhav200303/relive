@@ -250,6 +250,12 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 - [ ] A custom timeline palette affects its Home card and detail only; “Use app theme” clears the override; All and system collections remain global.
 - [ ] Android and iOS status-bar content follows the resolved mode; stored media pixels and Timeline layout remain unchanged.
 
+### Media & Storage archive insights
+- [ ] Profile → Media & Storage → Back returns to the preserved Profile screen; Profile Back returns to Timeline Home.
+- [ ] Empty and text-only archives show `0 B` without a chart while retaining the actual Moment count.
+- [ ] Photo, video, audio, and defensive Other values match only Relive-managed attachment references; missing files do not crash or contribute bytes.
+- [ ] The hero, breakdown, and archive rows remain readable at large font scales and expose category/value semantics across every palette and appearance mode.
+
 ---
 
 ## Conventions

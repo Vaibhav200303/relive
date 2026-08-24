@@ -2,6 +2,7 @@ package com.vaibhav.relive.presentation.profile
 
 import kotlin.test.Test
 import kotlin.test.assertFalse
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class ProfileNavigationStateTest {
@@ -10,6 +11,13 @@ class ProfileNavigationStateTest {
     }
 
     @Test fun backFromProfileReturnsToTimelineHome() {
-        assertFalse(ProfileNavigationState(isOpen = true).returnToTimelineHome().isOpen)
+        assertFalse(ProfileNavigationState(ProfileDestination.Profile).returnToTimelineHome().isOpen)
+    }
+
+    @Test fun media_storage_returns_to_profile_before_timeline_home() {
+        val mediaStorage = ProfileNavigationState().openProfile().openMediaStorage()
+
+        assertEquals(ProfileDestination.MediaStorage, mediaStorage.destination)
+        assertEquals(ProfileDestination.Profile, mediaStorage.returnToProfile().destination)
     }
 }

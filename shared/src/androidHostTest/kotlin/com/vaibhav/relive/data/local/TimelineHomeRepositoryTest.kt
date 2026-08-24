@@ -3,6 +3,7 @@ package com.vaibhav.relive.data.local
 import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.TimelineId
+import com.vaibhav.relive.domain.model.ThemeReference
 import com.vaibhav.relive.domain.time.Instant
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -79,6 +80,19 @@ class TimelineHomeRepositoryTest {
         assertTrue(emptySummary.previewAttachments.isEmpty())
         assertEquals(1, audioSummary.momentCount)
         assertTrue(audioSummary.previewAttachments.isEmpty())
+    }
+
+    @Test fun summaries_decode_every_persisted_selectable_theme() = runTest {
+        val timelineId = TimelineId("crimson")
+        fx.timelines.createCustom(
+            sampleCustomTimeline(timelineId.value, "Crimson", ThemeReference.CrimsonKeepsake),
+            Instant(1),
+        )
+
+        val summary = fx.timelineHome.observeSummaries().first()
+            .single { (it.timeline as? Timeline.Custom)?.id == timelineId }
+
+        assertEquals(ThemeReference.CrimsonKeepsake, (summary.timeline as Timeline.Custom).theme)
     }
 
     @Test fun all_preview_is_bounded_to_nine_while_custom_preview_remains_four() = runTest {

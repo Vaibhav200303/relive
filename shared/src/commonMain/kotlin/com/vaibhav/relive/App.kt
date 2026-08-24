@@ -28,10 +28,13 @@ import com.vaibhav.relive.presentation.timeline.TimelineMode
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeViewModel
 import com.vaibhav.relive.presentation.profile.ProfileViewModel
 import com.vaibhav.relive.presentation.profile.ProfileNavigationState
+import com.vaibhav.relive.presentation.profile.ProfileDestination
+import com.vaibhav.relive.presentation.profile.MediaStorageViewModel
 import com.vaibhav.relive.ui.components.navigation.ReliveFloatingBottomControls
 import com.vaibhav.relive.ui.components.navigation.ReliveTopLevelDestination
 import com.vaibhav.relive.platform.media.ActivePlayback
 import com.vaibhav.relive.ui.screens.ProfileScreen
+import com.vaibhav.relive.ui.screens.MediaStorageScreen
 import com.vaibhav.relive.ui.screens.SearchScreen
 import com.vaibhav.relive.presentation.search.SearchViewModel
 import com.vaibhav.relive.presentation.navigation.QuickCaptureSurface
@@ -114,15 +117,21 @@ fun App(
                 )
             }
         }
-        if (profileNavigation.isOpen) {
-            ProfileScreen(
+        val mediaStorageViewModel = remember(container, scope) {
+            MediaStorageViewModel(container.archiveInsightsRepository, scope)
+        }
+        when (profileNavigation.destination) {
+            ProfileDestination.Profile -> ProfileScreen(
                 viewModel = profileViewModel,
                 appearanceViewModel = appearanceViewModel,
-                onBack = {
-                    profileNavigation = profileNavigation.returnToTimelineHome()
-                },
+                onBack = { profileNavigation = profileNavigation.returnToTimelineHome() },
+                onOpenMediaStorage = { profileNavigation = profileNavigation.openMediaStorage() },
             )
-        } else when (val active = timelinesDestination) {
+            ProfileDestination.MediaStorage -> MediaStorageScreen(
+                viewModel = mediaStorageViewModel,
+                onBack = { profileNavigation = profileNavigation.returnToProfile() },
+            )
+            ProfileDestination.Closed -> when (val active = timelinesDestination) {
             is TimelinesDestination.TimelineDetail -> {
                 val timelineContent: @Composable () -> Unit = {
                     TimelineScreen(
@@ -296,6 +305,7 @@ fun App(
                     },
                 )
             }
+        }
         }
     }
 }

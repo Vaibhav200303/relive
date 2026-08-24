@@ -2,6 +2,7 @@ package com.vaibhav.relive.platform.media
 
 import com.vaibhav.relive.domain.model.MediaStorageRef
 import com.vaibhav.relive.domain.model.MediaType
+import com.vaibhav.relive.domain.model.ArchiveFileInspection
 import kotlinx.cinterop.ExperimentalForeignApi
 import platform.Foundation.NSApplicationSupportDirectory
 import platform.Foundation.NSFileManager
@@ -66,6 +67,20 @@ class IosMediaStore : MediaStore {
         val attrs = fileManager.attributesOfItemAtPath(resolveAbsolutePath(ref), error = null) ?: return 0
         val n = attrs["NSFileSize"] as? NSNumber ?: return 0
         return n.longLongValue
+    }
+
+    override fun inspectManagedFile(ref: MediaStorageRef): ArchiveFileInspection {
+        if (ref.value.startsWith('/') || ref.value.split('/').any { it == ".." || it.isEmpty() }) {
+            return ArchiveFileInspection.Inaccessible
+        }
+        val path = runCatching { resolveAbsolutePath(ref) }.getOrNull()
+            ?: return ArchiveFileInspection.Inaccessible
+        if (!fileManager.fileExistsAtPath(path)) return ArchiveFileInspection.Missing
+        val attrs = fileManager.attributesOfItemAtPath(path, error = null)
+            ?: return ArchiveFileInspection.Inaccessible
+        val size = attrs["NSFileSize"] as? NSNumber
+            ?: return ArchiveFileInspection.Inaccessible
+        return ArchiveFileInspection.Available(size.longLongValue)
     }
 
     fun newTempPath(extension: String): String {

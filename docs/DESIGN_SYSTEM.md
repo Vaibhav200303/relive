@@ -328,6 +328,8 @@ Light schemes neutralize the light anchor into the canvas, use the strong anchor
 
 The generated-cover fallback is a centralized mode-aware theme token. It derives curated rich gradient pairs from the active anchors, remains deterministic for a stable identity, and never modifies stored media. The app palette is global; a custom Timeline's nullable persisted palette may override it while inheriting global System/Light/Dark mode.
 
+Profile archive-insights uses one restrained summary surface, then direct canvas sections with subtle dividers and proportional indicators. Its category distinctions derive only from semantic Relive colors and are always accompanied by labels and formatted values.
+
 ### 19.1 Visual-media fallback cover
 
 Collection-card visual regions use `ReliveGeneratedCover` when their preview data contains no image or video. The cover uses a deterministic stable hash of the Timeline ID (or logical `timeline-all`) or Moment ID to choose a curated gradient; it is never persisted, random, time-based, or animated. A reactive image/video preview replaces it automatically. Audio-only and text-only collection cards use the cover, without a waveform, generic icon, or empty-state copy. Normal Timeline MomentCard media presentation remains unchanged.

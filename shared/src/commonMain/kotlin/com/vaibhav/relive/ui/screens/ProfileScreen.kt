@@ -3,6 +3,7 @@ package com.vaibhav.relive.ui.screens
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,6 +52,7 @@ fun ProfileScreen(
     viewModel: ProfileViewModel,
     appearanceViewModel: AppearanceViewModel,
     onBack: () -> Unit,
+    onOpenMediaStorage: () -> Unit,
 ) {
     val state by viewModel.state.collectAsState()
     val appearance by appearanceViewModel.state.collectAsState()
@@ -106,7 +108,11 @@ fun ProfileScreen(
                 )
             }
             item(key = "your-memories") {
-                ProfileSection("YOUR MEMORIES", listOf("Media & storage", "Backup"))
+                ProfileSection(
+                    title = "YOUR MEMORIES",
+                    labels = listOf("Media & storage", "Backup"),
+                    onMediaStorage = onOpenMediaStorage,
+                )
             }
             item(key = "preferences") {
                 ProfileSection("PREFERENCES", listOf("Location", "Rediscover notifications", "Privacy & security"))
@@ -246,7 +252,12 @@ private fun ProfileStatistic(value: Long, label: String) {
 }
 
 @Composable
-private fun ProfileSection(title: String, labels: List<String>, last: Boolean = false) {
+private fun ProfileSection(
+    title: String,
+    labels: List<String>,
+    last: Boolean = false,
+    onMediaStorage: (() -> Unit)? = null,
+) {
     val dims = ReliveTheme.dimensions
     Column(
         modifier = Modifier
@@ -259,17 +270,23 @@ private fun ProfileSection(title: String, labels: List<String>, last: Boolean = 
             ),
     ) {
         Text(title, style = ReliveTheme.typography.eyebrow, color = ReliveTheme.colors.accentMuted)
-        labels.forEach { label -> ProfileSettingRow(label) }
+        labels.forEach { label ->
+            ProfileSettingRow(
+                label = label,
+                onClick = if (label == "Media & storage") onMediaStorage else null,
+            )
+        }
     }
 }
 
 @Composable
-private fun ProfileSettingRow(label: String) {
+private fun ProfileSettingRow(label: String, onClick: (() -> Unit)? = null) {
     val dims = ReliveTheme.dimensions
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = dims.minTouchTarget)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .semantics { contentDescription = label },
         verticalAlignment = Alignment.CenterVertically,
     ) {

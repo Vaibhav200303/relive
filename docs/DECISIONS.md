@@ -525,6 +525,13 @@ Format for each entry:
 - **Decision:** Profile exposes an inline System/Light/Dark control and six app palettes: Original (Warm Journal), Evergreen, Lilac Dusk, Crimson Keepsake, Blue Hour, and Rosewood. The global palette and mode persist in native local preferences; System follows the live OS appearance. A custom timeline may store a nullable palette override in its existing theme column and change it from its editable header; null inherits the app palette and all timelines inherit global mode. Original light preserves the approved reference tokens. Other light/dark semantic colors and deterministic cover gradients derive from the accepted four-anchor palettes, retain accessible content contrast, animate with standard Relive motion, and never alter stored media. Legacy Monochrome Archive and Film Memory persistence values decode as Original.
 - **Consequences:** Appearance changes recompose presentation tokens only; navigation, timeline geometry, Moment hierarchy, composer behavior, persistence, media, and search remain unchanged. No dependency or database migration is added. The earlier three-theme conceptual lineup in PRODUCT_SPEC §11, DESIGN_SYSTEM §19, ROADMAP Phase 9, and ADR-0010 is superseded only for selectable palette identity and global-mode behavior. Upgrade, Export, and other deferred Settings functionality remain outside this slice.
 
+## ADR-0044 — Media & Storage is read-only archive insight
+
+- **Date:** 2026-08-25 · **Status:** Accepted
+- **Context:** Profile needs a truthful way to explain the local media archive without introducing storage-management behavior.
+- **Decision:** Media & Storage calculates bytes only from persisted attachment references and Relive-owned file paths, categorizes Image/Video/Audio plus defensive unknown types, and performs file inspection away from the UI thread. Missing or inaccessible references contribute no bytes and never trigger deletion or repair. The screen is informational only: no optimization, compression controls, cleanup, deletion, storage permission, or device-wide scan is added.
+- **Consequences:** Archive totals describe persisted Relive attachments rather than arbitrary app/device files. Duplicate storage references are deduplicated for bytes, while archive counts remain attachment-record counts. The feature adds no dependency or schema migration and leaves media ingestion unchanged.
+
 ## Template for new decisions
 
 ```

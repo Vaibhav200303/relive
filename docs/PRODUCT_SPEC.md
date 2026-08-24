@@ -575,7 +575,7 @@ Themes **must NOT** change:
 
 ## 12. Settings
 
-Profile is an auxiliary destination opened from Timeline Home's profile affordance; it is not a bottom-navigation destination. It shows a neutral identity placeholder, installation joining date when known, informational Moment/custom-Timeline/place counts, an inline Appearance card, and the approved remaining Profile IA: Media & storage; Backup; Location; Rediscover notifications; Privacy & security; Help & feedback; About Relive. Appearance provides persistent System/Light/Dark and app-default palette controls. Other Profile-row functionality remains deferred unless a real destination exists.
+Profile is an auxiliary destination opened from Timeline Home's profile affordance; it is not a bottom-navigation destination. It shows a neutral identity placeholder, installation joining date when known, informational Moment/custom-Timeline/place counts, an inline Appearance card, and the approved remaining Profile IA: Media & storage; Backup; Location; Rediscover notifications; Privacy & security; Help & feedback; About Relive. Appearance provides persistent System/Light/Dark and app-default palette controls. Media & Storage is a read-only archive-insights screen showing Relive-managed attachment storage and category counts; it provides no optimization, deletion, cleanup, or device-wide storage controls. Other Profile-row functionality remains deferred unless a real destination exists.
 
 Future Settings entries remain Themes, Upgrade to Pro, and Export. Detailed functionality is defined only when separately specified.
 
