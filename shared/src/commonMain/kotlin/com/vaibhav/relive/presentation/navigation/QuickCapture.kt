@@ -38,16 +38,6 @@ fun quickCaptureCommand(surface: QuickCaptureSurface): QuickCaptureCommand? = wh
     -> null
 }
 
-fun shouldExpandQuickCaptureComposer(
-    requested: Boolean,
-    currentTimeline: CurrentTimeline,
-    isAlreadyExpanded: Boolean,
-    isDestinationSettled: Boolean,
-): Boolean = requested &&
-    currentTimeline == CurrentTimeline.All &&
-    !isAlreadyExpanded &&
-    isDestinationSettled
-
 /** Opens empty custom timelines in the existing composer while preserving explicit All entry. */
 fun shouldExpandComposerOnEnter(
     requested: Boolean,
