@@ -48,11 +48,13 @@ import com.vaibhav.relive.presentation.date.TimelineCreatedDateFormatter
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeContent
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeViewModel
 import com.vaibhav.relive.ui.components.MediaToCardSurfaceFade
+import com.vaibhav.relive.ui.components.AllTimelineCollage
 import com.vaibhav.relive.ui.components.composer.PlusGlyph
 import com.vaibhav.relive.ui.components.navigation.ReliveWordmarkAppBar
 import com.vaibhav.relive.ui.components.reliveCardOuterBorder
 import com.vaibhav.relive.ui.components.timeline.TimelineCreationDialog
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.presentation.cardcover.resolveAllTimelineCollage
 
 @Composable
 fun TimelineHomeScreen(
@@ -301,6 +303,8 @@ private fun Modifier.floatingToolbarNestedScroll(
 internal fun TimelineHomeCard(
     summary: TimelineHomeSummary,
     mediaStore: MediaStore,
+    allCollageBucket: Long = 0L,
+    allCollageCandidates: List<MediaAttachment>? = null,
     onClick: () -> Unit,
 ) {
     val colors = ReliveTheme.colors
@@ -324,6 +328,8 @@ internal fun TimelineHomeCard(
             summary = summary,
             mediaStore = mediaStore,
             mediaHeight = mediaHeight,
+            allCollageBucket = allCollageBucket,
+            allCollageCandidates = allCollageCandidates,
         )
         Column(
             modifier = Modifier.padding(dims.spacing.lg),
@@ -368,6 +374,8 @@ private fun TimelineHomeMediaPreview(
     summary: TimelineHomeSummary,
     mediaStore: MediaStore,
     mediaHeight: androidx.compose.ui.unit.Dp,
+    allCollageBucket: Long,
+    allCollageCandidates: List<MediaAttachment>?,
 ) {
     val dims = ReliveTheme.dimensions
     val attachments = summary.previewAttachments
@@ -377,7 +385,25 @@ private fun TimelineHomeMediaPreview(
             .height(mediaHeight)
             .background(ReliveTheme.colors.surfaceCardTranslucent),
     ) {
-        when (attachments.size) {
+        if (summary.timeline == Timeline.All) {
+            val selection = resolveAllTimelineCollage(
+                available = allCollageCandidates ?: attachments,
+                bucket = allCollageBucket,
+            )
+            if (selection.attachments.isEmpty()) {
+                com.vaibhav.relive.ui.theme.ReliveGeneratedCover(
+                    stableKey = summary.timeline.cardCoverStableKey(),
+                    modifier = Modifier.matchParentSize(),
+                )
+            } else {
+                AllTimelineCollage(
+                    attachments = selection.attachments,
+                    layout = requireNotNull(selection.layout),
+                    mediaStore = mediaStore,
+                    modifier = Modifier.matchParentSize(),
+                )
+            }
+        } else when (attachments.size) {
             0 -> com.vaibhav.relive.ui.theme.ReliveGeneratedCover(
                 stableKey = summary.timeline.cardCoverStableKey(),
                 modifier = Modifier.matchParentSize(),

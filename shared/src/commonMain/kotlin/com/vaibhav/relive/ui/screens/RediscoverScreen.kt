@@ -26,6 +26,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -47,12 +48,15 @@ import com.vaibhav.relive.presentation.date.anniversaryYearLabel
 import com.vaibhav.relive.presentation.date.editorialDayMonth
 import com.vaibhav.relive.presentation.rediscover.RediscoverSectionSpacing
 import com.vaibhav.relive.presentation.rediscover.rediscoverSectionLayout
+import com.vaibhav.relive.presentation.cardcover.allTimelineCollageBucket
 import com.vaibhav.relive.ui.components.navigation.ReliveWordmarkAppBar
 import com.vaibhav.relive.ui.components.rediscover.FavoriteMomentCard
 import com.vaibhav.relive.ui.components.rediscover.OnThisDayMomentCard
 import com.vaibhav.relive.ui.components.timeline.ForwardGlyph
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import kotlinx.coroutines.delay
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 
 /** The active root collects only bounded Favorites and On This Day shelves. */
 @Composable
@@ -76,6 +80,10 @@ fun RediscoverScreen(
     val allSummary = timelineSummaries.firstOrNull { it.timeline == Timeline.All }
     val previews by repository.observeFavoritePreviews().collectAsState(emptyList())
     var today by remember(clock) { mutableStateOf(RediscoverCalendar.localDate(clock.now())) }
+    var collageBucket by remember(clock) { mutableLongStateOf(allTimelineCollageBucket(clock.now())) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        collageBucket = allTimelineCollageBucket(clock.now())
+    }
     LaunchedEffect(today) {
         delay(RediscoverCalendar.millisecondsUntilNextDay(clock.now()))
         today = RediscoverCalendar.localDate(clock.now())
@@ -84,6 +92,8 @@ fun RediscoverScreen(
         today = today,
         startOfToday = RediscoverCalendar.startOfDay(today),
     ).collectAsState(emptyList())
+    val allCollageCandidates by timelineHomeRepository.observeAllCollageCandidates(collageBucket)
+        .collectAsState(emptyList())
     val fromYourPastQuery = remember(today, clock) {
         val now = clock.now()
         RediscoverQuery(
@@ -120,6 +130,8 @@ fun RediscoverScreen(
                     TimelineHomeCard(
                         summary = summary,
                         mediaStore = mediaStore,
+                        allCollageBucket = collageBucket,
+                        allCollageCandidates = allCollageCandidates,
                         onClick = onOpenAll,
                     )
                 }
