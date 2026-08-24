@@ -8,8 +8,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.vaibhav.relive.di.ReliveAppContainer
@@ -26,16 +26,22 @@ import com.vaibhav.relive.presentation.timeline.TimelineMode
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeViewModel
 import com.vaibhav.relive.presentation.profile.ProfileViewModel
 import com.vaibhav.relive.presentation.profile.ProfileNavigationState
-import com.vaibhav.relive.ui.components.navigation.ReliveBottomBar
+import com.vaibhav.relive.ui.components.navigation.ReliveFloatingBottomControls
 import com.vaibhav.relive.ui.components.navigation.ReliveTopLevelDestination
 import com.vaibhav.relive.platform.media.ActivePlayback
 import com.vaibhav.relive.ui.screens.ProfileScreen
 import com.vaibhav.relive.ui.screens.SearchScreen
 import com.vaibhav.relive.presentation.search.SearchViewModel
+import com.vaibhav.relive.presentation.navigation.QuickCaptureSurface
+import com.vaibhav.relive.presentation.navigation.quickCaptureCommand
 
 private sealed interface TimelinesDestination {
     data object TimelineHome : TimelinesDestination
-    data class TimelineDetail(val scope: CurrentTimeline, val selectedMomentId: MomentId? = null) : TimelinesDestination
+    data class TimelineDetail(
+        val scope: CurrentTimeline,
+        val selectedMomentId: MomentId? = null,
+        val openComposerOnEnter: Boolean = false,
+    ) : TimelinesDestination
 }
 
 private sealed interface RediscoverDestination {
@@ -78,6 +84,16 @@ fun App(
         var timelinesDestination by remember { mutableStateOf<TimelinesDestination>(TimelinesDestination.TimelineHome) }
         var rediscoverDestination by remember { mutableStateOf<RediscoverDestination>(RediscoverDestination.Root) }
         var profileNavigation by remember { mutableStateOf(ProfileNavigationState()) }
+        var navigationToolbarExpanded by remember { mutableStateOf(true) }
+        val openQuickCapture: (QuickCaptureSurface) -> Unit = { surface ->
+            quickCaptureCommand(surface)?.let { command ->
+                ActivePlayback.stopActive()
+                timelinesDestination = TimelinesDestination.TimelineDetail(
+                    scope = command.timeline,
+                    openComposerOnEnter = command.openComposer,
+                )
+            }
+        }
         if (profileNavigation.isOpen) {
             ProfileScreen(viewModel = profileViewModel, onBack = {
                 profileNavigation = profileNavigation.returnToTimelineHome()
@@ -93,6 +109,7 @@ fun App(
                 mediaProcessor = container.mediaProcessor,
                 initialTimeline = active.scope,
                 selectedMomentId = active.selectedMomentId,
+                openComposerOnEnter = active.openComposerOnEnter,
                 onBackToTimelineHome = { timelinesDestination = TimelinesDestination.TimelineHome },
             )
             TimelinesDestination.TimelineHome -> if (
@@ -146,9 +163,8 @@ fun App(
                     selectedMomentId = fromYourPast.selectedMomentId,
                     onBackToTimelineHome = { rediscoverDestination = RediscoverDestination.Root },
                 )
-            } else Column(Modifier.fillMaxSize()) {
-                Box(Modifier.weight(1f)) {
-                    when (topLevel) {
+            } else Box(Modifier.fillMaxSize()) {
+                when (topLevel) {
                         ReliveTopLevelDestination.Timelines -> TimelineHomeScreen(
                             viewModel = homeViewModel,
                             mediaStore = container.mediaStore,
@@ -162,6 +178,10 @@ fun App(
                                 )
                             },
                             onOpenProfile = { profileNavigation = profileNavigation.openProfile() },
+                            onCreateMoment = { openQuickCapture(QuickCaptureSurface.TimelineHome) },
+                            navigationToolbarExpanded = navigationToolbarExpanded,
+                            onNavigationToolbarExpand = { navigationToolbarExpanded = true },
+                            onNavigationToolbarCollapse = { navigationToolbarExpanded = false },
                         )
                         ReliveTopLevelDestination.Rediscover -> RediscoverScreen(
                             repository = container.rediscoverRepository,
@@ -182,6 +202,10 @@ fun App(
                                 rediscoverDestination = RediscoverDestination.FromYourPast(selectedMomentId, query)
                             },
                             debugControls = rediscoverDebugControls,
+                            onCreateMoment = { openQuickCapture(QuickCaptureSurface.Rediscover) },
+                            navigationToolbarExpanded = navigationToolbarExpanded,
+                            onNavigationToolbarExpand = { navigationToolbarExpanded = true },
+                            onNavigationToolbarCollapse = { navigationToolbarExpanded = false },
                         )
                         ReliveTopLevelDestination.Search -> SearchScreen(
                             viewModel = searchViewModel,
@@ -193,16 +217,34 @@ fun App(
                                 timelinesDestination = TimelinesDestination.TimelineDetail(CurrentTimeline.All, momentId)
                                 topLevel = ReliveTopLevelDestination.Timelines
                             },
+                            onCreateMoment = { openQuickCapture(QuickCaptureSurface.Search) },
+                            navigationToolbarExpanded = navigationToolbarExpanded,
+                            onNavigationToolbarExpand = { navigationToolbarExpanded = true },
+                            onNavigationToolbarCollapse = { navigationToolbarExpanded = false },
                         )
                     }
-                }
-                ReliveBottomBar(selected = topLevel, onSelect = {
-                    ActivePlayback.stopActive()
-                    if (it == ReliveTopLevelDestination.Search && topLevel != ReliveTopLevelDestination.Search) {
-                        searchReturnDestination = topLevel
-                    }
-                    topLevel = it
-                })
+                ReliveFloatingBottomControls(
+                    selected = topLevel,
+                    expanded = navigationToolbarExpanded,
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                    onSelect = {
+                        ActivePlayback.stopActive()
+                        if (it == ReliveTopLevelDestination.Search && topLevel != ReliveTopLevelDestination.Search) {
+                            searchReturnDestination = topLevel
+                        }
+                        topLevel = it
+                        navigationToolbarExpanded = true
+                    },
+                    onCreateMoment = {
+                        openQuickCapture(
+                            when (topLevel) {
+                                ReliveTopLevelDestination.Timelines -> QuickCaptureSurface.TimelineHome
+                                ReliveTopLevelDestination.Rediscover -> QuickCaptureSurface.Rediscover
+                                ReliveTopLevelDestination.Search -> QuickCaptureSurface.Search
+                            },
+                        )
+                    },
+                )
             }
         }
     }

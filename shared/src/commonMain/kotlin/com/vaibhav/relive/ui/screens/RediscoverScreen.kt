@@ -18,6 +18,8 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -65,6 +67,10 @@ fun RediscoverScreen(
     onOpenOnThisDay: (MomentId, LocalCalendarDate) -> Unit,
     onOpenFromYourPast: (MomentId?, RediscoverQuery) -> Unit,
     debugControls: (@Composable () -> Unit)? = null,
+    onCreateMoment: (() -> Unit)? = null,
+    navigationToolbarExpanded: Boolean = true,
+    onNavigationToolbarExpand: () -> Unit = {},
+    onNavigationToolbarCollapse: () -> Unit = {},
 ) {
     val timelineSummaries by timelineHomeRepository.observeSummaries().collectAsState(emptyList())
     val allSummary = timelineSummaries.firstOrNull { it.timeline == Timeline.All }
@@ -92,12 +98,21 @@ fun RediscoverScreen(
     var debugOpen by remember { mutableStateOf(false) }
     val dims = ReliveTheme.dimensions
     val sectionLayout = rediscoverSectionLayout(onThisDayPreviews.size)
+    val bottomPadding = if (onCreateMoment != null) dims.spacing.huge * 2 else dims.spacing.huge
 
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize().background(ReliveTheme.colors.bgCanvas),
-        contentPadding = PaddingValues(bottom = dims.spacing.huge),
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxSize()
+                .background(ReliveTheme.colors.bgCanvas)
+                .floatingToolbarNestedScroll(
+                    expanded = navigationToolbarExpanded,
+                    onExpand = onNavigationToolbarExpand,
+                    onCollapse = onNavigationToolbarCollapse,
+                ),
+            contentPadding = PaddingValues(bottom = bottomPadding),
+        ) {
         item(key = "relive-app-bar") { ReliveWordmarkAppBar() }
         allSummary?.let { summary ->
             item(key = "all") {
@@ -303,10 +318,24 @@ fun RediscoverScreen(
                 }
             }
         }
+        }
     }
     if (debugOpen) {
         AlertDialog(onDismissRequest = { debugOpen = false }, confirmButton = {}, text = { debugControls?.invoke() })
     }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private fun Modifier.floatingToolbarNestedScroll(
+    expanded: Boolean,
+    onExpand: () -> Unit,
+    onCollapse: () -> Unit,
+): Modifier = with(FloatingToolbarDefaults) {
+    floatingToolbarVerticalNestedScroll(
+        expanded = expanded,
+        onExpand = onExpand,
+        onCollapse = onCollapse,
+    )
 }
 
 @Composable

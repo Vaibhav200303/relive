@@ -129,6 +129,8 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 ### Inline composer expansion
 - [ ] Collapsed state shows only `+` timeline marker.
 - [ ] Tapping `+` smoothly expands the composer in place (no modal/sheet).
+- [ ] Global `New` shows All settled/collapsed before the same smooth in-place expansion; no navigation flash, archive-wide scroll, or upward content jump.
+- [ ] Global-entry title focus follows composer entry and does not cause an abrupt simultaneous navigation/layout/IME change.
 - [ ] `×` resets fields and smoothly collapses.
 - [ ] Keep Moment resets fields and collapses.
 - [ ] Keep Moment reads as the primary Material 3 action and has enabled, disabled, and pressed feedback.
@@ -225,15 +227,16 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 - [x] Attempting a timeline switch, composer opening, or a second edit while an edit is dirty does not silently discard it.
 
 ### Rediscover
-- [ ] The active root renders the Relive app bar, editable All card, `FAVOURITES` heading, bounded horizontal individual-Moment shelf (at most ten), optional `Show all`, and the two-item bottom navigation.
+- [ ] The active root renders the Relive app bar, editable All card, `FAVOURITES` heading, bounded horizontal individual-Moment shelf (at most ten), optional `Show all`, and the floating top-level navigation toolbar.
 - [ ] Rediscover order is All, Favourites, On This Day, From Your Past; All opens the editable aggregate timeline.
 - [ ] Favorites reflects persisted favorite state in the same chronological ordering as the full Favorites timeline; the bounded shelf batch-loads attachments and does not hydrate the complete collection.
 - [ ] Media, text-only, and audio cards use their appropriate compact presentation; media uses the first ordered attachment with a quiet additional-count indicator and audio never autoplays.
 - [ ] Zero favorites shows the approved two-line empty state with no shelf or `Show all`.
-- [ ] Tapping a card opens the read-only Favorites timeline at that Moment; `Show all` opens it without a selected Moment. Opening Favorites hides bottom navigation and exposes only Back, read-only timeline browsing, media viewing, and playback; Back returns to the preserved Rediscover root state.
+- [ ] Tapping a card opens the read-only Favorites timeline at that Moment; `Show all` opens it without a selected Moment. Opening Favorites hides top-level navigation and exposes only Back, read-only timeline browsing, media viewing, and playback; Back returns to the preserved Rediscover root state.
 - [ ] On This Day matches only exact previous local calendar years, excludes the current year, preserves February 29 behavior, uses exact calendar-year labels, and loads only a bounded attachment-batched shelf preview.
 - [ ] An empty On This Day remains compact; media, text-only, and audio-only entries retain featured-card geometry; tapping routes to the selected read-only collection.
-- [ ] Timelines and Rediscover are the only visible bottom-navigation destinations; Timeline detail hides the bar and preserves Back behavior.
+- [ ] The active floating toolbar collapses to the selected destination icon on downward scroll and expands in Timeline / Rediscover / Search order on upward scroll; its accent-derived selected pill moves smoothly between icons without an intermediate artifact. Timeline detail hides it and preserves Back behavior.
+- [ ] Floating navigation and `+ New` share height, bottom alignment, warm-stone surface, safe insets, and an 8dp gap; narrow screens retain three equal navigation touch targets, and the IME does not cover either control.
 - Deferred, retain coverage for future reactivation: deterministic From Your Past selection, Places/Tags ranking, empty/partial archive states, and passive media behavior.
 
 ---

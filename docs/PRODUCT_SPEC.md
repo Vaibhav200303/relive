@@ -47,7 +47,11 @@ Timeline Home is the navigation root for custom timelines. Selecting a custom ti
 
 ### Rediscover navigation
 
-Rediscover is a second top-level destination alongside Timelines. Until Search and You are implemented, bottom navigation contains exactly **Timelines** and **Rediscover**. Timeline Home remains the root within Timelines; Timeline detail is not a top-level destination.
+Timelines, Rediscover, and Search are the three top-level destinations. They live in a floating bottom-left navigation toolbar: it shows the active destination icon while collapsed and expands horizontally to reveal all three icon actions in Timeline / Rediscover / Search order. Timeline Home remains the root within Timelines; Timeline detail is not a top-level destination.
+
+### Global quick capture
+
+Timeline Home, Rediscover, and Search expose one theme-aware expressive **`+ New`** floating toolbar at bottom-right, separate from the navigation toolbar. It collapses with navigation to its Add icon and expands to show a centered `+ New`; both controls remain vertically aligned with a small fixed gap. Navigation uses an accent-derived moving selected indicator while expanded. It is absent from Profile, timeline detail, media viewer, camera, recorder, and modal/detail surfaces. Tapping either visible part always opens the editable logical **All** timeline, lets the normal collapsed timeline render and settle, then expands the existing inline composer with the same restrained in-place motion as its rail `+` and focuses its first text field. It never opens a chooser or custom timeline and never creates a second composer. Timeline detail keeps its integrated rail `+` as the creation affordance instead of showing another floating action.
 
 ### Moment / timeline relationship
 
@@ -310,6 +314,7 @@ The composer is **collapsed by default**. In the collapsed state:
 - The `×` reset button resets all fields and **collapses** the composer.
 - A successful **Keep Moment** resets all fields and **collapses** the composer.
 - Keyboard behavior keeps the active composer usable above the IME (see ADR-0016).
+- Entry from global `+ New` waits for All's content projection and one collapsed composed frame, then runs this same expansion transition and requests first-field focus after the expanding composer enters composition. It uses no arbitrary delay; subsequent media actions do not re-request focus.
 
 ### 6.2 Composer fields
 

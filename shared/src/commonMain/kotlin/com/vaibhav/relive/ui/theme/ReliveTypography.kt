@@ -16,6 +16,7 @@ data class ReliveTypography(
     val eyebrow: TextStyle,
     val tag: TextStyle,
     val action: TextStyle,
+    val prominentAction: TextStyle,
 )
 
 /**
@@ -65,6 +66,11 @@ fun reliveTypography(serif: FontFamily, sans: FontFamily): ReliveTypography = Re
         fontFamily = sans,
         fontWeight = FontWeight.SemiBold,
         fontSize = 14.sp,
+    ),
+    prominentAction = TextStyle(
+        fontFamily = sans,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 16.sp,
     ),
 )
 

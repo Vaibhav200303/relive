@@ -23,6 +23,8 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -67,6 +69,10 @@ fun SearchScreen(
     clock: Clock,
     onBack: () -> Unit,
     onOpenAllAtMoment: (com.vaibhav.relive.domain.model.MomentId?) -> Unit,
+    onCreateMoment: (() -> Unit)? = null,
+    navigationToolbarExpanded: Boolean = true,
+    onNavigationToolbarExpand: () -> Unit = {},
+    onNavigationToolbarCollapse: () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsState()
     val focusRequester = remember { FocusRequester() }
@@ -125,8 +131,20 @@ fun SearchScreen(
                 state.results.isEmpty() -> SearchEditorialState("No moments found.")
                 else -> LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = ReliveTheme.dimensions.spacing.huge),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .floatingToolbarNestedScroll(
+                            expanded = navigationToolbarExpanded,
+                            onExpand = onNavigationToolbarExpand,
+                            onCollapse = onNavigationToolbarCollapse,
+                        ),
+                    contentPadding = PaddingValues(
+                        bottom = if (onCreateMoment != null) {
+                            ReliveTheme.dimensions.spacing.huge * 2
+                        } else {
+                            ReliveTheme.dimensions.spacing.huge
+                        },
+                    ),
                 ) {
                     items(
                         count = state.results.size,
@@ -151,7 +169,7 @@ fun SearchScreen(
                 }
             }
         }
-    }
+        }
         navState.gallery?.let { gallery ->
             MomentMediaGallery(
                 state = gallery,
@@ -180,6 +198,19 @@ fun SearchScreen(
             },
         )
     }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private fun Modifier.floatingToolbarNestedScroll(
+    expanded: Boolean,
+    onExpand: () -> Unit,
+    onCollapse: () -> Unit,
+): Modifier = with(FloatingToolbarDefaults) {
+    floatingToolbarVerticalNestedScroll(
+        expanded = expanded,
+        onExpand = onExpand,
+        onCollapse = onCollapse,
+    )
 }
 
 @Composable
