@@ -60,6 +60,7 @@ import com.vaibhav.relive.domain.policy.EditWindow
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.Tag
 import com.vaibhav.relive.domain.model.TimelineId
+import com.vaibhav.relive.domain.model.ThemeReference
 import com.vaibhav.relive.domain.repository.MomentRepository
 import com.vaibhav.relive.domain.repository.RediscoverRepository
 import com.vaibhav.relive.domain.repository.TimelineRepository
@@ -105,7 +106,9 @@ import com.vaibhav.relive.ui.components.viewer.MediaViewer
 import com.vaibhav.relive.ui.components.viewer.MomentMediaGallery
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
+import com.vaibhav.relive.ui.components.settings.RelivePalettePicker
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import kotlinx.coroutines.launch
 
 private fun timelineViewModelCanEdit(moment: MomentPresentation, clock: Clock): Boolean =
     EditWindow.isEditable(moment.toMoment(), clock)
@@ -154,6 +157,7 @@ fun TimelineScreen(
     openComposerOnEnter: Boolean = false,
     onComposerOpenIntentConsumed: (() -> Unit)? = null,
     onBackToTimelineHome: (() -> Unit)? = null,
+    globalTheme: ThemeReference = ThemeReference.WarmJournal,
 ) {
     val scope = rememberCoroutineScope()
     val timelineViewModel = remember(
@@ -213,6 +217,7 @@ fun TimelineScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var discardConfirmation by remember { mutableStateOf(ComposerDiscardConfirmationState()) }
     var requestComposerFocus by remember { mutableStateOf(false) }
+    var showThemePicker by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val haptics = rememberReliveHaptics()
     val focusManager = LocalFocusManager.current
@@ -371,6 +376,13 @@ fun TimelineScreen(
             onOpenAppSettings = composerViewModel::openAppSettings,
             onEditorBoundsChanged = { editorBounds = it },
             onJumpToDate = { showDatePicker = true },
+            onChangeTheme = if (
+                mode.allowsMutations && timelineState.currentTimeline is CurrentTimeline.Custom
+            ) {
+                { showThemePicker = true }
+            } else {
+                null
+            },
             dateNavigationTargetId = timelineState.dateNavigation?.momentId,
             onDateNavigationHandled = timelineViewModel::consumeDateNavigation,
             snackbarHostState = snackbarHostState,
@@ -383,6 +395,25 @@ fun TimelineScreen(
                 onDateSelected = { date ->
                     showDatePicker = false
                     timelineViewModel.jumpToDate(date)
+                },
+            )
+        }
+
+        if (showThemePicker) {
+            val currentId = (timelineState.currentTimeline as? CurrentTimeline.Custom)?.id
+            val selectedTheme = timelineState.customTimelines.firstOrNull { it.id == currentId }?.theme
+            TimelineThemeDialog(
+                selectedTheme = selectedTheme,
+                globalTheme = globalTheme,
+                onDismiss = { showThemePicker = false },
+                onSelect = { theme ->
+                    timelineViewModel.updateCurrentTimelineTheme(theme) { succeeded ->
+                        if (succeeded) {
+                            showThemePicker = false
+                        } else {
+                            scope.launch { snackbarHostState.showSnackbar("Could not save timeline theme.") }
+                        }
+                    }
                 },
             )
         }
@@ -474,7 +505,7 @@ fun TimelineScreen(
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = ReliveTheme.colors.actionDestructive,
-                        contentColor = ReliveTheme.colors.textOnAccent,
+                        contentColor = ReliveTheme.colors.textOnDestructive,
                     ),
                 ) { Text("Forget") }
             },
@@ -557,6 +588,7 @@ private fun TimelineContent(
     requestComposerFocus: Boolean,
     onComposerFocusHandled: () -> Unit,
     onJumpToDate: () -> Unit,
+    onChangeTheme: (() -> Unit)?,
     dateNavigationTargetId: MomentId?,
     onDateNavigationHandled: () -> Unit,
     snackbarHostState: SnackbarHostState,
@@ -573,7 +605,11 @@ private fun TimelineContent(
         if (mode is TimelineMode.ReadOnlySystemCollection) {
             SystemCollectionHeader(title = mode.title, onBack = onBack ?: {})
         } else {
-            TimelineHeader(onBack = onBack, onJumpToDate = onJumpToDate)
+            TimelineHeader(
+                onBack = onBack,
+                onJumpToDate = onJumpToDate,
+                onChangeTheme = onChangeTheme,
+            )
         }
 
         Box(
@@ -763,4 +799,39 @@ private fun TimelineContent(
             }
         }
     }
+}
+
+@Composable
+private fun TimelineThemeDialog(
+    selectedTheme: ThemeReference?,
+    globalTheme: ThemeReference,
+    onDismiss: () -> Unit,
+    onSelect: (ThemeReference?) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(ReliveTheme.dimensions.radii.dialog),
+        containerColor = ReliveTheme.colors.surfaceOverlay,
+        title = {
+            Text(
+                "Timeline theme",
+                style = ReliveTheme.typography.title,
+                color = ReliveTheme.colors.textPrimary,
+            )
+        },
+        text = {
+            RelivePalettePicker(
+                selectedTheme = selectedTheme,
+                globalTheme = globalTheme,
+                includeUseAppTheme = true,
+                onSelect = onSelect,
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(contentColor = ReliveTheme.colors.accent),
+            ) { Text("Close") }
+        },
+    )
 }

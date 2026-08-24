@@ -2,6 +2,7 @@ package com.vaibhav.relive.presentation.timeline
 
 import com.vaibhav.relive.domain.model.Moment
 import com.vaibhav.relive.domain.model.MomentId
+import com.vaibhav.relive.domain.model.ThemeReference
 import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.repository.MomentRepository
@@ -56,6 +57,16 @@ class TimelineViewModel(
     fun setFavorite(id: MomentId, isFavorite: Boolean) {
         if (!mode.allowsMutations) return
         scope.launch { momentRepository.setFavorite(id, isFavorite) }
+    }
+
+    fun updateCurrentTimelineTheme(
+        theme: ThemeReference?,
+        onResult: (Boolean) -> Unit,
+    ) {
+        val timeline = _state.value.currentTimeline as? CurrentTimeline.Custom ?: return
+        scope.launch {
+            onResult(runCatching { timelineRepository.updateTheme(timeline.id, theme) }.isSuccess)
+        }
     }
 
     fun jumpToDate(date: LocalCalendarDate) {

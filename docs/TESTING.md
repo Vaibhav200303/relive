@@ -242,6 +242,14 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 - [ ] Floating navigation and `+ New` share height, bottom alignment, warm-stone surface, safe insets, and an 8dp gap; narrow screens retain three equal navigation touch targets, and the IME does not cover either control.
 - Deferred, retain coverage for future reactivation: deterministic From Your Past selection, Places/Tags ranking, empty/partial archive states, and passive media behavior.
 
+### Appearance and themes
+- [ ] System follows live OS appearance; explicit Light and Dark ignore subsequent OS changes.
+- [ ] Original and all five nostalgic palettes restore after relaunch and expose distinct light/dark tokens with accessible text/action contrast.
+- [ ] Profile controls retain 48dp targets, selected/radio semantics, readable two-line labels, and horizontal scrolling at narrow widths and large text sizes.
+- [ ] Theme transitions preserve navigation, list position, composer drafts, active selection, and media state.
+- [ ] A custom timeline palette affects its Home card and detail only; “Use app theme” clears the override; All and system collections remain global.
+- [ ] Android and iOS status-bar content follows the resolved mode; stored media pixels and Timeline layout remain unchanged.
+
 ---
 
 ## Conventions

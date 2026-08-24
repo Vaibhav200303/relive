@@ -30,12 +30,18 @@ class ReliveGeneratedCoverTest {
     }
 
     @Test
-    fun monochromeArchivePaletteContainsOnlyNeutralGradients() {
-        MonochromeArchiveGeneratedCoverPalette.covers.forEach { cover ->
-            assertEquals(cover.start.red, cover.start.green)
-            assertEquals(cover.start.green, cover.start.blue)
-            assertEquals(cover.end.red, cover.end.green)
-            assertEquals(cover.end.green, cover.end.blue)
+    fun everyThemeAndModeProvidesDeterministicCoverChoices() {
+        ReliveThemeId.entries.forEach { theme ->
+            listOf(false, true).forEach { isDark ->
+                val palette = reliveTokensFor(theme, isDark).generatedCoverPalette
+                val first = generatedCoverSelection("timeline-memory", palette)
+                val second = generatedCoverSelection("timeline-memory", palette)
+                assertEquals(first, second)
+                palette.covers.forEach { cover ->
+                    assertEquals(1f, cover.start.alpha)
+                    assertEquals(1f, cover.end.alpha)
+                }
+            }
         }
     }
 }
