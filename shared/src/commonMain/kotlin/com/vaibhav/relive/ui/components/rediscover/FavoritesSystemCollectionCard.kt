@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,8 +17,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.vaibhav.relive.domain.model.FavoritesCollectionSummary
@@ -53,6 +52,7 @@ fun FavoritesSystemCollectionCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(min = dims.timelineHome.infoAreaMinHeight)
                 .padding(dims.spacing.lg),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -108,13 +108,6 @@ private fun FavoritesMediaPreview(
                 }
             }
         }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(dims.timelineHome.mediaFadeHeight)
-                .align(Alignment.BottomCenter)
-                .background(Brush.verticalGradient(listOf(Color.Transparent, ReliveTheme.colors.surfaceCard))),
-        )
     }
 }
 

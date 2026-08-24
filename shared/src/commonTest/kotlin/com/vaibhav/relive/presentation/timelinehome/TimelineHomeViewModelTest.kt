@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 
 class TimelineHomeViewModelTest {
     @Test
@@ -98,8 +99,33 @@ class TimelineHomeViewModelTest {
         viewModel.updateTimelineName("  Japan 2026  ")
         viewModel.createTimeline()
 
-        assertEquals(Timeline.Custom(TimelineId("newest"), "Japan 2026"), destination.await())
+        assertEquals(
+            TimelineHomeNavigation(
+                timeline = Timeline.Custom(TimelineId("newest"), "Japan 2026"),
+                openComposerOnEnter = true,
+            ),
+            destination.await(),
+        )
         assertEquals(Instant(23), repository.created.single().second)
+    }
+
+    @Test
+    fun normalTimelineEntryDoesNotRequestComposerOpen() = runTest {
+        val timeline = Timeline.Custom(TimelineId("saved"), "Saved")
+        val viewModel = TimelineHomeViewModel(
+            homeRepository = FakeTimelineHomeRepository(),
+            timelineRepository = FakeTimelineRepository(),
+            clock = Clock { Instant(23) },
+            idGenerator = IdGenerator { "unused" },
+            scope = backgroundScope,
+        )
+
+        val destination = async(start = CoroutineStart.UNDISPATCHED) { viewModel.navigation.first() }
+        viewModel.selectTimeline(timeline)
+
+        val navigation = destination.await()
+        assertEquals(timeline, navigation.timeline)
+        assertFalse(navigation.openComposerOnEnter)
     }
 
     private fun loadedState(query: String): TimelineHomeState = TimelineHomeState(

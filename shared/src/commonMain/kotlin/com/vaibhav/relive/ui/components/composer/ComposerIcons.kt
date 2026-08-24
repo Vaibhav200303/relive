@@ -41,8 +41,22 @@ internal fun PinGlyph(size: Dp, color: Color, strokeWidth: Dp) {
         val px = size.toPx()
         val sw = strokeWidth.toPx()
         val cx = px / 2f
-        drawCircle(color = color, radius = px * 0.16f, center = Offset(cx, px * 0.42f), style = Stroke(width = sw))
-        drawCircle(color = color, radius = px * 0.36f, center = Offset(cx, px * 0.42f), style = Stroke(width = sw))
+        val center = Offset(cx, px * 0.36f)
+        val radius = px * 0.27f
+        drawCircle(color = color, radius = radius, center = center, style = Stroke(width = sw))
+        drawCircle(color = color, radius = px * 0.07f, center = center, style = Stroke(width = sw))
+        drawLine(
+            color = color,
+            start = Offset(cx - radius * 0.72f, px * 0.56f),
+            end = Offset(cx, px * 0.88f),
+            strokeWidth = sw,
+        )
+        drawLine(
+            color = color,
+            start = Offset(cx + radius * 0.72f, px * 0.56f),
+            end = Offset(cx, px * 0.88f),
+            strokeWidth = sw,
+        )
     }
 }
 
@@ -121,9 +135,24 @@ internal fun CameraGlyph(size: Dp, color: Color, strokeWidth: Dp) {
             cornerRadius = CornerRadius(px * 0.1f),
             style = Stroke(width = sw),
         )
-        drawLine(color, Offset(px * 0.31f, px * 0.27f), Offset(px * 0.4f, px * 0.14f), sw)
-        drawLine(color, Offset(px * 0.4f, px * 0.14f), Offset(px * 0.64f, px * 0.14f), sw)
-        drawLine(color, Offset(px * 0.64f, px * 0.14f), Offset(px * 0.73f, px * 0.27f), sw)
+        drawLine(
+            color = color,
+            start = Offset(px * 0.31f, px * 0.27f),
+            end = Offset(px * 0.4f, px * 0.14f),
+            strokeWidth = sw,
+        )
+        drawLine(
+            color = color,
+            start = Offset(px * 0.4f, px * 0.14f),
+            end = Offset(px * 0.64f, px * 0.14f),
+            strokeWidth = sw,
+        )
+        drawLine(
+            color = color,
+            start = Offset(px * 0.64f, px * 0.14f),
+            end = Offset(px * 0.73f, px * 0.27f),
+            strokeWidth = sw,
+        )
         drawCircle(
             color = color,
             radius = px * 0.18f,
@@ -159,8 +188,18 @@ internal fun GalleryGlyph(size: Dp, color: Color, strokeWidth: Dp) {
             center = Offset(px * 0.32f, px * 0.44f),
             style = Stroke(width = sw),
         )
-        drawLine(color, Offset(px * 0.16f, px * 0.82f), Offset(px * 0.43f, px * 0.57f), sw)
-        drawLine(color, Offset(px * 0.43f, px * 0.57f), Offset(px * 0.7f, px * 0.82f), sw)
+        drawLine(
+            color = color,
+            start = Offset(px * 0.16f, px * 0.82f),
+            end = Offset(px * 0.43f, px * 0.57f),
+            strokeWidth = sw,
+        )
+        drawLine(
+            color = color,
+            start = Offset(px * 0.43f, px * 0.57f),
+            end = Offset(px * 0.7f, px * 0.82f),
+            strokeWidth = sw,
+        )
     }
 }
 

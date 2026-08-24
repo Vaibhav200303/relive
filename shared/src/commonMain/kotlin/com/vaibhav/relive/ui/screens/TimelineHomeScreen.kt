@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxSize
@@ -46,8 +47,8 @@ import com.vaibhav.relive.platform.media.RelivedVideoTile
 import com.vaibhav.relive.presentation.cardcover.cardCoverStableKey
 import com.vaibhav.relive.presentation.date.TimelineCreatedDateFormatter
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeContent
+import com.vaibhav.relive.presentation.timelinehome.TimelineHomeNavigation
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeViewModel
-import com.vaibhav.relive.ui.components.MediaToCardSurfaceFade
 import com.vaibhav.relive.ui.components.AllTimelineCollage
 import com.vaibhav.relive.ui.components.composer.PlusGlyph
 import com.vaibhav.relive.ui.components.navigation.ReliveWordmarkAppBar
@@ -61,7 +62,7 @@ fun TimelineHomeScreen(
     viewModel: TimelineHomeViewModel,
     mediaStore: MediaStore,
     listState: LazyListState,
-    onOpenTimeline: (Timeline) -> Unit,
+    onOpenTimeline: (TimelineHomeNavigation) -> Unit,
     onOpenProfile: () -> Unit,
     onCreateMoment: (() -> Unit)? = null,
     navigationToolbarExpanded: Boolean = true,
@@ -93,7 +94,7 @@ fun TimelineHomeScreen(
                     query = state.query,
                     mediaStore = mediaStore,
                     listState = listState,
-                    onOpenTimeline = viewModel::selectTimeline,
+                    onOpenTimeline = { navigation -> viewModel.selectTimeline(navigation.timeline) },
                     reserveQuickCaptureSpace = onCreateMoment != null,
                     navigationToolbarExpanded = navigationToolbarExpanded,
                     onNavigationToolbarExpand = onNavigationToolbarExpand,
@@ -240,7 +241,7 @@ private fun TimelineHomeContent(
     query: String,
     mediaStore: MediaStore,
     listState: LazyListState,
-    onOpenTimeline: (Timeline) -> Unit,
+    onOpenTimeline: (TimelineHomeNavigation) -> Unit,
     reserveQuickCaptureSpace: Boolean,
     navigationToolbarExpanded: Boolean,
     onNavigationToolbarExpand: () -> Unit,
@@ -280,7 +281,11 @@ private fun TimelineHomeContent(
             }
         } else {
             items(summaries, key = { (it.timeline as Timeline.Custom).id.value }) { summary ->
-                TimelineHomeCard(summary, mediaStore, onClick = { onOpenTimeline(summary.timeline) })
+                TimelineHomeCard(
+                    summary,
+                    mediaStore,
+                    onClick = { onOpenTimeline(TimelineHomeNavigation(summary.timeline)) },
+                )
             }
         }
     }
@@ -332,10 +337,19 @@ internal fun TimelineHomeCard(
             allCollageCandidates = allCollageCandidates,
         )
         Column(
-            modifier = Modifier.padding(dims.spacing.lg),
-            verticalArrangement = Arrangement.spacedBy(dims.spacing.xs),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = dims.timelineHome.infoAreaMinHeight)
+                .padding(dims.spacing.lg),
         ) {
-            Text(summary.name, style = ReliveTheme.typography.title, color = colors.textPrimary, maxLines = 2)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                Text(summary.name, style = ReliveTheme.typography.title, color = colors.textPrimary, maxLines = 2)
+            }
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "${summary.momentCount} ${if (summary.momentCount == 1L) "moment" else "moments"}",
@@ -430,7 +444,6 @@ private fun TimelineHomeMediaPreview(
                 }
             }
         }
-        MediaToCardSurfaceFade(modifier = Modifier.align(Alignment.BottomCenter))
     }
 }
 

@@ -96,7 +96,9 @@ class ReliveTokensTest {
         assertEquals(20.dp, rediscover.cardOuterRadius)
         assertEquals(0.68f, rediscover.favoriteShelfCardWidthFraction)
         assertTrue(rediscover.onThisDayShelfCardWidthFraction > rediscover.favoriteShelfCardWidthFraction)
-        assertEquals(240.dp, rediscover.favoriteShelfCardHeight)
+        assertEquals(272.dp, rediscover.favoriteShelfCardHeight)
+        assertEquals(128.dp, rediscover.compactInfoAreaHeight)
+        assertEquals(128.dp, rediscover.heroInfoAreaMinHeight)
     }
 
     @Test

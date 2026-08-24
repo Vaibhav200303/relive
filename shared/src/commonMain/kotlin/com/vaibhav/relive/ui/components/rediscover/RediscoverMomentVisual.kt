@@ -65,18 +65,29 @@ fun RediscoverMomentVisual(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .then(if (hero && attachment == null) Modifier.heightIn(min = dims.rediscover.heroMediaHeight) else Modifier)
-                .padding(dims.spacing.lg),
-            verticalArrangement = Arrangement.spacedBy(dims.spacing.xs),
-        ) {
-            if (moment.title.isNotBlank()) {
-                Text(
-                    text = moment.title,
-                    style = if (compact) ReliveTheme.typography.action else ReliveTheme.typography.title,
-                    color = colors.textPrimary,
-                    maxLines = if (compact) 2 else 3,
-                    overflow = TextOverflow.Ellipsis,
+                .heightIn(
+                    min = if (hero) dims.rediscover.heroInfoAreaMinHeight else dims.rediscover.compactInfoAreaHeight,
                 )
+                .padding(dims.spacing.lg),
+        ) {
+            Box(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                when {
+                    moment.title.isNotBlank() -> Text(
+                        text = moment.title,
+                        style = if (compact) ReliveTheme.typography.action else ReliveTheme.typography.title,
+                        color = colors.textPrimary,
+                        maxLines = if (compact) 2 else 3,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    moment.content.isBlank() && attachment != null -> Text(
+                        "A saved memory",
+                        style = ReliveTheme.typography.subtitle,
+                        color = colors.textSecondary,
+                    )
+                }
             }
             if (moment.content.isNotBlank()) {
                 Text(
@@ -86,9 +97,6 @@ fun RediscoverMomentVisual(
                     maxLines = if (compact) 3 else 4,
                     overflow = TextOverflow.Ellipsis,
                 )
-            }
-            if (moment.title.isBlank() && moment.content.isBlank() && attachment != null) {
-                Text("A saved memory", style = ReliveTheme.typography.subtitle, color = colors.textSecondary)
             }
             metadata?.let {
                 Text(it, style = ReliveTheme.typography.eyebrow, color = colors.textMuted)

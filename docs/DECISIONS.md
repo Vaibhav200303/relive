@@ -470,12 +470,44 @@ Format for each entry:
 
 ---
 
-## ADR-0038 — Sequenced quick capture, portrait Android UI, and expressive media actions
+## ADR-0038 — Global quick capture, bucketed All collage, unified card fade, and manual location
+
+- **Date:** 2026-08-24 · **Status:** Accepted
+- **Context:** Relive's three active top-level roots need a consistent fast path into Moment creation; collection previews need a continuous media-to-information surface; the All card needs more varied visual recall without persisted recommendation state; composer media actions must not open platform surfaces behind the IME; and the existing persisted `ReliveLocation` model is not yet exposed for simple manual entry.
+- **Decision:**
+  1. Timeline Home, Rediscover root, and Search render one Relive-colored Material 3 extended `+ New` FAB above bottom navigation. Profile, Timeline detail, system-collection detail, gallery/viewer, camera, recorder, and modal/detail surfaces do not. The action always navigates to editable All, expands the existing inline composer, and requests title focus once; an already-expanded composer is left as the same single instance.
+  2. Add Media and every Mic/Camera/Library or nested picker entry clear Compose focus and hide the software keyboard before platform media UI begins. Returning never requests keyboard focus and preserves the draft.
+  3. `MediaToCardSurfaceFade` is the only collection-card transition primitive. Its tokenized gradient overlaps the visual/information boundary without changing card dimensions, outer shape/border, metadata spacing, or media choice. Real visual media and generated covers in custom Timeline, All, Favorites, On This Day, From Your Past, and shared Rediscover preview families use it.
+  4. Custom summaries retain four visual previews. A dedicated SQLDelight All-collage query uses attachment identity plus `floor(epochMillis / 3 hours)` to sample at most nine image/video attachment references from the full visual archive without hydrating Moments. A pure resolver filters audio defensively, removes duplicate IDs, derives a varying count from 1 through `min(9, available)`, deterministically ranks candidates, and chooses a curated 1–9 grid from the same bucket and stable All key. The same bucket is stable across recomposition/navigation/configuration; the next activation/resume recomputes the current bucket. There is no timer, service, bitmap composition, saved collage file, database state, or full-resolution decode.
+  5. The inline composer exposes a compact manual location-pin field directly below `DATE • TIME`. Non-blank input becomes the existing `ReliveLocation.placeName`; clearing it removes location. Existing insert/update SQLDelight plumbing persists it, editing can replace it, media flows preserve it, and successful Keep/reset clears it with the draft. GPS detection, permissions, Maps, and geocoding remain future work.
+- **Consequences:** Quick capture remains one navigation path into the established All composer rather than a duplicate creation surface. All preview variety is local, bounded, reactive, and reproducible for three hours. Collection cards share one seamless surface language. Manual location ships with no schema migration or platform permission behavior. This supersedes ADR-0024/ADR-0033 only for where creation may be initiated, ADR-0033's static All-preview behavior only, and ADR-0008/Phase 4 only for GPS implementation timing; their storage, privacy, navigation, and moment-scoping rules remain historical and otherwise accepted.
+
+---
+
+## ADR-0039 — Sequenced quick capture, portrait Android UI, and expressive media actions
 
 - **Date:** 2026-08-24 · **Status:** Accepted
 - **Context:** Quick capture could update the destination's composer state before All produced a visible settled frame, making the otherwise-approved inline transition appear abrupt. Android device rotation could also reconfigure the entire archive and capture surface, while the composer's functional Mic/Camera/Library reveal lacked the approved expressive hierarchy and equal action geometry.
 - **Decision:** Global quick capture waits until All's Moment projection is no longer loading, yields one collapsed composed frame, and then changes the existing composer's target state; focus is requested on the following frame. Both global entry and the rail `+` use the same `AnimatedContent` vertical expand/fade transition with Relive slow/standard durations and standard easing. Android declares `MainActivity` portrait-only in the manifest; Compose never forces orientation and no sensor loop is added. CameraX capture, EXIF normalization, and recorded-video metadata handling remain unchanged. Portrait-only UI is also the iOS product requirement, but its supported-interface-orientation configuration remains a separately verified Xcode/Info.plist concern. The Add Media reveal remains one rounded `radius.lg` Relive card surface with three equal-width actions labeled Voice, Camera, and Media, using microphone, photo-camera, and gallery glyphs, Material press indication, exact action semantics, and `48dp` minimum targets.
 - **Consequences:** Navigation, timeline position, composer identity, draft/persistence behavior, media capabilities, attachment previews, and keyboard-first media launching remain unchanged. Android rotation no longer recreates Relive into landscape, while capture orientation continues through its existing metadata pipeline. No dependency, schema change, Compose orientation forcing, iOS project mutation, or second animation system is introduced.
+
+---
+
+## ADR-0040 — Floating top-level navigation toolbar
+
+- **Date:** 2026-08-24 · **Status:** Accepted
+- **Context:** The full-width bottom bar competes with Relive's editorial canvas and separates global navigation from its scroll context. The three active roots need compact, stateful navigation without changing their destination behavior or the separate creation affordance.
+- **Decision:** Replace the full-width bottom bar with a bottom-left Material 3 `HorizontalFloatingToolbar`. It collapses on downward vertical scrolling to the active destination icon and expands on upward scrolling to show Timelines, Rediscover, and Search in their fixed visual order. Actions are icon-only with selected semantics and content descriptions. Quick capture is a matching bottom-right `HorizontalFloatingToolbar`: it collapses to Add and expands to a centered `+ New` with the same scroll state and expressive motion. Both controls use the semantic floating-surface token, accent actions, one shared responsive width calculation (`available width − horizontal margins − control gap − quick-capture width`), equal bottom alignment, matching navigation/IME insets, and root-list clearance. The navigation toolbar reserves equal minimum targets and slides a subdued accent-derived selected pill without overshoot; quick capture uses the prominent semantic action type. Touch exploration retains Material's expanded toolbar behavior.
+- **Consequences:** This supersedes the prior bottom-navigation presentation only. Destination state, search return behavior, Quick Capture, Timeline detail hierarchy, persistence, and theme boundaries are unchanged. The implementation uses the existing multiplatform Material 3 experimental expressive toolbar API and adds no dependency.
+
+---
+
+## ADR-0041 — Empty custom entry, direct collection-card boundaries, and saved-location display
+
+- **Date:** 2026-08-24 · **Status:** Accepted
+- **Context:** An empty custom timeline is a first-Moment creation state on every visit, while the previous one-shot entry intent left later empty visits collapsed. Collection-card media fades also obscured the intended boundary between a visual cover and its information surface. Saved readable location labels needed a consistent, privacy-preserving presentation rule.
+- **Decision:** Every settled editable custom timeline whose observed Moment projection is empty expands its existing inline composer using the established animation; no opened-state flag is stored. All remains governed by its explicit global-New intent. Collection cards remove `MediaToCardSurfaceFade` entirely while preserving their deterministic generated fallback covers, media dimensions, and collage selection. Semantic tokens enlarge the lower information areas; only the title occupies flexible space with `Alignment.CenterStart`, leaving metadata in its existing lower row/area. Saved Moment location renders below date/time using the same eyebrow type, `textSecondary`, trimmed whitespace, and first-character-only capitalization derived from the persisted value.
+- **Consequences:** Returning to an unsaved empty custom timeline again offers the composer; after the first Moment exists, normal entry is collapsed. No timeline, location, or cover data is migrated or duplicated. This supersedes ADR-0038's collection-card fade decision and the prior custom-timeline one-shot entry refinement only; global quick capture, generated-cover selection, card media sizing, and persistence behavior remain unchanged.
 
 ## Template for new decisions
 

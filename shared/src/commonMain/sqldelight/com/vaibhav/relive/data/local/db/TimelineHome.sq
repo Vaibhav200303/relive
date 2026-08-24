@@ -24,8 +24,8 @@ LEFT JOIN moment_timeline_memberships mtm ON mtm.timeline_id = ct.id
 GROUP BY ct.id, ct.name, ct.theme, ct.created_at
 ORDER BY display_order, created_at DESC, scope_key ASC;
 
--- Visual attachments only. The window limits every scope to four rows after
--- deterministic moment-recency and attachment-order sorting.
+-- Visual attachments only. All exposes at most nine collage candidates;
+-- custom timelines retain their established four-item preview bound.
 selectTimelineHomePreviewAttachments:
 WITH scoped_moments AS (
     SELECT '__all__' AS scope_key, id AS moment_id, created_at
@@ -51,7 +51,8 @@ WITH scoped_moments AS (
 )
 SELECT scope_key, id, media_type, storage_ref, sort_index
 FROM ranked_attachments
-WHERE preview_rank <= 4
+WHERE (scope_key = '__all__' AND preview_rank <= 9)
+   OR (scope_key <> '__all__' AND preview_rank <= 4)
 ORDER BY scope_key, preview_rank;
 
 -- Presentation-only All collage candidates. The score is a stable integer

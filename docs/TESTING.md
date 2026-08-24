@@ -80,7 +80,7 @@ Central, high-value behavior. Use a deterministic `Clock`.
 Cover the required cases ([`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) §7):
 
 - **Moment with no location** — composer and save work fully; moment persists with absent location.
-- **Detected location** — `LocationProvider` → `PlaceResolver` yields a readable `ReliveLocation`; displayed below date/time.
+- **Saved readable location** — displayed below date/time with surrounding whitespace trimmed and only its first character capitalized; persisted data is unchanged.
 - **Manually replaced location** — user replaces detected/absent location with a manual entry; persisted correctly.
 - **Removed location** — user removes location; moment saves without it.
 - **Permission denied** and **permanently denied** — composer continues; moment still saveable.
@@ -145,7 +145,7 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 ### Custom timelines
 - [ ] Custom timelines appear newest-created-first on Timeline Home; timestamp ties use deterministic ordering.
 - [ ] Blank timeline names are rejected; surrounding whitespace is trimmed.
-- [ ] A custom timeline with no Moments shows the editorial empty state and the inline `+` marker.
+- [ ] Entering a custom timeline with no Moments smoothly expands its existing inline composer every time; after its first Moment is saved, normal entry remains collapsed.
 - [ ] Creating inside a custom timeline shows the same Moment once there and once in All.
 - [ ] Creating in All with no assignment keeps the Moment out of custom timelines.
 - [ ] Assigning one or more custom timelines from All shows one shared Moment in every selected scope.

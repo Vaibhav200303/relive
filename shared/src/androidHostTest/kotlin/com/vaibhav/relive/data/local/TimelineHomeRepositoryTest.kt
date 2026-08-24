@@ -54,7 +54,7 @@ class TimelineHomeRepositoryTest {
         assertEquals(2, all.momentCount)
         assertEquals(2, familySummary.momentCount)
         assertEquals(1, tripsSummary.momentCount)
-        assertEquals(listOf("n0", "n1", "n2", "o0"), all.previewAttachments.map { it.id.value })
+        assertEquals(listOf("n0", "n1", "n2", "o0", "o1"), all.previewAttachments.map { it.id.value })
         assertEquals(listOf("n0", "n1", "n2", "o0"), familySummary.previewAttachments.map { it.id.value })
         assertEquals(listOf("n0", "n1", "n2"), tripsSummary.previewAttachments.map { it.id.value })
         assertTrue(all.previewAttachments.none { it.type == MediaType.Audio })
@@ -81,7 +81,29 @@ class TimelineHomeRepositoryTest {
         assertTrue(audioSummary.previewAttachments.isEmpty())
     }
 
-    @Test fun all_collage_candidates_are_bounded_bucketed_and_visual_only() = runTest {
+    @Test fun all_preview_is_bounded_to_nine_while_custom_preview_remains_four() = runTest {
+        val custom = TimelineId("custom")
+        fx.timelines.createCustom(sampleCustomTimeline(custom.value, "Custom"), Instant(1))
+        fx.moments.insert(
+            sampleMoment(
+                id = "many",
+                title = "Many",
+                attachments = List(12) { index ->
+                    sampleAttachment("visual-$index", MediaType.Image, sortIndex = index)
+                },
+            ),
+            setOf(custom),
+        )
+
+        val summaries = fx.timelineHome.observeSummaries().first()
+        assertEquals(9, summaries.single { it.timeline == Timeline.All }.previewAttachments.size)
+        assertEquals(
+            4,
+            summaries.single { (it.timeline as? Timeline.Custom)?.id == custom }.previewAttachments.size,
+        )
+    }
+
+    @Test fun all_collage_candidates_are_bucketed_bounded_and_visual_only() = runTest {
         repeat(20) { index ->
             fx.moments.insert(
                 sampleMoment(

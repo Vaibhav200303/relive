@@ -78,8 +78,8 @@ import com.vaibhav.relive.presentation.timeline.TimelineMode
 import com.vaibhav.relive.presentation.timeline.TimelineScreenState
 import com.vaibhav.relive.presentation.timeline.TimelineViewModel
 import com.vaibhav.relive.presentation.date.RediscoverCalendar
-import com.vaibhav.relive.presentation.navigation.shouldExpandQuickCaptureComposer
 import com.vaibhav.relive.presentation.timeline.toMoment
+import com.vaibhav.relive.presentation.navigation.shouldExpandComposerOnEnter
 import com.vaibhav.relive.presentation.viewer.TimelineMediaNavState
 import com.vaibhav.relive.presentation.viewer.closeGallery
 import com.vaibhav.relive.presentation.viewer.closeViewer
@@ -118,6 +118,7 @@ fun TimelineScreen(
     mode: TimelineMode = TimelineMode.Editable,
     selectedMomentId: MomentId? = null,
     openComposerOnEnter: Boolean = false,
+    onComposerOpenIntentConsumed: (() -> Unit)? = null,
     onBackToTimelineHome: (() -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
@@ -181,20 +182,23 @@ fun TimelineScreen(
         action()
     }
 
-    val quickCaptureDestinationSettled = timelineState.moments != TimelineMomentsState.Loading
-    LaunchedEffect(openComposerOnEnter, timelineState.currentTimeline, quickCaptureDestinationSettled) {
-        if (mode.allowsMutations && shouldExpandQuickCaptureComposer(
+    val composerDestinationSettled = timelineState.moments != TimelineMomentsState.Loading
+    val isTimelineEmpty = timelineState.moments == TimelineMomentsState.Empty
+    LaunchedEffect(openComposerOnEnter, timelineState.currentTimeline, composerDestinationSettled, isTimelineEmpty) {
+        if (mode.allowsMutations && shouldExpandComposerOnEnter(
                 requested = openComposerOnEnter,
                 currentTimeline = timelineState.currentTimeline,
                 isAlreadyExpanded = isComposerExpanded,
-                isDestinationSettled = quickCaptureDestinationSettled,
+                isDestinationSettled = composerDestinationSettled,
+                isTimelineEmpty = isTimelineEmpty,
             )
         ) {
-            // Render All once with the normal collapsed marker so the existing
-            // AnimatedContent observes a real false -> true transition.
+            // Let the destination render once in its normal collapsed state so AnimatedContent
+            // observes a real false -> true transition instead of entering already open.
+            if (openComposerOnEnter) onComposerOpenIntentConsumed?.invoke()
             withFrameNanos { }
             if (isComposerExpanded) return@LaunchedEffect
-            composerViewModel.prepareForTimeline(CurrentTimeline.All)
+            composerViewModel.prepareForTimeline(timelineState.currentTimeline)
             isComposerExpanded = true
             // Focus only after the expanding composer has entered composition.
             withFrameNanos { }
@@ -274,6 +278,7 @@ fun TimelineScreen(
             onBack = onBackToTimelineHome,
             onTitleChange = composerViewModel::updateTitle,
             onContentChange = composerViewModel::updateContent,
+            onLocationChange = composerViewModel::updateManualLocation,
             onPendingTagChange = composerViewModel::updatePendingTagInput,
             onCommitPendingTag = composerViewModel::commitPendingTag,
             onRemoveTag = composerViewModel::removeTag,
@@ -427,6 +432,7 @@ private fun TimelineContent(
     onBack: (() -> Unit)?,
     onTitleChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
+    onLocationChange: (String) -> Unit,
     onPendingTagChange: (String) -> Unit,
     onCommitPendingTag: () -> Unit,
     onRemoveTag: (Tag) -> Unit,
@@ -522,6 +528,7 @@ private fun TimelineContent(
                                 mediaStore = mediaStore,
                                 onTitleChange = onTitleChange,
                                 onContentChange = onContentChange,
+                                onLocationChange = onLocationChange,
                                 onPendingTagChange = onPendingTagChange,
                                 onCommitPendingTag = onCommitPendingTag,
                                 onRemoveTag = onRemoveTag,
@@ -607,6 +614,7 @@ private fun TimelineContent(
                                     mediaStore = mediaStore,
                                     onTitleChange = onTitleChange,
                                     onContentChange = onContentChange,
+                                    onLocationChange = onLocationChange,
                                     onPendingTagChange = onPendingTagChange,
                                     onCommitPendingTag = onCommitPendingTag,
                                     onRemoveTag = onRemoveTag,

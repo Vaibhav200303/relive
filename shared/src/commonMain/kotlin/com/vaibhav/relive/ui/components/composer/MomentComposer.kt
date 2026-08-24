@@ -1,11 +1,11 @@
 package com.vaibhav.relive.ui.components.composer
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -45,10 +45,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
@@ -93,6 +93,7 @@ fun MomentComposer(
     mediaStore: MediaStore,
     onTitleChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
+    onLocationChange: (String) -> Unit,
     onPendingTagChange: (String) -> Unit,
     onCommitPendingTag: () -> Unit,
     onRemoveTag: (Tag) -> Unit,
@@ -187,6 +188,14 @@ fun MomentComposer(
                 Spacer(Modifier.weight(1f))
                 ResetButton(onReset = onReset, enabled = !state.isSaving)
             }
+
+            Spacer(Modifier.height(dims.spacing.sm))
+
+            ComposerLocationField(
+                value = state.location.readableComposerLabel(),
+                enabled = !state.isSaving,
+                onValueChange = onLocationChange,
+            )
 
             Spacer(Modifier.height(dims.spacing.sm))
 
@@ -457,6 +466,64 @@ private fun ComposerTitleField(
         },
     )
 }
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ComposerLocationField(
+    value: String,
+    enabled: Boolean,
+    onValueChange: (String) -> Unit,
+) {
+    val colors = ReliveTheme.colors
+    val dims = ReliveTheme.dimensions
+    val requester = remember { BringIntoViewRequester() }
+    val scope = rememberCoroutineScope()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = dims.minTouchTarget),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm),
+    ) {
+        PinGlyph(
+            size = dims.icon.sm,
+            color = colors.textMuted,
+            strokeWidth = dims.stroke.icon,
+        )
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            enabled = enabled,
+            singleLine = true,
+            textStyle = ReliveTheme.typography.body.copy(color = colors.textSecondary),
+            cursorBrush = androidx.compose.ui.graphics.SolidColor(colors.accent),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            modifier = Modifier
+                .weight(1f)
+                .bringIntoViewRequester(requester)
+                .onFocusEvent { if (it.isFocused) scope.launch { requester.bringIntoView() } }
+                .semantics { contentDescription = "Moment location" },
+            decorationBox = { inner ->
+                if (value.isEmpty()) {
+                    Text(
+                        text = "Add location",
+                        style = ReliveTheme.typography.body,
+                        color = colors.textMuted,
+                    )
+                }
+                inner()
+            },
+        )
+    }
+}
+
+private fun com.vaibhav.relive.domain.model.ReliveLocation?.readableComposerLabel(): String =
+    this?.let { location ->
+        listOfNotNull(location.placeName, location.locality, location.region, location.country)
+            .filter(String::isNotBlank)
+            .distinct()
+            .joinToString(", ")
+    }.orEmpty()
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable

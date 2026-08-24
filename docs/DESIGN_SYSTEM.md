@@ -98,6 +98,7 @@ Opacity variants are drawn from the opacity scale (§15), not arbitrary values.
 | ----------------- | --------- | ------------------------------------- |
 | `color.surface.card` | `#EFECE5` | media container / tag chip / composer media-action surface |
 | `color.surface.card.translucent` | `#EFECE5` @ ~50% | quiet secondary surface treatment |
+| `color.surface.floating` | `#E1D8CB` | floating navigation and quick-capture controls |
 
 Surfaces are used sparingly — the product avoids excessive cards.
 
@@ -131,6 +132,8 @@ Only the weights and styles actually referenced by the token mappings below are 
 | `type.eyebrow`          | sans   | ~10sp, semibold, uppercase, wide tracking | timeline metadata line (`DATE • TIME` / location)        |
 | `type.tag`              | sans   | ~10sp, semibold, wide tracking            | tag chips (rendered `#lowercase`; `#` is supplied by the UI, not stored on the tag label) |
 | `type.action`           | sans   | ~14sp, semibold                           | buttons                       |
+
+The composer location input uses `type.body` with muted/secondary text, the `icon.sm` location pin, and a `48dp` minimum row target. It is an inline editorial field directly below `DATE • TIME`, never a heavy outlined address form. Saved Moment locations use the same `type.eyebrow` role and left edge as saved date/time, but `color.text.secondary`; presentation trims whitespace and capitalizes only the first character.
 
 Sizes are expressed in scalable units (`sp`) so they respect system font scaling (§16).
 
@@ -246,6 +249,10 @@ Single-media Moments use adaptive natural sizing: the container shrink-wraps aro
 - Border color matches timeline-dot color (`color.accent` / `#6F4E37`).
 - Multi-media internal gaps and outer border are the same weight, so adjacent tiles yield **one** ~4dp separator, not two overlapping strokes.
 - Audio, video, and image tiles all participate in the same border/gap system.
+
+### Collection-card media/surface boundary
+
+Collection-card visual media and deterministic generated covers meet the opaque lower information surface directly. No media-to-surface fade, translucent overlap, or fake-shadow transition is used. Generated fallback covers remain unchanged. Lower information areas use semantic minimum-height tokens; title text receives the flexible vertical space with `Alignment.CenterStart`, while supporting metadata retains its established lower row/area and start/right alignment.
 
 ---
 

@@ -69,7 +69,37 @@ class MomentPresentationMapperTest {
             location = ReliveLocation(placeName = "Livraria Lello", locality = "Porto"),
             content = "note",
         )
-        assertEquals("Livraria Lello", moment.toPresentation().locationLabel)
+        val presentation = moment.toPresentation()
+
+        assertEquals("Livraria Lello", presentation.locationLabel)
+        assertEquals(moment.location, presentation.location)
+    }
+
+    @Test
+    fun blankPersistedLocationMapsToNoMetadataLabel() {
+        val moment = Moment(
+            id = MomentId("m-blank-location"),
+            createdAt = Instant(1_695_913_200_000L),
+            location = ReliveLocation(placeName = "   ", locality = "\t"),
+            content = "note",
+        )
+
+        assertNull(moment.toPresentation().locationLabel)
+    }
+
+    @Test
+    fun persistedLocationIsTrimmedAndOnlyItsFirstCharacterIsCapitalizedForDisplay() {
+        val location = ReliveLocation(placeName = "  pune  ")
+        val moment = Moment(
+            id = MomentId("m-lowercase-location"),
+            createdAt = Instant(1_695_913_200_000L),
+            location = location,
+            content = "note",
+        )
+        val presentation = moment.toPresentation()
+
+        assertEquals("Pune", presentation.locationLabel)
+        assertEquals(location, presentation.location)
     }
 
     @Test
