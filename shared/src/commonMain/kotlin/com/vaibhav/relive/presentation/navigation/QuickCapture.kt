@@ -14,7 +14,6 @@ enum class QuickCaptureSurface {
     Recorder,
     ModalDetail,
 }
-
 data class QuickCaptureCommand(
     val timeline: CurrentTimeline,
     val openComposer: Boolean,
@@ -37,13 +36,3 @@ fun quickCaptureCommand(surface: QuickCaptureSurface): QuickCaptureCommand? = wh
     QuickCaptureSurface.ModalDetail,
     -> null
 }
-
-fun shouldExpandQuickCaptureComposer(
-    requested: Boolean,
-    currentTimeline: CurrentTimeline,
-    isAlreadyExpanded: Boolean,
-    isDestinationSettled: Boolean,
-): Boolean = requested &&
-    currentTimeline == CurrentTimeline.All &&
-    !isAlreadyExpanded &&
-    isDestinationSettled
