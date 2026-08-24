@@ -14,6 +14,7 @@ data class ReliveColors(
     val accent: Color,
     val accentMuted: Color,
     val surfaceCard: Color,
+    val surfaceFloating: Color,
     val surfaceCardTranslucent: Color,
     val surfaceAudio: Color,
     val border: Color,
@@ -24,6 +25,7 @@ private val WarmJournalInk = Color(0xFF3C3633)
 private val WarmJournalAccent = Color(0xFF6F4E37)
 private val WarmJournalCanvas = Color(0xFFF6F4F0)
 private val WarmJournalCard = Color(0xFFEFECE5)
+private val WarmJournalFloatingSurface = Color(0xFFE1D8CB)
 private val WarmJournalBorder = Color(0xFFD5CDBF)
 
 val WarmJournalColors: ReliveColors = ReliveColors(
@@ -36,6 +38,7 @@ val WarmJournalColors: ReliveColors = ReliveColors(
     accent = WarmJournalAccent,
     accentMuted = WarmJournalAccent.copy(alpha = ReliveOpacity.High),
     surfaceCard = WarmJournalCard,
+    surfaceFloating = WarmJournalFloatingSurface,
     surfaceCardTranslucent = WarmJournalCard.copy(alpha = ReliveOpacity.Medium),
     surfaceAudio = Color(0xFF171514),
     border = WarmJournalBorder,

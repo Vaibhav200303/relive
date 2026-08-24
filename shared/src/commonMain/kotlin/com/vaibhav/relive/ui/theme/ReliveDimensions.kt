@@ -80,6 +80,16 @@ data class ReliveSearchDimensions(
 )
 
 @Immutable
+data class ReliveFloatingToolbarDimensions(
+    val height: Dp = 64.dp,
+    val compactWidth: Dp = 64.dp,
+    val newExpandedWidth: Dp = 136.dp,
+    val newLabelMinimumWidth: Dp = 88.dp,
+    val controlGap: Dp = 8.dp,
+    val indicatorHeight: Dp = 48.dp,
+)
+
+@Immutable
 data class ReliveMediaDimensions(
     val ratioWide: Float = 2f,
     val sepiaAmount: Float = 0.3f,
@@ -120,6 +130,7 @@ data class ReliveDimensions(
     val rediscover: ReliveRediscoverDimensions = ReliveRediscoverDimensions(),
     val profile: ReliveProfileDimensions = ReliveProfileDimensions(),
     val search: ReliveSearchDimensions = ReliveSearchDimensions(),
+    val floatingToolbar: ReliveFloatingToolbarDimensions = ReliveFloatingToolbarDimensions(),
     val media: ReliveMediaDimensions = ReliveMediaDimensions(),
     val minTouchTarget: Dp = 48.dp,
 )

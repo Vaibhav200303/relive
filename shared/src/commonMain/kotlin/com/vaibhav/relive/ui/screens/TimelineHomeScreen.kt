@@ -13,12 +13,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,6 +61,10 @@ fun TimelineHomeScreen(
     listState: LazyListState,
     onOpenTimeline: (Timeline) -> Unit,
     onOpenProfile: () -> Unit,
+    onCreateMoment: (() -> Unit)? = null,
+    navigationToolbarExpanded: Boolean = true,
+    onNavigationToolbarExpand: () -> Unit = {},
+    onNavigationToolbarCollapse: () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsState()
     val creation by viewModel.creationState.collectAsState()
@@ -65,26 +72,32 @@ fun TimelineHomeScreen(
         viewModel.navigation.collect(onOpenTimeline)
     }
 
-    Column(
-        modifier = Modifier
-            .background(ReliveTheme.colors.bgCanvas)
-            .fillMaxWidth(),
-    ) {
-        TimelineHomeHeader(onCreateTimeline = viewModel::showTimelineCreation, onOpenProfile = onOpenProfile)
-        TimelineHomeSearchBar(
-            query = state.query,
-            onQueryChange = viewModel::updateSearchQuery,
-        )
-        when (val content = state.content) {
-            TimelineHomeContent.Loading -> TimelineHomeLoading()
-            is TimelineHomeContent.Loaded -> TimelineHomeContent(
-                hasCustomTimelines = state.customSummaries.isNotEmpty(),
-                summaries = state.visibleCustomSummaries,
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .background(ReliveTheme.colors.bgCanvas)
+                .fillMaxWidth(),
+        ) {
+            TimelineHomeHeader(onCreateTimeline = viewModel::showTimelineCreation, onOpenProfile = onOpenProfile)
+            TimelineHomeSearchBar(
                 query = state.query,
-                mediaStore = mediaStore,
-                listState = listState,
-                onOpenTimeline = viewModel::selectTimeline,
+                onQueryChange = viewModel::updateSearchQuery,
             )
+            when (val content = state.content) {
+                TimelineHomeContent.Loading -> TimelineHomeLoading()
+                is TimelineHomeContent.Loaded -> TimelineHomeContent(
+                    hasCustomTimelines = state.customSummaries.isNotEmpty(),
+                    summaries = state.visibleCustomSummaries,
+                    query = state.query,
+                    mediaStore = mediaStore,
+                    listState = listState,
+                    onOpenTimeline = viewModel::selectTimeline,
+                    reserveQuickCaptureSpace = onCreateMoment != null,
+                    navigationToolbarExpanded = navigationToolbarExpanded,
+                    onNavigationToolbarExpand = onNavigationToolbarExpand,
+                    onNavigationToolbarCollapse = onNavigationToolbarCollapse,
+                )
+            }
         }
     }
     TimelineCreationDialog(
@@ -226,15 +239,25 @@ private fun TimelineHomeContent(
     mediaStore: MediaStore,
     listState: LazyListState,
     onOpenTimeline: (Timeline) -> Unit,
+    reserveQuickCaptureSpace: Boolean,
+    navigationToolbarExpanded: Boolean,
+    onNavigationToolbarExpand: () -> Unit,
+    onNavigationToolbarCollapse: () -> Unit,
 ) {
     val dims = ReliveTheme.dimensions
+    val bottomPadding = if (reserveQuickCaptureSpace) dims.spacing.huge * 2 else dims.spacing.huge
     LazyColumn(
         state = listState,
+        modifier = Modifier.floatingToolbarNestedScroll(
+            expanded = navigationToolbarExpanded,
+            onExpand = onNavigationToolbarExpand,
+            onCollapse = onNavigationToolbarCollapse,
+        ),
         contentPadding = PaddingValues(
             start = dims.spacing.xl,
             top = dims.spacing.md,
             end = dims.spacing.xl,
-            bottom = dims.spacing.huge,
+            bottom = bottomPadding,
         ),
         verticalArrangement = Arrangement.spacedBy(dims.spacing.xl),
     ) {
@@ -259,6 +282,19 @@ private fun TimelineHomeContent(
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private fun Modifier.floatingToolbarNestedScroll(
+    expanded: Boolean,
+    onExpand: () -> Unit,
+    onCollapse: () -> Unit,
+): Modifier = with(FloatingToolbarDefaults) {
+    floatingToolbarVerticalNestedScroll(
+        expanded = expanded,
+        onExpand = onExpand,
+        onCollapse = onCollapse,
+    )
 }
 
 @Composable
