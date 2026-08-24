@@ -184,6 +184,13 @@ class MomentPersistenceTest {
         assertEquals(listOf("b", "c", "a"), ids)
     }
 
+    @Test fun manualLocationRoundTrip() = runTest {
+        val location = ReliveLocation(placeName = "Jalandhar")
+        fx.moments.insert(sampleMoment(id = "manual-location", title = "Home", location = location))
+
+        assertEquals(location, fx.moments.findById(MomentId("manual-location"))?.location)
+    }
+
     @Test fun searchMatchesTitleAndContentCaseInsensitivelyInChronologicalRepositoryOrder() = runTest {
         fx.moments.insert(sampleMoment(id = "old", createdAtMs = 1L, title = "Keys"))
         fx.moments.insert(sampleMoment(id = "new", createdAtMs = 2L, content = "Lost my KEYS today"))

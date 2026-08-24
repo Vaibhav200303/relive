@@ -39,6 +39,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.material3.IconButton
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.feedback.ReliveHapticCue
+import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveOpacity
 import com.vaibhav.relive.ui.theme.ReliveDimensions
 
@@ -226,8 +228,12 @@ private fun DestinationAction(
 ) {
     val isSelected = selected == destination
     val tint = if (isSelected) ReliveTheme.colors.accent else ReliveTheme.colors.textMuted
+    val haptics = rememberReliveHaptics()
     IconButton(
-        onClick = { onSelect(destination) },
+        onClick = {
+            if (!isSelected) haptics.perform(ReliveHapticCue.Selection)
+            onSelect(destination)
+        },
         modifier = modifier
             .semantics {
                 contentDescription = destination.label

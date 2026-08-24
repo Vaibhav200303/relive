@@ -32,6 +32,7 @@ class TimelineHomeViewModel(
 
     private val creation = TimelineCreationController(timelineRepository, clock, idGenerator, scope)
     val creationState: StateFlow<TimelineCreationState> = creation.state
+    val creationOutcomes = creation.outcomes
 
     init {
         scope.launch {

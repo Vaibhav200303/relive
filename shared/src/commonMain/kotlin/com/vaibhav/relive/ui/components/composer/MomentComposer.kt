@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -74,6 +75,8 @@ import com.vaibhav.relive.presentation.date.EditorialDateFormatter
 import com.vaibhav.relive.presentation.date.EditorialTimeFormatter
 import com.vaibhav.relive.presentation.timeline.CurrentTimeline
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.feedback.ReliveHapticCue
+import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 
 /**
  * Inline composer article. Extends the Phase 3 shape with the Phase 4
@@ -298,6 +301,7 @@ private fun ComposerTimelineAssignments(
     val colors = ReliveTheme.colors
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
+    val haptics = rememberReliveHaptics()
     Column(verticalArrangement = Arrangement.spacedBy(dims.spacing.xs)) {
         Text(
             text = "TIMELINES · OPTIONAL",
@@ -321,7 +325,12 @@ private fun ComposerTimelineAssignments(
                             value = selected,
                             enabled = enabled,
                             role = Role.Checkbox,
-                            onValueChange = { onToggle(timeline.id) },
+                            onValueChange = {
+                                haptics.perform(
+                                    if (selected) ReliveHapticCue.ToggleOff else ReliveHapticCue.ToggleOn,
+                                )
+                                onToggle(timeline.id)
+                            },
                         )
                         .padding(horizontal = dims.spacing.md),
                 ) {
@@ -348,6 +357,7 @@ fun CollapsedComposerMarker(
 ) {
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
+    val haptics = rememberReliveHaptics()
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -367,7 +377,10 @@ fun CollapsedComposerMarker(
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
-                        onClick = onExpand,
+                        onClick = {
+                            haptics.perform(ReliveHapticCue.Action)
+                            onExpand()
+                        },
                     )
                     .semantics { contentDescription = "Add a new moment" },
                 contentAlignment = Alignment.Center,
@@ -570,6 +583,7 @@ private fun ComposerTagsRow(
     val colors = ReliveTheme.colors
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
+    val haptics = rememberReliveHaptics()
     FlowRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm),
@@ -578,51 +592,65 @@ private fun ComposerTagsRow(
         tags.forEach { tag ->
             TagPill(tag = tag, enabled = enabled, onRemove = { onRemove(tag) })
         }
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(dims.spacing.xs),
+        val tagFocusRequester = remember { FocusRequester() }
+        Box(
             modifier = Modifier
-                .clip(CircleShape)
-                .border(
-                    width = dims.stroke.hairline,
-                    color = colors.borderMuted,
-                    shape = CircleShape,
-                )
-                .padding(horizontal = dims.spacing.md, vertical = dims.spacing.xs),
+                .heightIn(min = dims.minTouchTarget)
+                .clickable(enabled = enabled, role = Role.Button) { tagFocusRequester.requestFocus() }
+                .semantics { contentDescription = "Add tag" },
+            contentAlignment = Alignment.Center,
         ) {
-            Text(text = "#", style = type.tag, color = colors.textMuted)
-            val tagRequester = remember { BringIntoViewRequester() }
-            val tagScope = rememberCoroutineScope()
-            Box(modifier = Modifier.widthIn(min = 40.dp)) {
-                BasicTextField(
-                    value = pendingInput,
-                    onValueChange = onPendingChange,
-                    enabled = enabled,
-                    singleLine = true,
-                    textStyle = type.tag.copy(color = colors.textSecondary),
-                    cursorBrush = androidx.compose.ui.graphics.SolidColor(colors.accent),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { onCommit() }),
-                    modifier = Modifier
-                        .bringIntoViewRequester(tagRequester)
-                        .onFocusEvent { if (it.isFocused) tagScope.launch { tagRequester.bringIntoView() } }
-                        .semantics { contentDescription = "Add tag" },
-                    decorationBox = { inner ->
-                        if (pendingInput.isEmpty()) {
-                            Text(text = "tag", style = type.tag, color = colors.textMuted)
-                        }
-                        inner()
-                    },
-                )
-            }
-            IconButton(
-                onClick = onCommit,
-                enabled = enabled && pendingInput.isNotBlank(),
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(dims.spacing.xs),
                 modifier = Modifier
-                    .size(dims.minTouchTarget / 2)
-                    .semantics { contentDescription = "Commit tag" },
+                    .height(dims.composer.tagVisibleHeight)
+                    .clip(CircleShape)
+                    .border(
+                        width = dims.stroke.hairline,
+                        color = colors.borderMuted,
+                        shape = CircleShape,
+                    )
+                    .padding(horizontal = dims.spacing.md),
             ) {
-                PlusGlyph(size = dims.icon.sm, color = colors.textSecondary, strokeWidth = dims.stroke.icon)
+                Text(text = "#", style = type.tag, color = colors.textMuted)
+                val tagRequester = remember { BringIntoViewRequester() }
+                val tagScope = rememberCoroutineScope()
+                Box(modifier = Modifier.widthIn(min = 40.dp)) {
+                    BasicTextField(
+                        value = pendingInput,
+                        onValueChange = onPendingChange,
+                        enabled = enabled,
+                        singleLine = true,
+                        textStyle = type.tag.copy(color = colors.textSecondary),
+                        cursorBrush = androidx.compose.ui.graphics.SolidColor(colors.accent),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { onCommit() }),
+                        modifier = Modifier
+                            .focusRequester(tagFocusRequester)
+                            .bringIntoViewRequester(tagRequester)
+                            .onFocusEvent { if (it.isFocused) tagScope.launch { tagRequester.bringIntoView() } }
+                            .semantics { contentDescription = "Add tag input" },
+                        decorationBox = { inner ->
+                            if (pendingInput.isEmpty()) {
+                                Text(text = "tag", style = type.tag, color = colors.textMuted)
+                            }
+                            inner()
+                        },
+                    )
+                }
+                IconButton(
+                    onClick = {
+                        haptics.perform(ReliveHapticCue.Action)
+                        onCommit()
+                    },
+                    enabled = enabled && pendingInput.isNotBlank(),
+                    modifier = Modifier
+                        .size(dims.composer.tagVisibleHeight)
+                        .semantics { contentDescription = "Commit tag" },
+                ) {
+                    PlusGlyph(size = dims.icon.sm, color = colors.textSecondary, strokeWidth = dims.stroke.icon)
+                }
             }
         }
     }
@@ -633,31 +661,44 @@ private fun TagPill(tag: Tag, enabled: Boolean, onRemove: () -> Unit) {
     val colors = ReliveTheme.colors
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(dims.spacing.xs),
+    val haptics = rememberReliveHaptics()
+    Box(
         modifier = Modifier
-            .clip(CircleShape)
-            .background(colors.surfaceCard)
-            .border(
-                width = dims.stroke.hairline,
-                color = colors.borderMuted,
-                shape = CircleShape,
+            .heightIn(min = dims.minTouchTarget)
+            .clickable(
+                enabled = enabled,
+                role = Role.Button,
+                onClick = {
+                    haptics.perform(ReliveHapticCue.Action)
+                    onRemove()
+                },
             )
-            .padding(start = dims.spacing.md, end = dims.spacing.sm, top = dims.spacing.xs, bottom = dims.spacing.xs),
+            .semantics { contentDescription = "Remove tag ${tag.label}" },
+        contentAlignment = Alignment.Center,
     ) {
-        Text(text = "#" + tag.label.lowercase(), style = type.tag, color = colors.textSecondary)
-        IconButton(
-            onClick = onRemove,
-            enabled = enabled,
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(dims.spacing.xs),
             modifier = Modifier
-                .size(dims.minTouchTarget / 3)
-                .semantics { contentDescription = "Remove tag ${tag.label}" },
+                .clip(CircleShape)
+                .background(colors.surfaceCard)
+                .border(
+                    width = dims.stroke.hairline,
+                    color = colors.borderMuted,
+                    shape = CircleShape,
+                )
+                .padding(
+                    start = dims.spacing.md,
+                    end = dims.spacing.sm,
+                    top = dims.spacing.xs,
+                    bottom = dims.spacing.xs,
+                ),
         ) {
+            Text(text = "#" + tag.label.lowercase(), style = type.tag, color = colors.textSecondary)
             CloseGlyph(size = dims.icon.sm, color = colors.textMuted, strokeWidth = dims.stroke.icon)
+            }
         }
     }
-}
 
 @Composable
 private fun AddMediaShell(
@@ -672,6 +713,7 @@ private fun AddMediaShell(
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
     val motion = ReliveTheme.motion
+    val haptics = rememberReliveHaptics()
     val shape = RoundedCornerShape(dims.radii.lg)
 
     Column(
@@ -685,7 +727,14 @@ private fun AddMediaShell(
                 color = colors.borderMuted,
                 shape = shape,
             )
-            .clickable(enabled = enabled, role = Role.Button, onClick = onToggle)
+            .clickable(
+                enabled = enabled,
+                role = Role.Button,
+                onClick = {
+                    haptics.perform(if (expanded) ReliveHapticCue.ToggleOff else ReliveHapticCue.ToggleOn)
+                    onToggle()
+                },
+            )
             .padding(horizontal = dims.spacing.lg, vertical = dims.spacing.md)
             .semantics { contentDescription = if (expanded) "Hide media choices" else "Add media" },
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -771,6 +820,7 @@ private fun MediaChoice(
     val colors = ReliveTheme.colors
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
+    val haptics = rememberReliveHaptics()
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(dims.spacing.xs),
@@ -780,7 +830,10 @@ private fun MediaChoice(
             .clickable(
                 enabled = enabled,
                 role = Role.Button,
-                onClick = onClick,
+                onClick = {
+                    haptics.perform(ReliveHapticCue.Action)
+                    onClick()
+                },
             )
             .padding(horizontal = dims.spacing.xs, vertical = dims.spacing.sm)
             .semantics { contentDescription = contentDesc },
@@ -794,8 +847,12 @@ private fun MediaChoice(
 private fun ResetButton(onReset: () -> Unit, enabled: Boolean) {
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
+    val haptics = rememberReliveHaptics()
     IconButton(
-        onClick = onReset,
+        onClick = {
+            haptics.perform(ReliveHapticCue.Action)
+            onReset()
+        },
         enabled = enabled,
         modifier = Modifier
             .size(dims.minTouchTarget)
@@ -821,26 +878,21 @@ private fun KeepMomentAction(
         isProcessingMedia -> "Processing media…"
         else -> if (isEditing) "Save changes" else "Keep Moment"
     }
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.End,
-        modifier = Modifier.fillMaxWidth(),
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = colors.accent,
+            contentColor = colors.textOnAccent,
+            disabledContainerColor = colors.surfaceCard,
+            disabledContentColor = colors.textMuted,
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = dims.minTouchTarget)
+            .semantics { contentDescription = if (isEditing) "Save changes" else "Keep moment" },
     ) {
-        Button(
-            onClick = onClick,
-            enabled = enabled,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = colors.accent,
-                contentColor = colors.textOnAccent,
-                disabledContainerColor = colors.surfaceCard,
-                disabledContentColor = colors.textMuted,
-            ),
-            modifier = Modifier
-                .heightIn(min = dims.minTouchTarget)
-                .semantics { contentDescription = if (isEditing) "Save changes" else "Keep moment" },
-        ) {
-            Text(text = label, style = type.action)
-        }
+        Text(text = label, style = type.action)
     }
 }
 
@@ -854,6 +906,7 @@ private fun MicPermissionHint(
     val colors = ReliveTheme.colors
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
+    val haptics = rememberReliveHaptics()
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm),
@@ -874,19 +927,27 @@ private fun MicPermissionHint(
                 style = type.action,
                 color = colors.accent,
                 modifier = Modifier
+                    .heightIn(min = dims.minTouchTarget)
+                    .wrapContentHeight(Alignment.CenterVertically)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
-                        onClick = onOpenSettings,
+                        onClick = {
+                            haptics.perform(ReliveHapticCue.Action)
+                            onOpenSettings()
+                        },
                     )
                     .padding(dims.spacing.xs)
                     .semantics { contentDescription = "Open app settings" },
             )
         } else {
             IconButton(
-                onClick = onDismiss,
+                onClick = {
+                    haptics.perform(ReliveHapticCue.Action)
+                    onDismiss()
+                },
                 modifier = Modifier
-                    .size(dims.minTouchTarget / 2)
+                    .size(dims.minTouchTarget)
                     .semantics { contentDescription = "Dismiss microphone permission message" },
             ) {
                 CloseGlyph(size = dims.icon.sm, color = colors.textMuted, strokeWidth = dims.stroke.icon)

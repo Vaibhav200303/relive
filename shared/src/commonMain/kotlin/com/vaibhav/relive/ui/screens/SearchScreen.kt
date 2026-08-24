@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -51,6 +52,8 @@ import com.vaibhav.relive.ui.components.timeline.DateNavigationPicker
 import com.vaibhav.relive.ui.components.timeline.MomentCard
 import com.vaibhav.relive.ui.components.viewer.MediaViewer
 import com.vaibhav.relive.ui.components.viewer.MomentMediaGallery
+import com.vaibhav.relive.ui.feedback.ReliveHapticCue
+import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.platform.media.ActivePlayback
 import com.vaibhav.relive.presentation.viewer.TimelineMediaNavState
@@ -230,6 +233,7 @@ private fun SearchHeader(
     val dims = ReliveTheme.dimensions
     val previousEnabled = activeIndex != null && activeIndex > 0
     val nextEnabled = activeIndex != null && activeIndex < resultCount - 1
+    val haptics = rememberReliveHaptics()
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
@@ -252,7 +256,10 @@ private fun SearchHeader(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(dims.spacing.xs),
         ) {
-            IconButton(onClick = onBack, modifier = Modifier.semantics { contentDescription = "Back" }) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier.size(dims.minTouchTarget).semantics { contentDescription = "Back" },
+            ) {
                 BackGlyph(dims.icon.lg, colors.textPrimary, dims.stroke.icon)
             }
             BasicTextField(
@@ -282,8 +289,14 @@ private fun SearchHeader(
                         innerTextField()
                         if (showClear) {
                             IconButton(
-                                onClick = onClear,
-                                modifier = Modifier.align(Alignment.CenterEnd).semantics {
+                                onClick = {
+                                    haptics.perform(ReliveHapticCue.Action)
+                                    onClear()
+                                },
+                                modifier = Modifier
+                                    .size(dims.minTouchTarget)
+                                    .align(Alignment.CenterEnd)
+                                    .semantics {
                                     contentDescription = "Clear search"
                                 },
                             ) {
@@ -302,19 +315,31 @@ private fun SearchHeader(
             }
             if (showSearchControls) {
                 IconButton(
-                    onClick = onPrevious,
+                    onClick = {
+                        haptics.perform(ReliveHapticCue.Selection)
+                        onPrevious()
+                    },
                     enabled = previousEnabled,
-                    modifier = Modifier.semantics { contentDescription = "Previous search result" },
+                    modifier = Modifier
+                        .size(dims.minTouchTarget)
+                        .semantics { contentDescription = "Previous search result" },
                 ) { Text("↑", color = colors.textPrimary) }
                 IconButton(
-                    onClick = onNext,
+                    onClick = {
+                        haptics.perform(ReliveHapticCue.Selection)
+                        onNext()
+                    },
                     enabled = nextEnabled,
-                    modifier = Modifier.semantics { contentDescription = "Next search result" },
+                    modifier = Modifier
+                        .size(dims.minTouchTarget)
+                        .semantics { contentDescription = "Next search result" },
                 ) { Text("↓", color = colors.textPrimary) }
             } else {
                 IconButton(
                     onClick = onJumpToDate,
-                    modifier = Modifier.semantics { contentDescription = "Jump to date" },
+                    modifier = Modifier
+                        .size(dims.minTouchTarget)
+                        .semantics { contentDescription = "Jump to date" },
                 ) {
                     CalendarGlyph(dims.icon.lg, colors.textPrimary, dims.stroke.icon)
                 }

@@ -49,11 +49,14 @@ import com.vaibhav.relive.presentation.date.TimelineCreatedDateFormatter
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeContent
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeNavigation
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeViewModel
+import com.vaibhav.relive.presentation.timeline.TimelineCreationOutcome
 import com.vaibhav.relive.ui.components.AllTimelineCollage
 import com.vaibhav.relive.ui.components.composer.PlusGlyph
 import com.vaibhav.relive.ui.components.navigation.ReliveWordmarkAppBar
 import com.vaibhav.relive.ui.components.reliveCardOuterBorder
 import com.vaibhav.relive.ui.components.timeline.TimelineCreationDialog
+import com.vaibhav.relive.ui.feedback.ReliveHapticCue
+import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.presentation.cardcover.resolveAllTimelineCollage
 
@@ -71,8 +74,19 @@ fun TimelineHomeScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val creation by viewModel.creationState.collectAsState()
+    val haptics = rememberReliveHaptics()
     LaunchedEffect(viewModel) {
         viewModel.navigation.collect(onOpenTimeline)
+    }
+    LaunchedEffect(viewModel) {
+        viewModel.creationOutcomes.collect { outcome ->
+            haptics.perform(
+                when (outcome) {
+                    TimelineCreationOutcome.Succeeded -> ReliveHapticCue.Confirm
+                    TimelineCreationOutcome.Rejected -> ReliveHapticCue.Reject
+                },
+            )
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -81,7 +95,13 @@ fun TimelineHomeScreen(
                 .background(ReliveTheme.colors.bgCanvas)
                 .fillMaxWidth(),
         ) {
-            TimelineHomeHeader(onCreateTimeline = viewModel::showTimelineCreation, onOpenProfile = onOpenProfile)
+            TimelineHomeHeader(
+                onCreateTimeline = {
+                    haptics.perform(ReliveHapticCue.Action)
+                    viewModel.showTimelineCreation()
+                },
+                onOpenProfile = onOpenProfile,
+            )
             TimelineHomeSearchBar(
                 query = state.query,
                 onQueryChange = viewModel::updateSearchQuery,

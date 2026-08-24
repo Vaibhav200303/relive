@@ -25,6 +25,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import com.vaibhav.relive.ui.components.composer.PlusGlyph
+import com.vaibhav.relive.ui.feedback.ReliveHapticCue
+import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveTheme
 
 @Composable
@@ -38,7 +40,9 @@ fun GlobalNewMomentButton(
     val colors = ReliveTheme.colors
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val haptics = rememberReliveHaptics()
     val createMoment = {
+        haptics.perform(ReliveHapticCue.Action)
         focusManager.clearFocus(force = true)
         keyboardController?.hide()
         onClick()

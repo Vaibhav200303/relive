@@ -100,6 +100,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.ui.icons.CameraIcons
+import com.vaibhav.relive.ui.feedback.ReliveHapticCue
+import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import java.io.File
 import java.util.concurrent.Executor
 
@@ -888,6 +890,7 @@ private fun ModeSelector(mode: CameraMode, enabled: Boolean, onSelect: (CameraMo
                 width = segmentWidth,
                 height = height,
                 enabled = enabled,
+                selected = mode == CameraMode.Photo,
                 contentDesc = "Photo mode",
                 onClick = { onSelect(CameraMode.Photo) },
             ) {
@@ -902,6 +905,7 @@ private fun ModeSelector(mode: CameraMode, enabled: Boolean, onSelect: (CameraMo
                 width = segmentWidth,
                 height = height,
                 enabled = enabled,
+                selected = mode == CameraMode.Video,
                 contentDesc = "Video mode",
                 onClick = { onSelect(CameraMode.Video) },
             ) {
@@ -921,16 +925,24 @@ private fun ModeIconSegment(
     width: Dp,
     height: Dp,
     enabled: Boolean,
+    selected: Boolean,
     contentDesc: String,
     onClick: () -> Unit,
     icon: @Composable () -> Unit,
 ) {
+    val haptics = rememberReliveHaptics()
     Box(
         modifier = Modifier
             .width(width)
             .height(height)
             .clip(CircleShape)
-            .clickable(enabled = enabled, onClick = onClick)
+            .clickable(
+                enabled = enabled,
+                onClick = {
+                    if (!selected) haptics.perform(ReliveHapticCue.Selection)
+                    onClick()
+                },
+            )
             .semantics { contentDescription = contentDesc },
         contentAlignment = Alignment.Center,
     ) {
@@ -945,6 +957,7 @@ private fun ZoomPresetSlotRow(
     onSelect: (ZoomSlotSpec) -> Unit,
 ) {
     val activeSlot = activeZoomSlot(ratio, slots)
+    val haptics = rememberReliveHaptics()
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(24.dp))
@@ -958,10 +971,13 @@ private fun ZoomPresetSlotRow(
             val label = zoomSlotLabel(spec.slot, ratio, slots)
             Box(
                 modifier = Modifier
-                    .heightIn(min = 36.dp)
+                    .heightIn(min = 48.dp)
                     .clip(CircleShape)
                     .background(if (active) Color.White else Color.Transparent)
-                    .clickable { onSelect(spec) }
+                    .clickable {
+                        if (!active) haptics.perform(ReliveHapticCue.Selection)
+                        onSelect(spec)
+                    }
                     .padding(horizontal = if (active) 10.dp else 8.dp, vertical = 6.dp)
                     .semantics { contentDescription = "Zoom ${spec.anchorLabel}" },
                 contentAlignment = Alignment.Center,
@@ -1062,12 +1078,16 @@ private fun RulerCanvas(ratio: Float, minRatio: Float, maxRatio: Float) {
 
 @Composable
 private fun GalleryButton(onClick: () -> Unit) {
+    val haptics = rememberReliveHaptics()
     Box(
         modifier = Modifier
             .size(48.dp)
             .clip(CircleShape)
             .background(Color(0x80000000))
-            .clickable(onClick = onClick)
+            .clickable {
+                haptics.perform(ReliveHapticCue.Action)
+                onClick()
+            }
             .semantics { contentDescription = "Open gallery" },
         contentAlignment = Alignment.Center,
     ) {
@@ -1139,11 +1159,15 @@ private fun ShutterButton(
  */
 @Composable
 private fun RetakeButton(onClick: () -> Unit) {
+    val haptics = rememberReliveHaptics()
     Box(
         modifier = Modifier
             .size(84.dp)
             .clip(CircleShape)
-            .clickable(onClick = onClick)
+            .clickable {
+                haptics.perform(ReliveHapticCue.Action)
+                onClick()
+            }
             .semantics { contentDescription = "Retake" },
         contentAlignment = Alignment.Center,
     ) {
@@ -1165,12 +1189,16 @@ private fun RetakeButton(onClick: () -> Unit) {
 /** Confirmation ✓ shown during PhotoReview on the right side of the row. */
 @Composable
 private fun ConfirmButton(onClick: () -> Unit) {
+    val haptics = rememberReliveHaptics()
     Box(
         modifier = Modifier
             .size(56.dp)
             .clip(CircleShape)
             .background(Color(0xFFEDE9C8))
-            .clickable(onClick = onClick)
+            .clickable {
+                haptics.perform(ReliveHapticCue.Confirm)
+                onClick()
+            }
             .semantics { contentDescription = "Confirm" },
         contentAlignment = Alignment.Center,
     ) {
@@ -1206,12 +1234,21 @@ private fun FlashButton(
 ) {
     val alpha = if (enabled) 1f else 0.4f
     val contentDesc = if (flash == FlashMode.On) "Turn flash off" else "Turn flash on"
+    val haptics = rememberReliveHaptics()
     Box(
         modifier = Modifier
-            .size(44.dp)
+            .size(48.dp)
             .clip(CircleShape)
             .background(Color(0x80000000))
-            .clickable(enabled = enabled, onClick = onClick)
+            .clickable(
+                enabled = enabled,
+                onClick = {
+                    haptics.perform(
+                        if (flash == FlashMode.On) ReliveHapticCue.ToggleOff else ReliveHapticCue.ToggleOn,
+                    )
+                    onClick()
+                },
+            )
             .semantics { contentDescription = contentDesc },
         contentAlignment = Alignment.Center,
     ) {
@@ -1227,12 +1264,19 @@ private fun FlashButton(
 @Composable
 private fun SwitchButton(enabled: Boolean, onClick: () -> Unit) {
     val alpha = if (enabled) 1f else 0.4f
+    val haptics = rememberReliveHaptics()
     Box(
         modifier = Modifier
             .size(48.dp)
             .clip(CircleShape)
             .background(Color(0x80000000))
-            .clickable(enabled = enabled, onClick = onClick)
+            .clickable(
+                enabled = enabled,
+                onClick = {
+                    haptics.perform(ReliveHapticCue.Selection)
+                    onClick()
+                },
+            )
             .semantics { contentDescription = "Switch camera" },
         contentAlignment = Alignment.Center,
     ) {

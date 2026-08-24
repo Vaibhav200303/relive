@@ -2,8 +2,6 @@ package com.vaibhav.relive.ui.components.composer
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -13,12 +11,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -46,6 +47,8 @@ import com.vaibhav.relive.presentation.composer.DraftAttachment
 import com.vaibhav.relive.presentation.composer.DraftMediaStatus
 import com.vaibhav.relive.ui.media.computeAdaptiveMediaPreviewSize
 import com.vaibhav.relive.ui.media.fallbackAdaptivePreviewSize
+import com.vaibhav.relive.ui.feedback.ReliveHapticCue
+import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveTheme
 
 /**
@@ -364,29 +367,33 @@ private fun FailedActionButton(label: String, onClick: () -> Unit) {
     val colors = ReliveTheme.colors
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
-    Text(
-        text = label,
-        style = type.action,
-        color = colors.textOnAccent,
+    val haptics = rememberReliveHaptics()
+    TextButton(
+        onClick = {
+            haptics.perform(ReliveHapticCue.Action)
+            onClick()
+        },
+        colors = ButtonDefaults.textButtonColors(contentColor = colors.textOnAccent),
         modifier = Modifier
+            .heightIn(min = dims.minTouchTarget)
             .clip(RoundedCornerShape(dims.radii.sm))
             .background(Color(0x33FFFFFF))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick,
-            )
-            .padding(horizontal = dims.spacing.md, vertical = dims.spacing.xs)
             .semantics { contentDescription = "$label media" },
-    )
+    ) {
+        Text(text = label, style = type.action)
+    }
 }
 
 @Composable
 private fun RemoveAttachmentButton(onRemove: () -> Unit, modifier: Modifier = Modifier) {
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
+    val haptics = rememberReliveHaptics()
     IconButton(
-        onClick = onRemove,
+        onClick = {
+            haptics.perform(ReliveHapticCue.Action)
+            onRemove()
+        },
         modifier = modifier
             .size(dims.minTouchTarget)
             .semantics { contentDescription = "Remove attachment" },

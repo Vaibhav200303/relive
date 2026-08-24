@@ -87,6 +87,9 @@ fun ReliveTheme(
         onSurface = c.textPrimary,
         surfaceVariant = c.surfaceCard,
         onSurfaceVariant = c.textSecondary,
+        surfaceContainerHigh = c.surfaceOverlay,
+        error = c.actionDestructive,
+        onError = c.textOnAccent,
         outline = c.border,
         outlineVariant = c.borderMuted,
     )

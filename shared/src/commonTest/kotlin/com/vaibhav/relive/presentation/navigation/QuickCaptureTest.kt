@@ -36,9 +36,18 @@ class QuickCaptureTest {
     }
 
     @Test
-    fun allComposerWaitsForDestinationThenOpensOnceWithoutDuplication() {
+    fun newFromEveryRootOpensAllOnlyAfterTheDestinationSettlesAndOnlyOnce() {
+        listOf(
+            QuickCaptureSurface.TimelineHome,
+            QuickCaptureSurface.Rediscover,
+            QuickCaptureSurface.Search,
+        ).forEach { surface ->
+            assertTrue(quickCaptureCommand(surface)?.openComposer == true)
+        }
         assertFalse(shouldExpandQuickCaptureComposer(true, CurrentTimeline.All, false, false))
         assertTrue(shouldExpandQuickCaptureComposer(true, CurrentTimeline.All, false, true))
+        // After TimelineScreen consumes the one-shot intent, recomposition remains collapsed-to-open.
+        assertFalse(shouldExpandQuickCaptureComposer(false, CurrentTimeline.All, true, true))
         assertFalse(shouldExpandQuickCaptureComposer(true, CurrentTimeline.All, true, true))
         assertFalse(
             shouldExpandQuickCaptureComposer(

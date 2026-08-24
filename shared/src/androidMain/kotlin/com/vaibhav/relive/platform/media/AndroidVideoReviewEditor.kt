@@ -54,6 +54,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vaibhav.relive.ui.feedback.ReliveHapticCue
+import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -415,12 +417,16 @@ private fun MetaRow(
 @Composable
 private fun SpeakerButton(isMuted: Boolean, onClick: () -> Unit) {
     val desc = if (isMuted) "Unmute video" else "Mute video"
+    val haptics = rememberReliveHaptics()
     Box(
         modifier = Modifier
-            .size(32.dp)
+            .size(48.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(Color(0x80000000))
-            .clickable(onClick = onClick)
+            .clickable {
+                haptics.perform(if (isMuted) ReliveHapticCue.ToggleOn else ReliveHapticCue.ToggleOff)
+                onClick()
+            }
             .semantics { contentDescription = desc },
         contentAlignment = Alignment.Center,
     ) {
@@ -487,12 +493,16 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawArcStroke(
 
 @Composable
 private fun PlayOverlay(onClick: () -> Unit) {
+    val haptics = rememberReliveHaptics()
     Box(
         modifier = Modifier
             .size(84.dp)
             .clip(RoundedCornerShape(42.dp))
             .background(Color(0x99000000))
-            .clickable(onClick = onClick)
+            .clickable {
+                haptics.perform(ReliveHapticCue.ToggleOn)
+                onClick()
+            }
             .semantics { contentDescription = "Play video" },
         contentAlignment = Alignment.Center,
     ) {
@@ -511,12 +521,16 @@ private fun PlayOverlay(onClick: () -> Unit) {
 
 @Composable
 private fun PauseOverlay(onClick: () -> Unit) {
+    val haptics = rememberReliveHaptics()
     Box(
         modifier = Modifier
             .size(84.dp)
             .clip(RoundedCornerShape(42.dp))
             .background(Color(0x99000000))
-            .clickable(onClick = onClick)
+            .clickable {
+                haptics.perform(ReliveHapticCue.ToggleOff)
+                onClick()
+            }
             .semantics { contentDescription = "Pause video" },
         contentAlignment = Alignment.Center,
     ) {
