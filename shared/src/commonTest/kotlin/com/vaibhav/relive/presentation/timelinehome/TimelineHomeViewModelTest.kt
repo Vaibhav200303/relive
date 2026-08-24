@@ -129,6 +129,8 @@ class TimelineHomeViewModelTest {
 
 private class FakeTimelineHomeRepository : TimelineHomeRepository {
     override fun observeSummaries(): Flow<List<TimelineHomeSummary>> = MutableStateFlow(emptyList())
+    override fun observeAllCollageCandidates(bucket: Long): Flow<List<MediaAttachment>> =
+        MutableStateFlow(emptyList())
 }
 
 private class FakeTimelineRepository : TimelineRepository {

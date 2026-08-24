@@ -80,4 +80,31 @@ class TimelineHomeRepositoryTest {
         assertEquals(1, audioSummary.momentCount)
         assertTrue(audioSummary.previewAttachments.isEmpty())
     }
+
+    @Test fun all_collage_candidates_are_bounded_bucketed_and_visual_only() = runTest {
+        repeat(20) { index ->
+            fx.moments.insert(
+                sampleMoment(
+                    id = "moment-$index",
+                    createdAtMs = index.toLong(),
+                    title = "Moment $index",
+                    attachments = listOf(
+                        sampleAttachment("visual-$index", MediaType.Image, sortIndex = 0),
+                        sampleAttachment("audio-$index", MediaType.Audio, sortIndex = 1),
+                    ),
+                ),
+            )
+        }
+
+        val first = fx.timelineHome.observeAllCollageCandidates(0L).first()
+        val stable = fx.timelineHome.observeAllCollageCandidates(0L).first()
+        val rotated = (1L..16L)
+            .map { bucket -> fx.timelineHome.observeAllCollageCandidates(bucket).first() }
+            .first { candidates -> candidates.map { it.id } != first.map { it.id } }
+
+        assertEquals(9, first.size)
+        assertEquals(first, stable)
+        assertTrue(first.all { it.type == MediaType.Image || it.type == MediaType.Video })
+        assertTrue(rotated.map { it.id } != first.map { it.id })
+    }
 }

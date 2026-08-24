@@ -53,3 +53,27 @@ SELECT scope_key, id, media_type, storage_ref, sort_index
 FROM ranked_attachments
 WHERE preview_rank <= 4
 ORDER BY scope_key, preview_rank;
+
+-- Presentation-only All collage candidates. The score is a stable integer
+-- mix of attachment identity plus the three-hour bucket. Modulo wrap rotates
+-- the ordering between buckets without a random function, timer, or saved state.
+selectAllCollageCandidates:
+SELECT ma.id, ma.media_type, ma.storage_ref, ma.sort_index
+FROM media_attachments ma
+WHERE ma.media_type IN ('Image', 'Video')
+ORDER BY (
+    (
+        COALESCE(unicode(substr(ma.id, 1, 1)), 0) * 1000003
+        + COALESCE(unicode(substr(ma.id, 2, 1)), 0) * 1000033
+        + COALESCE(unicode(substr(ma.id, 4, 1)), 0) * 1000037
+        + COALESCE(unicode(substr(ma.id, -2, 1)), 0) * 1000039
+        + COALESCE(unicode(substr(ma.id, -1, 1)), 0) * 1000081
+        + length(ma.id) * 1000099
+        + :bucket * (
+            COALESCE(unicode(substr(ma.id, -2, 1)), 1)
+            + COALESCE(unicode(substr(ma.id, -1, 1)), 1)
+            + length(ma.id)
+        ) * 2654435761
+    ) % 2147483647
+), ma.id
+LIMIT 9;
