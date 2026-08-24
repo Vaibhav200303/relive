@@ -26,14 +26,14 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 - Render the **All** timeline: rail, dots, moment presentation (title, subtitle, content), chronological order (oldest-top, newest-bottom per ADR-0015), continuous scroll — matching the reference.
 - Content expansion (`... more` / `less`).
 - Favorite action (subtle).
-- Date + time metadata eyebrow (`DATE • TIME`).
+- Date + time metadata eyebrow (`DATE • TIME`) with an optional readable saved location on the following metadata line.
 - **Exit:** All timeline displays persisted text moments correctly; Compose UI tests for core rendering.
 
 ## Phase 3 — Inline composer (+ location data model)  ☑
 
 - Inline composer with collapsed-by-default plus-circle marker; animated expand/collapse in place; auto date/time, title, content, tags, **Keep Moment**, reset `×` (collapses composer).
 - Establish the **location data model and interfaces** (`ReliveLocation`, `LocationProvider`, `PlaceResolver`, `LocationResult`) in shared code — **before** platform GPS implementations.
-- Composer location UI: show resolved place below date/time; keep / remove / replace with manual entry. All fields optional; no raw coordinates in UI. Composer works fully with no location.
+- Composer location UI: show a lightweight manual place label below date/time; keep / remove / replace by editing. All fields optional; no raw coordinates in UI. Composer works fully with no location.
 - Keyboard-aware inline composer (ADR-0016): IME insets keep active field visible.
 - **Exit:** a text moment (optionally with manually entered location) can be composed inline and saved; new marker becomes a dot; tests for compose/save and the no-location path.
 
@@ -50,8 +50,8 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 - Composer adaptive media previews with size-stable processing placeholders.
 - `ActivePlayback` single-owner playback coordination.
 - `MediaPresentationCache` for thumbnails, dimensions, waveform envelopes.
-- Platform GPS implementations behind the Phase 3 interfaces: Android location APIs; iOS Core Location; reverse geocoding via `PlaceResolver`. Handle permission denied / permanently denied / services disabled / unavailable / timeout — composer continues in every case. Permission requested only when needed; no background tracking.
-- **Exit:** moments with multiple attachments render as an adaptive collage; detected location works and degrades gracefully; location + media tests pass.
+- Platform GPS implementations behind the Phase 3 interfaces are deferred by ADR-0038. Manual Moment location persists now; no permission, Maps, or geocoding flow is active and no background tracking is introduced.
+- **Exit:** moments with multiple attachments render as an adaptive collage; manual location and media tests pass.
 
 ## Phase 5 — Custom timelines + Timeline Home  ☑
 
@@ -59,6 +59,7 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 - Create custom timelines; home screen lists All + custom timelines.
 - Filter the already-observed custom Timeline Home cards by live, case-insensitive partial name matching while preserving newest-first order; All and Moment content remain outside this local filter.
 - Membership rules: create-in-custom → All + that timeline; create-in-All → optional assignment to custom timelines.
+- Opening an observed empty custom timeline expands its existing inline composer; once it has a Moment, normal entry remains collapsed.
 - **Exit:** moments appear in the correct timelines without duplication; membership tests pass.
 
 ## Phase 6 — Edit / forget rules  ☑

@@ -47,3 +47,18 @@ fun shouldExpandQuickCaptureComposer(
     currentTimeline == CurrentTimeline.All &&
     !isAlreadyExpanded &&
     isDestinationSettled
+
+/** Opens empty custom timelines in the existing composer while preserving explicit All entry. */
+fun shouldExpandComposerOnEnter(
+    requested: Boolean,
+    currentTimeline: CurrentTimeline,
+    isAlreadyExpanded: Boolean,
+    isDestinationSettled: Boolean,
+    isTimelineEmpty: Boolean,
+): Boolean = !isAlreadyExpanded &&
+    isDestinationSettled &&
+    when (currentTimeline) {
+        CurrentTimeline.All -> requested
+        is CurrentTimeline.Custom -> isTimelineEmpty
+        else -> false
+    }

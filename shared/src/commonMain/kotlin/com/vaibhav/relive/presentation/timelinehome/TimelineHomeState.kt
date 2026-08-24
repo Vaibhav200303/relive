@@ -3,6 +3,12 @@ package com.vaibhav.relive.presentation.timelinehome
 import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.TimelineHomeSummary
 
+/** One-shot destination information emitted by Timeline Home navigation. */
+data class TimelineHomeNavigation(
+    val timeline: Timeline,
+    val openComposerOnEnter: Boolean = false,
+)
+
 sealed interface TimelineHomeContent {
     data object Loading : TimelineHomeContent
     data class Loaded(val summaries: List<TimelineHomeSummary>) : TimelineHomeContent

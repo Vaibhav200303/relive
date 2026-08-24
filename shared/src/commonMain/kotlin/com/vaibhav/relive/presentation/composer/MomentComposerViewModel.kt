@@ -8,6 +8,7 @@ import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.domain.model.Moment
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.MomentValidation
+import com.vaibhav.relive.domain.model.ReliveLocation
 import com.vaibhav.relive.domain.model.Tag
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.repository.MomentRepository
@@ -103,6 +104,17 @@ class MomentComposerViewModel(
 
     fun updateContent(value: String) {
         _state.update { it.copy(content = value, saveState = it.saveState.clearedOnEdit()) }
+    }
+
+    fun updateManualLocation(value: String) {
+        _state.update {
+            it.copy(
+                location = value.takeIf(String::isNotBlank)?.let { label ->
+                    ReliveLocation(placeName = label)
+                },
+                saveState = it.saveState.clearedOnEdit(),
+            )
+        }
     }
 
     fun updatePendingTagInput(value: String) {

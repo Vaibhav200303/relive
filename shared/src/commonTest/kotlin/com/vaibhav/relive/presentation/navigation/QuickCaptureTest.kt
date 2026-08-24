@@ -49,4 +49,69 @@ class QuickCaptureTest {
             ),
         )
     }
+
+    @Test
+    fun emptyCustomTimelineComposerOpensOnEverySettledEntry() {
+        val custom = CurrentTimeline.Custom(TimelineId("custom"))
+
+        assertTrue(
+            shouldExpandComposerOnEnter(
+                requested = true,
+                currentTimeline = custom,
+                isAlreadyExpanded = false,
+                isDestinationSettled = true,
+                isTimelineEmpty = true,
+            ),
+        )
+        // A later ordinary entry is still auto-expanded while the scope is empty.
+        assertTrue(
+            shouldExpandComposerOnEnter(
+                requested = false,
+                currentTimeline = custom,
+                isAlreadyExpanded = false,
+                isDestinationSettled = true,
+                isTimelineEmpty = true,
+            ),
+        )
+        assertFalse(
+            shouldExpandComposerOnEnter(
+                requested = true,
+                currentTimeline = custom,
+                isAlreadyExpanded = true,
+                isDestinationSettled = true,
+                isTimelineEmpty = true,
+            ),
+        )
+        assertFalse(
+            shouldExpandComposerOnEnter(
+                requested = true,
+                currentTimeline = custom,
+                isAlreadyExpanded = false,
+                isDestinationSettled = true,
+                isTimelineEmpty = false,
+            ),
+        )
+    }
+
+    @Test
+    fun allTimelineKeepsExplicitQuickCaptureBehavior() {
+        assertFalse(
+            shouldExpandComposerOnEnter(
+                requested = false,
+                currentTimeline = CurrentTimeline.All,
+                isAlreadyExpanded = false,
+                isDestinationSettled = true,
+                isTimelineEmpty = true,
+            ),
+        )
+        assertTrue(
+            shouldExpandComposerOnEnter(
+                requested = true,
+                currentTimeline = CurrentTimeline.All,
+                isAlreadyExpanded = false,
+                isDestinationSettled = true,
+                isTimelineEmpty = false,
+            ),
+        )
+    }
 }

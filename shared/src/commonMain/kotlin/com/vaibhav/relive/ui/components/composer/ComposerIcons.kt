@@ -4,7 +4,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
@@ -39,8 +41,22 @@ internal fun PinGlyph(size: Dp, color: Color, strokeWidth: Dp) {
         val px = size.toPx()
         val sw = strokeWidth.toPx()
         val cx = px / 2f
-        drawCircle(color = color, radius = px * 0.16f, center = Offset(cx, px * 0.42f), style = Stroke(width = sw))
-        drawCircle(color = color, radius = px * 0.36f, center = Offset(cx, px * 0.42f), style = Stroke(width = sw))
+        val center = Offset(cx, px * 0.36f)
+        val radius = px * 0.27f
+        drawCircle(color = color, radius = radius, center = center, style = Stroke(width = sw))
+        drawCircle(color = color, radius = px * 0.07f, center = center, style = Stroke(width = sw))
+        drawLine(
+            color = color,
+            start = Offset(cx - radius * 0.72f, px * 0.56f),
+            end = Offset(cx, px * 0.88f),
+            strokeWidth = sw,
+        )
+        drawLine(
+            color = color,
+            start = Offset(cx + radius * 0.72f, px * 0.56f),
+            end = Offset(cx, px * 0.88f),
+            strokeWidth = sw,
+        )
     }
 }
 
@@ -102,6 +118,86 @@ internal fun VideoGlyph(size: Dp, color: Color, strokeWidth: Dp) {
             color = color,
             start = Offset(px - inset, px * 0.28f),
             end = Offset(px - inset, px * 0.72f),
+            strokeWidth = sw,
+        )
+    }
+}
+
+@Composable
+internal fun CameraGlyph(size: Dp, color: Color, strokeWidth: Dp) {
+    Canvas(modifier = Modifier.size(size)) {
+        val px = size.toPx()
+        val sw = strokeWidth.toPx()
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(px * 0.08f, px * 0.27f),
+            size = Size(px * 0.84f, px * 0.62f),
+            cornerRadius = CornerRadius(px * 0.1f),
+            style = Stroke(width = sw),
+        )
+        drawLine(
+            color = color,
+            start = Offset(px * 0.31f, px * 0.27f),
+            end = Offset(px * 0.4f, px * 0.14f),
+            strokeWidth = sw,
+        )
+        drawLine(
+            color = color,
+            start = Offset(px * 0.4f, px * 0.14f),
+            end = Offset(px * 0.64f, px * 0.14f),
+            strokeWidth = sw,
+        )
+        drawLine(
+            color = color,
+            start = Offset(px * 0.64f, px * 0.14f),
+            end = Offset(px * 0.73f, px * 0.27f),
+            strokeWidth = sw,
+        )
+        drawCircle(
+            color = color,
+            radius = px * 0.18f,
+            center = Offset(px * 0.52f, px * 0.58f),
+            style = Stroke(width = sw),
+        )
+    }
+}
+
+@Composable
+internal fun GalleryGlyph(size: Dp, color: Color, strokeWidth: Dp) {
+    Canvas(modifier = Modifier.size(size)) {
+        val px = size.toPx()
+        val sw = strokeWidth.toPx()
+        val corner = CornerRadius(px * 0.08f)
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(px * 0.24f, px * 0.1f),
+            size = Size(px * 0.66f, px * 0.66f),
+            cornerRadius = corner,
+            style = Stroke(width = sw),
+        )
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(px * 0.1f, px * 0.24f),
+            size = Size(px * 0.66f, px * 0.66f),
+            cornerRadius = corner,
+            style = Stroke(width = sw),
+        )
+        drawCircle(
+            color = color,
+            radius = px * 0.055f,
+            center = Offset(px * 0.32f, px * 0.44f),
+            style = Stroke(width = sw),
+        )
+        drawLine(
+            color = color,
+            start = Offset(px * 0.16f, px * 0.82f),
+            end = Offset(px * 0.43f, px * 0.57f),
+            strokeWidth = sw,
+        )
+        drawLine(
+            color = color,
+            start = Offset(px * 0.43f, px * 0.57f),
+            end = Offset(px * 0.7f, px * 0.82f),
             strokeWidth = sw,
         )
     }

@@ -53,7 +53,7 @@ data class ReliveTimelineDimensions(
 data class ReliveTimelineHomeDimensions(
     val allMediaHeight: Dp = 300.dp,
     val customMediaHeight: Dp = 232.dp,
-    val mediaFadeHeight: Dp = 64.dp,
+    val infoAreaMinHeight: Dp = 112.dp,
     val createTimelineGlyphSize: Dp = 32.dp,
 )
 
@@ -62,7 +62,9 @@ data class ReliveRediscoverDimensions(
     val cardOuterRadius: Dp = 20.dp,
     val heroMediaHeight: Dp = 280.dp,
     val compactMediaHeight: Dp = 144.dp,
-    val favoriteShelfCardHeight: Dp = 240.dp,
+    val compactInfoAreaHeight: Dp = 128.dp,
+    val heroInfoAreaMinHeight: Dp = 128.dp,
+    val favoriteShelfCardHeight: Dp = 272.dp,
     val compactCardWidth: Dp = 208.dp,
     val favoriteShelfCardWidthFraction: Float = 0.68f,
     val onThisDayShelfCardWidthFraction: Float = 0.82f,

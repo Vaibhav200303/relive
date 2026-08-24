@@ -110,6 +110,9 @@ fun App(
                 initialTimeline = active.scope,
                 selectedMomentId = active.selectedMomentId,
                 openComposerOnEnter = active.openComposerOnEnter,
+                onComposerOpenIntentConsumed = {
+                    timelinesDestination = active.copy(openComposerOnEnter = false)
+                },
                 onBackToTimelineHome = { timelinesDestination = TimelinesDestination.TimelineHome },
             )
             TimelinesDestination.TimelineHome -> if (
@@ -169,12 +172,13 @@ fun App(
                             viewModel = homeViewModel,
                             mediaStore = container.mediaStore,
                             listState = homeListState,
-                            onOpenTimeline = { timeline ->
+                            onOpenTimeline = { destination ->
                                 timelinesDestination = TimelinesDestination.TimelineDetail(
-                                    when (timeline) {
+                                    scope = when (val timeline = destination.timeline) {
                                         Timeline.All -> CurrentTimeline.All
                                         is Timeline.Custom -> CurrentTimeline.Custom(timeline.id)
                                     },
+                                    openComposerOnEnter = destination.openComposerOnEnter,
                                 )
                             },
                             onOpenProfile = { profileNavigation = profileNavigation.openProfile() },

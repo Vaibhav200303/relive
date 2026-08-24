@@ -14,8 +14,9 @@ data class TimelineHomeSummary(
 ) {
     init {
         require(momentCount >= 0) { "momentCount must not be negative" }
-        require(previewAttachments.size <= MAX_PREVIEW_ATTACHMENTS) {
-            "Timeline Home previews are bounded to $MAX_PREVIEW_ATTACHMENTS attachments"
+        val maximum = if (timeline == Timeline.All) MAX_ALL_PREVIEW_ATTACHMENTS else MAX_PREVIEW_ATTACHMENTS
+        require(previewAttachments.size <= maximum) {
+            "Timeline Home preview is bounded to $maximum attachments"
         }
         require(previewAttachments.all { it.type != MediaType.Audio }) {
             "Timeline Home previews include visual media only"
@@ -32,5 +33,6 @@ data class TimelineHomeSummary(
 
     companion object {
         const val MAX_PREVIEW_ATTACHMENTS: Int = 4
+        const val MAX_ALL_PREVIEW_ATTACHMENTS: Int = 9
     }
 }

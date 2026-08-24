@@ -1,6 +1,11 @@
 package com.vaibhav.relive.ui.components.composer
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -36,9 +41,12 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.semantics.contentDescription
@@ -72,9 +80,9 @@ import com.vaibhav.relive.ui.theme.ReliveTheme
  * media surface: draft attachments stack above `Add Media`; while
  * recording, a compact recorder replaces the Add Media reveal.
  *
- * Add Media reveals exactly three actions: Mic, Camera, Library — per the
- * Phase 4 spec. Photo/Video selection is presented inside the Library and
- * Camera flows, not as top-level composer actions.
+ * Add Media reveals exactly three actions: Voice, Camera, Media. Photo/Video
+ * selection is presented inside the Media and Camera flows, not as top-level
+ * composer actions.
  */
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -85,6 +93,7 @@ fun MomentComposer(
     mediaStore: MediaStore,
     onTitleChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
+    onLocationChange: (String) -> Unit,
     onPendingTagChange: (String) -> Unit,
     onCommitPendingTag: () -> Unit,
     onRemoveTag: (Tag) -> Unit,
@@ -102,6 +111,8 @@ fun MomentComposer(
     onMicPermissionResult: (MicPermissionResult) -> Unit,
     onDismissMicPermissionMessage: () -> Unit,
     onOpenAppSettings: () -> Unit,
+    requestInitialFocus: Boolean = false,
+    onInitialFocusHandled: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     // Bridge composer state → platform mic-permission prompt.
@@ -114,6 +125,14 @@ fun MomentComposer(
     val colors = ReliveTheme.colors
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
+    val titleFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(requestInitialFocus) {
+        if (requestInitialFocus) {
+            titleFocusRequester.requestFocus()
+            onInitialFocusHandled()
+        }
+    }
 
     val now = state.editingMoment?.createdAt ?: clock.now()
 
@@ -172,10 +191,19 @@ fun MomentComposer(
 
             Spacer(Modifier.height(dims.spacing.sm))
 
+            ComposerLocationField(
+                value = state.location.readableComposerLabel(),
+                enabled = !state.isSaving,
+                onValueChange = onLocationChange,
+            )
+
+            Spacer(Modifier.height(dims.spacing.sm))
+
             ComposerTitleField(
                 value = state.title,
                 enabled = !state.isSaving,
                 onValueChange = onTitleChange,
+                focusRequester = titleFocusRequester,
             )
 
             Spacer(Modifier.height(dims.spacing.sm))
@@ -410,6 +438,7 @@ private fun ComposerTitleField(
     value: String,
     enabled: Boolean,
     onValueChange: (String) -> Unit,
+    focusRequester: FocusRequester,
 ) {
     val colors = ReliveTheme.colors
     val type = ReliveTheme.typography
@@ -425,6 +454,7 @@ private fun ComposerTitleField(
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
         modifier = Modifier
             .fillMaxWidth()
+            .focusRequester(focusRequester)
             .bringIntoViewRequester(requester)
             .onFocusEvent { if (it.isFocused) scope.launch { requester.bringIntoView() } }
             .semantics { contentDescription = "Memory title" },
@@ -436,6 +466,64 @@ private fun ComposerTitleField(
         },
     )
 }
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ComposerLocationField(
+    value: String,
+    enabled: Boolean,
+    onValueChange: (String) -> Unit,
+) {
+    val colors = ReliveTheme.colors
+    val dims = ReliveTheme.dimensions
+    val requester = remember { BringIntoViewRequester() }
+    val scope = rememberCoroutineScope()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = dims.minTouchTarget),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm),
+    ) {
+        PinGlyph(
+            size = dims.icon.sm,
+            color = colors.textMuted,
+            strokeWidth = dims.stroke.icon,
+        )
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            enabled = enabled,
+            singleLine = true,
+            textStyle = ReliveTheme.typography.body.copy(color = colors.textSecondary),
+            cursorBrush = androidx.compose.ui.graphics.SolidColor(colors.accent),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            modifier = Modifier
+                .weight(1f)
+                .bringIntoViewRequester(requester)
+                .onFocusEvent { if (it.isFocused) scope.launch { requester.bringIntoView() } }
+                .semantics { contentDescription = "Moment location" },
+            decorationBox = { inner ->
+                if (value.isEmpty()) {
+                    Text(
+                        text = "Add location",
+                        style = ReliveTheme.typography.body,
+                        color = colors.textMuted,
+                    )
+                }
+                inner()
+            },
+        )
+    }
+}
+
+private fun com.vaibhav.relive.domain.model.ReliveLocation?.readableComposerLabel(): String =
+    this?.let { location ->
+        listOfNotNull(location.placeName, location.locality, location.region, location.country)
+            .filter(String::isNotBlank)
+            .distinct()
+            .joinToString(", ")
+    }.orEmpty()
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -583,19 +671,22 @@ private fun AddMediaShell(
     val colors = ReliveTheme.colors
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
+    val motion = ReliveTheme.motion
+    val shape = RoundedCornerShape(dims.radii.lg)
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(dims.radii.md))
-            .background(colors.surfaceCardTranslucent)
+            .heightIn(min = dims.minTouchTarget)
+            .clip(shape)
+            .background(colors.surfaceCard)
             .border(
                 width = dims.stroke.hairline,
                 color = colors.borderMuted,
-                shape = RoundedCornerShape(dims.radii.md),
+                shape = shape,
             )
-            .clickable(enabled = enabled, onClick = onToggle)
-            .padding(dims.spacing.lg)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onToggle)
+            .padding(horizontal = dims.spacing.lg, vertical = dims.spacing.md)
             .semantics { contentDescription = if (expanded) "Hide media choices" else "Add media" },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -605,32 +696,63 @@ private fun AddMediaShell(
         ) {
             ImageGlyph(size = dims.icon.md, color = colors.textPrimary, strokeWidth = dims.stroke.icon)
             Text(
-                text = "Add a New Moment",
-                style = type.title.copy(fontSize = 14.sp),
+                text = "Add media",
+                style = type.action,
                 color = colors.textPrimary,
             )
         }
         Spacer(Modifier.height(dims.spacing.xs))
         Text(
-            text = "Add photos, videos, or voice",
+            text = "Voice, camera, or library",
             style = type.subtitle,
             color = colors.textMuted,
         )
-        AnimatedVisibility(visible = expanded) {
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandVertically(
+                animationSpec = tween(motion.durations.standardMillis, easing = motion.easings.standard),
+                expandFrom = Alignment.Top,
+            ) + fadeIn(
+                animationSpec = tween(motion.durations.standardMillis, easing = motion.easings.standard),
+            ),
+            exit = shrinkVertically(
+                animationSpec = tween(motion.durations.standardMillis, easing = motion.easings.standard),
+                shrinkTowards = Alignment.Top,
+            ) + fadeOut(
+                animationSpec = tween(motion.durations.fastMillis, easing = motion.easings.standard),
+            ),
+        ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = dims.spacing.lg),
-                horizontalArrangement = Arrangement.SpaceEvenly,
+                    .padding(top = dims.spacing.md),
             ) {
-                MediaChoice(label = "Mic", contentDesc = "Record audio", onClick = onMicTap) {
+                MediaChoice(
+                    label = "Voice",
+                    contentDesc = "Record audio",
+                    enabled = enabled,
+                    onClick = onMicTap,
+                    modifier = Modifier.weight(1f),
+                ) {
                     MicGlyph(size = dims.icon.lg, color = colors.textPrimary, strokeWidth = dims.stroke.icon)
                 }
-                MediaChoice(label = "Camera", contentDesc = "Open camera", onClick = onCameraTap) {
-                    VideoGlyph(size = dims.icon.lg, color = colors.textPrimary, strokeWidth = dims.stroke.icon)
+                MediaChoice(
+                    label = "Camera",
+                    contentDesc = "Open camera",
+                    enabled = enabled,
+                    onClick = onCameraTap,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    CameraGlyph(size = dims.icon.lg, color = colors.textPrimary, strokeWidth = dims.stroke.icon)
                 }
-                MediaChoice(label = "Library", contentDesc = "Choose from library", onClick = onLibraryTap) {
-                    ImageGlyph(size = dims.icon.lg, color = colors.textPrimary, strokeWidth = dims.stroke.icon)
+                MediaChoice(
+                    label = "Media",
+                    contentDesc = "Choose media",
+                    enabled = enabled,
+                    onClick = onLibraryTap,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    GalleryGlyph(size = dims.icon.lg, color = colors.textPrimary, strokeWidth = dims.stroke.icon)
                 }
             }
         }
@@ -641,7 +763,9 @@ private fun AddMediaShell(
 private fun MediaChoice(
     label: String,
     contentDesc: String,
+    enabled: Boolean,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
     icon: @Composable () -> Unit,
 ) {
     val colors = ReliveTheme.colors
@@ -650,17 +774,19 @@ private fun MediaChoice(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(dims.spacing.xs),
-        modifier = Modifier
+        modifier = modifier
+            .heightIn(min = dims.minTouchTarget)
+            .clip(RoundedCornerShape(dims.radii.md))
             .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
+                enabled = enabled,
+                role = Role.Button,
                 onClick = onClick,
             )
-            .padding(dims.spacing.sm)
+            .padding(horizontal = dims.spacing.xs, vertical = dims.spacing.sm)
             .semantics { contentDescription = contentDesc },
     ) {
         icon()
-        Text(text = label, style = type.tag, color = colors.textSecondary)
+        Text(text = label, style = type.action, color = colors.textSecondary)
     }
 }
 

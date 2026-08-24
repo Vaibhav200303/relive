@@ -8,6 +8,7 @@ import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.domain.model.Moment
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.MomentValidation
+import com.vaibhav.relive.domain.model.ReliveLocation
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.repository.MomentRepository
 import com.vaibhav.relive.domain.time.Clock
@@ -235,6 +236,60 @@ class MomentComposerViewModelTest {
         vm.updatePendingTagInput("Travel"); vm.toggleAddMedia()
         vm.reset()
         assertEquals(MomentComposerState(), vm.state.value)
+    }
+
+    @Test
+    fun manualLocationIsEmptyByDefaultAndStoredInDraft() = runTest {
+        val vm = newViewModel(RecordingRepository())
+        assertNull(vm.state.value.location)
+
+        vm.updateManualLocation("NIT Jalandhar")
+
+        assertEquals(ReliveLocation(placeName = "NIT Jalandhar"), vm.state.value.location)
+        assertTrue(vm.state.value.hasUserDraft)
+    }
+
+    @Test
+    fun manualLocationPersistsAndResetsAfterSuccessfulKeep() = runTest {
+        val repo = RecordingRepository()
+        val vm = newViewModel(repo)
+        vm.updateTitle("Campus evening")
+        vm.updateManualLocation("NIT Jalandhar")
+
+        vm.keepMoment()
+
+        assertEquals(ReliveLocation(placeName = "NIT Jalandhar"), repo.inserts.single().first.location)
+        assertNull(vm.state.value.location)
+    }
+
+    @Test
+    fun manualLocationSurvivesMediaPickerRoundTrip() = runTest {
+        val vm = newViewModel(RecordingRepository())
+        vm.updateManualLocation("Pune")
+
+        vm.openLibraryChoice()
+        vm.requestPick(MediaType.Image)
+        vm.clearPendingMediaAction()
+
+        assertEquals(ReliveLocation(placeName = "Pune"), vm.state.value.location)
+    }
+
+    @Test
+    fun editingCanReplacePersistedLocation() = runTest {
+        val repo = RecordingRepository()
+        val vm = newViewModel(repo, clockValue = Instant(1L))
+        val original = Moment(
+            id = MomentId("saved"),
+            createdAt = Instant(0L),
+            title = "Before",
+            location = ReliveLocation(placeName = "Home"),
+        )
+
+        assertTrue(vm.beginEdit(original))
+        vm.updateManualLocation("Central Park")
+        vm.keepMoment()
+
+        assertEquals(ReliveLocation(placeName = "Central Park"), repo.updates.single().location)
     }
 
     // -- media: processing lifecycle ------------------------------------

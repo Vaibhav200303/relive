@@ -2,7 +2,6 @@ package com.vaibhav.relive.ui.components.rediscover
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,7 +27,6 @@ import com.vaibhav.relive.platform.media.RelivedVideoTile
 import com.vaibhav.relive.presentation.cardcover.firstVisualPreviewAttachment
 import com.vaibhav.relive.presentation.date.EditorialDateFormatter
 import com.vaibhav.relive.presentation.date.EditorialTimeFormatter
-import com.vaibhav.relive.ui.components.MediaToCardSurfaceFade
 import com.vaibhav.relive.ui.components.reliveCardOuterBorder
 import com.vaibhav.relive.ui.components.timeline.HeartGlyph
 import com.vaibhav.relive.ui.theme.ReliveTheme
@@ -80,20 +78,22 @@ fun FavoriteMomentCard(
                 .padding(dims.spacing.lg),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(dims.spacing.xs),
-            ) {
+            Column(modifier = Modifier.weight(1f).fillMaxSize()) {
                 val title = moment.title.ifBlank {
                     moment.content.ifBlank { "A saved memory" }
                 }
-                Text(
-                    text = title,
-                    style = ReliveTheme.typography.action,
-                    color = colors.textPrimary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Box(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    Text(
+                        text = title,
+                        style = ReliveTheme.typography.action,
+                        color = colors.textPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 Text(
                     text = "${EditorialDateFormatter.format(moment.createdAt)} • ${EditorialTimeFormatter.format(moment.createdAt)}",
                     style = ReliveTheme.typography.eyebrow,
@@ -132,7 +132,6 @@ private fun FavoriteMomentLead(
             MediaType.Video -> RelivedVideoTile(attachment.storageRef, mediaStore, Modifier.matchParentSize())
             MediaType.Audio -> Unit
         }
-        MediaToCardSurfaceFade(modifier = Modifier.align(Alignment.BottomCenter))
         if (attachmentCount > 1) {
             Text(
                 text = "+${attachmentCount - 1}",

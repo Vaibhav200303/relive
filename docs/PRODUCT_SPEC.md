@@ -72,7 +72,7 @@ Membership rules:
 
 Rediscover currently begins as a system-collection root with All, Favorites, On This Day, and From Your Past. It is not a chronological timeline or recommendation feed.
 
-- The root renders the Relive app bar, the editable All timeline card, a `FAVOURITES` editorial section, and the two-item bottom navigation. All uses the same bounded summary/preview card as before and opens the normal editable All timeline.
+- The root renders the Relive app bar, the editable All timeline card, a `FAVOURITES` editorial section, and the floating top-level navigation toolbar. All opens the normal editable All timeline. Its cover uses up to nine distinct image/video previews selected deterministically from a three-hour epoch-time bucket; selection count and curated 1–9 arrangement may change between buckets but remain stable through recomposition, scrolling, navigation, and configuration change within one bucket. Audio and text-only Moments never become collage cells. With no visual media, the existing deterministic generated cover remains.
 - Favorites is derived reactively from each Moment's persisted favorite state. It is not a custom timeline, membership, or duplicate persistence record.
 - The section shows at most ten individual favorited-Moment cards in the same chronological ordering as the full Favorites timeline. Every compact shelf card shares one fixed visual-region height: image/video cards use their first ordered visual attachment as the lead visual and quietly show an additional-attachment count; text-only and audio-only cards use the theme-aware deterministic generated cover with no fake media, icon, or illustration. This compact-shelf exception does not change normal Timeline presentation.
 - Tapping a card opens the read-only Favorites timeline positioned at that Moment. `Show all` opens the complete read-only Favorites timeline. With zero favorites, the section shows `No favorite moments yet.` and `Moments you favorite will appear here.` without a row or `Show all` action.
@@ -109,6 +109,7 @@ Visual direction:
 - no excessive cards
 - premium media presentation
 - highly polished spacing and typography
+- collection-card media/generated covers meet their lower information surfaces directly, with no fade, overlap, or fake shadow
 
 The interface must **encourage continuous scrolling**. It must **not** feel like a database or a list of records.
 
@@ -332,11 +333,13 @@ The expanded composer contains:
 
 ### 6.3 Add Media flow
 
-Tapping **Add Media** reveals three options:
+Tapping **Add Media** reveals three evenly distributed actions inside one rounded Relive surface:
 
-- **Mic** (audio recording)
+- **Voice** (audio recording)
 - **Camera** (photo or video)
-- **Library** (photo, video, or audio from device)
+- **Media** (the existing photo, video, or audio library choice)
+
+Before Add Media, Voice, Camera, Media, or a nested photo/video/audio picker or recorder experience opens, Relive clears composer focus and dismisses the software keyboard. Returning preserves the complete draft and does not automatically reopen the keyboard.
 
 After media is added:
 
@@ -399,21 +402,9 @@ Pressing **Keep Moment** saves the moment. After save:
 
 ## 7. Location
 
-Relive supports **optional GPS-based location detection** when creating a moment. Location is **moment-scoped**, not continuous tracking.
+Relive currently supports **optional manual location entry** when creating or editing a Moment. The lightweight location-pin field sits directly below the automatically generated date/time and accepts an unstructured readable label such as `Jalandhar`, `NIT Jalandhar`, `Home`, or `Central Park`. Empty location is valid. The value is persisted with the Moment, survives media round-trips, participates in the existing edit flow, and resets with the rest of the composer after a successful save or explicit reset. Saved Moment cards render a readable location directly below `DATE • TIME`; display trims surrounding whitespace and capitalizes only the first character without mutating persisted data.
 
-When the inline composer opens:
-
-- Relive **may** attempt to detect the user's current location.
-- Location permission is requested **only when needed**, using the platform's normal permission flow.
-- Denying location permission must **never** prevent creating or saving a moment.
-- Relive must **not** continuously track location in the background.
-- Relive must **not** collect location when the user is merely browsing the timeline.
-
-The composer displays the resolved location **below** the automatically generated date/time. The user must be able to:
-
-- keep the detected location
-- remove the location
-- replace it with a manually selected/entered location
+GPS/location detection, Maps, geocoding, and location permission requests are **future work**. This release does not attempt device location. When detection is later activated it remains moment-scoped and on-demand: never continuous/background tracking and never collection while merely browsing.
 
 ### 7.1 Location representation
 
@@ -433,9 +424,9 @@ Rules:
 - **Do not require every field to be present.**
 - **Do not expose raw coordinates** in the normal timeline UI.
 
-### 7.2 Failure handling
+### 7.2 Future GPS failure handling
 
-Location acquisition must handle all of the following, and in every case the composer continues normally and the moment can still be created and saved:
+When GPS detection is implemented later, location acquisition must handle all of the following, and in every case the composer continues normally and the moment can still be created and saved:
 
 - permission denied
 - permission permanently denied
@@ -457,6 +448,8 @@ The location abstraction and platform boundary are defined in [`ARCHITECTURE.md`
 ## 7A. Camera behavior (Android)
 
 Camera is accessed from the composer's Add Media → Camera action. The camera captures both photo and video through a single in-camera surface with a Photo/Video mode selector.
+
+The Android Relive UI is locked to portrait at the application Activity configuration, independent of the device auto-rotate setting. This is a UI constraint, not a replacement for capture orientation handling: CameraX still writes capture rotation metadata, photo review/persistence still normalizes EXIF orientation, and video playback still respects recorded metadata. Relive's equivalent iOS product requirement is portrait-only UI through the Xcode/Info.plist supported-interface-orientation configuration; that separate platform setting must be implemented and verified on macOS rather than inferred from the Android configuration.
 
 ### Layout
 

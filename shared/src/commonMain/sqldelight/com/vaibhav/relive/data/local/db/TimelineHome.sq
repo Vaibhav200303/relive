@@ -24,8 +24,8 @@ LEFT JOIN moment_timeline_memberships mtm ON mtm.timeline_id = ct.id
 GROUP BY ct.id, ct.name, ct.theme, ct.created_at
 ORDER BY display_order, created_at DESC, scope_key ASC;
 
--- Visual attachments only. The window limits every scope to four rows after
--- deterministic moment-recency and attachment-order sorting.
+-- Visual attachments only. All exposes at most nine collage candidates;
+-- custom timelines retain their established four-item preview bound.
 selectTimelineHomePreviewAttachments:
 WITH scoped_moments AS (
     SELECT '__all__' AS scope_key, id AS moment_id, created_at
@@ -51,5 +51,30 @@ WITH scoped_moments AS (
 )
 SELECT scope_key, id, media_type, storage_ref, sort_index
 FROM ranked_attachments
-WHERE preview_rank <= 4
+WHERE (scope_key = '__all__' AND preview_rank <= 9)
+   OR (scope_key <> '__all__' AND preview_rank <= 4)
 ORDER BY scope_key, preview_rank;
+
+-- Presentation-only All collage candidates. The score is a stable integer
+-- mix of attachment identity plus the three-hour bucket. Modulo wrap rotates
+-- the ordering between buckets without a random function, timer, or saved state.
+selectAllCollageCandidates:
+SELECT ma.id, ma.media_type, ma.storage_ref, ma.sort_index
+FROM media_attachments ma
+WHERE ma.media_type IN ('Image', 'Video')
+ORDER BY (
+    (
+        COALESCE(unicode(substr(ma.id, 1, 1)), 0) * 1000003
+        + COALESCE(unicode(substr(ma.id, 2, 1)), 0) * 1000033
+        + COALESCE(unicode(substr(ma.id, 4, 1)), 0) * 1000037
+        + COALESCE(unicode(substr(ma.id, -2, 1)), 0) * 1000039
+        + COALESCE(unicode(substr(ma.id, -1, 1)), 0) * 1000081
+        + length(ma.id) * 1000099
+        + :bucket * (
+            COALESCE(unicode(substr(ma.id, -2, 1)), 1)
+            + COALESCE(unicode(substr(ma.id, -1, 1)), 1)
+            + length(ma.id)
+        ) * 2654435761
+    ) % 2147483647
+), ma.id
+LIMIT 9;

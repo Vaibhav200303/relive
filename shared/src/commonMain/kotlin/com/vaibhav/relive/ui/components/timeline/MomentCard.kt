@@ -120,39 +120,43 @@ fun MomentCard(
                 .weight(1f)
                 .padding(end = dims.spacing.sm),
         ) {
-            // DATE • TIME / LOCATION and favorite action share one metadata row.
+            // The saved location is a second metadata line, aligned with DATE • TIME.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = dims.minTouchTarget),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(
+                Column(
                     modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm),
                 ) {
-                    Text(
-                        text = moment.formattedDate,
-                        style = type.eyebrow,
-                        color = colors.accentMuted,
-                    )
-                    Box(
-                        modifier = Modifier
-                            .size(3.dp)
-                            .clip(CircleShape)
-                            .background(colors.accentMuted),
-                    )
-                    Text(
-                        text = moment.formattedTime,
-                        style = type.eyebrow,
-                        color = colors.accentMuted,
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm),
+                    ) {
+                        Text(
+                            text = moment.formattedDate,
+                            style = type.eyebrow,
+                            color = colors.accentMuted,
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(3.dp)
+                                .clip(CircleShape)
+                                .background(colors.accentMuted),
+                        )
+                        Text(
+                            text = moment.formattedTime,
+                            style = type.eyebrow,
+                            color = colors.accentMuted,
+                        )
+                    }
                     if (moment.locationLabel != null) {
                         Text(
-                            text = "· ${moment.locationLabel.uppercase()}",
+                            text = moment.locationLabel,
                             style = type.eyebrow,
-                            color = colors.textMuted,
+                            color = colors.textSecondary,
+                            modifier = Modifier.padding(top = dims.spacing.xs),
                         )
                     }
                 }

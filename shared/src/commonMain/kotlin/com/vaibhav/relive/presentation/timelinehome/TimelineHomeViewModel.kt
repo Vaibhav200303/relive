@@ -27,8 +27,8 @@ class TimelineHomeViewModel(
     private val _state = MutableStateFlow(TimelineHomeState())
     val state: StateFlow<TimelineHomeState> = _state.asStateFlow()
 
-    private val _navigation = MutableSharedFlow<Timeline>(extraBufferCapacity = 1)
-    val navigation: SharedFlow<Timeline> = _navigation.asSharedFlow()
+    private val _navigation = MutableSharedFlow<TimelineHomeNavigation>(extraBufferCapacity = 1)
+    val navigation: SharedFlow<TimelineHomeNavigation> = _navigation.asSharedFlow()
 
     private val creation = TimelineCreationController(timelineRepository, clock, idGenerator, scope)
     val creationState: StateFlow<TimelineCreationState> = creation.state
@@ -40,12 +40,14 @@ class TimelineHomeViewModel(
             }
         }
         scope.launch {
-            creation.createdTimelines.collect { timeline -> _navigation.emit(timeline) }
+            creation.createdTimelines.collect { timeline ->
+                _navigation.emit(TimelineHomeNavigation(timeline = timeline, openComposerOnEnter = true))
+            }
         }
     }
 
     fun selectTimeline(timeline: Timeline) {
-        _navigation.tryEmit(timeline)
+        _navigation.tryEmit(TimelineHomeNavigation(timeline = timeline))
     }
 
     fun updateSearchQuery(value: String) {

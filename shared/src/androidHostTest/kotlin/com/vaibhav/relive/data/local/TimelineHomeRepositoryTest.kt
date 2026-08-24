@@ -54,7 +54,7 @@ class TimelineHomeRepositoryTest {
         assertEquals(2, all.momentCount)
         assertEquals(2, familySummary.momentCount)
         assertEquals(1, tripsSummary.momentCount)
-        assertEquals(listOf("n0", "n1", "n2", "o0"), all.previewAttachments.map { it.id.value })
+        assertEquals(listOf("n0", "n1", "n2", "o0", "o1"), all.previewAttachments.map { it.id.value })
         assertEquals(listOf("n0", "n1", "n2", "o0"), familySummary.previewAttachments.map { it.id.value })
         assertEquals(listOf("n0", "n1", "n2"), tripsSummary.previewAttachments.map { it.id.value })
         assertTrue(all.previewAttachments.none { it.type == MediaType.Audio })
@@ -79,5 +79,54 @@ class TimelineHomeRepositoryTest {
         assertTrue(emptySummary.previewAttachments.isEmpty())
         assertEquals(1, audioSummary.momentCount)
         assertTrue(audioSummary.previewAttachments.isEmpty())
+    }
+
+    @Test fun all_preview_is_bounded_to_nine_while_custom_preview_remains_four() = runTest {
+        val custom = TimelineId("custom")
+        fx.timelines.createCustom(sampleCustomTimeline(custom.value, "Custom"), Instant(1))
+        fx.moments.insert(
+            sampleMoment(
+                id = "many",
+                title = "Many",
+                attachments = List(12) { index ->
+                    sampleAttachment("visual-$index", MediaType.Image, sortIndex = index)
+                },
+            ),
+            setOf(custom),
+        )
+
+        val summaries = fx.timelineHome.observeSummaries().first()
+        assertEquals(9, summaries.single { it.timeline == Timeline.All }.previewAttachments.size)
+        assertEquals(
+            4,
+            summaries.single { (it.timeline as? Timeline.Custom)?.id == custom }.previewAttachments.size,
+        )
+    }
+
+    @Test fun all_collage_candidates_are_bucketed_bounded_and_visual_only() = runTest {
+        repeat(20) { index ->
+            fx.moments.insert(
+                sampleMoment(
+                    id = "moment-$index",
+                    createdAtMs = index.toLong(),
+                    title = "Moment $index",
+                    attachments = listOf(
+                        sampleAttachment("visual-$index", MediaType.Image, sortIndex = 0),
+                        sampleAttachment("audio-$index", MediaType.Audio, sortIndex = 1),
+                    ),
+                ),
+            )
+        }
+
+        val first = fx.timelineHome.observeAllCollageCandidates(0L).first()
+        val stable = fx.timelineHome.observeAllCollageCandidates(0L).first()
+        val rotated = (1L..16L)
+            .map { bucket -> fx.timelineHome.observeAllCollageCandidates(bucket).first() }
+            .first { candidates -> candidates.map { it.id } != first.map { it.id } }
+
+        assertEquals(9, first.size)
+        assertEquals(first, stable)
+        assertTrue(first.all { it.type == MediaType.Image || it.type == MediaType.Video })
+        assertTrue(rotated.map { it.id } != first.map { it.id })
     }
 }

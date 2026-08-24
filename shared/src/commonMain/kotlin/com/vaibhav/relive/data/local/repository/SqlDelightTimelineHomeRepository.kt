@@ -56,6 +56,21 @@ class SqlDelightTimelineHomeRepository(
         }
     }.map { it }
 
+    override fun observeAllCollageCandidates(bucket: Long): Flow<List<MediaAttachment>> =
+        database.timelineHomeQueries.selectAllCollageCandidates(bucket)
+            .asFlow()
+            .mapToList(dispatcher)
+            .map { rows ->
+                rows.map { row ->
+                    MediaAttachment(
+                        id = MediaAttachmentId(row.id),
+                        type = decodeMediaType(row.media_type),
+                        storageRef = MediaStorageRef(row.storage_ref),
+                        sortIndex = row.sort_index.toInt(),
+                    )
+                }
+            }
+
     private fun decodeTheme(raw: String): ThemeReference = ThemeReference.entries.firstOrNull { it.name == raw }
         ?: throw PersistenceMappingException("Unknown theme='$raw'")
 

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -23,7 +24,6 @@ import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.platform.media.RelivedImageTile
 import com.vaibhav.relive.platform.media.RelivedVideoTile
 import com.vaibhav.relive.presentation.cardcover.firstVisualPreviewAttachment
-import com.vaibhav.relive.ui.components.MediaToCardSurfaceFade
 import com.vaibhav.relive.ui.components.reliveCardOuterBorder
 import com.vaibhav.relive.ui.theme.ReliveTheme
 
@@ -60,18 +60,25 @@ fun OnThisDayMomentCard(
                     modifier = Modifier.fillMaxSize(),
                 )
             }
-            MediaToCardSurfaceFade(modifier = Modifier.align(Alignment.BottomCenter))
         }
         Column(
-            modifier = Modifier.padding(dims.spacing.lg),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = dims.rediscover.heroInfoAreaMinHeight)
+                .padding(dims.spacing.lg),
         ) {
-            Text(
-                text = moment.title.ifBlank { moment.content.ifBlank { "A saved memory" } },
-                style = ReliveTheme.typography.title,
-                color = colors.textPrimary,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Box(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                Text(
+                    text = moment.title.ifBlank { moment.content.ifBlank { "A saved memory" } },
+                    style = ReliveTheme.typography.title,
+                    color = colors.textPrimary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             Text(
                 text = anniversaryLabel,
                 style = ReliveTheme.typography.eyebrow,

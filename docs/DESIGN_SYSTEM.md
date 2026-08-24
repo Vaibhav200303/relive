@@ -96,8 +96,9 @@ Opacity variants are drawn from the opacity scale (§15), not arbitrary values.
 
 | Token             | Value     | Usage                                 |
 | ----------------- | --------- | ------------------------------------- |
-| `color.surface.card` | `#EFECE5` | media container / tag chip surface |
-| `color.surface.card.translucent` | `#EFECE5` @ ~50% | dashed "Add media" surface |
+| `color.surface.card` | `#EFECE5` | media container / tag chip / composer media-action surface |
+| `color.surface.card.translucent` | `#EFECE5` @ ~50% | quiet secondary surface treatment |
+| `color.surface.floating` | `#E1D8CB` | floating navigation and quick-capture controls |
 
 Surfaces are used sparingly — the product avoids excessive cards.
 
@@ -132,6 +133,8 @@ Only the weights and styles actually referenced by the token mappings below are 
 | `type.tag`              | sans   | ~10sp, semibold, wide tracking            | tag chips (rendered `#lowercase`; `#` is supplied by the UI, not stored on the tag label) |
 | `type.action`           | sans   | ~14sp, semibold                           | buttons                       |
 
+The composer location input uses `type.body` with muted/secondary text, the `icon.sm` location pin, and a `48dp` minimum row target. It is an inline editorial field directly below `DATE • TIME`, never a heavy outlined address form. Saved Moment locations use the same `type.eyebrow` role and left edge as saved date/time, but `color.text.secondary`; presentation trims whitespace and capitalizes only the first character.
+
 Sizes are expressed in scalable units (`sp`) so they respect system font scaling (§16).
 
 ---
@@ -161,9 +164,12 @@ Reference anchors: screen horizontal padding ≈ `24dp`; vertical gap between mo
 | -------------- | ------- | ------------------------- |
 | `radius.sm`    | `8dp`   | inner media image corners |
 | `radius.md`    | `12dp`  | media container, chips-as-pills baseline |
+| `radius.lg`    | `20dp`  | expressive composer media-action container |
 | `radius.pill`  | `999dp` | tag chips, circular buttons |
 
 Search uses the same `radius.pill` container shape. `search.container.height` is `56dp`; the inner controls retain the global `48dp` minimum touch target.
+
+The expanded composer keeps one `radius.lg` media-action container using `color.surface.card`, a hairline muted border, and tokenized internal spacing. Its **Voice**, **Camera**, and **Media** actions occupy equal width, use aligned `icon.lg` Relive/Material-style microphone, photo-camera, and gallery glyphs, and retain at least `48dp` touch targets. The actions share one surface rather than becoming three elevated or independently colored pills. Press feedback comes from the Material interaction indication under Relive colors.
 
 ---
 
@@ -244,6 +250,10 @@ Single-media Moments use adaptive natural sizing: the container shrink-wraps aro
 - Multi-media internal gaps and outer border are the same weight, so adjacent tiles yield **one** ~4dp separator, not two overlapping strokes.
 - Audio, video, and image tiles all participate in the same border/gap system.
 
+### Collection-card media/surface boundary
+
+Collection-card visual media and deterministic generated covers meet the opaque lower information surface directly. No media-to-surface fade, translucent overlap, or fake-shadow transition is used. Generated fallback covers remain unchanged. Lower information areas use semantic minimum-height tokens; title text receives the flexible vertical space with `Alignment.CenterStart`, while supporting metadata retains its established lower row/area and start/right alignment.
+
 ---
 
 ## 15. Animation durations
@@ -255,6 +265,8 @@ Single-media Moments use adaptive natural sizing: the container shrink-wraps aro
 | `motion.slow`     | `360ms` | larger transitions (planned)       |
 
 Values *(planned)* — confirm against the reference feel during implementation. Motion is subtle and supports the calm, editorial tone.
+
+The inline composer uses the same tokenized vertical expand/fade transition whether invoked from the timeline rail `+` or global `New`: `motion.slow` for entry and `motion.standard` for collapse with `ease.standard`. Global entry first presents one settled collapsed frame, then begins expansion; title focus follows on the next frame so navigation, layout, expansion, and IME do not all appear as one abrupt state change.
 
 ---
 

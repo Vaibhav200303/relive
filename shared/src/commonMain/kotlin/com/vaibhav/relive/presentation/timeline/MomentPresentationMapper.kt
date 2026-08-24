@@ -28,8 +28,12 @@ internal fun ReliveLocation.readableLabel(): String? {
     val parts = listOfNotNull(placeName, locality, region, country)
         .map { it.trim() }
         .filter { it.isNotBlank() }
-    return parts.firstOrNull()
+    return parts.firstOrNull()?.let(::formatLocationLabel)
 }
+
+internal fun formatLocationLabel(value: String): String = value
+    .trim()
+    .replaceFirstChar { it.uppercase() }
 
 /** Reconstructs the domain entity held by a timeline item for an edit/forget action. */
 fun MomentPresentation.toMoment(): Moment = Moment(
