@@ -36,4 +36,25 @@ class RediscoverSectionLayoutTest {
 
         assertEquals(RediscoverSectionSpacing.Expanded, layout.fromYourPastSpacing)
     }
+
+    @Test
+    fun onThisDayPreferenceHidesEligibleSectionAndCollapsesSpacing() {
+        val layout = rediscoverSectionLayout(
+            onThisDayMomentCount = 3,
+            showOnThisDay = false,
+        )
+
+        assertFalse(layout.showOnThisDay)
+        assertEquals(RediscoverSectionSpacing.Normal, layout.fromYourPastSpacing)
+    }
+
+    @Test
+    fun favoritesPreferenceHidesTheWholeSection() {
+        val layout = rediscoverSectionLayout(
+            onThisDayMomentCount = 0,
+            showFavorites = false,
+        )
+
+        assertFalse(layout.showFavorites)
+    }
 }

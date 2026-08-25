@@ -58,6 +58,7 @@ import androidx.compose.material3.TextButton
 import com.vaibhav.relive.domain.id.IdGenerator
 import com.vaibhav.relive.domain.policy.EditWindow
 import com.vaibhav.relive.domain.model.MomentId
+import com.vaibhav.relive.domain.model.BehaviorPreferences
 import com.vaibhav.relive.domain.model.Tag
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.model.ThemeReference
@@ -82,6 +83,8 @@ import com.vaibhav.relive.presentation.timeline.MomentAttachmentPresentation
 import com.vaibhav.relive.presentation.timeline.MomentPresentation
 import com.vaibhav.relive.presentation.timeline.TimelineMomentsState
 import com.vaibhav.relive.presentation.timeline.TimelineMode
+import com.vaibhav.relive.presentation.timeline.TimelineMomentVisibility
+import com.vaibhav.relive.presentation.timeline.resolveTimelineMomentVisibility
 import com.vaibhav.relive.presentation.timeline.TimelineScreenState
 import com.vaibhav.relive.presentation.timeline.TimelineViewModel
 import com.vaibhav.relive.presentation.date.RediscoverCalendar
@@ -123,8 +126,11 @@ internal sealed interface ComposerCloseAction {
 }
 
 internal data class ComposerDiscardConfirmationState(val isVisible: Boolean = false) {
-    fun onCloseRequested(hasUserDraft: Boolean): ComposerDiscardTransition =
-        if (hasUserDraft) {
+    fun onCloseRequested(
+        hasUserDraft: Boolean,
+        confirmBeforeDiscarding: Boolean,
+    ): ComposerDiscardTransition =
+        if (hasUserDraft && confirmBeforeDiscarding) {
             ComposerDiscardTransition(copy(isVisible = true), ComposerCloseAction.ShowDiscardConfirmation)
         } else {
             ComposerDiscardTransition(copy(isVisible = false), ComposerCloseAction.ResetAndCollapse)
@@ -158,6 +164,7 @@ fun TimelineScreen(
     onComposerOpenIntentConsumed: (() -> Unit)? = null,
     onBackToTimelineHome: (() -> Unit)? = null,
     globalTheme: ThemeReference = ThemeReference.WarmJournal,
+    behaviorPreferences: BehaviorPreferences = BehaviorPreferences(),
 ) {
     val scope = rememberCoroutineScope()
     val timelineViewModel = remember(
@@ -354,7 +361,10 @@ fun TimelineScreen(
             },
             onRetryAttachment = composerViewModel::retryAttachment,
             onReset = {
-                val transition = discardConfirmation.onCloseRequested(composerState.hasUserDraft)
+                val transition = discardConfirmation.onCloseRequested(
+                    hasUserDraft = composerState.hasUserDraft,
+                    confirmBeforeDiscarding = behaviorPreferences.confirmBeforeDiscarding,
+                )
                 discardConfirmation = transition.state
                 if (transition.action == ComposerCloseAction.ResetAndCollapse) {
                     composerViewModel.reset()
@@ -386,6 +396,7 @@ fun TimelineScreen(
             dateNavigationTargetId = timelineState.dateNavigation?.momentId,
             onDateNavigationHandled = timelineViewModel::consumeDateNavigation,
             snackbarHostState = snackbarHostState,
+            momentVisibility = resolveTimelineMomentVisibility(mode, behaviorPreferences),
         )
 
         if (showDatePicker) {
@@ -592,6 +603,7 @@ private fun TimelineContent(
     dateNavigationTargetId: MomentId?,
     onDateNavigationHandled: () -> Unit,
     snackbarHostState: SnackbarHostState,
+    momentVisibility: TimelineMomentVisibility,
 ) {
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
@@ -701,6 +713,8 @@ private fun TimelineContent(
                                 onEdit = { onEditMoment(moment) },
                                 onForget = { onForgetMoment(moment) },
                                 hasPreviousMoment = index > 0,
+                                showLocation = momentVisibility.showLocations,
+                                showTags = momentVisibility.showTags,
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         }

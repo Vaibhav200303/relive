@@ -20,4 +20,11 @@ class ProfileNavigationStateTest {
         assertEquals(ProfileDestination.MediaStorage, mediaStorage.destination)
         assertEquals(ProfileDestination.Profile, mediaStorage.returnToProfile().destination)
     }
+
+    @Test fun preferences_returns_to_profile_before_timeline_home() {
+        val preferences = ProfileNavigationState().openProfile().openPreferences()
+
+        assertEquals(ProfileDestination.Preferences, preferences.destination)
+        assertEquals(ProfileDestination.Profile, preferences.returnToProfile().destination)
+    }
 }

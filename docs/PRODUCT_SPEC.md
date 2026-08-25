@@ -575,7 +575,18 @@ Themes **must NOT** change:
 
 ## 12. Settings
 
-Profile is an auxiliary destination opened from Timeline Home's profile affordance; it is not a bottom-navigation destination. It shows a neutral identity placeholder, installation joining date when known, informational Moment/custom-Timeline/place counts, an inline Appearance card, and the approved remaining Profile IA: Media & storage; Backup; Location; Rediscover notifications; Privacy & security; Help & feedback; About Relive. Appearance provides persistent System/Light/Dark and app-default palette controls. Media & Storage is a read-only archive-insights screen showing Relive-managed attachment storage and category counts; it provides no optimization, deletion, cleanup, or device-wide storage controls. Other Profile-row functionality remains deferred unless a real destination exists.
+Profile is an auxiliary destination opened from Timeline Home's profile affordance; it is not a bottom-navigation destination. It shows a neutral identity placeholder, installation joining date when known, informational Moment/custom-Timeline/place counts, an inline Appearance card, and the approved remaining Profile IA: Preferences; Media & storage; Backup; Location; Rediscover notifications; Privacy & security; Help & feedback; About Relive. Appearance provides persistent System/Light/Dark and app-default palette controls. Media & Storage is a read-only archive-insights screen showing Relive-managed attachment storage and category counts; it provides no optimization, deletion, cleanup, or device-wide storage controls. Other Profile-row functionality remains deferred unless a real destination exists.
+
+### 12.1 Behavior preferences
+
+Preferences is a small behavior-only screen; it does not duplicate Appearance, Backup, Media & Storage, Privacy & security, account, per-timeline themes, or archive actions. Its persisted controls are:
+
+- **Start Relive on** — Timelines by default, or Rediscover. This applies only to a fresh app-root startup; an authoritative restoration or deep-link destination remains higher priority. Search is not a startup option.
+- **Confirm before discarding** — on by default. It controls only a dirty inline composer's explicit `×` reset. When off, `×` immediately resets and collapses; system/visible Back continues preserving the originating timeline's session draft.
+- **Show locations** and **Show tags** — on by default. These are presentation-only controls for normal editable All/custom Timeline Moment cards. They do not alter stored Moment data, composer/edit fields, Search matching or results, or read-only Rediscover collection details.
+- **On This Day** and **Favorites** — on by default. Turning one off omits that complete section from the Rediscover root without changing eligibility, favorite state, Moment data, or read-only collection behavior. Remaining section spacing collapses naturally.
+
+Behavior preferences take effect reactively where safe and persist outside the archive database through native local preferences. The current fixed 12-hour editorial time format remains settled by ADR-0020. Video autoplay remains prohibited by the passive, lazy, single-owner playback architecture, and audio has no approved automatic-play context; those three controls are not shown.
 
 Future Settings entries remain Themes, Upgrade to Pro, and Export. Detailed functionality is defined only when separately specified.
 

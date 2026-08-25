@@ -61,6 +61,8 @@ fun MomentCard(
     onEdit: () -> Unit,
     onForget: () -> Unit,
     hasPreviousMoment: Boolean,
+    showLocation: Boolean = true,
+    showTags: Boolean = true,
     isActive: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -173,7 +175,7 @@ fun MomentCard(
                             color = colors.accentMuted,
                         )
                     }
-                    if (moment.locationLabel != null) {
+                    if (showLocation && moment.locationLabel != null) {
                         Text(
                             text = moment.locationLabel,
                             style = type.eyebrow,
@@ -217,7 +219,7 @@ fun MomentCard(
             }
 
             // TAGS
-            if (moment.hasTags) {
+            if (showTags && moment.hasTags) {
                 Spacer(Modifier.height(dims.spacing.md))
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm),

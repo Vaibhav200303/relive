@@ -52,6 +52,7 @@ fun ProfileScreen(
     viewModel: ProfileViewModel,
     appearanceViewModel: AppearanceViewModel,
     onBack: () -> Unit,
+    onOpenPreferences: () -> Unit,
     onOpenMediaStorage: () -> Unit,
 ) {
     val state by viewModel.state.collectAsState()
@@ -115,7 +116,11 @@ fun ProfileScreen(
                 )
             }
             item(key = "preferences") {
-                ProfileSection("PREFERENCES", listOf("Location", "Rediscover notifications", "Privacy & security"))
+                ProfileSection(
+                    title = "PREFERENCES",
+                    labels = listOf("Preferences", "Location", "Rediscover notifications", "Privacy & security"),
+                    onPreferences = onOpenPreferences,
+                )
             }
             item(key = "relive") {
                 ProfileSection("RELIVE", listOf("Help & feedback", "About Relive"), last = true)
@@ -256,6 +261,7 @@ private fun ProfileSection(
     title: String,
     labels: List<String>,
     last: Boolean = false,
+    onPreferences: (() -> Unit)? = null,
     onMediaStorage: (() -> Unit)? = null,
 ) {
     val dims = ReliveTheme.dimensions
@@ -273,7 +279,11 @@ private fun ProfileSection(
         labels.forEach { label ->
             ProfileSettingRow(
                 label = label,
-                onClick = if (label == "Media & storage") onMediaStorage else null,
+                onClick = when (label) {
+                    "Preferences" -> onPreferences
+                    "Media & storage" -> onMediaStorage
+                    else -> null
+                },
             )
         }
     }
