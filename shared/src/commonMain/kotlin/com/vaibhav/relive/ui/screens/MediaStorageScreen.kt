@@ -220,16 +220,20 @@ private fun ArchiveComposition(insights: ArchiveInsights) {
     val description = entries.joinToString(", ") { (category, summary) ->
         "${category.label()} ${formatByteSize(summary.bytes)}"
     }
+    val visualWeights = archiveVisualWeights(
+        bytes = entries.map { it.second.bytes },
+        totalBytes = insights.totalBytes,
+    )
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(ReliveTheme.dimensions.spacing.sm)
             .semantics(mergeDescendants = true) { contentDescription = "Storage composition: $description" },
     ) {
-        entries.forEach { (category, summary) ->
+        entries.forEachIndexed { index, (category, _) ->
             Box(
                 modifier = Modifier
-                    .weight(summary.bytes.toFloat() / insights.totalBytes.toFloat())
+                    .weight(visualWeights[index])
                     .height(ReliveTheme.dimensions.spacing.sm)
                     .background(category.color()),
             )
@@ -268,7 +272,7 @@ private fun ArchiveCategoryRow(
             if (summary.bytes > 0L && totalBytes > 0L) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(summary.bytes.toFloat() / totalBytes.toFloat())
+                    .fillMaxWidth(archiveMeasuredFraction(summary.bytes, totalBytes))
                         .height(dims.spacing.xs)
                         .background(category.color()),
                 )
@@ -293,11 +297,44 @@ private fun ArchiveCountRow(label: String, count: Long) {
 
 @Composable
 private fun ArchiveMediaCategory.color() = when (this) {
-    ArchiveMediaCategory.Photo -> ReliveTheme.colors.accent
-    ArchiveMediaCategory.Video -> ReliveTheme.colors.accentMuted
-    ArchiveMediaCategory.Audio -> ReliveTheme.colors.textSecondary
+    ArchiveMediaCategory.Photo -> ReliveTheme.colors.accentMuted
+    ArchiveMediaCategory.Video -> ReliveTheme.colors.accent
+    ArchiveMediaCategory.Audio -> ReliveTheme.colors.surfaceAudio
     ArchiveMediaCategory.Other -> ReliveTheme.colors.border
 }
+
+private const val MinimumArchiveVisualWeight = 0.02f
+
+internal fun archiveVisualWeights(
+    bytes: List<Long>,
+    totalBytes: Long,
+    minimumWeight: Float = MinimumArchiveVisualWeight,
+): List<Float> {
+    require(minimumWeight >= 0f) { "Minimum visual weight must not be negative" }
+    if (bytes.isEmpty() || totalBytes <= 0L) return bytes.map { 0f }
+
+    val positiveCount = bytes.count { it > 0L }
+    if (positiveCount == 0) return bytes.map { 0f }
+
+    val minimumTotal = minimumWeight * positiveCount
+    val measuredSpace = (1f - minimumTotal).coerceAtLeast(0f)
+    val weights = bytes.map { byteCount ->
+        if (byteCount <= 0L) {
+            0f
+        } else {
+            minimumWeight + measuredSpace * (byteCount.toDouble() / totalBytes.toDouble()).toFloat()
+        }
+    }
+    val weightTotal = weights.sum()
+    return if (weightTotal > 0f) weights.map { it / weightTotal } else weights
+}
+
+private fun archiveMeasuredFraction(bytes: Long, totalBytes: Long): Float =
+    if (bytes > 0L && totalBytes > 0L) {
+        (bytes.toDouble() / totalBytes.toDouble()).toFloat().coerceIn(0f, 1f)
+    } else {
+        0f
+    }
 
 private fun ArchiveMediaCategory.label(): String = when (this) {
     ArchiveMediaCategory.Photo -> "Photos"
