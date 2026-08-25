@@ -1,0 +1,5 @@
+# Google Drive backup setup
+
+Relive uses one Google Cloud project for Android and iOS and requests only the `https://www.googleapis.com/auth/drive.appdata` scope. Enable the Google Drive API, complete OAuth branding (app name, logo, homepage, privacy policy, terms), configure test users while the app is in testing, and create Android OAuth clients for package `com.vaibhav.relive` for every debug/release/Play App Signing SHA-1. Create a Web application OAuth client as well; put its public client ID in the local Gradle property `RELIVE_GOOGLE_WEB_CLIENT_ID` (never source control it). Configure a stable iOS bundle identifier/team, iOS OAuth client, `GIDClientID`, and reversed callback URL scheme.
+
+Do not commit client secrets, `google-services.json`, broad Drive or Photos scopes. The current repository has no OAuth clients and the iOS `TEAM_ID` is unresolved, so physical account/Drive verification remains an external setup blocker. The Android account chooser intentionally uses Credential Manager; Drive consent and short-lived Drive access use Google Identity Services `AuthorizationClient`.

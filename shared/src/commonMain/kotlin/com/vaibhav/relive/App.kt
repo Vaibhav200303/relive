@@ -37,6 +37,8 @@ import com.vaibhav.relive.platform.media.ActivePlayback
 import com.vaibhav.relive.ui.screens.ProfileScreen
 import com.vaibhav.relive.ui.screens.PreferencesScreen
 import com.vaibhav.relive.ui.screens.MediaStorageScreen
+import com.vaibhav.relive.ui.screens.BackupRestoreScreen
+import com.vaibhav.relive.presentation.profile.BackupRestoreViewModel
 import com.vaibhav.relive.ui.screens.SearchScreen
 import com.vaibhav.relive.presentation.search.SearchViewModel
 import com.vaibhav.relive.presentation.navigation.QuickCaptureSurface
@@ -132,6 +134,9 @@ fun App(
         val mediaStorageViewModel = remember(container, scope) {
             MediaStorageViewModel(container.archiveInsightsRepository, scope)
         }
+        val backupRestoreViewModel = remember(container, scope) {
+            BackupRestoreViewModel(container.backupPreferencesRepository, container.googleDriveAccountManager, container.backupCoordinator, scope)
+        }
         when (profileNavigation.destination) {
             ProfileDestination.Profile -> ProfileScreen(
                 viewModel = profileViewModel,
@@ -139,6 +144,7 @@ fun App(
                 onBack = { profileNavigation = profileNavigation.returnToTimelineHome() },
                 onOpenPreferences = { profileNavigation = profileNavigation.openPreferences() },
                 onOpenMediaStorage = { profileNavigation = profileNavigation.openMediaStorage() },
+                onOpenBackupRestore = { profileNavigation = profileNavigation.openBackupRestore() },
             )
             ProfileDestination.Preferences -> PreferencesScreen(
                 viewModel = behaviorPreferencesViewModel,
@@ -146,6 +152,10 @@ fun App(
             )
             ProfileDestination.MediaStorage -> MediaStorageScreen(
                 viewModel = mediaStorageViewModel,
+                onBack = { profileNavigation = profileNavigation.returnToProfile() },
+            )
+            ProfileDestination.BackupRestore -> BackupRestoreScreen(
+                viewModel = backupRestoreViewModel,
                 onBack = { profileNavigation = profileNavigation.returnToProfile() },
             )
             ProfileDestination.Closed -> when (val active = timelinesDestination) {

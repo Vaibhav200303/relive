@@ -12,6 +12,11 @@ import com.vaibhav.relive.domain.repository.RediscoverRepository
 import com.vaibhav.relive.domain.time.Clock
 import com.vaibhav.relive.platform.media.MediaProcessor
 import com.vaibhav.relive.platform.media.MediaStore
+import com.vaibhav.relive.domain.backup.BackupPreferencesRepository
+import com.vaibhav.relive.domain.backup.GoogleDriveAccountManager
+import com.vaibhav.relive.domain.backup.GoogleDriveAuthorizationUnavailableException
+import com.vaibhav.relive.domain.backup.BackupCoordinator
+import com.vaibhav.relive.domain.backup.UnavailableBackupCoordinator
 
 /**
  * Shared app-level dependency container. Platform entry points construct this
@@ -38,4 +43,10 @@ class ReliveAppContainer(
     val idGenerator: IdGenerator,
     val mediaStore: MediaStore,
     val mediaProcessor: MediaProcessor,
+    val backupPreferencesRepository: BackupPreferencesRepository = InMemoryBackupPreferencesRepository(),
+    val googleDriveAccountManager: GoogleDriveAccountManager = object : GoogleDriveAccountManager {
+        override suspend fun connect() = throw GoogleDriveAuthorizationUnavailableException("Google account connection is not configured on this platform.")
+        override suspend fun disconnect() = Unit
+    },
+    val backupCoordinator: BackupCoordinator = UnavailableBackupCoordinator(),
 )

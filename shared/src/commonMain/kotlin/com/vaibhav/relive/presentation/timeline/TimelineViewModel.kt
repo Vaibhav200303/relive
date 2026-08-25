@@ -69,6 +69,14 @@ class TimelineViewModel(
         }
     }
 
+    /** Removes only the custom collection and its membership rows, never its Moments. */
+    fun deleteCurrentCustomTimeline(onResult: (Boolean) -> Unit) {
+        val timeline = _state.value.currentTimeline as? CurrentTimeline.Custom ?: return
+        scope.launch {
+            onResult(runCatching { timelineRepository.deleteCustom(timeline.id) }.isSuccess)
+        }
+    }
+
     fun jumpToDate(date: LocalCalendarDate) {
         val targetScope = when (val timeline = _state.value.currentTimeline) {
             CurrentTimeline.All -> MomentDateNavigationScope.All

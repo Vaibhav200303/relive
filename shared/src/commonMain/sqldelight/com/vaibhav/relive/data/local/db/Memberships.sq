@@ -26,3 +26,7 @@ SELECT moment_id FROM moment_timeline_memberships WHERE timeline_id = :timelineI
 countMembership:
 SELECT COUNT(*) FROM moment_timeline_memberships
 WHERE moment_id = :momentId AND timeline_id = :timelineId;
+
+selectAllMemberships:
+SELECT * FROM moment_timeline_memberships
+ORDER BY moment_id ASC, timeline_id ASC;
