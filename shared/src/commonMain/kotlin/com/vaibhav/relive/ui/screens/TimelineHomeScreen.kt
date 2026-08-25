@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.Text
@@ -38,6 +39,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.vaibhav.relive.domain.model.MediaAttachment
+import com.vaibhav.relive.domain.model.MediaStorageRef
 import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.TimelineHomeSummary
@@ -59,6 +61,7 @@ import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.theme.toReliveThemeId
+import com.vaibhav.relive.ui.icons.ProfileIcons
 import com.vaibhav.relive.presentation.cardcover.resolveAllTimelineCollage
 
 @Composable
@@ -68,6 +71,7 @@ fun TimelineHomeScreen(
     listState: LazyListState,
     onOpenTimeline: (TimelineHomeNavigation) -> Unit,
     onOpenProfile: () -> Unit,
+    profilePhoto: MediaStorageRef? = null,
     onCreateMoment: (() -> Unit)? = null,
     navigationToolbarExpanded: Boolean = true,
     onNavigationToolbarExpand: () -> Unit = {},
@@ -102,6 +106,8 @@ fun TimelineHomeScreen(
                     viewModel.showTimelineCreation()
                 },
                 onOpenProfile = onOpenProfile,
+                profilePhoto = profilePhoto,
+                mediaStore = mediaStore,
             )
             TimelineHomeSearchBar(
                 query = state.query,
@@ -133,7 +139,7 @@ fun TimelineHomeScreen(
 }
 
 @Composable
-private fun TimelineHomeHeader(onCreateTimeline: () -> Unit, onOpenProfile: () -> Unit) {
+private fun TimelineHomeHeader(onCreateTimeline: () -> Unit, onOpenProfile: () -> Unit, profilePhoto: MediaStorageRef?, mediaStore: MediaStore) {
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
     ReliveWordmarkAppBar {
@@ -144,7 +150,7 @@ private fun TimelineHomeHeader(onCreateTimeline: () -> Unit, onOpenProfile: () -
                 .size(dims.minTouchTarget)
                 .semantics { contentDescription = "Open Profile" },
         ) {
-            ProfileAffordanceGlyph()
+            ProfileAffordanceGlyph(profilePhoto, mediaStore)
         }
         IconButton(
             onClick = onCreateTimeline,
@@ -232,21 +238,19 @@ private fun TimelineSearchGlyph() {
 }
 
 @Composable
-private fun ProfileAffordanceGlyph() {
+private fun ProfileAffordanceGlyph(photo: MediaStorageRef?, mediaStore: MediaStore) {
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
-    androidx.compose.foundation.Canvas(Modifier.size(dims.icon.lg)) {
-        val stroke = androidx.compose.ui.graphics.drawscope.Stroke(width = dims.stroke.icon.toPx())
-        drawCircle(colors.textSecondary, radius = size.minDimension * 0.2f, center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height * 0.32f), style = stroke)
-        drawArc(
-            color = colors.textSecondary,
-            startAngle = 200f,
-            sweepAngle = 140f,
-            useCenter = false,
-            topLeft = androidx.compose.ui.geometry.Offset(size.width * 0.2f, size.height * 0.36f),
-            size = androidx.compose.ui.geometry.Size(size.width * 0.6f, size.height * 0.48f),
-            style = stroke,
-        )
+    if (photo != null) {
+        com.vaibhav.relive.platform.media.RelivedImageTile(photo, mediaStore, Modifier.size(dims.icon.lg).clip(RoundedCornerShape(dims.radii.pill)))
+    } else Box(
+        modifier = Modifier
+            .size(dims.icon.lg)
+            .clip(RoundedCornerShape(dims.radii.pill))
+            .background(colors.surfaceCard),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(ProfileIcons.Person, contentDescription = null, modifier = Modifier.size(dims.icon.md), tint = colors.textSecondary)
     }
 }
 

@@ -18,6 +18,7 @@ import com.vaibhav.relive.platform.backup.backupAuthLog
 import com.vaibhav.relive.presentation.date.BackupTimestampFormatter
 import com.vaibhav.relive.presentation.profile.formatByteSize
 import com.vaibhav.relive.presentation.time.SystemClock
+import com.vaibhav.relive.ui.components.profile.ProfilePageHeader
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -27,15 +28,7 @@ fun BackupRestoreScreen(viewModel: BackupRestoreViewModel, onBack: () -> Unit) {
     var disconnectDialog by remember { mutableStateOf(false) }
     val summary = state.remoteSummary
     Scaffold(containerColor = ReliveTheme.colors.bgCanvas, topBar = {
-        TopAppBar(
-            title = { Text("Backup") },
-            navigationIcon = { TextButton(onClick = onBack) { Text("‹") } },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = ReliveTheme.colors.bgHeader,
-                titleContentColor = ReliveTheme.colors.textPrimary,
-                navigationIconContentColor = ReliveTheme.colors.textPrimary,
-            ),
-        )
+        ProfilePageHeader("Backup & Restore", onBack)
     }) { padding ->
         Column(Modifier.padding(padding).padding(start = 32.dp, top = 24.dp, end = 32.dp, bottom = 32.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(32.dp)) {
             Text("Keep your memories safe in Google Drive.", style = ReliveTheme.typography.subtitle)

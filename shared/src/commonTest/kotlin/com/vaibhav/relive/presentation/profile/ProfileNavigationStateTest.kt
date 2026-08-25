@@ -27,4 +27,16 @@ class ProfileNavigationStateTest {
         assertEquals(ProfileDestination.Preferences, preferences.destination)
         assertEquals(ProfileDestination.Profile, preferences.returnToProfile().destination)
     }
+
+    @Test fun all_profile_destinations_return_to_profile() {
+        val destinations = listOf(
+            ProfileNavigationState().openLocation(),
+            ProfileNavigationState().openNotifications(),
+            ProfileNavigationState().openPrivacy(),
+            ProfileNavigationState().openHelp(),
+            ProfileNavigationState().openAbout(),
+            ProfileNavigationState().openLicenses(),
+        )
+        destinations.forEach { assertEquals(ProfileDestination.Profile, it.returnToProfile().destination) }
+    }
 }
