@@ -23,6 +23,7 @@ import com.vaibhav.relive.ui.theme.toReliveThemeId
 import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.RediscoverQuery
+import com.vaibhav.relive.domain.model.StartDestination
 import com.vaibhav.relive.presentation.timeline.CurrentTimeline
 import com.vaibhav.relive.presentation.timeline.TimelineMode
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeViewModel
@@ -34,13 +35,16 @@ import com.vaibhav.relive.ui.components.navigation.ReliveFloatingBottomControls
 import com.vaibhav.relive.ui.components.navigation.ReliveTopLevelDestination
 import com.vaibhav.relive.platform.media.ActivePlayback
 import com.vaibhav.relive.ui.screens.ProfileScreen
+import com.vaibhav.relive.ui.screens.PreferencesScreen
 import com.vaibhav.relive.ui.screens.MediaStorageScreen
 import com.vaibhav.relive.ui.screens.SearchScreen
 import com.vaibhav.relive.presentation.search.SearchViewModel
 import com.vaibhav.relive.presentation.navigation.QuickCaptureSurface
 import com.vaibhav.relive.presentation.navigation.quickCaptureCommand
+import com.vaibhav.relive.presentation.navigation.resolveStartupDestination
 import com.vaibhav.relive.presentation.composer.TimelineComposerDraftStore
 import com.vaibhav.relive.presentation.settings.AppearanceViewModel
+import com.vaibhav.relive.presentation.settings.BehaviorPreferencesViewModel
 import com.vaibhav.relive.presentation.settings.resolveDarkMode
 import com.vaibhav.relive.presentation.settings.resolveTimelineTheme
 
@@ -77,6 +81,10 @@ fun App(
         AppearanceViewModel(container.appearanceRepository, scope)
     }
     val appearanceState by appearanceViewModel.state.collectAsState()
+    val behaviorPreferencesViewModel = remember(container, scope) {
+        BehaviorPreferencesViewModel(container.behaviorPreferencesRepository, scope)
+    }
+    val behaviorState by behaviorPreferencesViewModel.state.collectAsState()
     val darkMode = resolveDarkMode(
         mode = appearanceState.preferences.mode,
         systemDark = isSystemInDarkTheme(),
@@ -102,7 +110,11 @@ fun App(
         val searchListState = rememberLazyListState()
         val searchViewModel = remember(container, scope) { SearchViewModel(container.momentRepository, scope) }
         val profileViewModel = remember(container, scope) { ProfileViewModel(container.profileRepository, scope) }
-        var topLevel by remember { mutableStateOf(ReliveTopLevelDestination.Timelines) }
+        var topLevel by remember(container.behaviorPreferencesRepository) {
+            mutableStateOf(
+                resolveStartupDestination(behaviorState.preferences.startDestination).toTopLevelDestination(),
+            )
+        }
         var searchReturnDestination by remember { mutableStateOf(ReliveTopLevelDestination.Timelines) }
         var timelinesDestination by remember { mutableStateOf<TimelinesDestination>(TimelinesDestination.TimelineHome) }
         var rediscoverDestination by remember { mutableStateOf<RediscoverDestination>(RediscoverDestination.Root) }
@@ -125,7 +137,12 @@ fun App(
                 viewModel = profileViewModel,
                 appearanceViewModel = appearanceViewModel,
                 onBack = { profileNavigation = profileNavigation.returnToTimelineHome() },
+                onOpenPreferences = { profileNavigation = profileNavigation.openPreferences() },
                 onOpenMediaStorage = { profileNavigation = profileNavigation.openMediaStorage() },
+            )
+            ProfileDestination.Preferences -> PreferencesScreen(
+                viewModel = behaviorPreferencesViewModel,
+                onBack = { profileNavigation = profileNavigation.returnToProfile() },
             )
             ProfileDestination.MediaStorage -> MediaStorageScreen(
                 viewModel = mediaStorageViewModel,
@@ -153,6 +170,7 @@ fun App(
                             timelinesDestination = TimelinesDestination.TimelineHome
                         },
                         globalTheme = appearanceState.preferences.defaultTheme,
+                        behaviorPreferences = behaviorState.preferences,
                     )
                 }
                 val override = (active.scope as? CurrentTimeline.Custom)?.let { current ->
@@ -184,6 +202,7 @@ fun App(
                     mode = TimelineMode.ReadOnlySystemCollection(title = "Favorites"),
                     selectedMomentId = favorites.selectedMomentId,
                     onBackToTimelineHome = { rediscoverDestination = RediscoverDestination.Root },
+                    behaviorPreferences = behaviorState.preferences,
                 )
             } else if (
                 topLevel == ReliveTopLevelDestination.Rediscover && rediscoverDestination is RediscoverDestination.OnThisDay
@@ -202,6 +221,7 @@ fun App(
                     mode = TimelineMode.ReadOnlySystemCollection(title = "On This Day"),
                     selectedMomentId = onThisDay.selectedMomentId,
                     onBackToTimelineHome = { rediscoverDestination = RediscoverDestination.Root },
+                    behaviorPreferences = behaviorState.preferences,
                 )
             } else if (
                 topLevel == ReliveTopLevelDestination.Rediscover && rediscoverDestination is RediscoverDestination.FromYourPast
@@ -220,6 +240,7 @@ fun App(
                     mode = TimelineMode.ReadOnlySystemCollection(title = "From Your Past"),
                     selectedMomentId = fromYourPast.selectedMomentId,
                     onBackToTimelineHome = { rediscoverDestination = RediscoverDestination.Root },
+                    behaviorPreferences = behaviorState.preferences,
                 )
             } else Box(Modifier.fillMaxSize()) {
                 when (topLevel) {
@@ -260,6 +281,7 @@ fun App(
                             onOpenFromYourPast = { selectedMomentId, query ->
                                 rediscoverDestination = RediscoverDestination.FromYourPast(selectedMomentId, query)
                             },
+                            behaviorPreferences = behaviorState.preferences,
                             debugControls = rediscoverDebugControls,
                             onCreateMoment = { openQuickCapture(QuickCaptureSurface.Rediscover) },
                             navigationToolbarExpanded = navigationToolbarExpanded,
@@ -308,4 +330,9 @@ fun App(
         }
         }
     }
+}
+
+private fun StartDestination.toTopLevelDestination(): ReliveTopLevelDestination = when (this) {
+    StartDestination.Timelines -> ReliveTopLevelDestination.Timelines
+    StartDestination.Rediscover -> ReliveTopLevelDestination.Rediscover
 }

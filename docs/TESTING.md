@@ -121,6 +121,16 @@ Using Compose Multiplatform UI testing:
 - Guard settled rules with tests so they cannot silently regress: the 4-day window, store-once/reference membership, timeline-scoped search, and location privacy (no background tracking, no coordinate exposure).
 - Review the full `git diff` to confirm no unrelated behavior changed ([`../AGENTS.md`](../AGENTS.md)).
 
+### Behavior preferences
+
+- Missing/invalid native values use documented defaults; stable destination/boolean values round-trip.
+- Every setter updates observable state, and reconstructing presentation over the same repository restores the saved values.
+- Startup defaults to Timelines, honors Rediscover, and leaves any future authoritative restoration/deep-link override higher priority.
+- Dirty explicit `×` requests confirmation when enabled and resets/collapses immediately when disabled; empty-draft and Back behavior do not change.
+- Editable Timeline location/tag visibility follows preferences without removing data; Search and read-only collection presentation remain unchanged.
+- On This Day/Favorites preference-off state removes the complete root section and collapses dependent spacing without mutating the read model.
+- Profile → Preferences → Back returns to Profile.
+
 ---
 
 ## 11. Manual verification expectations
@@ -255,6 +265,17 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 - [ ] Empty and text-only archives show `0 B` without a chart while retaining the actual Moment count.
 - [ ] Photo, video, audio, and defensive Other values match only Relive-managed attachment references; missing files do not crash or contribute bytes.
 - [ ] The hero, breakdown, and archive rows remain readable at large font scales and expose category/value semantics across every palette and appearance mode.
+
+### Behavior preferences
+
+- [ ] Profile → Preferences opens the calm open-page layout; Back returns to the retained Profile destination.
+- [ ] Fresh/default startup opens Timelines; selecting Rediscover, force-stopping, and relaunching opens Rediscover without briefly flashing Timelines.
+- [ ] Dirty composer `×` confirms when enabled and immediately resets/collapses when disabled; empty composer `×` remains immediate and Back still preserves the draft.
+- [ ] Show locations/tags updates editable All and custom Timeline cards without deleting data or hiding composer/edit fields; Search and read-only Rediscover detail still show their normal metadata.
+- [ ] On This Day/Favorites switches remove their complete Rediscover root sections with no empty gap; re-enabling restores current repository data immediately.
+- [ ] Every row remains readable and operable at large font scale with TalkBack/VoiceOver; switches announce state and startup row announces its current value.
+- [ ] Toggle and startup-selection haptics fire once from direct interaction and never during restoration/recomposition.
+- [ ] All six palettes render Preferences correctly in Light, Dark, and System modes with no hardcoded-color artifacts.
 
 ---
 

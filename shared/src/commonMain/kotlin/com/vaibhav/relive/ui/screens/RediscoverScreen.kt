@@ -35,6 +35,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.vaibhav.relive.domain.model.MomentId
+import com.vaibhav.relive.domain.model.BehaviorPreferences
 import com.vaibhav.relive.domain.model.LocalCalendarDate
 import com.vaibhav.relive.domain.model.FavoriteMomentPreview
 import com.vaibhav.relive.domain.model.RediscoverQuery
@@ -70,6 +71,7 @@ fun RediscoverScreen(
     onOpenFavorites: (MomentId?) -> Unit,
     onOpenOnThisDay: (MomentId, LocalCalendarDate) -> Unit,
     onOpenFromYourPast: (MomentId?, RediscoverQuery) -> Unit,
+    behaviorPreferences: BehaviorPreferences = BehaviorPreferences(),
     debugControls: (@Composable () -> Unit)? = null,
     onCreateMoment: (() -> Unit)? = null,
     navigationToolbarExpanded: Boolean = true,
@@ -107,7 +109,11 @@ fun RediscoverScreen(
         .collectAsState(emptyList())
     var debugOpen by remember { mutableStateOf(false) }
     val dims = ReliveTheme.dimensions
-    val sectionLayout = rediscoverSectionLayout(onThisDayPreviews.size)
+    val sectionLayout = rediscoverSectionLayout(
+        onThisDayMomentCount = onThisDayPreviews.size,
+        showFavorites = behaviorPreferences.showFavorites,
+        showOnThisDay = behaviorPreferences.showOnThisDay,
+    )
     val bottomPadding = if (onCreateMoment != null) dims.spacing.huge * 2 else dims.spacing.huge
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -137,62 +143,73 @@ fun RediscoverScreen(
                 }
             }
         }
-        item(key = "favorites-heading") {
-            Text(
-                text = "FAVOURITES",
-                style = ReliveTheme.typography.title,
-                color = ReliveTheme.colors.accentMuted,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .combinedClickable(onClick = {}, onLongClick = debugControls?.let { { debugOpen = true } })
-                    .padding(horizontal = dims.spacing.xl, vertical = dims.spacing.md),
-            )
-        }
-        if (previews.isEmpty()) {
-            item(key = "favorites-empty") { FavoritesEmptyState() }
-        } else {
-            item(key = "favorites-shelf") {
-                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = dims.spacing.xl),
-                        horizontalArrangement = Arrangement.spacedBy(dims.spacing.md),
-                    ) {
-                        items(previews, key = { it.id.value }) { moment ->
-                            FavoriteMomentCard(
-                                moment = moment,
-                                mediaStore = mediaStore,
-                                modifier = Modifier.width(maxWidth * dims.rediscover.favoriteShelfCardWidthFraction),
-                                onOpen = { onOpenFavorites(moment.id) },
-                            )
+        if (sectionLayout.showFavorites) {
+            item(key = "favorites-heading") {
+                Text(
+                    text = "FAVOURITES",
+                    style = ReliveTheme.typography.title,
+                    color = ReliveTheme.colors.accentMuted,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .combinedClickable(
+                            onClick = {},
+                            onLongClick = debugControls?.let { { debugOpen = true } },
+                        )
+                        .padding(horizontal = dims.spacing.xl, vertical = dims.spacing.md),
+                )
+            }
+            if (previews.isEmpty()) {
+                item(key = "favorites-empty") { FavoritesEmptyState() }
+            } else {
+                item(key = "favorites-shelf") {
+                    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = dims.spacing.xl),
+                            horizontalArrangement = Arrangement.spacedBy(dims.spacing.md),
+                        ) {
+                            items(previews, key = { it.id.value }) { moment ->
+                                FavoriteMomentCard(
+                                    moment = moment,
+                                    mediaStore = mediaStore,
+                                    modifier = Modifier.width(
+                                        maxWidth * dims.rediscover.favoriteShelfCardWidthFraction,
+                                    ),
+                                    onOpen = { onOpenFavorites(moment.id) },
+                                )
+                            }
                         }
                     }
                 }
-            }
-            item(key = "favorites-show-all") {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = dims.spacing.xl, vertical = dims.spacing.sm),
-                    contentAlignment = Alignment.CenterEnd,
-                ) {
+                item(key = "favorites-show-all") {
                     Box(
                         modifier = Modifier
-                            .defaultMinSize(
-                                minWidth = dims.minTouchTarget,
-                                minHeight = dims.minTouchTarget,
-                            )
-                            .clickable(role = Role.Button) { onOpenFavorites(null) }
-                            .semantics { contentDescription = "Show all favorite moments" },
+                            .fillMaxWidth()
+                            .padding(horizontal = dims.spacing.xl, vertical = dims.spacing.sm),
                         contentAlignment = Alignment.CenterEnd,
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Show all", style = ReliveTheme.typography.action, color = ReliveTheme.colors.accent)
-                            ForwardGlyph(
-                                size = dims.icon.sm,
-                                color = ReliveTheme.colors.accent,
-                                strokeWidth = dims.stroke.icon,
-                                modifier = Modifier.padding(start = dims.spacing.xs),
-                            )
+                        Box(
+                            modifier = Modifier
+                                .defaultMinSize(
+                                    minWidth = dims.minTouchTarget,
+                                    minHeight = dims.minTouchTarget,
+                                )
+                                .clickable(role = Role.Button) { onOpenFavorites(null) }
+                                .semantics { contentDescription = "Show all favorite moments" },
+                            contentAlignment = Alignment.CenterEnd,
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    "Show all",
+                                    style = ReliveTheme.typography.action,
+                                    color = ReliveTheme.colors.accent,
+                                )
+                                ForwardGlyph(
+                                    size = dims.icon.sm,
+                                    color = ReliveTheme.colors.accent,
+                                    strokeWidth = dims.stroke.icon,
+                                    modifier = Modifier.padding(start = dims.spacing.xs),
+                                )
+                            }
                         }
                     }
                 }
