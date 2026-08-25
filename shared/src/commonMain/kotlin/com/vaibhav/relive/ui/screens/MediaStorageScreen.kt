@@ -41,6 +41,7 @@ import com.vaibhav.relive.presentation.profile.MediaStorageViewModel
 import com.vaibhav.relive.presentation.profile.formatByteSize
 import com.vaibhav.relive.ui.components.timeline.BackGlyph
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.components.profile.ProfilePageHeader
 
 @Composable
 fun MediaStorageScreen(
@@ -65,29 +66,7 @@ fun MediaStorageScreen(
 
 @Composable
 private fun MediaStorageHeader(onBack: () -> Unit) {
-    val dims = ReliveTheme.dimensions
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .windowInsetsPadding(WindowInsets.statusBars)
-            .padding(horizontal = dims.spacing.md, vertical = dims.spacing.sm),
-    ) {
-        IconButton(
-            onClick = onBack,
-            modifier = Modifier
-                .size(dims.minTouchTarget)
-                .align(Alignment.CenterStart)
-                .semantics { contentDescription = "Back to Profile" },
-        ) {
-            BackGlyph(dims.icon.lg, ReliveTheme.colors.textSecondary, dims.stroke.icon)
-        }
-        Text(
-            text = "Media & Storage",
-            style = ReliveTheme.typography.action,
-            color = ReliveTheme.colors.textPrimary,
-            modifier = Modifier.align(Alignment.Center),
-        )
-    }
+    ProfilePageHeader("Media & Storage", onBack)
 }
 
 @Composable

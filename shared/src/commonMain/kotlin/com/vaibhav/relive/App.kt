@@ -7,7 +7,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -38,6 +42,12 @@ import com.vaibhav.relive.ui.screens.ProfileScreen
 import com.vaibhav.relive.ui.screens.PreferencesScreen
 import com.vaibhav.relive.ui.screens.MediaStorageScreen
 import com.vaibhav.relive.ui.screens.BackupRestoreScreen
+import com.vaibhav.relive.ui.screens.LocationScreen
+import com.vaibhav.relive.ui.screens.RediscoverNotificationsScreen
+import com.vaibhav.relive.ui.screens.PrivacySecurityScreen
+import com.vaibhav.relive.ui.screens.HelpFeedbackScreen
+import com.vaibhav.relive.ui.screens.AboutReliveScreen
+import com.vaibhav.relive.ui.screens.LicensesScreen
 import com.vaibhav.relive.presentation.profile.BackupRestoreViewModel
 import com.vaibhav.relive.ui.screens.SearchScreen
 import com.vaibhav.relive.presentation.search.SearchViewModel
@@ -49,6 +59,14 @@ import com.vaibhav.relive.presentation.settings.AppearanceViewModel
 import com.vaibhav.relive.presentation.settings.BehaviorPreferencesViewModel
 import com.vaibhav.relive.presentation.settings.resolveDarkMode
 import com.vaibhav.relive.presentation.settings.resolveTimelineTheme
+import com.vaibhav.relive.presentation.profile.AppLockController
+import com.vaibhav.relive.presentation.profile.RediscoverReminderController
+import com.vaibhav.relive.platform.system.openAppSettings
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.map
 
 private sealed interface TimelinesDestination {
     data object TimelineHome : TimelinesDestination
@@ -111,7 +129,31 @@ fun App(
         val rediscoverListState = rememberLazyListState()
         val searchListState = rememberLazyListState()
         val searchViewModel = remember(container, scope) { SearchViewModel(container.momentRepository, scope) }
-        val profileViewModel = remember(container, scope) { ProfileViewModel(container.profileRepository, scope) }
+        val profileViewModel = remember(container, scope) { ProfileViewModel(container.profileRepository, container.profileSettingsRepository, container.mediaStore, scope) }
+        val profileSettings by container.profileSettingsRepository.settings.collectAsState()
+        val lockController = remember(container) { AppLockController(container.profileSettingsRepository, container.deviceAuthentication) { container.clock.now().epochMilliseconds } }
+        val locked by lockController.locked.collectAsState()
+        val reminderController = remember(container) { RediscoverReminderController(container.profileSettingsRepository, container.rediscoverReminderService) }
+        val reminderArchiveFingerprint by remember(container) {
+            container.momentRepository.observeAll().map { moments -> moments.fold(1) { value, moment -> 31 * value + moment.createdAt.epochMilliseconds.hashCode() } }
+        }.collectAsState(0)
+        LaunchedEffect(profileSettings.rediscoverRemindersEnabled, reminderArchiveFingerprint) {
+            if (profileSettings.rediscoverRemindersEnabled) container.rediscoverReminderService.synchronize(true)
+        }
+        var notificationPermission by remember(container.rediscoverReminderService) { mutableStateOf(container.rediscoverReminderService.permissionState()) }
+        val lifecycleOwner = LocalLifecycleOwner.current
+        DisposableEffect(lifecycleOwner, lockController) {
+            val observer = LifecycleEventObserver { _, event -> when (event) {
+                Lifecycle.Event.ON_STOP -> lockController.onBackground()
+                Lifecycle.Event.ON_START -> {
+                    lockController.onForeground()
+                    if (container.profileSettingsRepository.settings.value.rediscoverRemindersEnabled) scope.launch { container.rediscoverReminderService.synchronize(true) }
+                }
+                else -> Unit
+            } }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        }
         var topLevel by remember(container.behaviorPreferencesRepository) {
             mutableStateOf(
                 resolveStartupDestination(behaviorState.preferences.startDestination).toTopLevelDestination(),
@@ -137,7 +179,7 @@ fun App(
         val backupRestoreViewModel = remember(container, scope) {
             BackupRestoreViewModel(container.backupPreferencesRepository, container.googleDriveAccountManager, container.backupCoordinator, scope)
         }
-        when (profileNavigation.destination) {
+        if (locked) ReliveLockSurface(onUnlock = { scope.launch { lockController.unlock() } }) else when (profileNavigation.destination) {
             ProfileDestination.Profile -> ProfileScreen(
                 viewModel = profileViewModel,
                 appearanceViewModel = appearanceViewModel,
@@ -145,6 +187,13 @@ fun App(
                 onOpenPreferences = { profileNavigation = profileNavigation.openPreferences() },
                 onOpenMediaStorage = { profileNavigation = profileNavigation.openMediaStorage() },
                 onOpenBackupRestore = { profileNavigation = profileNavigation.openBackupRestore() },
+                onOpenLocation = { profileNavigation = profileNavigation.openLocation() },
+                onOpenNotifications = { profileNavigation = profileNavigation.openNotifications() },
+                onOpenPrivacy = { profileNavigation = profileNavigation.openPrivacy() },
+                onOpenHelp = { profileNavigation = profileNavigation.openHelp() },
+                onOpenAbout = { profileNavigation = profileNavigation.openAbout() },
+                mediaStore = container.mediaStore,
+                mediaProcessor = container.mediaProcessor,
             )
             ProfileDestination.Preferences -> PreferencesScreen(
                 viewModel = behaviorPreferencesViewModel,
@@ -158,6 +207,27 @@ fun App(
                 viewModel = backupRestoreViewModel,
                 onBack = { profileNavigation = profileNavigation.returnToProfile() },
             )
+            ProfileDestination.Location -> LocationScreen(behaviorState.preferences.showLocations, behaviorPreferencesViewModel::setShowLocations) { profileNavigation = profileNavigation.returnToProfile() }
+            ProfileDestination.RediscoverNotifications -> RediscoverNotificationsScreen(
+                profileSettings,
+                notificationPermission,
+                onEnabledChange = { enabled -> scope.launch { reminderController.setEnabled(enabled); notificationPermission = container.rediscoverReminderService.permissionState() } },
+                onOpenSettings = ::openAppSettings,
+                onBack = { profileNavigation = profileNavigation.returnToProfile() },
+            )
+            ProfileDestination.PrivacySecurity -> PrivacySecurityScreen(
+                profileSettings,
+                container.deviceAuthentication.capabilities.deviceAuthenticationAvailable,
+                container.deviceAuthentication.capabilities.biometricsAvailable,
+                container.deviceAuthentication.capabilities.biometricsExplanation,
+                onAppLockChange = { enabled -> scope.launch { lockController.setEnabled(enabled) } },
+                onBiometricsChange = { enabled -> scope.launch { lockController.setBiometrics(enabled) } },
+                onLockAfterChange = { value -> scope.launch { lockController.setLockAfter(value) } },
+                onBack = { profileNavigation = profileNavigation.returnToProfile() },
+            )
+            ProfileDestination.HelpFeedback -> HelpFeedbackScreen(onBack = { profileNavigation = profileNavigation.returnToProfile() }, onMessage = {})
+            ProfileDestination.AboutRelive -> AboutReliveScreen(onOpenLicenses = { profileNavigation = profileNavigation.openLicenses() }, onBack = { profileNavigation = profileNavigation.returnToProfile() })
+            ProfileDestination.Licenses -> LicensesScreen(onBack = { profileNavigation = profileNavigation.openAbout() })
             ProfileDestination.Closed -> when (val active = timelinesDestination) {
             is TimelinesDestination.TimelineDetail -> {
                 val timelineContent: @Composable () -> Unit = {
@@ -268,6 +338,7 @@ fun App(
                                 )
                             },
                             onOpenProfile = { profileNavigation = profileNavigation.openProfile() },
+                            profilePhoto = profileSettings.profilePhoto,
                             onCreateMoment = { openQuickCapture(QuickCaptureSurface.TimelineHome) },
                             navigationToolbarExpanded = navigationToolbarExpanded,
                             onNavigationToolbarExpand = { navigationToolbarExpanded = true },
@@ -338,6 +409,19 @@ fun App(
                 )
             }
         }
+        }
+        }
+    }
+
+@Composable
+private fun ReliveLockSurface(onUnlock: () -> Unit) {
+    androidx.compose.foundation.layout.Box(
+        androidx.compose.ui.Modifier.fillMaxSize().background(ReliveTheme.colors.bgCanvas).clickable(onClick = onUnlock),
+        contentAlignment = Alignment.Center,
+    ) {
+        androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            androidx.compose.material3.Text("Relive is locked", style = ReliveTheme.typography.title, color = ReliveTheme.colors.textPrimary)
+            androidx.compose.material3.Text("Tap to unlock", style = ReliveTheme.typography.body, color = ReliveTheme.colors.textSecondary)
         }
     }
 }

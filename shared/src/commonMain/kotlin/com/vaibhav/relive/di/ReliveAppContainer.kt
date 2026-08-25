@@ -6,6 +6,7 @@ import com.vaibhav.relive.domain.repository.ArchiveInsightsRepository
 import com.vaibhav.relive.domain.repository.BehaviorPreferencesRepository
 import com.vaibhav.relive.domain.repository.MomentRepository
 import com.vaibhav.relive.domain.repository.ProfileRepository
+import com.vaibhav.relive.domain.repository.ProfileSettingsRepository
 import com.vaibhav.relive.domain.repository.TimelineRepository
 import com.vaibhav.relive.domain.repository.TimelineHomeRepository
 import com.vaibhav.relive.domain.repository.RediscoverRepository
@@ -17,6 +18,10 @@ import com.vaibhav.relive.domain.backup.GoogleDriveAccountManager
 import com.vaibhav.relive.domain.backup.GoogleDriveAuthorizationUnavailableException
 import com.vaibhav.relive.domain.backup.BackupCoordinator
 import com.vaibhav.relive.domain.backup.UnavailableBackupCoordinator
+import com.vaibhav.relive.platform.notifications.RediscoverReminderService
+import com.vaibhav.relive.platform.notifications.UnavailableRediscoverReminderService
+import com.vaibhav.relive.platform.system.DeviceAuthentication
+import com.vaibhav.relive.platform.system.UnavailableDeviceAuthentication
 
 /**
  * Shared app-level dependency container. Platform entry points construct this
@@ -39,6 +44,7 @@ class ReliveAppContainer(
     val timelineHomeRepository: TimelineHomeRepository,
     val rediscoverRepository: RediscoverRepository,
     val profileRepository: ProfileRepository,
+    val profileSettingsRepository: ProfileSettingsRepository,
     val clock: Clock,
     val idGenerator: IdGenerator,
     val mediaStore: MediaStore,
@@ -49,4 +55,6 @@ class ReliveAppContainer(
         override suspend fun disconnect() = Unit
     },
     val backupCoordinator: BackupCoordinator = UnavailableBackupCoordinator(),
+    val deviceAuthentication: DeviceAuthentication = UnavailableDeviceAuthentication,
+    val rediscoverReminderService: RediscoverReminderService = UnavailableRediscoverReminderService,
 )
