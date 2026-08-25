@@ -15,3 +15,6 @@ SELECT * FROM tags ORDER BY canonical ASC;
 
 deleteUnusedTags:
 DELETE FROM tags WHERE canonical NOT IN (SELECT DISTINCT tag_canonical FROM moment_tags);
+
+deleteAllTags:
+DELETE FROM tags;

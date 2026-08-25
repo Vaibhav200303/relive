@@ -218,6 +218,7 @@ fun TimelineScreen(
     var discardConfirmation by remember { mutableStateOf(ComposerDiscardConfirmationState()) }
     var requestComposerFocus by remember { mutableStateOf(false) }
     var showThemePicker by remember { mutableStateOf(false) }
+    var showDeleteTimelineConfirmation by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val haptics = rememberReliveHaptics()
     val focusManager = LocalFocusManager.current
@@ -414,6 +415,35 @@ fun TimelineScreen(
                             scope.launch { snackbarHostState.showSnackbar("Could not save timeline theme.") }
                         }
                     }
+                },
+                onDeleteTimeline = { showThemePicker = false; showDeleteTimelineConfirmation = true },
+            )
+        }
+
+        if (showDeleteTimelineConfirmation) {
+            AlertDialog(
+                onDismissRequest = { showDeleteTimelineConfirmation = false },
+                shape = RoundedCornerShape(ReliveTheme.dimensions.radii.dialog),
+                containerColor = ReliveTheme.colors.surfaceOverlay,
+                title = { Text("Delete this timeline?", style = ReliveTheme.typography.title, color = ReliveTheme.colors.textPrimary) },
+                text = { Text("Only this custom timeline and its assignments will be removed. Its Moments stay safely in Relive.", style = ReliveTheme.typography.body, color = ReliveTheme.colors.textSecondary) },
+                dismissButton = { TextButton(onClick = { showDeleteTimelineConfirmation = false }) { Text("Cancel") } },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            timelineViewModel.deleteCurrentCustomTimeline { deleted ->
+                                showDeleteTimelineConfirmation = false
+                                if (deleted) {
+                                    haptics.perform(ReliveHapticCue.Confirm)
+                                    leaveTimeline()
+                                } else {
+                                    haptics.perform(ReliveHapticCue.Reject)
+                                    scope.launch { snackbarHostState.showSnackbar("Could not delete timeline.") }
+                                }
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = ReliveTheme.colors.actionDestructive, contentColor = ReliveTheme.colors.textOnDestructive),
+                    ) { Text("Delete timeline") }
                 },
             )
         }
@@ -807,6 +837,7 @@ private fun TimelineThemeDialog(
     globalTheme: ThemeReference,
     onDismiss: () -> Unit,
     onSelect: (ThemeReference?) -> Unit,
+    onDeleteTimeline: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -826,6 +857,12 @@ private fun TimelineThemeDialog(
                 includeUseAppTheme = true,
                 onSelect = onSelect,
             )
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDeleteTimeline,
+                colors = ButtonDefaults.textButtonColors(contentColor = ReliveTheme.colors.actionDestructive),
+            ) { Text("Delete timeline") }
         },
         confirmButton = {
             TextButton(

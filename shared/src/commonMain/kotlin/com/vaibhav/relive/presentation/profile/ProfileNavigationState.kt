@@ -6,8 +6,9 @@ data class ProfileNavigationState(val destination: ProfileDestination = ProfileD
 
     fun openProfile(): ProfileNavigationState = copy(destination = ProfileDestination.Profile)
     fun openMediaStorage(): ProfileNavigationState = copy(destination = ProfileDestination.MediaStorage)
+    fun openBackupRestore(): ProfileNavigationState = copy(destination = ProfileDestination.BackupRestore)
     fun returnToProfile(): ProfileNavigationState = copy(destination = ProfileDestination.Profile)
     fun returnToTimelineHome(): ProfileNavigationState = copy(destination = ProfileDestination.Closed)
 }
 
-enum class ProfileDestination { Closed, Profile, MediaStorage }
+enum class ProfileDestination { Closed, Profile, MediaStorage, BackupRestore }

@@ -53,6 +53,7 @@ fun ProfileScreen(
     appearanceViewModel: AppearanceViewModel,
     onBack: () -> Unit,
     onOpenMediaStorage: () -> Unit,
+    onOpenBackupRestore: () -> Unit,
 ) {
     val state by viewModel.state.collectAsState()
     val appearance by appearanceViewModel.state.collectAsState()
@@ -112,6 +113,7 @@ fun ProfileScreen(
                     title = "YOUR MEMORIES",
                     labels = listOf("Media & storage", "Backup"),
                     onMediaStorage = onOpenMediaStorage,
+                    onBackup = onOpenBackupRestore,
                 )
             }
             item(key = "preferences") {
@@ -257,6 +259,7 @@ private fun ProfileSection(
     labels: List<String>,
     last: Boolean = false,
     onMediaStorage: (() -> Unit)? = null,
+    onBackup: (() -> Unit)? = null,
 ) {
     val dims = ReliveTheme.dimensions
     Column(
@@ -273,7 +276,11 @@ private fun ProfileSection(
         labels.forEach { label ->
             ProfileSettingRow(
                 label = label,
-                onClick = if (label == "Media & storage") onMediaStorage else null,
+                onClick = when (label.trim()) {
+                    "Media & storage" -> onMediaStorage
+                    "Backup" -> onBackup
+                    else -> null
+                },
             )
         }
     }

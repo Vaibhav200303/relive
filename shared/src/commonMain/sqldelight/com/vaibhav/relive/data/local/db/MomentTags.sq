@@ -16,6 +16,9 @@ DELETE FROM moment_tags WHERE moment_id = :momentId AND tag_canonical = :tagCano
 deleteMomentTagsForMoment:
 DELETE FROM moment_tags WHERE moment_id = :momentId;
 
+deleteAllMomentTags:
+DELETE FROM moment_tags;
+
 selectTagsForMoment:
 SELECT t.canonical, t.label FROM tags t
 JOIN moment_tags mt ON mt.tag_canonical = t.canonical
@@ -33,3 +36,7 @@ selectDistinctTagsAll:
 SELECT DISTINCT t.canonical, t.label FROM tags t
 JOIN moment_tags mt ON mt.tag_canonical = t.canonical
 ORDER BY t.canonical ASC;
+
+selectAllMomentTags:
+SELECT * FROM moment_tags
+ORDER BY moment_id ASC, tag_canonical ASC;

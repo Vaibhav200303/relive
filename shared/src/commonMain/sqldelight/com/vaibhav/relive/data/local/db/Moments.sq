@@ -102,3 +102,6 @@ DELETE FROM moments WHERE id = :id;
 
 countMoments:
 SELECT COUNT(*) FROM moments;
+
+deleteAllMoments:
+DELETE FROM moments;

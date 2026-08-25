@@ -21,3 +21,6 @@ UPDATE custom_timelines SET name = :name, theme = :theme WHERE id = :id;
 
 deleteCustomTimeline:
 DELETE FROM custom_timelines WHERE id = :id;
+
+deleteAllCustomTimelines:
+DELETE FROM custom_timelines;

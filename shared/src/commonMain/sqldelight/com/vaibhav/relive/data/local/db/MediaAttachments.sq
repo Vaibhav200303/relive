@@ -21,6 +21,10 @@ ORDER BY sort_index ASC;
 selectArchiveAttachmentRefs:
 SELECT media_type, storage_ref FROM media_attachments;
 
+selectAllAttachments:
+SELECT * FROM media_attachments
+ORDER BY moment_id ASC, sort_index ASC, id ASC;
+
 deleteAttachmentsForMoment:
 DELETE FROM media_attachments WHERE moment_id = :momentId;
 

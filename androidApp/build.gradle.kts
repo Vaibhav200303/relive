@@ -14,6 +14,11 @@ dependencies {
     implementation(project(":shared"))
 
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
+    implementation(libs.play.services.auth)
+    implementation(libs.androidx.work.runtime)
 
     implementation(libs.compose.uiToolingPreview)
     debugImplementation(libs.compose.uiTooling)
@@ -24,6 +29,7 @@ dependencies {
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlin.testJunit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.androidx.work.testing)
 }
 
 android {
@@ -57,5 +63,12 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
+    }
+    defaultConfig {
+        val googleWebClientId = project.findProperty("RELIVE_GOOGLE_WEB_CLIENT_ID")?.toString()
+            ?: System.getenv("RELIVE_GOOGLE_WEB_CLIENT_ID")
+            ?: ""
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
     }
 }

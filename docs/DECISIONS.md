@@ -535,6 +535,13 @@ Format for each entry:
 ## Template for new decisions
 
 ```
+
+## ADR-0045 — Versioned Google Drive app-data archive generations
+
+- **Date:** 2026-08-25 · **Status:** Accepted
+- **Context:** Relive's explicit Google Drive backup must remain private to the app, preserve durable archive relationships, and remain safe when large uploads or restores are interrupted.
+- **Decision:** Backup uses a self-contained format-v1 bundle containing moments, custom timelines, memberships, tags, moment-tag links, attachment identity/order/storage references, and referenced media bytes. Installation-owned profile creation time is excluded because its SQLDelight immutability trigger must remain active and v1 restore cannot safely replace it. OAuth identity/tokens, client configuration, active jobs/resumable sessions, drafts, navigation/playback state, caches, and regenerable thumbnails are excluded. Objects are written to Drive's `appDataFolder` as immutable bundle, manifest, then index generations; the index is the promotion record and is created only after bundle/manifest upload succeeds. The prior promoted generation is never removed as part of candidate upload. Archive bytes are sent through an 8 MiB resumable stream rather than loaded into memory. Restore discovery accepts only a complete, version- and hash-verified indexed generation and activates it transactionally after staging.
+- **Consequences:** Drive storage is not visible in normal My Drive browsing and the scope remains exactly `drive.appdata`. A failed or partial candidate cannot become current, and large mobile archives have bounded upload memory. SHA-256 provides integrity only; encryption and iOS transport remain deferred until their platform-safe recovery designs are implemented.
 ## ADR-XXXX — <short title>
 - **Date:** YYYY-MM-DD · **Status:** Proposed | Accepted | Superseded
 - **Context:** …
