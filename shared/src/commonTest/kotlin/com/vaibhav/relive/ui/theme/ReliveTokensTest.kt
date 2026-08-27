@@ -158,11 +158,11 @@ class ReliveTokensTest {
     fun motionDurationsAreOrdered() {
         val d = DefaultReliveMotion.durations
         assertTrue(d.fastMillis < d.standardMillis)
-        assertTrue(d.fastMillis < d.timelineReturnMillis)
+        assertTrue(d.timelineReturnMillis < d.fastMillis)
         assertTrue(d.timelineReturnMillis < d.standardMillis)
         assertTrue(d.standardMillis < d.slowMillis)
         assertEquals(120, d.fastMillis)
-        assertEquals(120, d.timelineReturnMillis)
+        assertEquals(100, d.timelineReturnMillis)
         assertEquals(240, d.standardMillis)
         assertEquals(360, d.slowMillis)
         assertNotNull(DefaultReliveMotion.easings.standard)

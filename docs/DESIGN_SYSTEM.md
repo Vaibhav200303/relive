@@ -266,7 +266,7 @@ Collection-card visual media and deterministic generated covers meet the opaque 
 | Token             | Value   | Usage                              |
 | ----------------- | ------- | ---------------------------------- |
 | `motion.fast`     | `120ms` | hover/opacity, small state changes |
-| `motion.timelineReturn` | `120ms` | one viewport of return-to-newest scrolling |
+| `motion.timelineReturn` | `100ms` | one viewport of return-to-newest scrolling |
 | `motion.standard` | `240ms` | expand/collapse (more/less), reveals |
 | `motion.slow`     | `360ms` | larger transitions (planned)       |
 
