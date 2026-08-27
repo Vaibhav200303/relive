@@ -27,7 +27,6 @@ import com.vaibhav.relive.platform.media.RelivedVideoTile
 import com.vaibhav.relive.presentation.cardcover.firstVisualPreviewAttachment
 import com.vaibhav.relive.presentation.date.EditorialDateFormatter
 import com.vaibhav.relive.presentation.date.EditorialTimeFormatter
-import com.vaibhav.relive.ui.components.reliveCardOuterBorder
 import com.vaibhav.relive.ui.components.timeline.HeartGlyph
 import com.vaibhav.relive.ui.theme.ReliveTheme
 
@@ -49,7 +48,6 @@ fun FavoriteMomentCard(
             .height(dims.rediscover.favoriteShelfCardHeight)
             .clip(shape)
             .background(colors.surfaceCard)
-            .reliveCardOuterBorder(shape)
             .clickable(onClick = onOpen)
             .semantics { contentDescription = semanticDescription },
     ) {

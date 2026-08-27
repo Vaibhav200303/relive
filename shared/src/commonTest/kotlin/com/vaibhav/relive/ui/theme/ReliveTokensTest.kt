@@ -21,7 +21,7 @@ class ReliveTokensTest {
         assertEquals(Color(0xFF6F4E37), c.accent)
         assertEquals(Color(0xFFEFECE5), c.surfaceCard)
         assertEquals(Color(0xFFF6F4F0), c.surfaceOverlay)
-        assertEquals(c.accent, c.actionDestructive)
+        assertEquals(Color(0xFF98111E), c.actionDestructive)
         assertEquals(Color(0xFFD5CDBF), c.border)
         assertEquals(Color.White, c.textOnAccent)
     }

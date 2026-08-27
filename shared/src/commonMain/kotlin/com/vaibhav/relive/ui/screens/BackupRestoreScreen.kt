@@ -2,7 +2,6 @@ package com.vaibhav.relive.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.border
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -75,7 +74,7 @@ fun BackupRestoreScreen(viewModel: BackupRestoreViewModel, onBack: () -> Unit) {
 @Composable private fun BackupStatusCard(summary: BackupSummary?, operation: BackupOperationState, onBackUpNow: () -> Unit) {
     val dims = ReliveTheme.dimensions
     Column(
-        Modifier.fillMaxWidth().border(dims.stroke.hairline, ReliveTheme.colors.borderMuted, RoundedCornerShape(dims.radii.lg)).padding(dims.spacing.lg),
+        Modifier.fillMaxWidth().padding(dims.spacing.lg),
         verticalArrangement = Arrangement.spacedBy(dims.spacing.md),
     ) {
         Text("BACKUP STATUS", style = ReliveTheme.typography.eyebrow)
@@ -156,7 +155,6 @@ private fun RestoreProgressCard(operation: BackupOperationState) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(dims.stroke.hairline, ReliveTheme.colors.borderMuted, RoundedCornerShape(dims.radii.lg))
                 .padding(dims.spacing.lg),
             verticalArrangement = Arrangement.spacedBy(dims.spacing.md),
             horizontalAlignment = Alignment.CenterHorizontally,

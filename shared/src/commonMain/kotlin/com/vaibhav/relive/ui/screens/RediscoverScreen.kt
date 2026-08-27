@@ -57,7 +57,6 @@ import com.vaibhav.relive.presentation.cardcover.allTimelineCollageBucket
 import com.vaibhav.relive.ui.components.navigation.ReliveWordmarkAppBar
 import com.vaibhav.relive.ui.components.rediscover.FavoriteMomentCard
 import com.vaibhav.relive.ui.components.rediscover.OnThisDayMomentCard
-import com.vaibhav.relive.ui.components.reliveCardOuterBorder
 import com.vaibhav.relive.ui.components.timeline.ForwardGlyph
 import com.vaibhav.relive.ui.components.timeline.HeartGlyph
 import com.vaibhav.relive.ui.theme.ReliveTheme
@@ -381,7 +380,6 @@ private fun FavoritesEmptyState() {
                 .fillMaxWidth()
                 .heightIn(min = dims.rediscover.favoriteShelfCardHeight)
                 .background(colors.surfaceCard, shape)
-                .reliveCardOuterBorder(shape)
                 .semantics(mergeDescendants = true) {
                     contentDescription = "Favorites. Your favorite memories will appear here."
                 },

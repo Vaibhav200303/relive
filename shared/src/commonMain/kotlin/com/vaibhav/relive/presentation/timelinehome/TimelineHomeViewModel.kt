@@ -19,10 +19,10 @@ import kotlinx.coroutines.launch
 
 class TimelineHomeViewModel(
     homeRepository: TimelineHomeRepository,
-    timelineRepository: TimelineRepository,
+    private val timelineRepository: TimelineRepository,
     clock: Clock,
     idGenerator: IdGenerator,
-    scope: CoroutineScope,
+    private val scope: CoroutineScope,
 ) {
     private val _state = MutableStateFlow(TimelineHomeState())
     val state: StateFlow<TimelineHomeState> = _state.asStateFlow()
@@ -53,6 +53,24 @@ class TimelineHomeViewModel(
 
     fun updateSearchQuery(value: String) {
         _state.update { it.copy(query = value) }
+    }
+
+    fun renameTimeline(timeline: Timeline.Custom, newName: String, onResult: (Boolean) -> Unit) {
+        scope.launch {
+            onResult(runCatching { timelineRepository.rename(timeline.id, newName) }.isSuccess)
+        }
+    }
+
+    fun deleteTimeline(timeline: Timeline.Custom, onResult: (Boolean) -> Unit) {
+        scope.launch {
+            onResult(runCatching { timelineRepository.deleteCustom(timeline.id) }.isSuccess)
+        }
+    }
+
+    fun deleteTimelines(timelines: Collection<Timeline.Custom>, onResult: (Boolean) -> Unit) {
+        scope.launch {
+            onResult(runCatching { timelines.forEach { timelineRepository.deleteCustom(it.id) } }.isSuccess)
+        }
     }
 
     fun showTimelineCreation() = creation.show()

@@ -1,7 +1,6 @@
 package com.vaibhav.relive.ui.components.rediscover
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,7 +43,6 @@ fun FavoritesSystemCollectionCard(
             .fillMaxWidth()
             .clip(shape)
             .background(ReliveTheme.colors.surfaceCard)
-            .border(dims.stroke.hairline, ReliveTheme.colors.border, shape)
             .combinedClickable(onClick = onOpen, onLongClick = onDebugLongPress)
             .semantics { contentDescription = "Open saved moments" },
     ) {

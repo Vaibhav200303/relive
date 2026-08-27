@@ -101,7 +101,7 @@ Opacity variants are drawn from the opacity scale (§15), not arbitrary values.
 | `color.surface.card.translucent` | `#EFECE5` @ ~50% | quiet secondary surface treatment |
 | `color.surface.floating` | `#E1D8CB` | floating navigation and quick-capture controls |
 | `color.surface.overlay` | `#F6F4F0` | dialogs, menus, and modal sheets |
-| `color.action.destructive` | aliases `color.accent` | destructive actions without introducing an unapproved red |
+| `color.action.destructive` | `#98111E` (light) / `#FF8A95` (dark) | destructive actions and delete affordances |
 
 Surfaces are used sparingly — the product avoids excessive cards.
 

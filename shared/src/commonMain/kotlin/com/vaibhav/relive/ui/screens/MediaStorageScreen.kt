@@ -166,7 +166,6 @@ private fun ArchiveHero(insights: ArchiveInsights) {
         shape = RoundedCornerShape(dims.radii.lg),
         color = ReliveTheme.colors.surfaceCard,
         contentColor = ReliveTheme.colors.textPrimary,
-        border = androidx.compose.foundation.BorderStroke(dims.stroke.hairline, ReliveTheme.colors.borderMuted),
     ) {
         Column(
             modifier = Modifier.padding(dims.spacing.lg),

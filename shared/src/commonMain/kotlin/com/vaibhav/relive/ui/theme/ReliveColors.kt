@@ -31,6 +31,7 @@ private val WarmJournalCanvas = Color(0xFFF6F4F0)
 private val WarmJournalCard = Color(0xFFEFECE5)
 private val WarmJournalFloatingSurface = Color(0xFFE1D8CB)
 private val WarmJournalBorder = Color(0xFFD5CDBF)
+private val WarmJournalDestructive = Color(0xFF98111E)
 
 val WarmJournalColors: ReliveColors = ReliveColors(
     bgCanvas = WarmJournalCanvas,
@@ -47,7 +48,7 @@ val WarmJournalColors: ReliveColors = ReliveColors(
     surfaceOverlay = WarmJournalCanvas,
     surfaceCardTranslucent = WarmJournalCard.copy(alpha = ReliveOpacity.Medium),
     surfaceAudio = Color(0xFF171514),
-    actionDestructive = WarmJournalAccent,
+    actionDestructive = WarmJournalDestructive,
     border = WarmJournalBorder,
     borderMuted = WarmJournalBorder.copy(alpha = ReliveOpacity.Medium),
 )

@@ -76,17 +76,6 @@ fun MomentCard(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .then(
-                if (isActive) {
-                    Modifier.border(
-                        width = dims.stroke.hairline,
-                        color = colors.accentMuted,
-                        shape = RoundedCornerShape(dims.radii.md),
-                    )
-                } else {
-                    Modifier
-                },
-            )
             .drawBehind {
                 val axis = dims.timeline.contentInset.toPx() / 2f
                 val markerCenter = dims.spacing.xl.toPx() + dims.minTouchTarget.toPx() / 2f

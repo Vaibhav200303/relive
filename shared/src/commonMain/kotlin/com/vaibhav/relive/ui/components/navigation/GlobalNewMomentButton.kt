@@ -84,14 +84,14 @@ fun GlobalNewMomentButton(
             ) {
                 PlusGlyph(
                     size = dims.icon.md,
-                    color = colors.accent,
+                    color = colors.textMuted,
                     strokeWidth = dims.stroke.iconBold,
                 )
                 if (expanded && expandedWidth >= dims.floatingToolbar.newLabelMinimumWidth) {
                     Text(
                         text = "New",
                         style = ReliveTheme.typography.prominentAction,
-                        color = colors.accent,
+                        color = colors.textMuted,
                     )
                 }
             }

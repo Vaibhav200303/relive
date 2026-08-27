@@ -24,7 +24,6 @@ import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.platform.media.RelivedImageTile
 import com.vaibhav.relive.platform.media.RelivedVideoTile
 import com.vaibhav.relive.presentation.cardcover.firstVisualPreviewAttachment
-import com.vaibhav.relive.ui.components.reliveCardOuterBorder
 import com.vaibhav.relive.ui.theme.ReliveTheme
 
 @Composable
@@ -43,7 +42,6 @@ fun OnThisDayMomentCard(
         modifier = modifier
             .clip(shape)
             .background(colors.surfaceCard)
-            .reliveCardOuterBorder(shape)
             .clickable(onClick = onOpen)
             .semantics { contentDescription = "Open On This Day memory" },
     ) {

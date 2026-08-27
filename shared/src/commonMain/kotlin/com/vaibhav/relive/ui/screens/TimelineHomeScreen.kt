@@ -1,9 +1,17 @@
 package com.vaibhav.relive.ui.screens
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +23,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -22,13 +33,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,13 +74,15 @@ import com.vaibhav.relive.presentation.timeline.TimelineCreationOutcome
 import com.vaibhav.relive.ui.components.AllTimelineCollage
 import com.vaibhav.relive.ui.components.composer.PlusGlyph
 import com.vaibhav.relive.ui.components.navigation.ReliveWordmarkAppBar
-import com.vaibhav.relive.ui.components.reliveCardOuterBorder
 import com.vaibhav.relive.ui.components.timeline.TimelineCreationDialog
+import com.vaibhav.relive.ui.components.timeline.BackGlyph
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.theme.ReliveOpacity
 import com.vaibhav.relive.ui.theme.toReliveThemeId
 import com.vaibhav.relive.ui.icons.ProfileIcons
+import com.vaibhav.relive.ui.icons.TimelineActionIcons
 import com.vaibhav.relive.presentation.cardcover.resolveAllTimelineCollage
 
 @Composable
@@ -80,6 +101,9 @@ fun TimelineHomeScreen(
     val state by viewModel.state.collectAsState()
     val creation by viewModel.creationState.collectAsState()
     val haptics = rememberReliveHaptics()
+    var selectedTimelines by remember { mutableStateOf<Set<Timeline.Custom>>(emptySet()) }
+    var timelineToRename by remember { mutableStateOf<Timeline.Custom?>(null) }
+    var timelinesToDelete by remember { mutableStateOf<List<Timeline.Custom>>(emptyList()) }
     LaunchedEffect(viewModel) {
         viewModel.navigation.collect(onOpenTimeline)
     }
@@ -105,6 +129,8 @@ fun TimelineHomeScreen(
                 .background(ReliveTheme.colors.bgCanvas),
         ) {
             TimelineHomeHeader(
+                selectedTimelineCount = selectedTimelines.size,
+                onExitSelection = { selectedTimelines = emptySet() },
                 onCreateTimeline = {
                     haptics.perform(ReliveHapticCue.Action)
                     viewModel.showTimelineCreation()
@@ -112,6 +138,18 @@ fun TimelineHomeScreen(
                 onOpenProfile = onOpenProfile,
                 profilePhoto = profilePhoto,
                 mediaStore = mediaStore,
+                onRenameSelectedTimeline = {
+                    selectedTimelines.singleOrNull()?.let { timeline ->
+                        selectedTimelines = emptySet()
+                        timelineToRename = timeline
+                    }
+                },
+                onDeleteSelectedTimeline = {
+                    if (selectedTimelines.isNotEmpty()) {
+                        timelinesToDelete = selectedTimelines.toList()
+                        selectedTimelines = emptySet()
+                    }
+                },
             )
             TimelineHomeSearchBar(
                 query = state.query,
@@ -126,6 +164,18 @@ fun TimelineHomeScreen(
                     mediaStore = mediaStore,
                     listState = listState,
                     onOpenTimeline = { navigation -> viewModel.selectTimeline(navigation.timeline) },
+                    onShowTimelineOptions = { timeline ->
+                        haptics.perform(ReliveHapticCue.Context)
+                        selectedTimelines = setOf(timeline)
+                    },
+                    selectedTimelineIds = selectedTimelines.mapTo(mutableSetOf()) { it.id },
+                    onToggleTimelineSelection = { timeline ->
+                        selectedTimelines = if (timeline in selectedTimelines) {
+                            selectedTimelines - timeline
+                        } else {
+                            selectedTimelines + timeline
+                        }
+                    },
                     reserveQuickCaptureSpace = onCreateMoment != null,
                     navigationToolbarExpanded = navigationToolbarExpanded,
                     onNavigationToolbarExpand = onNavigationToolbarExpand,
@@ -140,34 +190,208 @@ fun TimelineHomeScreen(
         onCreate = viewModel::createTimeline,
         onDismiss = viewModel::dismissTimelineCreation,
     )
+    timelineToRename?.let { timeline ->
+        RenameTimelineDialog(
+            timeline = timeline,
+            onDismiss = { timelineToRename = null },
+            onRename = { newName, onResult ->
+                viewModel.renameTimeline(timeline, newName) { renamed ->
+                    if (renamed) {
+                        haptics.perform(ReliveHapticCue.Confirm)
+                        timelineToRename = null
+                    } else {
+                        haptics.perform(ReliveHapticCue.Reject)
+                    }
+                    onResult(renamed)
+                }
+            },
+        )
+    }
+    if (timelinesToDelete.isNotEmpty()) {
+        DeleteTimelineDialog(
+            timelines = timelinesToDelete,
+            onDismiss = { timelinesToDelete = emptyList() },
+            onDelete = {
+                viewModel.deleteTimelines(timelinesToDelete) { deleted ->
+                    if (deleted) {
+                        haptics.perform(ReliveHapticCue.Confirm)
+                        timelinesToDelete = emptyList()
+                    } else {
+                        haptics.perform(ReliveHapticCue.Reject)
+                    }
+                }
+            },
+        )
+    }
 }
 
 @Composable
-private fun TimelineHomeHeader(onCreateTimeline: () -> Unit, onOpenProfile: () -> Unit, profilePhoto: MediaStorageRef?, mediaStore: MediaStore) {
+private fun RenameTimelineDialog(
+    timeline: Timeline.Custom,
+    onDismiss: () -> Unit,
+    onRename: (String, (Boolean) -> Unit) -> Unit,
+) {
+    val colors = ReliveTheme.colors
+    var name by remember(timeline.id) { mutableStateOf(timeline.name) }
+    var saveFailed by remember(timeline.id) { mutableStateOf(false) }
+    val isNameValid = name.trim().isNotEmpty() && name.trim().length <= Timeline.Custom.MAX_NAME_LENGTH
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(ReliveTheme.dimensions.radii.dialog),
+        containerColor = colors.surfaceOverlay,
+        title = { Text("Rename timeline", style = ReliveTheme.typography.title, color = colors.textPrimary) },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { value ->
+                    name = value
+                    saveFailed = false
+                },
+                singleLine = true,
+                label = { Text("Timeline name") },
+                isError = saveFailed,
+                supportingText = {
+                    Text(
+                        if (saveFailed) "Could not rename timeline." else "${name.length}/${Timeline.Custom.MAX_NAME_LENGTH}",
+                        style = ReliveTheme.typography.subtitle,
+                    )
+                },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = {
+            Button(
+                onClick = { onRename(name.trim()) { renamed -> saveFailed = !renamed } },
+                enabled = isNameValid,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colors.accent,
+                    contentColor = colors.textOnAccent,
+                ),
+            ) { Text("Rename") }
+        },
+    )
+}
+
+@Composable
+private fun DeleteTimelineDialog(
+    timelines: List<Timeline.Custom>,
+    onDismiss: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val colors = ReliveTheme.colors
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(ReliveTheme.dimensions.radii.dialog),
+        containerColor = colors.surfaceOverlay,
+        title = { Text(if (timelines.size == 1) "Delete this timeline?" else "Delete these timelines?", style = ReliveTheme.typography.title, color = colors.textPrimary) },
+        text = {
+            Text(
+                "Only ${timelines.size} ${if (timelines.size == 1) "timeline" else "timelines"} and their assignments will be removed. Their Moments stay safely in Relive.",
+                style = ReliveTheme.typography.body,
+                color = colors.textSecondary,
+            )
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = {
+            Button(
+                onClick = onDelete,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colors.actionDestructive,
+                    contentColor = colors.textOnDestructive,
+                ),
+            ) { Text("Delete timeline") }
+        },
+    )
+}
+
+@Composable
+private fun TimelineHomeHeader(
+    selectedTimelineCount: Int,
+    onExitSelection: () -> Unit,
+    onCreateTimeline: () -> Unit,
+    onOpenProfile: () -> Unit,
+    profilePhoto: MediaStorageRef?,
+    mediaStore: MediaStore,
+    onRenameSelectedTimeline: () -> Unit,
+    onDeleteSelectedTimeline: () -> Unit,
+) {
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
-    ReliveWordmarkAppBar {
-        IconButton(
-            onClick = onOpenProfile,
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .size(dims.minTouchTarget)
-                .semantics { contentDescription = "Open Profile" },
-        ) {
-            ProfileAffordanceGlyph(profilePhoto, mediaStore)
-        }
-        IconButton(
-            onClick = onCreateTimeline,
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .size(dims.minTouchTarget)
-                .semantics { contentDescription = "Create timeline" },
-        ) {
-            PlusGlyph(
-                size = dims.timelineHome.createTimelineGlyphSize,
-                color = colors.accent,
-                strokeWidth = dims.stroke.iconBold,
-            )
+    val motion = ReliveTheme.motion
+    AnimatedContent(
+        targetState = selectedTimelineCount > 0,
+        transitionSpec = {
+            (fadeIn(tween(motion.durations.fastMillis, easing = motion.easings.emphasized)) +
+                slideInHorizontally(tween(motion.durations.fastMillis, easing = motion.easings.emphasized)) { it / 8 }) togetherWith
+                (fadeOut(tween(motion.durations.fastMillis, easing = motion.easings.emphasized)) +
+                    slideOutHorizontally(tween(motion.durations.fastMillis, easing = motion.easings.emphasized)) { -it / 8 })
+        },
+        label = "timeline selection app bar",
+    ) { isSelectionMode ->
+        if (isSelectionMode) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(colors.bgHeader)
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .padding(horizontal = dims.spacing.md, vertical = dims.spacing.sm),
+            ) {
+                IconButton(
+                    onClick = onExitSelection,
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .size(dims.minTouchTarget)
+                        .semantics { contentDescription = "Exit timeline selection" },
+                ) {
+                    BackGlyph(dims.icon.lg, colors.textSecondary, dims.stroke.icon)
+                }
+                Row(modifier = Modifier.align(Alignment.CenterEnd)) {
+                    if (selectedTimelineCount == 1) {
+                        IconButton(
+                            onClick = onRenameSelectedTimeline,
+                            modifier = Modifier
+                                .size(dims.minTouchTarget)
+                                .semantics { contentDescription = "Rename timeline" },
+                        ) {
+                            Icon(TimelineActionIcons.Rename, contentDescription = null, tint = colors.textSecondary)
+                        }
+                    }
+                    IconButton(
+                        onClick = onDeleteSelectedTimeline,
+                        modifier = Modifier
+                            .size(dims.minTouchTarget)
+                            .semantics { contentDescription = "Delete timeline" },
+                    ) {
+                        Icon(TimelineActionIcons.Delete, contentDescription = null, tint = colors.actionDestructive)
+                    }
+                }
+            }
+        } else {
+            ReliveWordmarkAppBar {
+                IconButton(
+                    onClick = onOpenProfile,
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .size(dims.minTouchTarget)
+                        .semantics { contentDescription = "Open Profile" },
+                ) {
+                    ProfileAffordanceGlyph(profilePhoto, mediaStore)
+                }
+                IconButton(
+                    onClick = onCreateTimeline,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .size(dims.minTouchTarget)
+                        .semantics { contentDescription = "Create timeline" },
+                ) {
+                    PlusGlyph(
+                        size = dims.timelineHome.createTimelineGlyphSize,
+                        color = colors.accent,
+                        strokeWidth = dims.stroke.iconBold,
+                    )
+                }
+            }
         }
     }
 }
@@ -271,6 +495,9 @@ private fun TimelineHomeContent(
     mediaStore: MediaStore,
     listState: LazyListState,
     onOpenTimeline: (TimelineHomeNavigation) -> Unit,
+    onShowTimelineOptions: (Timeline.Custom) -> Unit,
+    selectedTimelineIds: Set<com.vaibhav.relive.domain.model.TimelineId>,
+    onToggleTimelineSelection: (Timeline.Custom) -> Unit,
     reserveQuickCaptureSpace: Boolean,
     navigationToolbarExpanded: Boolean,
     onNavigationToolbarExpand: () -> Unit,
@@ -313,7 +540,13 @@ private fun TimelineHomeContent(
                 TimelineHomeCard(
                     summary,
                     mediaStore,
-                    onClick = { onOpenTimeline(TimelineHomeNavigation(summary.timeline)) },
+                    onClick = {
+                        val timeline = summary.timeline as Timeline.Custom
+                        if (selectedTimelineIds.isEmpty()) onOpenTimeline(TimelineHomeNavigation(timeline))
+                        else onToggleTimelineSelection(timeline)
+                    },
+                    onLongClick = { onShowTimelineOptions(summary.timeline as Timeline.Custom) },
+                    isSelected = (summary.timeline as Timeline.Custom).id in selectedTimelineIds,
                 )
             }
         }
@@ -340,6 +573,8 @@ internal fun TimelineHomeCard(
     allCollageBucket: Long = 0L,
     allCollageCandidates: List<MediaAttachment>? = null,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
+    isSelected: Boolean = false,
 ) {
     val override = (summary.timeline as? Timeline.Custom)?.theme
     val themeId = override?.toReliveThemeId() ?: ReliveTheme.tokens.id
@@ -351,6 +586,8 @@ internal fun TimelineHomeCard(
             allCollageBucket = allCollageBucket,
             allCollageCandidates = allCollageCandidates,
             onClick = onClick,
+            onLongClick = onLongClick,
+            isSelected = isSelected,
         )
     }
     com.vaibhav.relive.ui.theme.ReliveTheme(
@@ -367,9 +604,17 @@ private fun TimelineHomeCardContent(
     allCollageBucket: Long,
     allCollageCandidates: List<MediaAttachment>?,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)?,
+    isSelected: Boolean,
 ) {
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
+    val motion = ReliveTheme.motion
+    val cardColor by animateColorAsState(
+        targetValue = if (isSelected) colors.accent.copy(alpha = ReliveOpacity.Low) else colors.surfaceCard,
+        animationSpec = tween(motion.durations.fastMillis, easing = motion.easings.emphasized),
+        label = "timeline card selection",
+    )
     val mediaHeight = if (summary.timeline == Timeline.All) {
         dims.timelineHome.allMediaHeight
     } else {
@@ -381,9 +626,8 @@ private fun TimelineHomeCardContent(
         modifier = Modifier
             .fillMaxWidth()
             .clip(cardShape)
-            .background(colors.surfaceCard)
-            .reliveCardOuterBorder(cardShape)
-            .clickable(onClick = onClick)
+            .background(cardColor)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
     ) {
         TimelineHomeMediaPreview(
             summary = summary,

@@ -1,7 +1,6 @@
 package com.vaibhav.relive.ui.components.rediscover
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,8 +48,7 @@ fun RediscoverMomentVisual(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(dims.radii.md))
-            .background(colors.surfaceCard)
-            .border(dims.stroke.hairline, colors.border, RoundedCornerShape(dims.radii.md)),
+            .background(colors.surfaceCard),
         verticalArrangement = Arrangement.spacedBy(dims.spacing.sm),
     ) {
         if (attachment != null) {
@@ -121,7 +119,6 @@ private fun RediscoverMediaLead(
             .fillMaxWidth()
             .height(height)
             .clip(RoundedCornerShape(dims.radii.md))
-            .border(dims.stroke.hairline, colors.border, RoundedCornerShape(dims.radii.md))
             .clickable(onClick = onClick)
             .semantics { contentDescription = "Open memory media" },
     ) {

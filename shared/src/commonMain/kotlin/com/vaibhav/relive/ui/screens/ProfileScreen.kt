@@ -1,7 +1,6 @@
 package com.vaibhav.relive.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -288,7 +287,6 @@ private fun ProfileAppearanceSection(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(dims.radii.lg))
                 .background(colors.surfaceCard)
-                .border(dims.stroke.hairline, colors.borderMuted, RoundedCornerShape(dims.radii.lg))
                 .padding(dims.spacing.lg),
             verticalArrangement = Arrangement.spacedBy(dims.spacing.lg),
         ) {

@@ -2,7 +2,6 @@ package com.vaibhav.relive.ui.components.composer
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -50,11 +49,6 @@ internal fun LiveRecorderCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(dims.radii.md))
             .background(colors.surfaceCard)
-            .border(
-                width = dims.stroke.hairline,
-                color = colors.borderMuted,
-                shape = RoundedCornerShape(dims.radii.md),
-            )
             .padding(dims.spacing.md),
     ) {
         StopSquare(onStop = onStop)

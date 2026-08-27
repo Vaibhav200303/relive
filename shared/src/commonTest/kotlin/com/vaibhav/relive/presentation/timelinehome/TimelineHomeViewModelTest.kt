@@ -15,6 +15,7 @@ import com.vaibhav.relive.domain.time.Clock
 import com.vaibhav.relive.domain.time.Instant
 import com.vaibhav.relive.presentation.timeline.TimelineCreationOutcome
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -148,6 +149,66 @@ class TimelineHomeViewModelTest {
         assertFalse(navigation.openComposerOnEnter)
     }
 
+    @Test
+    fun renamingACustomTimelineDelegatesToTheTimelineRepository() = runTest {
+        val repository = FakeTimelineRepository()
+        val timeline = Timeline.Custom(TimelineId("college"), "College")
+        val viewModel = TimelineHomeViewModel(
+            homeRepository = FakeTimelineHomeRepository(),
+            timelineRepository = repository,
+            clock = Clock { Instant(23) },
+            idGenerator = IdGenerator { "unused" },
+            scope = backgroundScope,
+        )
+        val succeeded = CompletableDeferred<Boolean>()
+
+        viewModel.renameTimeline(timeline, "University", succeeded::complete)
+
+        assertEquals(true, succeeded.await())
+        assertEquals(TimelineId("college") to "University", repository.renamed.single())
+    }
+
+    @Test
+    fun deletingACustomTimelineDelegatesToTheTimelineRepository() = runTest {
+        val repository = FakeTimelineRepository()
+        val timeline = Timeline.Custom(TimelineId("college"), "College")
+        val viewModel = TimelineHomeViewModel(
+            homeRepository = FakeTimelineHomeRepository(),
+            timelineRepository = repository,
+            clock = Clock { Instant(23) },
+            idGenerator = IdGenerator { "unused" },
+            scope = backgroundScope,
+        )
+        val succeeded = CompletableDeferred<Boolean>()
+
+        viewModel.deleteTimeline(timeline, succeeded::complete)
+
+        assertEquals(true, succeeded.await())
+        assertEquals(TimelineId("college"), repository.deleted.single())
+    }
+
+    @Test
+    fun deletingMultipleCustomTimelinesDelegatesEachToTheTimelineRepository() = runTest {
+        val repository = FakeTimelineRepository()
+        val timelines = listOf(
+            Timeline.Custom(TimelineId("college"), "College"),
+            Timeline.Custom(TimelineId("trips"), "Trips"),
+        )
+        val viewModel = TimelineHomeViewModel(
+            homeRepository = FakeTimelineHomeRepository(),
+            timelineRepository = repository,
+            clock = Clock { Instant(23) },
+            idGenerator = IdGenerator { "unused" },
+            scope = backgroundScope,
+        )
+        val succeeded = CompletableDeferred<Boolean>()
+
+        viewModel.deleteTimelines(timelines, succeeded::complete)
+
+        assertEquals(true, succeeded.await())
+        assertEquals(timelines.map { it.id }, repository.deleted)
+    }
+
     private fun loadedState(query: String): TimelineHomeState = TimelineHomeState(
         content = TimelineHomeContent.Loaded(
             listOf(
@@ -182,6 +243,8 @@ private class FakeTimelineHomeRepository : TimelineHomeRepository {
 private class FakeTimelineRepository : TimelineRepository {
     private val timelines = MutableStateFlow<List<Timeline.Custom>>(emptyList())
     val created = mutableListOf<Pair<Timeline.Custom, Instant>>()
+    val renamed = mutableListOf<Pair<TimelineId, String>>()
+    val deleted = mutableListOf<TimelineId>()
 
     override suspend fun createCustom(timeline: Timeline.Custom, createdAt: Instant) {
         created += timeline to createdAt
@@ -191,9 +254,13 @@ private class FakeTimelineRepository : TimelineRepository {
     override suspend fun findCustom(id: TimelineId): Timeline.Custom? = timelines.value.firstOrNull { it.id == id }
     override suspend fun listCustom(): List<Timeline.Custom> = timelines.value
     override fun observeCustom(): Flow<List<Timeline.Custom>> = timelines
-    override suspend fun rename(id: TimelineId, newName: String) = Unit
+    override suspend fun rename(id: TimelineId, newName: String) {
+        renamed += id to newName
+    }
     override suspend fun updateTheme(id: TimelineId, theme: ThemeReference?) = Unit
-    override suspend fun deleteCustom(id: TimelineId) = Unit
+    override suspend fun deleteCustom(id: TimelineId) {
+        deleted += id
+    }
     override suspend fun addMembership(momentId: com.vaibhav.relive.domain.model.MomentId, timelineId: TimelineId) = Unit
     override suspend fun removeMembership(momentId: com.vaibhav.relive.domain.model.MomentId, timelineId: TimelineId) = Unit
     override suspend fun timelinesFor(momentId: com.vaibhav.relive.domain.model.MomentId): List<TimelineId> = emptyList()
