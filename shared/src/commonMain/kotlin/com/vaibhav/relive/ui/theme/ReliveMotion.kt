@@ -8,7 +8,7 @@ import androidx.compose.runtime.Immutable
 @Immutable
 data class ReliveDurations(
     val fastMillis: Int = 120,
-    val timelineReturnMillis: Int = 145,
+    val timelineReturnMillis: Int = 120,
     val standardMillis: Int = 240,
     val slowMillis: Int = 360,
 )

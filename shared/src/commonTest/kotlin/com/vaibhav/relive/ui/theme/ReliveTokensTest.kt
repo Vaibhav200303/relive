@@ -162,7 +162,7 @@ class ReliveTokensTest {
         assertTrue(d.timelineReturnMillis < d.standardMillis)
         assertTrue(d.standardMillis < d.slowMillis)
         assertEquals(120, d.fastMillis)
-        assertEquals(145, d.timelineReturnMillis)
+        assertEquals(120, d.timelineReturnMillis)
         assertEquals(240, d.standardMillis)
         assertEquals(360, d.slowMillis)
         assertNotNull(DefaultReliveMotion.easings.standard)
