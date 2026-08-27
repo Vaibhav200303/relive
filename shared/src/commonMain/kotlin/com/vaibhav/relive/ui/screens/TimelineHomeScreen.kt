@@ -575,6 +575,7 @@ internal fun TimelineHomeCard(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     isSelected: Boolean = false,
+    showDraftIndicator: Boolean = false,
 ) {
     val override = (summary.timeline as? Timeline.Custom)?.theme
     val themeId = override?.toReliveThemeId() ?: ReliveTheme.tokens.id
@@ -588,6 +589,7 @@ internal fun TimelineHomeCard(
             onClick = onClick,
             onLongClick = onLongClick,
             isSelected = isSelected,
+            showDraftIndicator = showDraftIndicator,
         )
     }
     com.vaibhav.relive.ui.theme.ReliveTheme(
@@ -606,6 +608,7 @@ private fun TimelineHomeCardContent(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)?,
     isSelected: Boolean,
+    showDraftIndicator: Boolean,
 ) {
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
@@ -665,6 +668,13 @@ private fun TimelineHomeCardContent(
                         maxLines = 1,
                     )
                 }
+                if (showDraftIndicator) {
+                    Text(
+                        text = "DRAFT",
+                        style = ReliveTheme.typography.tag,
+                        color = colors.accentMuted,
+                    )
+                }
             }
         }
     }
@@ -684,7 +694,7 @@ private fun TimelineHomeEmptyCustomState() {
 }
 
 @Composable
-private fun TimelineHomeMediaPreview(
+internal fun TimelineHomeMediaPreview(
     summary: TimelineHomeSummary,
     mediaStore: MediaStore,
     mediaHeight: androidx.compose.ui.unit.Dp,

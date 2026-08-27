@@ -23,6 +23,7 @@ import com.vaibhav.relive.platform.media.createAudioRecorder
 import com.vaibhav.relive.platform.permission.MicPermissionResult
 import com.vaibhav.relive.platform.system.openAppSettings as platformOpenAppSettings
 import com.vaibhav.relive.presentation.timeline.CurrentTimeline
+import com.vaibhav.relive.platform.share.IncomingSharePayload
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -74,6 +75,7 @@ class MomentComposerViewModel(
     // Keeps the original RawMedia around per draftId so Retry does not need
     // the picker or camera again.
     private val rawByDraftId = mutableMapOf<String, RawMedia>()
+    private val appliedIncomingShareIds = mutableSetOf<String>()
 
     // -- timeline membership --------------------------------------------
 
@@ -81,6 +83,28 @@ class MomentComposerViewModel(
     fun prepareForTimeline(timeline: CurrentTimeline) {
         if (_state.value.hasUserDraft) return
         _state.value = draftStore?.restore(timeline) ?: freshStateFor(timeline)
+    }
+
+    /**
+     * Adds an external share to the current draft exactly once. The caller must
+     * prepare this view model for its destination timeline before invoking it.
+     */
+    fun applyIncomingShare(payload: IncomingSharePayload) {
+        if (!appliedIncomingShareIds.add(payload.requestId)) return
+        _state.update { current ->
+            val subject = payload.subject?.takeIf(String::isNotBlank)
+            val title = if (current.title.isBlank()) subject ?: current.title else current.title
+            val additions = buildList {
+                if (current.title.isNotBlank() && subject != null && subject != current.title) add(subject)
+                payload.text?.takeIf(String::isNotBlank)?.let(::add)
+            }
+            current.copy(
+                title = title,
+                content = appendSharedText(current.content, additions),
+                saveState = current.saveState.clearedOnEdit(),
+            )
+        }
+        processRawBatch(payload.media)
     }
 
     /** Preserves work before a Back navigation leaves this Timeline screen. */
@@ -531,6 +555,15 @@ class MomentComposerViewModel(
     companion object {
         /** Bounded concurrency so multiple large videos never all run at once. */
         const val DEFAULT_PROCESSING_CONCURRENCY: Int = 2
+    }
+}
+
+internal fun appendSharedText(existing: String, additions: List<String>): String {
+    val incoming = additions.filter(String::isNotBlank).joinToString(separator = "\n\n")
+    return when {
+        incoming.isBlank() -> existing
+        existing.isBlank() -> incoming
+        else -> "$existing\n\n$incoming"
     }
 }
 

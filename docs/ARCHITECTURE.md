@@ -140,6 +140,7 @@ Data-layer repositories implement the domain repository interfaces and hide the 
 
 - Media binaries are stored on the device file system; the database holds **references** (paths/identifiers), not blobs, unless a later decision says otherwise.
 - Writing/reading media files is a platform capability behind an interface (§6), so shared code never touches platform file APIs directly.
+- Android external shares are normalized at the platform edge through `IncomingShareGateway`: provider URIs are copied into Relive-owned temporary files before shared UI sees a request. The gateway owns those files until the composer claims the payload; it deletes them on cancellation or validation failure. Common presentation receives only text metadata and `RawMedia`, never Android `Intent`, `Uri`, or `ContentResolver` types.
 - Archive-insights reads only persisted attachment references, then asks `MediaStore` to inspect each Relive-managed file on a background dispatcher. It never walks arbitrary device storage, hydrates the complete Moment archive, or mutates media discovered to be missing.
 
 ---

@@ -9,6 +9,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -22,6 +29,7 @@ import com.vaibhav.relive.di.ReliveAppContainer
 import com.vaibhav.relive.ui.screens.TimelineScreen
 import com.vaibhav.relive.ui.screens.TimelineHomeScreen
 import com.vaibhav.relive.ui.screens.RediscoverScreen
+import com.vaibhav.relive.ui.screens.ShareTimelinePickerScreen
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.theme.toReliveThemeId
 import com.vaibhav.relive.domain.model.Timeline
@@ -62,6 +70,8 @@ import com.vaibhav.relive.presentation.settings.resolveTimelineTheme
 import com.vaibhav.relive.presentation.profile.AppLockController
 import com.vaibhav.relive.presentation.profile.RediscoverReminderController
 import com.vaibhav.relive.platform.system.openAppSettings
+import com.vaibhav.relive.platform.share.IncomingSharePayload
+import com.vaibhav.relive.platform.share.IncomingShareState
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -74,6 +84,7 @@ private sealed interface TimelinesDestination {
         val scope: CurrentTimeline,
         val selectedMomentId: MomentId? = null,
         val openComposerOnEnter: Boolean = false,
+        val incomingShare: IncomingSharePayload? = null,
     ) : TimelinesDestination
 }
 
@@ -95,6 +106,7 @@ private sealed interface RediscoverDestination {
 fun App(
     container: ReliveAppContainer,
     rediscoverDebugControls: (@Composable () -> Unit)? = null,
+    onIncomingShareCancelled: (() -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
     val appearanceViewModel = remember(container, scope) {
@@ -123,7 +135,9 @@ fun App(
                 scope = scope,
             )
         }
+        val homeState by homeViewModel.state.collectAsState()
         val homeListState = rememberLazyListState()
+        val incomingShareState by container.incomingShareGateway.state.collectAsState()
         val customTimelines by remember(container) { container.timelineRepository.observeCustom() }
             .collectAsState(emptyList())
         val rediscoverListState = rememberLazyListState()
@@ -164,6 +178,13 @@ fun App(
         var rediscoverDestination by remember { mutableStateOf<RediscoverDestination>(RediscoverDestination.Root) }
         var profileNavigation by remember { mutableStateOf(ProfileNavigationState()) }
         var navigationToolbarExpanded by remember { mutableStateOf(true) }
+        var selectedIncomingShareId by remember { mutableStateOf<String?>(null) }
+        LaunchedEffect(incomingShareState) {
+            val ready = incomingShareState as? IncomingShareState.Ready
+            if (ready != null && ready.payload.requestId != selectedIncomingShareId) {
+                selectedIncomingShareId = null
+            }
+        }
         val openQuickCapture: (QuickCaptureSurface) -> Unit = { surface ->
             quickCaptureCommand(surface)?.let { command ->
                 ActivePlayback.stopActive()
@@ -179,7 +200,53 @@ fun App(
         val backupRestoreViewModel = remember(container, scope) {
             BackupRestoreViewModel(container.backupPreferencesRepository, container.googleDriveAccountManager, container.backupCoordinator, scope)
         }
-        if (locked) ReliveLockSurface(onUnlock = { scope.launch { lockController.unlock() } }) else when (profileNavigation.destination) {
+        if (locked) ReliveLockSurface(onUnlock = { scope.launch { lockController.unlock() } }) else {
+            val motion = ReliveTheme.motion
+            val showIncomingSharePicker = incomingShareState !is IncomingShareState.Idle &&
+                (incomingShareState !is IncomingShareState.Ready ||
+                    (incomingShareState as IncomingShareState.Ready).payload.requestId != selectedIncomingShareId)
+            AnimatedContent(
+                targetState = showIncomingSharePicker,
+                transitionSpec = {
+                    (fadeIn(tween(motion.durations.standardMillis, easing = motion.easings.emphasized)) +
+                        slideInHorizontally(tween(motion.durations.standardMillis, easing = motion.easings.emphasized)) { it / 10 }) togetherWith
+                        (fadeOut(tween(motion.durations.fastMillis, easing = motion.easings.emphasized)) +
+                            slideOutHorizontally(tween(motion.durations.fastMillis, easing = motion.easings.emphasized)) { -it / 12 })
+                },
+                label = "incoming share route",
+            ) { showingPicker ->
+                if (showingPicker) {
+                    val summaries = (homeState.content as? com.vaibhav.relive.presentation.timelinehome.TimelineHomeContent.Loaded)
+                        ?.summaries
+                        .orEmpty()
+                    ShareTimelinePickerScreen(
+                        shareState = incomingShareState,
+                        summaries = summaries,
+                        mediaStore = container.mediaStore,
+                        hasDraft = { timeline -> composerDraftStore.restore(timeline)?.hasUserDraft == true },
+                        onSelect = { timeline ->
+                            (incomingShareState as? IncomingShareState.Ready)?.let { ready ->
+                                selectedIncomingShareId = ready.payload.requestId
+                                ActivePlayback.stopActive()
+                                profileNavigation = ProfileNavigationState()
+                                topLevel = ReliveTopLevelDestination.Timelines
+                                timelinesDestination = TimelinesDestination.TimelineDetail(
+                                    scope = when (timeline) {
+                                        Timeline.All -> CurrentTimeline.All
+                                        is Timeline.Custom -> CurrentTimeline.Custom(timeline.id)
+                                    },
+                                    openComposerOnEnter = true,
+                                    incomingShare = ready.payload,
+                                )
+                            }
+                        },
+                        onCancel = {
+                            container.incomingShareGateway.cancel()
+                            onIncomingShareCancelled?.invoke()
+                        },
+                        onRetry = container.incomingShareGateway::retry,
+                    )
+                } else when (profileNavigation.destination) {
             ProfileDestination.Profile -> ProfileScreen(
                 viewModel = profileViewModel,
                 appearanceViewModel = appearanceViewModel,
@@ -243,8 +310,17 @@ fun App(
                         initialTimeline = active.scope,
                         selectedMomentId = active.selectedMomentId,
                         openComposerOnEnter = active.openComposerOnEnter,
+                        incomingShare = active.incomingShare,
                         onComposerOpenIntentConsumed = {
-                            timelinesDestination = active.copy(openComposerOnEnter = false)
+                            (timelinesDestination as? TimelinesDestination.TimelineDetail)?.let { current ->
+                                timelinesDestination = current.copy(openComposerOnEnter = false)
+                            }
+                        },
+                        onIncomingShareApplied = { requestId ->
+                            container.incomingShareGateway.claim(requestId)
+                            (timelinesDestination as? TimelinesDestination.TimelineDetail)?.let { current ->
+                                timelinesDestination = current.copy(incomingShare = null)
+                            }
                         },
                         onBackToTimelineHome = {
                             timelinesDestination = TimelinesDestination.TimelineHome
@@ -408,10 +484,12 @@ fun App(
                     },
                 )
             }
-        }
+                }
+            }
         }
         }
     }
+}
 
 @Composable
 private fun ReliveLockSurface(onUnlock: () -> Unit) {

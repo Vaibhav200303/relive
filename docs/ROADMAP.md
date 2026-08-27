@@ -95,6 +95,10 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 
 - Profile is implemented as an auxiliary destination from Timeline Home, never a bottom-navigation destination. Its joining date is a singleton local `profile_metadata.created_at` written only for fresh databases; migrated databases retain an absent date and hide the Since line.
 
+### Approved Phase override — Android external share capture
+
+- Android system shares of supported Moment media/text may enter the existing composer through a timeline-selection surface. This is an additive Phase 4/5 capability: it adds no schema, dependency, duplicate composer, automatic persistence, or iOS share extension.
+
 ## Phase 10 — RevenueCat / Pro  ☐
 
 - Implement Pro entitlement behind the existing entitlement interface using RevenueCat; wire "Upgrade to Pro."

@@ -94,6 +94,7 @@ import com.vaibhav.relive.platform.system.ReliveBackHandler
 import com.vaibhav.relive.presentation.composer.MomentComposerState
 import com.vaibhav.relive.presentation.composer.MomentComposerViewModel
 import com.vaibhav.relive.presentation.composer.TimelineComposerDraftStore
+import com.vaibhav.relive.platform.share.IncomingSharePayload
 import com.vaibhav.relive.presentation.composer.MomentSaveOutcome
 import com.vaibhav.relive.presentation.composer.ComposerOverlay
 import com.vaibhav.relive.presentation.composer.SaveState
@@ -183,7 +184,9 @@ fun TimelineScreen(
     mode: TimelineMode = TimelineMode.Editable,
     selectedMomentId: MomentId? = null,
     openComposerOnEnter: Boolean = false,
+    incomingShare: IncomingSharePayload? = null,
     onComposerOpenIntentConsumed: (() -> Unit)? = null,
+    onIncomingShareApplied: ((String) -> Unit)? = null,
     onBackToTimelineHome: (() -> Unit)? = null,
     globalTheme: ThemeReference = ThemeReference.WarmJournal,
     behaviorPreferences: BehaviorPreferences = BehaviorPreferences(),
@@ -266,7 +269,7 @@ fun TimelineScreen(
 
     val composerDestinationSettled = timelineState.moments != TimelineMomentsState.Loading
     val isTimelineEmpty = timelineState.moments == TimelineMomentsState.Empty
-    LaunchedEffect(openComposerOnEnter, timelineState.currentTimeline, composerDestinationSettled, isTimelineEmpty) {
+    LaunchedEffect(openComposerOnEnter, incomingShare?.requestId, timelineState.currentTimeline, composerDestinationSettled, isTimelineEmpty) {
         if (mode.allowsMutations && shouldExpandComposerOnEnter(
                 requested = openComposerOnEnter,
                 currentTimeline = timelineState.currentTimeline,
@@ -280,6 +283,10 @@ fun TimelineScreen(
             withFrameNanos { }
             if (isComposerExpanded) return@LaunchedEffect
             composerViewModel.prepareForTimeline(timelineState.currentTimeline)
+            incomingShare?.let { request ->
+                composerViewModel.applyIncomingShare(request)
+                onIncomingShareApplied?.invoke(request.requestId)
+            }
             isComposerExpanded = true
             // Focus only after the expanding composer has entered composition.
             withFrameNanos { }

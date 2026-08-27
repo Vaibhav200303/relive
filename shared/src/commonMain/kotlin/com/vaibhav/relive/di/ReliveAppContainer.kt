@@ -22,6 +22,8 @@ import com.vaibhav.relive.platform.notifications.RediscoverReminderService
 import com.vaibhav.relive.platform.notifications.UnavailableRediscoverReminderService
 import com.vaibhav.relive.platform.system.DeviceAuthentication
 import com.vaibhav.relive.platform.system.UnavailableDeviceAuthentication
+import com.vaibhav.relive.platform.share.IncomingShareGateway
+import com.vaibhav.relive.platform.share.UnavailableIncomingShareGateway
 
 /**
  * Shared app-level dependency container. Platform entry points construct this
@@ -57,4 +59,5 @@ class ReliveAppContainer(
     val backupCoordinator: BackupCoordinator = UnavailableBackupCoordinator(),
     val deviceAuthentication: DeviceAuthentication = UnavailableDeviceAuthentication,
     val rediscoverReminderService: RediscoverReminderService = UnavailableRediscoverReminderService,
+    val incomingShareGateway: IncomingShareGateway = UnavailableIncomingShareGateway,
 )

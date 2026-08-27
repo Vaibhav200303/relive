@@ -53,6 +53,10 @@ Timelines, Rediscover, and Search are the three top-level destinations. They liv
 
 Timeline Home, Rediscover, and Search expose one theme-aware expressive **`+ New`** floating toolbar at bottom-right, separate from the navigation toolbar. It collapses with navigation to its Add icon and expands to show a centered `+ New`; both controls remain vertically aligned with a small fixed gap. Navigation uses an accent-derived moving selected indicator while expanded. It is absent from Profile, timeline detail, media viewer, camera, recorder, and modal/detail surfaces. Tapping either visible part always opens the editable logical **All** timeline, lets the normal collapsed timeline render and settle, then expands the existing inline composer with the same restrained in-place motion as its rail `+` and focuses its first text field. It never opens a chooser or custom timeline and never creates a second composer. Timeline detail keeps its integrated rail `+` as the creation affordance instead of showing another floating action.
 
+### Android external share capture
+
+Android accepts a user-initiated system share of plain text/URLs, images, videos, audio, or a supported mixed batch. Relive first asks which timeline should receive one new Moment: All is first, followed by custom timelines. Selecting a custom timeline creates the normal All + custom membership; selecting All retains the normal optional assignment controls. Shared content only pre-fills the existing inline composer and is never saved without the user choosing Keep Moment. Unsupported, unreadable, or mixed batches containing unsupported files are rejected as one request; arbitrary documents are not attachments in v1. This capability is Android-only for now.
+
 ### Moment / timeline relationship
 
 - A moment is **stored only once**.
