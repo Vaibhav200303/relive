@@ -148,6 +148,18 @@ internal fun ForwardGlyph(size: Dp, color: Color, strokeWidth: Dp, modifier: Mod
     }
 }
 
+@Composable
+internal fun DownGlyph(size: Dp, color: Color, strokeWidth: Dp) {
+    Canvas(modifier = Modifier.size(size)) {
+        val px = size.toPx()
+        val center = px / 2f
+        val stroke = strokeWidth.toPx()
+        drawLine(color, Offset(center, px * 0.18f), Offset(center, px * 0.80f), stroke)
+        drawLine(color, Offset(center, px * 0.80f), Offset(px * 0.24f, px * 0.54f), stroke)
+        drawLine(color, Offset(center, px * 0.80f), Offset(px * 0.76f, px * 0.54f), stroke)
+    }
+}
+
 /**
  * Understated heart glyph. Draws an outline when [filled] is false and a filled
  * silhouette when true. Reference is favor of a subtle line-weight heart, not a

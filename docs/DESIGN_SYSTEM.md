@@ -28,6 +28,7 @@ The base color, typography, and dimension tokens below are transcribed from the 
 - Serif titles, sans-serif body/metadata.
 - Subtle brown/sepia accents on a cream background.
 - Thin timeline rail, small circular dots, integrated plus-circle for composing.
+- Timeline detail may add the approved bottom-centered return-to-newest control after manual movement toward older Moments; it is a token-styled Material 3 Expressive small FAB, not a persistent bottom action bar.
 - Subtle borders, minimal shadows, no excessive cards, premium media presentation.
 
 Material 3 provides component behavior and accessibility; these tokens provide the Relive look. The app must not look like a default Material app.
@@ -265,12 +266,15 @@ Collection-card visual media and deterministic generated covers meet the opaque 
 | Token             | Value   | Usage                              |
 | ----------------- | ------- | ---------------------------------- |
 | `motion.fast`     | `120ms` | hover/opacity, small state changes |
+| `motion.timelineReturn` | `145ms` | one viewport of return-to-newest scrolling |
 | `motion.standard` | `240ms` | expand/collapse (more/less), reveals |
 | `motion.slow`     | `360ms` | larger transitions (planned)       |
 
 Values *(planned)* — confirm against the reference feel during implementation. Motion is subtle and supports the calm, editorial tone.
 
 The inline composer uses the same tokenized vertical expand/fade transition whether invoked from the timeline rail `+` or global `New`: `motion.slow` for entry and `motion.standard` for collapse with `ease.standard`. Global entry first presents one settled collapsed frame, then begins expansion; title focus follows on the next frame so navigation, layout, expansion, and IME do not all appear as one abrupt state change.
+
+The return-to-newest arrow uses Material 3 Expressive scale/fade visibility motion with the semantic floating surface, accent glyph, `radius.pill`, existing `icon.lg`/`stroke.iconBold`, and the global `48dp` minimum touch target. It hides while its fast, visibly continuous return scroll runs and reappears if that scroll is cancelled away from the newest end. Snackbar feedback lifts above the visible control.
 
 ---
 

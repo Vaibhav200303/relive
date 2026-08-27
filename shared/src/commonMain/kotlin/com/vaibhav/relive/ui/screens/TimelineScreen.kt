@@ -2,6 +2,7 @@ package com.vaibhav.relive.ui.screens
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -11,6 +12,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,6 +40,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,14 +51,20 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.animateFloatingActionButton
 import com.vaibhav.relive.domain.id.IdGenerator
 import com.vaibhav.relive.domain.policy.EditWindow
 import com.vaibhav.relive.domain.model.MomentId
@@ -104,6 +114,7 @@ import com.vaibhav.relive.ui.components.timeline.MomentCard
 import com.vaibhav.relive.ui.components.timeline.TimelineHeader
 import com.vaibhav.relive.ui.components.timeline.DateNavigationPicker
 import com.vaibhav.relive.ui.components.timeline.DiscardTimelineDraftDialog
+import com.vaibhav.relive.ui.components.timeline.DownGlyph
 import com.vaibhav.relive.ui.components.timeline.SystemCollectionHeader
 import com.vaibhav.relive.ui.components.viewer.MediaViewer
 import com.vaibhav.relive.ui.components.viewer.MomentMediaGallery
@@ -590,6 +601,7 @@ private fun SystemCollectionEmptyState() {
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun TimelineContent(
     timelineState: TimelineScreenState,
@@ -671,6 +683,30 @@ private fun TimelineContent(
             key(timelineState.currentTimeline) {
                 val listState = rememberLazyListState()
                 var lastSeenCount by remember { mutableIntStateOf(-1) }
+                var isProgrammaticScroll by remember { mutableStateOf(false) }
+                var lastListPosition by remember { mutableStateOf<TimelineListPosition?>(null) }
+                var returnToBottomState by remember { mutableStateOf(TimelineReturnToBottomState()) }
+                val autoScrollController = remember { TimelineAutoScrollController() }
+                val listScope = rememberCoroutineScope()
+
+                LaunchedEffect(listState) {
+                    snapshotFlow {
+                        TimelineListPosition(
+                            index = listState.firstVisibleItemIndex,
+                            scrollOffset = listState.firstVisibleItemScrollOffset,
+                        ) to listState.canScrollForward
+                    }.collect { (position, canScrollForward) ->
+                        val previous = lastListPosition
+                        if (previous != null) {
+                            returnToBottomState = returnToBottomState.onPositionChanged(
+                                isProgrammaticScroll = isProgrammaticScroll,
+                                movedTowardOlderMoments = position.movedTowardOlderThan(previous),
+                                canScrollForward = canScrollForward,
+                            )
+                        }
+                        lastListPosition = position
+                    }
+                }
                 LaunchedEffect(moments, selectedMomentId, dateNavigationTargetId) {
                     val targetId = dateNavigationTargetId ?: selectedMomentId
                     val selectedIndex = targetId?.let { selected ->
@@ -681,12 +717,17 @@ private fun TimelineContent(
                         mode.allowsMutations -> moments.size
                         else -> moments.lastIndex.coerceAtLeast(0)
                     }
-                    if (dateNavigationTargetId != null) {
-                        listState.animateScrollToItem(target)
-                    } else if (lastSeenCount == -1) {
-                        listState.scrollToItem(target)
-                    } else if (moments.size > lastSeenCount) {
-                        listState.animateScrollToItem(target)
+                    isProgrammaticScroll = true
+                    try {
+                        if (dateNavigationTargetId != null) {
+                            listState.animateScrollToItem(target)
+                        } else if (lastSeenCount == -1) {
+                            listState.scrollToItem(target)
+                        } else if (moments.size > lastSeenCount) {
+                            listState.animateScrollToItem(target)
+                        }
+                    } finally {
+                        isProgrammaticScroll = false
                     }
                     lastSeenCount = moments.size
                     if (dateNavigationTargetId != null || timelineState.dateNavigation != null) {
@@ -695,7 +736,28 @@ private fun TimelineContent(
                 }
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(returnToBottomState.isAutoScrolling) {
+                            awaitEachGesture {
+                                val down = awaitFirstDown(
+                                    requireUnconsumed = false,
+                                    pass = PointerEventPass.Initial,
+                                )
+                                if (!returnToBottomState.isAutoScrolling) {
+                                    waitForUpOrCancellation(pass = PointerEventPass.Initial)
+                                    return@awaitEachGesture
+                                }
+
+                                autoScrollController.cancel()
+                                down.consume()
+                                while (true) {
+                                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                                    event.changes.forEach { it.consume() }
+                                    if (event.changes.none { it.pressed }) break
+                                }
+                            }
+                        },
                     contentPadding = PaddingValues(bottom = dims.spacing.huge),
                 ) {
                     itemsIndexed(items = moments, key = { _, moment -> moment.id.value }) { index, moment ->
@@ -826,20 +888,80 @@ private fun TimelineContent(
                         }
                     }
                 }
-            }
-            SnackbarHost(
-                hostState = snackbarHostState,
-                modifier = Modifier.align(Alignment.BottomCenter),
-            ) { data ->
-                Snackbar(
-                    snackbarData = data,
-                    shape = RoundedCornerShape(ReliveTheme.dimensions.radii.menu),
-                    containerColor = ReliveTheme.colors.accent,
-                    contentColor = ReliveTheme.colors.textOnAccent,
-                    actionColor = ReliveTheme.colors.textOnAccent,
-                    actionContentColor = ReliveTheme.colors.textOnAccent,
-                    dismissActionContentColor = ReliveTheme.colors.textOnAccent,
-                )
+                val showReturnToBottom = returnToBottomState.isVisible(listState.canScrollForward)
+                SmallFloatingActionButton(
+                    onClick = {
+                        if (!autoScrollController.isRunning && listState.canScrollForward) {
+                            returnToBottomState = returnToBottomState.onAutoScrollStarted()
+                            autoScrollController.start(
+                                scope = listScope,
+                                scroll = {
+                                    isProgrammaticScroll = true
+                                    while (listState.canScrollForward) {
+                                        val viewportHeight = listState.layoutInfo
+                                            .let { it.viewportEndOffset - it.viewportStartOffset }
+                                        if (viewportHeight <= 0) break
+                                        val consumed = listState.animateScrollBy(
+                                            value = viewportHeight.toFloat(),
+                                            animationSpec = tween(
+                                                durationMillis = motion.durations.timelineReturnMillis,
+                                                easing = LinearEasing,
+                                            ),
+                                        )
+                                        if (consumed < viewportHeight) break
+                                    }
+                                },
+                                onStopped = {
+                                    isProgrammaticScroll = false
+                                    returnToBottomState = returnToBottomState.onAutoScrollStopped(
+                                        canScrollForward = listState.canScrollForward,
+                                    )
+                                },
+                            )
+                        }
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = dims.spacing.lg)
+                        .size(dims.minTouchTarget)
+                        .animateFloatingActionButton(
+                            visible = showReturnToBottom,
+                            alignment = Alignment.BottomCenter,
+                        )
+                        .semantics { contentDescription = "Scroll to newest moment" },
+                    shape = RoundedCornerShape(dims.radii.pill),
+                    containerColor = colors.surfaceFloating,
+                    contentColor = colors.accent,
+                    elevation = FloatingActionButtonDefaults.elevation(),
+                ) {
+                    DownGlyph(
+                        size = dims.icon.lg,
+                        color = colors.accent,
+                        strokeWidth = dims.stroke.iconBold,
+                    )
+                }
+                SnackbarHost(
+                    hostState = snackbarHostState,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(
+                            bottom = if (showReturnToBottom) {
+                                dims.minTouchTarget + dims.spacing.lg
+                            } else {
+                                dims.spacing.none
+                            },
+                        ),
+                ) { data ->
+                    Snackbar(
+                        snackbarData = data,
+                        shape = RoundedCornerShape(ReliveTheme.dimensions.radii.menu),
+                        containerColor = ReliveTheme.colors.accent,
+                        contentColor = ReliveTheme.colors.textOnAccent,
+                        actionColor = ReliveTheme.colors.textOnAccent,
+                        actionContentColor = ReliveTheme.colors.textOnAccent,
+                        dismissActionContentColor = ReliveTheme.colors.textOnAccent,
+                    )
+                }
             }
         }
     }

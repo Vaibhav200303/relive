@@ -113,6 +113,8 @@ Visual direction:
 
 The interface must **encourage continuous scrolling**. It must **not** feel like a database or a list of records.
 
+When a user manually moves toward older Moments in any timeline detail, a bottom-centered return-to-newest arrow appears. It remains available until the newest end is reached. Selecting it visibly and rapidly scrolls to the terminal timeline item; touching the scrolling timeline cancels the motion at the current Moment without activating content beneath that touch. The control is absent on empty and non-scrollable timelines.
+
 ### 3.1 Date navigation
 
 Every editable All or custom Timeline has a Calendar action for navigation, never filtering. The selected date uses the current device-local calendar day: an exact date opens that day's first Moment in the existing chronological order; a missing date opens the next available Moment, or the closest previous Moment when no later Moment exists. The empty global Search capsule has the same Calendar action, which leaves Search and opens All at the resolved Moment. Entering a non-blank search query replaces that action with the result counter and previous/next controls.

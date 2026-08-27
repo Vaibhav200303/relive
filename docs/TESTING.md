@@ -147,6 +147,8 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 - [ ] Keep Moment reads as the primary Material 3 action and has enabled, disabled, and pressed feedback.
 - [ ] Keyboard opens without obscuring the active field (IME insets).
 - [ ] Timeline rail reaches the final plus center but never renders below it; date/time, dots, and plus share the rail axis at normal and enlarged font scales.
+- [ ] Manually moving toward older Moments reveals the bottom-centered return-to-newest arrow; it stays visible until the newest end, works in editable and read-only timeline details, and is absent when no forward scroll is possible.
+- [ ] Selecting the arrow visibly returns to the terminal item without a snap. The first touch during that motion stops at the current position and does not activate the touched Moment content; Snackbar feedback remains above the arrow.
 
 ### Persistent debug data
 - [ ] Create a moment in a debug build, kill the process, reopen — moment persists.
