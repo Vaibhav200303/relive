@@ -49,6 +49,6 @@ fun shouldExpandComposerOnEnter(
     isDestinationSettled &&
     when (currentTimeline) {
         CurrentTimeline.All -> requested
-        is CurrentTimeline.Custom -> isTimelineEmpty
+        is CurrentTimeline.Custom -> requested || isTimelineEmpty
         else -> false
     }

@@ -142,6 +142,8 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 - [ ] Tapping `+` smoothly expands the composer in place (no modal/sheet).
 - [ ] Global `New` shows All settled/collapsed before the same smooth in-place expansion; no navigation flash, archive-wide scroll, or upward content jump.
 - [ ] Global-entry title focus follows composer entry and does not cause an abrupt simultaneous navigation/layout/IME change.
+- [ ] Android share of text, URL, image, video, audio, and a supported mixed batch opens Relive's timeline picker; All appears first, custom timelines retain order, selection animates into the settled Timeline, then the normal composer expands with ordered processing placeholders.
+- [ ] Canceling the share picker removes temporary files and returns to the source app. Unsupported, unreadable, oversized-text, empty, and over-50-item shares show no partial draft; a claimed share is saved only after Keep Moment.
 - [ ] `×` resets fields and smoothly collapses.
 - [ ] Keep Moment resets fields and collapses.
 - [ ] Keep Moment reads as the primary Material 3 action and has enabled, disabled, and pressed feedback.

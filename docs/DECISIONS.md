@@ -560,6 +560,13 @@ Format for each entry:
 - **Decision:** A long-press in editable All selects one Moment and swaps the standard header for a fixed-height contextual app bar using Relive fast emphasized fade/short-slide motion. Back exits selection. Before `createdAt + 4 days`, Edit and Forget appear; Add to timeline appears whenever custom timelines exist, including after the edit window. Its Material 3 picker is add-only and single-choice: assigned timelines are disabled, choosing an unassigned timeline calls the existing idempotent membership API, and success restores the normal header. Custom timeline detail retains its existing long-press interaction.
 - **Consequences:** No schema, dependency, Moment mutation, or duplicate persistence is introduced. The 4-day rule remains authoritative for Edit/Forget and is rechecked at those action boundaries. Context, picker, success, and failure feedback use the existing semantic haptic vocabulary and Relive dialog/tokens.
 
+## ADR-0049 — Android external shares enter the existing Moment composer
+
+- **Date:** 2026-08-27 · **Status:** Accepted
+- **Context:** A memory often begins outside Relive: in Files, Photos, a browser, or an audio app. Relive needs a local-first capture path without adding an alternate composer, saving before review, or exposing platform types to shared code.
+- **Decision:** Android registers as a share target for plain text, images, videos, audio, and mixed multi-item shares. The Android edge immediately validates and copies accepted provider content into temporary Relive-owned files, then exposes a shared `IncomingShareGateway` request containing only text metadata and ordered `RawMedia`. The shared UI gives App Lock precedence, then presents All and custom timelines in a two-column grid. A selected timeline renders one settled collapsed Timeline frame before the existing inline composer merges the request and expands. Subject fills an empty title; text fills or appends to content; media appends in source order. A share is rejected in full when it has unsupported, unreadable, empty, oversized-text, or over-limit content. Cancelling before selection removes temporary files and returns to the source app; after claim, normal composer draft ownership applies.
+- **Consequences:** One selected share becomes one reviewable Moment draft. Moment persistence, media normalization, memberships, themes, and the existing optional All-timeline assignments remain authoritative. There is no schema migration, new dependency, automatic save, arbitrary-document attachment type, background import, or iOS Share Extension in this iteration. Android `Intent`/URI APIs remain platform-edge details.
+
 ## Template for new decisions
 
 ```

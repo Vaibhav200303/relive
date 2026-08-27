@@ -7,10 +7,16 @@ import androidx.activity.enableEdgeToEdge
 import com.vaibhav.relive.di.createDefaultReliveAppContainer
 import com.vaibhav.relive.platform.backup.AndroidBackupPreferencesRepository
 import android.util.Log
+import android.content.Intent
+import com.vaibhav.relive.platform.share.AndroidIncomingShareGateway
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.cancel
 
 class MainActivity : ComponentActivity() {
     private lateinit var deviceAuthentication: AndroidDeviceAuthentication
     private lateinit var reminderService: AndroidRediscoverReminderService
+    private val shareScope = MainScope()
+    private lateinit var incomingShareGateway: AndroidIncomingShareGateway
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -21,9 +27,12 @@ class MainActivity : ComponentActivity() {
         val accountManager = AndroidGoogleDriveAccountManager(this, backupPreferences)
         deviceAuthentication = AndroidDeviceAuthentication(this)
         reminderService = AndroidRediscoverReminderService(this)
-        val container = createDefaultReliveAppContainer(applicationContext, googleDriveAccountManager = accountManager, backupPreferencesRepository = backupPreferences, backupCoordinatorFactory = { database, mediaStore, _ -> AndroidBackupCoordinator(applicationContext, database, mediaStore, accountManager) { recreate() } }, deviceAuthentication = deviceAuthentication, rediscoverReminderService = reminderService)
+        incomingShareGateway = AndroidIncomingShareGateway(applicationContext, shareScope)
+        val container = createDefaultReliveAppContainer(applicationContext, googleDriveAccountManager = accountManager, backupPreferencesRepository = backupPreferences, backupCoordinatorFactory = { database, mediaStore, _ -> AndroidBackupCoordinator(applicationContext, database, mediaStore, accountManager) { recreate() } }, deviceAuthentication = deviceAuthentication, rediscoverReminderService = reminderService, incomingShareGateway = incomingShareGateway)
         android.util.Log.d("ReliveBackupAuth", "BackupCoordinator runtime=${container.backupCoordinator::class.java.name}")
-        setContent { App(container) }
+        incomingShareGateway.accept(intent)
+        setIntent(Intent(this, MainActivity::class.java))
+        setContent { App(container, onIncomingShareCancelled = ::finish) }
     }
 
     @Deprecated("Platform credential fallback")
@@ -33,5 +42,17 @@ class MainActivity : ComponentActivity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         if (!reminderService.onRequestPermissionsResult(requestCode, grantResults)) super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        incomingShareGateway.accept(intent)
+        setIntent(Intent(this, MainActivity::class.java))
+    }
+
+    override fun onDestroy() {
+        if (isFinishing) incomingShareGateway.cancel()
+        shareScope.cancel()
+        super.onDestroy()
     }
 }

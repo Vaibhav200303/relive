@@ -60,6 +60,14 @@ data class ReliveTimelineHomeDimensions(
 )
 
 @Immutable
+data class ReliveShareTimelinePickerDimensions(
+    val allMediaHeight: Dp = 152.dp,
+    val customMediaHeight: Dp = 104.dp,
+    val nameAreaMinHeight: Dp = 56.dp,
+    val allToCustomGap: Dp = 12.dp,
+)
+
+@Immutable
 data class ReliveRediscoverDimensions(
     val cardOuterRadius: Dp = 20.dp,
     val heroMediaHeight: Dp = 280.dp,
@@ -140,6 +148,7 @@ data class ReliveDimensions(
     val stroke: ReliveStrokes = ReliveStrokes(),
     val timeline: ReliveTimelineDimensions = ReliveTimelineDimensions(),
     val timelineHome: ReliveTimelineHomeDimensions = ReliveTimelineHomeDimensions(),
+    val shareTimelinePicker: ReliveShareTimelinePickerDimensions = ReliveShareTimelinePickerDimensions(),
     val rediscover: ReliveRediscoverDimensions = ReliveRediscoverDimensions(),
     val profile: ReliveProfileDimensions = ReliveProfileDimensions(),
     val search: ReliveSearchDimensions = ReliveSearchDimensions(),

@@ -21,6 +21,7 @@ import com.vaibhav.relive.platform.media.RawMedia
 import com.vaibhav.relive.platform.media.RecordingState
 import com.vaibhav.relive.platform.permission.MicPermissionResult
 import com.vaibhav.relive.presentation.timeline.CurrentTimeline
+import com.vaibhav.relive.platform.share.IncomingSharePayload
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -812,6 +813,61 @@ class MomentComposerViewModelTest {
         assertEquals(original.id, updated.id)
         assertEquals(original.createdAt, updated.createdAt)
         assertTrue(updated.isFavorite)
+    }
+
+    @Test
+    fun incomingShareFillsAnEmptyDraftAndAppendsMediaInOrder() = runTest {
+        val vm = newViewModel(RecordingRepository())
+        vm.prepareForTimeline(CurrentTimeline.All)
+
+        vm.applyIncomingShare(
+            IncomingSharePayload(
+                requestId = "share-1",
+                subject = "Afternoon walk",
+                text = "Warm sun.",
+                media = listOf(
+                    RawMedia(MediaType.Image, "/tmp/photo", ownedByRelive = true),
+                    RawMedia(MediaType.Audio, "/tmp/audio", ownedByRelive = true),
+                ),
+            ),
+        )
+
+        assertEquals("Afternoon walk", vm.state.value.title)
+        assertEquals("Warm sun.", vm.state.value.content)
+        assertEquals(listOf(MediaType.Image, MediaType.Audio), vm.state.value.attachments.map { it.type })
+    }
+
+    @Test
+    fun incomingShareMergesIntoExistingDraftOnlyOnce() = runTest {
+        val vm = newViewModel(RecordingRepository())
+        val family = TimelineId("family")
+        vm.prepareForTimeline(CurrentTimeline.All)
+        vm.updateTitle("Existing title")
+        vm.updateContent("Existing body")
+        vm.updateManualLocation("Home")
+        vm.toggleTimelineAssignment(family)
+        val request = IncomingSharePayload(
+            requestId = "share-2",
+            subject = "Shared subject",
+            text = "Shared body",
+            media = listOf(RawMedia(MediaType.Video, "/tmp/video", ownedByRelive = true)),
+        )
+
+        vm.applyIncomingShare(request)
+        vm.applyIncomingShare(request)
+
+        assertEquals("Existing title", vm.state.value.title)
+        assertEquals("Existing body\n\nShared subject\n\nShared body", vm.state.value.content)
+        assertEquals("Home", vm.state.value.location?.placeName)
+        assertEquals(setOf(family), vm.state.value.selectedTimelineIds)
+        assertEquals(1, vm.state.value.attachments.size)
+    }
+
+    @Test
+    fun appendSharedTextKeepsExistingTextAndSeparatesIncomingSections() {
+        assertEquals("Existing\n\nSubject\n\nBody", appendSharedText("Existing", listOf("Subject", "Body")))
+        assertEquals("Body", appendSharedText("", listOf("", "Body")))
+        assertEquals("Existing", appendSharedText("Existing", emptyList()))
     }
 
     // --- helpers ---

@@ -2,6 +2,10 @@ package com.vaibhav.relive.ui.components.composer
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -22,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -69,17 +74,27 @@ internal fun DraftAttachmentColumn(
     modifier: Modifier = Modifier,
 ) {
     val dims = ReliveTheme.dimensions
+    val motion = ReliveTheme.motion
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(dims.spacing.md),
     ) {
         attachments.forEach { att ->
-            DraftAttachmentTile(
-                attachment = att,
-                mediaStore = mediaStore,
-                onRemove = { onRemove(att.draftId) },
-                onRetry = { onRetry(att.draftId) },
-            )
+            key(att.draftId) {
+                AnimatedVisibility(
+                    visible = true,
+                    enter = expandVertically(tween(motion.durations.standardMillis, easing = motion.easings.standard)) +
+                        fadeIn(tween(motion.durations.standardMillis, easing = motion.easings.standard)),
+                    label = "composer attachment ${att.draftId}",
+                ) {
+                    DraftAttachmentTile(
+                        attachment = att,
+                        mediaStore = mediaStore,
+                        onRemove = { onRemove(att.draftId) },
+                        onRetry = { onRetry(att.draftId) },
+                    )
+                }
+            }
         }
     }
 }

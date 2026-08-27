@@ -28,6 +28,7 @@ import com.vaibhav.relive.presentation.id.UuidGenerator
 import com.vaibhav.relive.presentation.time.SystemClock
 import com.vaibhav.relive.data.local.db.ReliveDatabase
 import com.vaibhav.relive.platform.backup.AndroidBackupPreferencesRepository
+import com.vaibhav.relive.platform.share.IncomingShareGateway
 
 fun createDefaultReliveAppContainer(
     context: Context,
@@ -40,6 +41,7 @@ fun createDefaultReliveAppContainer(
     backupCoordinatorFactory: ((ReliveDatabase, AndroidMediaStore, GoogleDriveAccountManager) -> BackupCoordinator)? = null,
     deviceAuthentication: DeviceAuthentication? = null,
     rediscoverReminderService: RediscoverReminderService? = null,
+    incomingShareGateway: IncomingShareGateway? = null,
 ): ReliveAppContainer {
     val app = context.applicationContext
     installAndroidMediaContext { app }
@@ -78,5 +80,6 @@ fun createDefaultReliveAppContainer(
         }) ?: com.vaibhav.relive.domain.backup.UnavailableBackupCoordinator(),
         deviceAuthentication = deviceAuthentication ?: com.vaibhav.relive.platform.system.UnavailableDeviceAuthentication,
         rediscoverReminderService = rediscoverReminderService ?: com.vaibhav.relive.platform.notifications.UnavailableRediscoverReminderService,
+        incomingShareGateway = incomingShareGateway ?: com.vaibhav.relive.platform.share.UnavailableIncomingShareGateway,
     )
 }

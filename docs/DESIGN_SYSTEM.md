@@ -274,6 +274,8 @@ Values *(planned)* — confirm against the reference feel during implementation.
 
 The inline composer uses the same tokenized vertical expand/fade transition whether invoked from the timeline rail `+` or global `New`: `motion.slow` for entry and `motion.standard` for collapse with `ease.standard`. Global entry first presents one settled collapsed frame, then begins expansion; title focus follows on the next frame so navigation, layout, expansion, and IME do not all appear as one abrupt state change.
 
+Android external-share capture uses the same restrained system: reading/error/picker states fade, choosing a timeline uses a short emphasized horizontal slide/fade, and the destination Timeline settles collapsed for one frame before the normal composer expansion begins. The picker has one compact full-width All card first, then a deliberately larger tokenized break before compact custom cards continue in a two-column editorial grid. Its media and name-footer geometry comes from `shareTimelinePicker` tokens; the footer contains only the timeline name in the compact body style. It has no floating navigation or creation controls. Material press/progress/error behavior is used under Relive tokens, without a global expressive theme.
+
 The return-to-newest arrow uses Material 3 Expressive scale/fade visibility motion with the semantic floating surface, accent glyph, `radius.pill`, existing `icon.lg`/`stroke.iconBold`, and the global `48dp` minimum touch target. It hides while its fast, visibly continuous return scroll runs and reappears if that scroll is cancelled away from the newest end. Snackbar feedback lifts above the visible control.
 
 ---

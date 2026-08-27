@@ -91,7 +91,9 @@ class QuickCaptureTest {
                 isTimelineEmpty = true,
             ),
         )
-        assertFalse(
+        // An explicit share/quick-capture request must also open an existing
+        // custom timeline so its payload can enter the normal composer.
+        assertTrue(
             shouldExpandComposerOnEnter(
                 requested = true,
                 currentTimeline = custom,
