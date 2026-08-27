@@ -94,11 +94,15 @@ fun TimelineHomeScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(ReliveTheme.colors.bgCanvas),
+    ) {
         Column(
             modifier = Modifier
-                .background(ReliveTheme.colors.bgCanvas)
-                .fillMaxWidth(),
+                .fillMaxSize()
+                .background(ReliveTheme.colors.bgCanvas),
         ) {
             TimelineHomeHeader(
                 onCreateTimeline = {
