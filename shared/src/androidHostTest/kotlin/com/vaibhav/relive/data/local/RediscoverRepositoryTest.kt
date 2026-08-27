@@ -132,6 +132,17 @@ class RediscoverRepositoryTest {
         assertEquals(listOf("eligible"), fx.rediscover.observeFromYourPastPreviews(query()).first().map { it.id.value })
     }
 
+    @Test fun from_your_past_keeps_the_inclusive_ninety_day_eligibility_boundary() = runTest {
+        fx.moments.insert(sampleMoment("eighty-nine-days", utc(2026, 5, 26)))
+        fx.moments.insert(sampleMoment("exactly-ninety-days", utc(2026, 5, 25)))
+        fx.moments.insert(sampleMoment("older-than-ninety-days", utc(2026, 5, 24)))
+
+        assertEquals(
+            setOf("exactly-ninety-days", "older-than-ninety-days"),
+            fx.rediscover.observeFromYourPastPreviews(query()).first().map { it.id.value }.toSet(),
+        )
+    }
+
     @Test fun from_your_past_detail_uses_the_same_daily_order_as_the_shelf() = runTest {
         repeat(15) { index -> fx.moments.insert(sampleMoment("old-$index", utc(2025, 1, index + 1))) }
 

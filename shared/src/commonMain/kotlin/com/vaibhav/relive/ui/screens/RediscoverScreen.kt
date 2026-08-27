@@ -6,13 +6,16 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
@@ -34,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.BehaviorPreferences
 import com.vaibhav.relive.domain.model.LocalCalendarDate
@@ -53,7 +57,9 @@ import com.vaibhav.relive.presentation.cardcover.allTimelineCollageBucket
 import com.vaibhav.relive.ui.components.navigation.ReliveWordmarkAppBar
 import com.vaibhav.relive.ui.components.rediscover.FavoriteMomentCard
 import com.vaibhav.relive.ui.components.rediscover.OnThisDayMomentCard
+import com.vaibhav.relive.ui.components.reliveCardOuterBorder
 import com.vaibhav.relive.ui.components.timeline.ForwardGlyph
+import com.vaibhav.relive.ui.components.timeline.HeartGlyph
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import kotlinx.coroutines.delay
 import androidx.lifecycle.Lifecycle
@@ -110,7 +116,9 @@ fun RediscoverScreen(
     var debugOpen by remember { mutableStateOf(false) }
     val dims = ReliveTheme.dimensions
     val sectionLayout = rediscoverSectionLayout(
+        favoriteMomentCount = previews.size,
         onThisDayMomentCount = onThisDayPreviews.size,
+        fromYourPastMomentCount = fromYourPastPreviews.size,
         showFavorites = behaviorPreferences.showFavorites,
         showOnThisDay = behaviorPreferences.showOnThisDay,
     )
@@ -158,7 +166,7 @@ fun RediscoverScreen(
                         .padding(horizontal = dims.spacing.xl, vertical = dims.spacing.md),
                 )
             }
-            if (previews.isEmpty()) {
+            if (sectionLayout.showFavoritesEmptyState) {
                 item(key = "favorites-empty") { FavoritesEmptyState() }
             } else {
                 item(key = "favorites-shelf") {
@@ -255,41 +263,32 @@ fun RediscoverScreen(
                 }
             }
         }
-        item(key = "from-your-past-heading") {
-            val topSpacing = when (sectionLayout.fromYourPastSpacing) {
-                RediscoverSectionSpacing.Normal -> dims.spacing.xl
-                RediscoverSectionSpacing.Expanded -> dims.spacing.xxl
-            }
-            Text(
-                text = "FROM YOUR PAST",
-                style = ReliveTheme.typography.title,
-                color = ReliveTheme.colors.accentMuted,
-                modifier = Modifier.padding(start = dims.spacing.xl, end = dims.spacing.xl, top = topSpacing),
-            )
-        }
-        item(key = "from-your-past-subtitle") {
-            Text(
-                text = "A few moments worth seeing again",
-                style = ReliveTheme.typography.subtitle,
-                color = ReliveTheme.colors.textSecondary,
-                modifier = Modifier.padding(
-                    start = dims.spacing.xl,
-                    end = dims.spacing.xl,
-                    top = dims.spacing.xs,
-                    bottom = dims.spacing.sm,
-                ),
-            )
-        }
-        if (fromYourPastPreviews.isEmpty()) {
-            item(key = "from-your-past-empty") {
+        if (sectionLayout.showFromYourPast) {
+            item(key = "from-your-past-heading") {
+                val topSpacing = when (sectionLayout.fromYourPastSpacing) {
+                    RediscoverSectionSpacing.Normal -> dims.spacing.xl
+                    RediscoverSectionSpacing.Expanded -> dims.spacing.xxl
+                }
                 Text(
-                    text = "Your archive is still taking shape.",
-                    style = ReliveTheme.typography.subtitle,
-                    color = ReliveTheme.colors.textSecondary,
-                    modifier = Modifier.padding(horizontal = dims.spacing.xl, vertical = dims.spacing.sm),
+                    text = "FROM YOUR PAST",
+                    style = ReliveTheme.typography.title,
+                    color = ReliveTheme.colors.accentMuted,
+                    modifier = Modifier.padding(start = dims.spacing.xl, end = dims.spacing.xl, top = topSpacing),
                 )
             }
-        } else {
+            item(key = "from-your-past-subtitle") {
+                Text(
+                    text = "A few moments worth seeing again",
+                    style = ReliveTheme.typography.subtitle,
+                    color = ReliveTheme.colors.textSecondary,
+                    modifier = Modifier.padding(
+                        start = dims.spacing.xl,
+                        end = dims.spacing.xl,
+                        top = dims.spacing.xs,
+                        bottom = dims.spacing.sm,
+                    ),
+                )
+            }
             item(key = "from-your-past-shelf") {
                 BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                     LazyRow(
@@ -370,10 +369,45 @@ private fun Modifier.floatingToolbarNestedScroll(
 @Composable
 private fun FavoritesEmptyState() {
     val dims = ReliveTheme.dimensions
-    Text(
-        text = "No favorite moments yet.\nMoments you favorite will appear here.",
-        style = ReliveTheme.typography.subtitle,
-        color = ReliveTheme.colors.textSecondary,
-        modifier = Modifier.padding(horizontal = dims.spacing.xl, vertical = dims.spacing.md),
-    )
+    val colors = ReliveTheme.colors
+    val shape = RoundedCornerShape(dims.rediscover.cardOuterRadius)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = dims.spacing.xl),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = dims.rediscover.favoriteShelfCardHeight)
+                .background(colors.surfaceCard, shape)
+                .reliveCardOuterBorder(shape)
+                .semantics(mergeDescendants = true) {
+                    contentDescription = "Favorites. Your favorite memories will appear here."
+                },
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            HeartGlyph(
+                size = dims.icon.lg,
+                color = colors.accentMuted,
+                strokeWidth = dims.stroke.icon,
+                filled = false,
+            )
+            Text(
+                text = "Your favorite memories",
+                style = ReliveTheme.typography.action,
+                color = colors.textPrimary,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = dims.spacing.lg),
+            )
+            Text(
+                text = "Moments you favorite\nwill appear here.",
+                style = ReliveTheme.typography.subtitle,
+                color = colors.textSecondary,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = dims.spacing.sm),
+            )
+        }
+    }
 }
