@@ -494,16 +494,19 @@ A moment may be **edited** or **forgotten** only during the **first 4 days after
 
 ### Within the first 4 days
 
-Long-pressing a moment shows:
+Long-pressing a Moment in the editable **All** timeline selects it and smoothly replaces the normal header with a contextual Material 3 app bar. The bar has a Back action that exits selection, plus:
 
 - **Edit**
+- **Add to timeline** — opens a single-choice add-only picker for custom timelines. Already assigned timelines remain visible but disabled. Choosing an unassigned timeline immediately creates only that membership; it does not duplicate the Moment.
 - **Forget**
 
 ### After 4 days
 
 - no editing
 - no forgetting
-- long-press must **not** expose either action
+- Edit and Forget are absent from contextual actions.
+- **Add to timeline** remains available when at least one custom timeline exists because membership is archive organization, not content editing.
+- When no custom timeline exists, long-press exposes no action after the edit window closes.
 
 ### Editing behavior
 

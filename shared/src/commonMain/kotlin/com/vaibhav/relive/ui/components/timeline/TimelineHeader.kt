@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -20,6 +21,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.icons.TimelineActionIcons
 
 /** Timeline detail header with optional back navigation and a centered wordmark. */
 @Composable
@@ -80,6 +82,76 @@ fun TimelineHeader(
                     ) {
                         CalendarGlyph(dims.icon.lg, colors.textSecondary, dims.stroke.icon)
                     }
+                }
+            }
+        }
+    }
+}
+
+/** A temporary All-timeline action bar for one long-pressed Moment. */
+@Composable
+fun TimelineMomentActionHeader(
+    showEdit: Boolean,
+    showAddToTimeline: Boolean,
+    addToTimelineEnabled: Boolean,
+    showForget: Boolean,
+    onExit: () -> Unit,
+    onEdit: () -> Unit,
+    onAddToTimeline: () -> Unit,
+    onForget: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = ReliveTheme.colors
+    val dims = ReliveTheme.dimensions
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(colors.bgHeader)
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .padding(horizontal = dims.spacing.md, vertical = dims.spacing.sm),
+    ) {
+        IconButton(
+            onClick = onExit,
+            modifier = Modifier
+                .size(dims.minTouchTarget)
+                .align(Alignment.CenterStart)
+                .semantics { contentDescription = "Exit moment selection" },
+        ) {
+            BackGlyph(dims.icon.lg, colors.textSecondary, dims.stroke.icon)
+        }
+        Row(
+            modifier = Modifier.align(Alignment.CenterEnd),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (showEdit) {
+                IconButton(
+                    onClick = onEdit,
+                    modifier = Modifier
+                        .size(dims.minTouchTarget)
+                        .semantics { contentDescription = "Edit moment" },
+                ) {
+                    Icon(TimelineActionIcons.Rename, contentDescription = null, tint = colors.textSecondary)
+                }
+            }
+            if (showAddToTimeline) {
+                IconButton(
+                    onClick = onAddToTimeline,
+                    enabled = addToTimelineEnabled,
+                    modifier = Modifier
+                        .size(dims.minTouchTarget)
+                        .semantics { contentDescription = "Add to timeline" },
+                ) {
+                    Icon(TimelineActionIcons.AddToTimeline, contentDescription = null, tint = colors.textSecondary)
+                }
+            }
+            if (showForget) {
+                IconButton(
+                    onClick = onForget,
+                    modifier = Modifier
+                        .size(dims.minTouchTarget)
+                        .semantics { contentDescription = "Forget moment" },
+                ) {
+                    Icon(TimelineActionIcons.Delete, contentDescription = null, tint = colors.actionDestructive)
                 }
             }
         }

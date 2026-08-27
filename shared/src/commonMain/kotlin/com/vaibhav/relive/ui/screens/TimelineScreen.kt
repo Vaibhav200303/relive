@@ -8,8 +8,12 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.animateScrollBy
@@ -17,9 +21,11 @@ import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
@@ -56,6 +62,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.SmallFloatingActionButton
@@ -70,6 +78,7 @@ import com.vaibhav.relive.domain.policy.EditWindow
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.BehaviorPreferences
 import com.vaibhav.relive.domain.model.Tag
+import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.model.ThemeReference
 import com.vaibhav.relive.domain.repository.MomentRepository
@@ -97,6 +106,7 @@ import com.vaibhav.relive.presentation.timeline.TimelineMomentVisibility
 import com.vaibhav.relive.presentation.timeline.resolveTimelineMomentVisibility
 import com.vaibhav.relive.presentation.timeline.TimelineScreenState
 import com.vaibhav.relive.presentation.timeline.TimelineViewModel
+import com.vaibhav.relive.presentation.timeline.resolveMomentContextualActionAvailability
 import com.vaibhav.relive.presentation.date.RediscoverCalendar
 import com.vaibhav.relive.presentation.timeline.toMoment
 import com.vaibhav.relive.presentation.navigation.shouldExpandComposerOnEnter
@@ -112,6 +122,7 @@ import com.vaibhav.relive.ui.components.composer.MomentComposer
 import com.vaibhav.relive.ui.components.timeline.EmptyCustomTimelinePlaceholder
 import com.vaibhav.relive.ui.components.timeline.MomentCard
 import com.vaibhav.relive.ui.components.timeline.TimelineHeader
+import com.vaibhav.relive.ui.components.timeline.TimelineMomentActionHeader
 import com.vaibhav.relive.ui.components.timeline.DateNavigationPicker
 import com.vaibhav.relive.ui.components.timeline.DiscardTimelineDraftDialog
 import com.vaibhav.relive.ui.components.timeline.DownGlyph
@@ -224,7 +235,13 @@ fun TimelineScreen(
         onBackToTimelineHome?.invoke()
         Unit
     }
-    ReliveBackHandler(enabled = onBackToTimelineHome != null) { leaveTimeline() }
+    ReliveBackHandler(enabled = onBackToTimelineHome != null) {
+        if (timelineState.momentActions.selectedMomentId != null) {
+            timelineViewModel.clearMomentActionSelection()
+        } else {
+            leaveTimeline()
+        }
+    }
 
     var navState by remember { mutableStateOf(TimelineMediaNavState.Idle) }
     var isComposerExpanded by remember { mutableStateOf(false) }
@@ -345,9 +362,17 @@ fun TimelineScreen(
                     composerViewModel.beginEdit(moment.toMoment())
                 ) {
                     ActivePlayback.stopActive()
+                    timelineViewModel.clearMomentActionSelection()
                 }
             },
             onForgetMoment = { moment -> momentToForget = moment },
+            onShowMomentActions = { moment ->
+                timelineViewModel.selectMomentForActions(moment.id) {
+                    scope.launch { snackbarHostState.showSnackbar("Could not load timeline assignments.") }
+                }
+            },
+            onExitMomentActions = timelineViewModel::clearMomentActionSelection,
+            onShowTimelineAssignmentPicker = timelineViewModel::showTimelineAssignmentPicker,
             onOpenMedia = { list, index ->
                 ActivePlayback.stopActive()
                 navState = navState.openFromCollage(list, index)
@@ -440,6 +465,25 @@ fun TimelineScreen(
             )
         }
 
+        if (timelineState.momentActions.isAssignmentPickerVisible) {
+            TimelineAssignmentDialog(
+                timelines = timelineState.customTimelines,
+                assignedTimelineIds = timelineState.momentActions.assignedTimelineIds,
+                isAssigning = timelineState.momentActions.isAssigning,
+                onDismiss = timelineViewModel::dismissTimelineAssignmentPicker,
+                onSelect = { timeline ->
+                    timelineViewModel.addSelectedMomentToTimeline(timeline.id) { succeeded ->
+                        haptics.perform(if (succeeded) ReliveHapticCue.Confirm else ReliveHapticCue.Reject)
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                if (succeeded) "Added to ${timeline.name}." else "Could not add to timeline.",
+                            )
+                        }
+                    }
+                },
+            )
+        }
+
         ComposerOverlayHost(
             overlay = composerState.overlay,
             mediaStore = mediaStore,
@@ -517,6 +561,7 @@ fun TimelineScreen(
                             onDeleted = { deleted ->
                                 cleanupForgottenAttachments(deleted, mediaStore)
                                 haptics.perform(ReliveHapticCue.Confirm)
+                                timelineViewModel.clearMomentActionSelection()
                                 momentToForget = null
                             },
                             onFailure = {
@@ -547,6 +592,85 @@ fun TimelineScreen(
             },
         )
     }
+}
+
+@Composable
+private fun TimelineAssignmentDialog(
+    timelines: List<Timeline.Custom>,
+    assignedTimelineIds: Set<TimelineId>,
+    isAssigning: Boolean,
+    onDismiss: () -> Unit,
+    onSelect: (Timeline.Custom) -> Unit,
+) {
+    val colors = ReliveTheme.colors
+    val dims = ReliveTheme.dimensions
+    val scrollState = rememberScrollState()
+    AlertDialog(
+        onDismissRequest = { if (!isAssigning) onDismiss() },
+        shape = RoundedCornerShape(dims.radii.dialog),
+        containerColor = colors.surfaceOverlay,
+        title = {
+            Text(
+                text = "Add to timeline",
+                style = ReliveTheme.typography.title,
+                color = colors.textPrimary,
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = dims.spacing.huge * 6)
+                    .verticalScroll(scrollState),
+            ) {
+                if (isAssigning) {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .size(dims.icon.md),
+                        color = colors.accent,
+                        strokeWidth = dims.stroke.icon,
+                    )
+                }
+                timelines.forEach { timeline ->
+                    val isAssigned = timeline.id in assignedTimelineIds
+                    TextButton(
+                        onClick = { onSelect(timeline) },
+                        enabled = !isAssigned && !isAssigning,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = dims.minTouchTarget),
+                        colors = ButtonDefaults.textButtonColors(contentColor = colors.textPrimary),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(timeline.name, style = ReliveTheme.typography.body)
+                                if (isAssigned) {
+                                    Text(
+                                        text = "Already added",
+                                        style = ReliveTheme.typography.subtitle,
+                                        color = colors.textSecondary,
+                                    )
+                                }
+                            }
+                            Checkbox(
+                                checked = isAssigned,
+                                onCheckedChange = null,
+                                enabled = isAssigned,
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isAssigning) { Text("Cancel") }
+        },
+        confirmButton = {},
+    )
 }
 
 @Composable
@@ -583,6 +707,9 @@ private fun TimelineContent(
     onToggleFavorite: (MomentId, Boolean) -> Unit,
     onEditMoment: (MomentPresentation) -> Unit,
     onForgetMoment: (MomentPresentation) -> Unit,
+    onShowMomentActions: (MomentPresentation) -> Unit,
+    onExitMomentActions: () -> Unit,
+    onShowTimelineAssignmentPicker: () -> Unit,
     onOpenMedia: (List<MomentAttachmentPresentation>, Int) -> Unit,
     onBack: (() -> Unit)?,
     onTitleChange: (String) -> Unit,
@@ -620,20 +747,59 @@ private fun TimelineContent(
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
     val motion = ReliveTheme.motion
+    val moments: List<MomentPresentation> = when (val state = timelineState.moments) {
+        TimelineMomentsState.Loading, TimelineMomentsState.Empty -> emptyList()
+        is TimelineMomentsState.Loaded -> state.moments
+    }
+    val selectedActionMoment = timelineState.momentActions.selectedMomentId?.let { selectedId ->
+        moments.firstOrNull { it.id == selectedId }
+    }
+    val actionAvailability = selectedActionMoment?.let { moment ->
+        resolveMomentContextualActionAvailability(
+            mode = mode,
+            currentTimeline = timelineState.currentTimeline,
+            isWithinEditWindow = timelineViewModelCanEdit(moment, clock),
+            hasCustomTimelines = timelineState.customTimelines.isNotEmpty(),
+        )
+    }
+    val isContextualActionMode = actionAvailability?.canEnter == true
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(colors.bgCanvas),
     ) {
-        if (mode is TimelineMode.ReadOnlySystemCollection) {
-            SystemCollectionHeader(title = mode.title, onBack = onBack ?: {})
-        } else {
-            TimelineHeader(
-                onBack = onBack,
-                onJumpToDate = onJumpToDate,
-                onChangeTheme = onChangeTheme,
-            )
+        AnimatedContent(
+            targetState = isContextualActionMode,
+            transitionSpec = {
+                (fadeIn(tween(motion.durations.fastMillis, easing = motion.easings.emphasized)) +
+                    slideInHorizontally(tween(motion.durations.fastMillis, easing = motion.easings.emphasized)) { it / 8 }) togetherWith
+                    (fadeOut(tween(motion.durations.fastMillis, easing = motion.easings.emphasized)) +
+                        slideOutHorizontally(tween(motion.durations.fastMillis, easing = motion.easings.emphasized)) { -it / 8 })
+            },
+            label = "moment selection app bar",
+        ) { inActionMode ->
+            if (inActionMode && selectedActionMoment != null && actionAvailability != null) {
+                TimelineMomentActionHeader(
+                    showEdit = actionAvailability.canEdit,
+                    showAddToTimeline = actionAvailability.canAddToTimeline,
+                    addToTimelineEnabled = !timelineState.momentActions.isLoadingAssignments &&
+                        !timelineState.momentActions.hasAssignmentLoadFailed,
+                    showForget = actionAvailability.canForget,
+                    onExit = onExitMomentActions,
+                    onEdit = { onEditMoment(selectedActionMoment) },
+                    onAddToTimeline = onShowTimelineAssignmentPicker,
+                    onForget = { onForgetMoment(selectedActionMoment) },
+                )
+            } else if (mode is TimelineMode.ReadOnlySystemCollection) {
+                SystemCollectionHeader(title = mode.title, onBack = onBack ?: {})
+            } else {
+                TimelineHeader(
+                    onBack = onBack,
+                    onJumpToDate = onJumpToDate,
+                    onChangeTheme = onChangeTheme,
+                )
+            }
         }
 
         Box(
@@ -642,10 +808,6 @@ private fun TimelineContent(
                 .padding(horizontal = dims.timeline.horizontalPadding)
                 .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime)),
         ) {
-            val moments: List<MomentPresentation> = when (val state = timelineState.moments) {
-                TimelineMomentsState.Loading, TimelineMomentsState.Empty -> emptyList()
-                is TimelineMomentsState.Loaded -> state.moments
-            }
             val customName = (timelineState.currentTimeline as? CurrentTimeline.Custom)?.let { current ->
                 timelineState.customTimelines.firstOrNull { it.id == current.id }?.name
             }
@@ -774,6 +936,19 @@ private fun TimelineContent(
                                 canEditOrForget = mode.allowsMutations && timelineViewModelCanEdit(moment, clock),
                                 onEdit = { onEditMoment(moment) },
                                 onForget = { onForgetMoment(moment) },
+                                onShowContextualActions = if (
+                                    resolveMomentContextualActionAvailability(
+                                        mode = mode,
+                                        currentTimeline = timelineState.currentTimeline,
+                                        isWithinEditWindow = timelineViewModelCanEdit(moment, clock),
+                                        hasCustomTimelines = timelineState.customTimelines.isNotEmpty(),
+                                    ).canEnter
+                                ) {
+                                    { onShowMomentActions(moment) }
+                                } else {
+                                    null
+                                },
+                                isContextuallySelected = selectedActionMoment?.id == moment.id,
                                 hasPreviousMoment = index > 0,
                                 showLocation = momentVisibility.showLocations,
                                 showTags = momentVisibility.showTags,

@@ -135,6 +135,55 @@ class TimelineViewModelTest {
     }
 
     @Test
+    fun selectedAllMomentLoadsMembershipsAndAddsOneCustomTimeline() = runTest {
+        val family = Timeline.Custom(TimelineId("family"), "Family")
+        val travel = Timeline.Custom(TimelineId("travel"), "Travel")
+        val timelines = FakeTimelineRepository()
+        timelines.createCustom(family, Instant(1L))
+        timelines.createCustom(travel, Instant(2L))
+        timelines.addMembership(MomentId("target"), family.id)
+        val vm = newViewModel(
+            momentRepository = FakeMomentRepository(initialAll = listOf(moment("target", 1L))),
+            timelineRepository = timelines,
+        )
+
+        vm.selectMomentForActions(MomentId("target")) { error("membership load should succeed") }
+
+        assertEquals(MomentId("target"), vm.state.value.momentActions.selectedMomentId)
+        assertEquals(setOf(family.id), vm.state.value.momentActions.assignedTimelineIds)
+        vm.showTimelineAssignmentPicker()
+        assertTrue(vm.state.value.momentActions.isAssignmentPickerVisible)
+
+        var succeeded: Boolean? = null
+        vm.addSelectedMomentToTimeline(travel.id) { succeeded = it }
+
+        assertEquals(true, succeeded)
+        assertEquals(setOf(family.id, travel.id), timelines.timelinesFor(MomentId("target")).toSet())
+        assertEquals(null, vm.state.value.momentActions.selectedMomentId)
+    }
+
+    @Test
+    fun failedTimelineAssignmentKeepsPickerAndSelectionForRetry() = runTest {
+        val timeline = Timeline.Custom(TimelineId("family"), "Family")
+        val timelines = FakeTimelineRepository(membershipFailure = IllegalStateException("db"))
+        timelines.createCustom(timeline, Instant(1L))
+        val vm = newViewModel(
+            momentRepository = FakeMomentRepository(initialAll = listOf(moment("target", 1L))),
+            timelineRepository = timelines,
+        )
+        vm.selectMomentForActions(MomentId("target")) { error("membership load should succeed") }
+        vm.showTimelineAssignmentPicker()
+
+        var succeeded: Boolean? = null
+        vm.addSelectedMomentToTimeline(timeline.id) { succeeded = it }
+
+        assertEquals(false, succeeded)
+        assertEquals(MomentId("target"), vm.state.value.momentActions.selectedMomentId)
+        assertTrue(vm.state.value.momentActions.isAssignmentPickerVisible)
+        assertFalse(vm.state.value.momentActions.isAssigning)
+    }
+
+    @Test
     fun emptyCustomTimelineYieldsEmptyState() = runTest {
         val vm = newViewModel()
 
@@ -446,6 +495,7 @@ private class FakeMomentRepository(
 
 private class FakeTimelineRepository(
     private val createFailure: Throwable? = null,
+    private val membershipFailure: Throwable? = null,
 ) : TimelineRepository {
     private val timelines = MutableStateFlow<List<Timeline.Custom>>(emptyList())
     private val memberships = mutableMapOf<MomentId, MutableSet<TimelineId>>()
@@ -479,6 +529,7 @@ private class FakeTimelineRepository(
     }
 
     override suspend fun addMembership(momentId: MomentId, timelineId: TimelineId) {
+        membershipFailure?.let { throw it }
         memberships.getOrPut(momentId) { mutableSetOf() }.add(timelineId)
     }
 

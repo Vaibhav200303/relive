@@ -44,7 +44,43 @@ data class TimelineScreenState(
     val currentTimeline: CurrentTimeline = CurrentTimeline.All,
     val moments: TimelineMomentsState = TimelineMomentsState.Loading,
     val dateNavigation: DateNavigationState? = null,
+    val momentActions: MomentContextualActionState = MomentContextualActionState(),
 )
+
+/** UI state for the single selected Moment in All's contextual action app bar. */
+data class MomentContextualActionState(
+    val selectedMomentId: MomentId? = null,
+    val assignedTimelineIds: Set<TimelineId> = emptySet(),
+    val isLoadingAssignments: Boolean = false,
+    val hasAssignmentLoadFailed: Boolean = false,
+    val isAssignmentPickerVisible: Boolean = false,
+    val isAssigning: Boolean = false,
+)
+
+data class MomentContextualActionAvailability(
+    val canEnter: Boolean,
+    val canEdit: Boolean,
+    val canAddToTimeline: Boolean,
+    val canForget: Boolean,
+)
+
+/** Contextual actions are intentionally an All-timeline-only interaction. */
+fun resolveMomentContextualActionAvailability(
+    mode: TimelineMode,
+    currentTimeline: CurrentTimeline,
+    isWithinEditWindow: Boolean,
+    hasCustomTimelines: Boolean,
+): MomentContextualActionAvailability {
+    val isEditableAll = mode.allowsMutations && currentTimeline == CurrentTimeline.All
+    val canAddToTimeline = isEditableAll && hasCustomTimelines
+    val canEditOrForget = isEditableAll && isWithinEditWindow
+    return MomentContextualActionAvailability(
+        canEnter = canAddToTimeline || canEditOrForget,
+        canEdit = canEditOrForget,
+        canAddToTimeline = canAddToTimeline,
+        canForget = canEditOrForget,
+    )
+}
 
 data class DateNavigationState(
     val momentId: MomentId?,

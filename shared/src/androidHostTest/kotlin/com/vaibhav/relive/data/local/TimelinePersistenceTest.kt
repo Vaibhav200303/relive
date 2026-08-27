@@ -207,6 +207,7 @@ class TimelinePersistenceTest {
         fx.timelines.addMembership(MomentId("m1"), TimelineId("t1"))
         assertEquals(listOf(TimelineId("t1")), fx.timelines.timelinesFor(MomentId("m1")))
         assertEquals(1, fx.moments.listInTimeline(TimelineId("t1")).size)
+        assertEquals(1L, fx.database.momentsQueries.countMoments().executeAsOne())
     }
 
     @Test fun renameAndUpdateTheme() = runTest {

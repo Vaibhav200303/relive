@@ -234,7 +234,9 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 - [ ] Waveform shows real live amplitude.
 
 ### Phase 6 — Edit / forget (physical-device checklist complete)
-- [x] Long-press and accessibility actions offer Edit / Forget only before `createdAt + 4 days`; verify the exact boundary is ineligible.
+- [ ] In All, long-press and accessibility actions smoothly enter the contextual app bar; Back exits selection before timeline navigation.
+- [ ] Edit / Forget appear only before `createdAt + 4 days`; verify the exact boundary is ineligible while Add to timeline remains available when custom timelines exist.
+- [ ] Add to timeline lists current assignments as disabled, adds one selected unassigned custom timeline without duplicating the Moment, and retains the picker for retry after failure.
 - [x] Edit saves inline without changing Moment identity, creation time, favorite state, or custom-timeline memberships; an edit already open may save after expiry.
 - [x] Tap outside the edit container saves; every editor control (text, tags, media, recording, playback, location, favorite) does not.
 - [x] Removing existing media deletes its file only after a successful edit; failed edits leave the original moment and media intact.

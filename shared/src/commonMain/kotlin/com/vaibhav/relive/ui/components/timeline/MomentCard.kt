@@ -1,6 +1,8 @@
 package com.vaibhav.relive.ui.components.timeline
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -60,6 +62,8 @@ fun MomentCard(
     canEditOrForget: Boolean,
     onEdit: () -> Unit,
     onForget: () -> Unit,
+    onShowContextualActions: (() -> Unit)? = null,
+    isContextuallySelected: Boolean = false,
     hasPreviousMoment: Boolean,
     showLocation: Boolean = true,
     showTags: Boolean = true,
@@ -70,12 +74,23 @@ fun MomentCard(
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
     val haptics = rememberReliveHaptics()
+    val motion = ReliveTheme.motion
+    val selectionColor by animateColorAsState(
+        targetValue = if (isContextuallySelected) {
+            colors.accent.copy(alpha = com.vaibhav.relive.ui.theme.ReliveOpacity.Low)
+        } else {
+            colors.bgCanvas
+        },
+        animationSpec = tween(motion.durations.fastMillis, easing = motion.easings.emphasized),
+        label = "moment contextual selection",
+    )
 
     var actionsOpen by remember(moment.id, canEditOrForget) { mutableStateOf(false) }
     Box {
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .background(selectionColor)
             .drawBehind {
                 val axis = dims.timeline.contentInset.toPx() / 2f
                 val markerCenter = dims.spacing.xl.toPx() + dims.minTouchTarget.toPx() / 2f
@@ -90,14 +105,25 @@ fun MomentCard(
             .combinedClickable(
                 onClick = {},
                 onLongClick = {
-                    if (canEditOrForget) {
+                    if (onShowContextualActions != null) {
+                        haptics.perform(ReliveHapticCue.Context)
+                        onShowContextualActions()
+                    } else if (canEditOrForget) {
                         haptics.perform(ReliveHapticCue.Context)
                         actionsOpen = true
                     }
                 },
             )
             .semantics {
-                if (canEditOrForget) {
+                if (onShowContextualActions != null) {
+                    customActions = listOf(
+                        CustomAccessibilityAction("Show moment actions") {
+                            haptics.perform(ReliveHapticCue.Action)
+                            onShowContextualActions()
+                            true
+                        },
+                    )
+                } else if (canEditOrForget) {
                     customActions = listOf(
                         CustomAccessibilityAction("Edit moment") {
                             haptics.perform(ReliveHapticCue.Action)

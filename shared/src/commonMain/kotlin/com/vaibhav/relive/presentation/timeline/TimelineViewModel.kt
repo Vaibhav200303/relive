@@ -103,6 +103,97 @@ class TimelineViewModel(
 
     fun canEditOrForget(moment: Moment): Boolean = EditWindow.isEditable(moment, clock)
 
+    /** Opens All's single-Moment contextual action mode and loads current memberships. */
+    fun selectMomentForActions(momentId: MomentId, onAssignmentLoadFailure: () -> Unit) {
+        if (!mode.allowsMutations || _state.value.currentTimeline != CurrentTimeline.All) return
+        _state.update {
+            it.copy(
+                momentActions = MomentContextualActionState(
+                    selectedMomentId = momentId,
+                    isLoadingAssignments = true,
+                ),
+            )
+        }
+        scope.launch {
+            val assigned = runCatching { timelineRepository.timelinesFor(momentId) }
+            _state.update { current ->
+                if (current.momentActions.selectedMomentId != momentId) {
+                    current
+                } else {
+                    current.copy(
+                        momentActions = current.momentActions.copy(
+                            assignedTimelineIds = assigned.getOrDefault(emptyList()).toSet(),
+                            isLoadingAssignments = false,
+                            hasAssignmentLoadFailed = assigned.isFailure,
+                        ),
+                    )
+                }
+            }
+            if (assigned.isFailure) onAssignmentLoadFailure()
+        }
+    }
+
+    fun clearMomentActionSelection() {
+        _state.update { it.copy(momentActions = MomentContextualActionState()) }
+    }
+
+    fun showTimelineAssignmentPicker() {
+        _state.update { current ->
+            if (
+                current.currentTimeline == CurrentTimeline.All &&
+                current.momentActions.selectedMomentId != null &&
+                !current.momentActions.isLoadingAssignments &&
+                !current.momentActions.hasAssignmentLoadFailed
+            ) {
+                current.copy(momentActions = current.momentActions.copy(isAssignmentPickerVisible = true))
+            } else {
+                current
+            }
+        }
+    }
+
+    fun dismissTimelineAssignmentPicker() {
+        _state.update { current ->
+            current.copy(momentActions = current.momentActions.copy(isAssignmentPickerVisible = false))
+        }
+    }
+
+    /** Adds the selected Moment to one custom timeline without modifying existing memberships. */
+    fun addSelectedMomentToTimeline(timelineId: TimelineId, onResult: (Boolean) -> Unit) {
+        val selected = _state.value.momentActions.selectedMomentId ?: run {
+            onResult(false)
+            return
+        }
+        if (!mode.allowsMutations || _state.value.currentTimeline != CurrentTimeline.All) {
+            onResult(false)
+            return
+        }
+        _state.update { current ->
+            current.copy(momentActions = current.momentActions.copy(isAssigning = true))
+        }
+        scope.launch {
+            val succeeded = runCatching { timelineRepository.addMembership(selected, timelineId) }.isSuccess
+            if (succeeded) {
+                _state.update { current ->
+                    if (current.momentActions.selectedMomentId == selected) {
+                        current.copy(momentActions = MomentContextualActionState())
+                    } else {
+                        current
+                    }
+                }
+            } else {
+                _state.update { current ->
+                    if (current.momentActions.selectedMomentId == selected) {
+                        current.copy(momentActions = current.momentActions.copy(isAssigning = false))
+                    } else {
+                        current
+                    }
+                }
+            }
+            onResult(succeeded)
+        }
+    }
+
     /** Checks the policy again at the destructive boundary before touching persistence. */
     fun forget(moment: Moment, onDeleted: (Moment) -> Unit, onFailure: () -> Unit) {
         if (!mode.allowsMutations) {
@@ -139,6 +230,9 @@ class TimelineViewModel(
                             } else {
                                 TimelineMomentsState.Loaded(presentation)
                             },
+                            momentActions = current.momentActions.takeIf { actions ->
+                                actions.selectedMomentId == null || presentation.any { it.id == actions.selectedMomentId }
+                            } ?: MomentContextualActionState(),
                         )
                     }
                 }

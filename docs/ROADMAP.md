@@ -64,7 +64,7 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 
 ## Phase 6 — Edit / forget rules  ☑
 
-- Long-press within 4 days shows Edit / Forget; hidden after 4 days (keyed on `createdAt`).
+- Long-press in All opens a swift contextual app bar: Edit / Forget remain within 4 days (keyed on `createdAt`), while add-to-custom-timeline organization remains available afterward.
 - Inline editing (add/remove media while editing); tap-outside save that does not trigger on control interactions.
 - Forget with confirmation → permanent removal.
 - **Exit:** 4-day rule enforced everywhere; edit/forget and window-boundary tests pass.

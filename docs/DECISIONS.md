@@ -553,6 +553,13 @@ Format for each entry:
 - **Decision:** All editable and read-only timeline-detail surfaces add one bottom-centered Material 3 Expressive small floating action button only after manual movement toward older Moments. It uses the existing floating-surface, accent, pill, icon/stroke, and minimum-touch-target tokens. Selecting it runs the LazyColumn's animated scroll to its terminal item; it never calls an immediate position jump for this action. During the motion the button hides. The first pointer-down in the scrolling content cancels and consumes that gesture, preserving the exact current position and preventing accidental content activation. Initial bottom placement, date navigation, selected-Moment navigation, and newly saved-Moment animation do not reveal the control. It remains hidden for empty or non-scrollable timelines and when the newest end is reached; a visible Snackbar offsets above it.
 - **Consequences:** The control is an explicit additive exception to the timeline reference, not a replacement for its rail, composer, header, or existing top-level floating controls. It changes no domain model, persistence, navigation route, dependency, or public API. The shared UI owns only internal affordance state and one cancellable scroll job; reduced-motion scaling remains governed by Compose.
 
+## ADR-0048 — Contextual All-Moment actions and post-window organization
+
+- **Date:** 2026-08-27 · **Status:** Accepted
+- **Context:** The anchored Moment action menu interrupts All's continuous timeline and does not provide a way to file an already-created memory into a custom timeline. The 4-day policy is deliberately about editing and permanent deletion, while many-to-many membership is non-destructive archive organization.
+- **Decision:** A long-press in editable All selects one Moment and swaps the standard header for a fixed-height contextual app bar using Relive fast emphasized fade/short-slide motion. Back exits selection. Before `createdAt + 4 days`, Edit and Forget appear; Add to timeline appears whenever custom timelines exist, including after the edit window. Its Material 3 picker is add-only and single-choice: assigned timelines are disabled, choosing an unassigned timeline calls the existing idempotent membership API, and success restores the normal header. Custom timeline detail retains its existing long-press interaction.
+- **Consequences:** No schema, dependency, Moment mutation, or duplicate persistence is introduced. The 4-day rule remains authoritative for Edit/Forget and is rechecked at those action boundaries. Context, picker, success, and failure feedback use the existing semantic haptic vocabulary and Relive dialog/tokens.
+
 ## Template for new decisions
 
 ```
