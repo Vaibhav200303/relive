@@ -12,7 +12,7 @@ data class TimelineAppearance(
     val momentTheme: MomentTheme = MomentTheme.WarmTerracotta,
 )
 
-/** Placeholder wallpaper identity for the first redesign stage. */
+/** Selectable wallpaper identities for a timeline. */
 enum class TimelineWallpaper {
     WarmCream,
     BlushPink,
@@ -20,6 +20,16 @@ enum class TimelineWallpaper {
     Lavender,
     PowderBlue,
     SoftPeach,
+    MidnightNavy,
+    Evergreen,
+    MauveDusk,
+    TerracottaGlow,
+    CharcoalMist,
+    CoralBloom,
+    AquaSky,
+    GoldenHour,
+    VioletHaze,
+    SapphireBlue,
 }
 
 /**

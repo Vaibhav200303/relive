@@ -22,40 +22,19 @@ data class TimelineMomentForegroundColors(
 )
 
 /**
- * The approved wallpaper assets are light in every appearance mode. Select the
- * stronger of the active semantic color and a dark editorial fallback so Moment
- * text retains contrast without modifying the wallpaper.
+ * Moment copy sits directly on a timeline wallpaper, so resolve every foreground
+ * against that wallpaper regardless of the app's appearance mode.
  */
 internal fun timelineMomentForegroundColors(
     colors: ReliveColors,
     wallpaper: TimelineWallpaperPalette,
-    isDark: Boolean,
-): TimelineMomentForegroundColors {
-    if (!isDark) {
-        return TimelineMomentForegroundColors(
-            textPrimary = colors.textPrimary,
-            textSecondary = colors.textSecondary,
-            textMuted = colors.textMuted,
-            accent = colors.accent,
-            accentMuted = colors.accentMuted,
-        )
-    }
-    val textPrimary = higherContrastText(
-        background = wallpaper.backgroundColor,
-        candidates = listOf(colors.textPrimary, Color(0xFF1C1916)),
-    )
-    val accent = higherContrastText(
-        background = wallpaper.backgroundColor,
-        candidates = listOf(colors.accent, Color(0xFF6F4E37)),
-    )
-    return TimelineMomentForegroundColors(
-        textPrimary = textPrimary,
-        textSecondary = blend(textPrimary, wallpaper.backgroundColor, towardWeight = 0.18f),
-        textMuted = blend(textPrimary, wallpaper.backgroundColor, towardWeight = 0.32f),
-        accent = accent,
-        accentMuted = blend(accent, wallpaper.backgroundColor, towardWeight = 0.18f),
-    )
-}
+): TimelineMomentForegroundColors = TimelineMomentForegroundColors(
+    textPrimary = readableTimelineForeground(colors.textPrimary, wallpaper.backgroundColor),
+    textSecondary = readableTimelineForeground(colors.textSecondary, wallpaper.backgroundColor),
+    textMuted = readableTimelineForeground(colors.textMuted, wallpaper.backgroundColor),
+    accent = readableTimelineForeground(colors.accent, wallpaper.backgroundColor),
+    accentMuted = readableTimelineForeground(colors.accentMuted, wallpaper.backgroundColor),
+)
 
 /** Resolves the saved wallpaper identity without consulting the global app palette. */
 fun timelineWallpaperPalette(
@@ -69,6 +48,16 @@ fun timelineWallpaperPalette(
         TimelineWallpaper.Lavender -> TimelineWallpaperPalette(Color(0xFF1C1921), Color(0xFF40364C))
         TimelineWallpaper.PowderBlue -> TimelineWallpaperPalette(Color(0xFF161B21), Color(0xFF304050))
         TimelineWallpaper.SoftPeach -> TimelineWallpaperPalette(Color(0xFF201915), Color(0xFF4B3328))
+        TimelineWallpaper.MidnightNavy -> TimelineWallpaperPalette(Color(0xFF10233D), Color(0xFF6D87AC))
+        TimelineWallpaper.Evergreen -> TimelineWallpaperPalette(Color(0xFF273B27), Color(0xFF8D9A78))
+        TimelineWallpaper.MauveDusk -> TimelineWallpaperPalette(Color(0xFF584854), Color(0xFFD9B5C4))
+        TimelineWallpaper.TerracottaGlow -> TimelineWallpaperPalette(Color(0xFF6A3326), Color(0xFFFFC395))
+        TimelineWallpaper.CharcoalMist -> TimelineWallpaperPalette(Color(0xFF2F302E), Color(0xFF928B82))
+        TimelineWallpaper.CoralBloom -> TimelineWallpaperPalette(Color(0xFF6A2F2B), Color(0xFFFFA090))
+        TimelineWallpaper.AquaSky -> TimelineWallpaperPalette(Color(0xFF174D56), Color(0xFF7DECF3))
+        TimelineWallpaper.GoldenHour -> TimelineWallpaperPalette(Color(0xFF63450E), Color(0xFFFFE18A))
+        TimelineWallpaper.VioletHaze -> TimelineWallpaperPalette(Color(0xFF44206F), Color(0xFFD9B6FF))
+        TimelineWallpaper.SapphireBlue -> TimelineWallpaperPalette(Color(0xFF1B347E), Color(0xFFA8C5FF))
     }
 } else {
     when (wallpaper) {
@@ -78,14 +67,27 @@ fun timelineWallpaperPalette(
         TimelineWallpaper.Lavender -> TimelineWallpaperPalette(Color(0xFFEDE6F9), Color(0xFFCBBEE5))
         TimelineWallpaper.PowderBlue -> TimelineWallpaperPalette(Color(0xFFE1EEFA), Color(0xFFB1CFEA))
         TimelineWallpaper.SoftPeach -> TimelineWallpaperPalette(Color(0xFFFEEBE1), Color(0xFFF5B99B))
+        TimelineWallpaper.MidnightNavy -> TimelineWallpaperPalette(Color(0xFF10233D), Color(0xFF6D87AC))
+        TimelineWallpaper.Evergreen -> TimelineWallpaperPalette(Color(0xFF273B27), Color(0xFF8D9A78))
+        TimelineWallpaper.MauveDusk -> TimelineWallpaperPalette(Color(0xFF6B5362), Color(0xFFD9B5C4))
+        TimelineWallpaper.TerracottaGlow -> TimelineWallpaperPalette(Color(0xFF87432A), Color(0xFFFFC395))
+        TimelineWallpaper.CharcoalMist -> TimelineWallpaperPalette(Color(0xFF2F302E), Color(0xFF928B82))
+        TimelineWallpaper.CoralBloom -> TimelineWallpaperPalette(Color(0xFFFF856F), Color(0xFFD64A3E))
+        TimelineWallpaper.AquaSky -> TimelineWallpaperPalette(Color(0xFF6DDDE8), Color(0xFF2FB2CD))
+        TimelineWallpaper.GoldenHour -> TimelineWallpaperPalette(Color(0xFFFFD34D), Color(0xFFE99A1D))
+        TimelineWallpaper.VioletHaze -> TimelineWallpaperPalette(Color(0xFFA85BEA), Color(0xFF6F37BA))
+        TimelineWallpaper.SapphireBlue -> TimelineWallpaperPalette(Color(0xFF5D90FF), Color(0xFF3557D6))
     }
 }
 
 private fun higherContrastText(background: Color, candidates: List<Color>): Color =
     candidates.maxBy { contrastRatio(it, background) }
 
-private fun blend(from: Color, toward: Color, towardWeight: Float): Color = Color(
-    red = from.red + (toward.red - from.red) * towardWeight,
-    green = from.green + (toward.green - from.green) * towardWeight,
-    blue = from.blue + (toward.blue - from.blue) * towardWeight,
-)
+private fun readableTimelineForeground(semanticColor: Color, background: Color): Color {
+    val opaqueSemanticColor = semanticColor.copy(alpha = 1f)
+    return if (contrastRatio(opaqueSemanticColor, background) >= 4.5f) {
+        opaqueSemanticColor
+    } else {
+        higherContrastText(background, listOf(opaqueSemanticColor, Color.Black, Color.White))
+    }
+}

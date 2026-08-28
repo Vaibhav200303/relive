@@ -20,6 +20,16 @@ class TimelineWallpaperPaletteTest {
         assertEquals(TimelineWallpaperPalette(Color(0xFFEDE6F9), Color(0xFFCBBEE5)), timelineWallpaperPalette(TimelineWallpaper.Lavender, false))
         assertEquals(TimelineWallpaperPalette(Color(0xFFE1EEFA), Color(0xFFB1CFEA)), timelineWallpaperPalette(TimelineWallpaper.PowderBlue, false))
         assertEquals(TimelineWallpaperPalette(Color(0xFFFEEBE1), Color(0xFFF5B99B)), timelineWallpaperPalette(TimelineWallpaper.SoftPeach, false))
+        assertEquals(TimelineWallpaperPalette(Color(0xFF10233D), Color(0xFF6D87AC)), timelineWallpaperPalette(TimelineWallpaper.MidnightNavy, false))
+        assertEquals(TimelineWallpaperPalette(Color(0xFF273B27), Color(0xFF8D9A78)), timelineWallpaperPalette(TimelineWallpaper.Evergreen, false))
+        assertEquals(TimelineWallpaperPalette(Color(0xFF6B5362), Color(0xFFD9B5C4)), timelineWallpaperPalette(TimelineWallpaper.MauveDusk, false))
+        assertEquals(TimelineWallpaperPalette(Color(0xFF87432A), Color(0xFFFFC395)), timelineWallpaperPalette(TimelineWallpaper.TerracottaGlow, false))
+        assertEquals(TimelineWallpaperPalette(Color(0xFF2F302E), Color(0xFF928B82)), timelineWallpaperPalette(TimelineWallpaper.CharcoalMist, false))
+        assertEquals(TimelineWallpaperPalette(Color(0xFFFF856F), Color(0xFFD64A3E)), timelineWallpaperPalette(TimelineWallpaper.CoralBloom, false))
+        assertEquals(TimelineWallpaperPalette(Color(0xFF6DDDE8), Color(0xFF2FB2CD)), timelineWallpaperPalette(TimelineWallpaper.AquaSky, false))
+        assertEquals(TimelineWallpaperPalette(Color(0xFFFFD34D), Color(0xFFE99A1D)), timelineWallpaperPalette(TimelineWallpaper.GoldenHour, false))
+        assertEquals(TimelineWallpaperPalette(Color(0xFFA85BEA), Color(0xFF6F37BA)), timelineWallpaperPalette(TimelineWallpaper.VioletHaze, false))
+        assertEquals(TimelineWallpaperPalette(Color(0xFF5D90FF), Color(0xFF3557D6)), timelineWallpaperPalette(TimelineWallpaper.SapphireBlue, false))
     }
 
     @Test
@@ -31,6 +41,16 @@ class TimelineWallpaperPaletteTest {
             TimelineWallpaper.Lavender to TimelineWallpaperPalette(Color(0xFF1C1921), Color(0xFF40364C)),
             TimelineWallpaper.PowderBlue to TimelineWallpaperPalette(Color(0xFF161B21), Color(0xFF304050)),
             TimelineWallpaper.SoftPeach to TimelineWallpaperPalette(Color(0xFF201915), Color(0xFF4B3328)),
+            TimelineWallpaper.MidnightNavy to TimelineWallpaperPalette(Color(0xFF10233D), Color(0xFF6D87AC)),
+            TimelineWallpaper.Evergreen to TimelineWallpaperPalette(Color(0xFF273B27), Color(0xFF8D9A78)),
+            TimelineWallpaper.MauveDusk to TimelineWallpaperPalette(Color(0xFF584854), Color(0xFFD9B5C4)),
+            TimelineWallpaper.TerracottaGlow to TimelineWallpaperPalette(Color(0xFF6A3326), Color(0xFFFFC395)),
+            TimelineWallpaper.CharcoalMist to TimelineWallpaperPalette(Color(0xFF2F302E), Color(0xFF928B82)),
+            TimelineWallpaper.CoralBloom to TimelineWallpaperPalette(Color(0xFF6A2F2B), Color(0xFFFFA090)),
+            TimelineWallpaper.AquaSky to TimelineWallpaperPalette(Color(0xFF174D56), Color(0xFF7DECF3)),
+            TimelineWallpaper.GoldenHour to TimelineWallpaperPalette(Color(0xFF63450E), Color(0xFFFFE18A)),
+            TimelineWallpaper.VioletHaze to TimelineWallpaperPalette(Color(0xFF44206F), Color(0xFFD9B6FF)),
+            TimelineWallpaper.SapphireBlue to TimelineWallpaperPalette(Color(0xFF1B347E), Color(0xFFA8C5FF)),
         )
 
         expected.forEach { (wallpaper, palette) ->
@@ -40,16 +60,24 @@ class TimelineWallpaperPaletteTest {
     }
 
     @Test
-    fun momentForegroundsStayReadableOverTheUnchangedLightWallpaperInDarkMode() {
-        val darkColors = reliveColorsFor(OriginalPaletteAnchors, isDark = true)
+    fun momentForegroundsStayReadableOverEveryWallpaperInEveryAppearanceMode() {
+        listOf(false, true).forEach { isDark ->
+            val colors = reliveColorsFor(OriginalPaletteAnchors, isDark)
 
-        TimelineWallpaper.entries.forEach { wallpaper ->
-            val background = timelineWallpaperPalette(wallpaper, isDark = false)
-            val foreground = timelineMomentForegroundColors(darkColors, background, isDark = true)
+            TimelineWallpaper.entries.forEach { wallpaper ->
+                val background = timelineWallpaperPalette(wallpaper, isDark = false)
+                val foreground = timelineMomentForegroundColors(colors, background)
 
-            assertTrue(contrastRatio(foreground.textPrimary, background.backgroundColor) >= 4.5f)
-            assertTrue(contrastRatio(foreground.textSecondary, background.backgroundColor) >= 4.5f)
-            assertTrue(contrastRatio(foreground.accent, background.backgroundColor) >= 4.5f)
+                listOf(
+                    foreground.textPrimary,
+                    foreground.textSecondary,
+                    foreground.textMuted,
+                    foreground.accent,
+                    foreground.accentMuted,
+                ).forEach { color ->
+                    assertTrue(contrastRatio(color, background.backgroundColor) >= 4.5f)
+                }
+            }
         }
     }
 

@@ -77,7 +77,6 @@ fun MomentCard(
     val momentColors = timelineMomentForegroundColors(
         colors = colors,
         wallpaper = LocalTimelineWallpaperPalette.current,
-        isDark = ReliveTheme.isDark,
     )
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions

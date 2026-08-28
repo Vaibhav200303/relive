@@ -28,11 +28,21 @@ import kotlin.math.min
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import relive.shared.generated.resources.Res
+import relive.shared.generated.resources.timeline_wallpaper_aqua_sky
 import relive.shared.generated.resources.timeline_wallpaper_blush_pink
+import relive.shared.generated.resources.timeline_wallpaper_charcoal_mist
+import relive.shared.generated.resources.timeline_wallpaper_coral_bloom
+import relive.shared.generated.resources.timeline_wallpaper_evergreen
+import relive.shared.generated.resources.timeline_wallpaper_golden_hour
 import relive.shared.generated.resources.timeline_wallpaper_lavender
+import relive.shared.generated.resources.timeline_wallpaper_mauve_dusk
+import relive.shared.generated.resources.timeline_wallpaper_midnight_navy
 import relive.shared.generated.resources.timeline_wallpaper_powder_blue
 import relive.shared.generated.resources.timeline_wallpaper_sage_green
+import relive.shared.generated.resources.timeline_wallpaper_sapphire_blue
 import relive.shared.generated.resources.timeline_wallpaper_soft_peach
+import relive.shared.generated.resources.timeline_wallpaper_terracotta_glow
+import relive.shared.generated.resources.timeline_wallpaper_violet_haze
 import relive.shared.generated.resources.timeline_wallpaper_warm_cream
 
 @Immutable
@@ -94,6 +104,16 @@ private fun timelineWallpaperResource(wallpaper: TimelineWallpaper): DrawableRes
     TimelineWallpaper.Lavender -> Res.drawable.timeline_wallpaper_lavender
     TimelineWallpaper.PowderBlue -> Res.drawable.timeline_wallpaper_powder_blue
     TimelineWallpaper.SoftPeach -> Res.drawable.timeline_wallpaper_soft_peach
+    TimelineWallpaper.MidnightNavy -> Res.drawable.timeline_wallpaper_midnight_navy
+    TimelineWallpaper.Evergreen -> Res.drawable.timeline_wallpaper_evergreen
+    TimelineWallpaper.MauveDusk -> Res.drawable.timeline_wallpaper_mauve_dusk
+    TimelineWallpaper.TerracottaGlow -> Res.drawable.timeline_wallpaper_terracotta_glow
+    TimelineWallpaper.CharcoalMist -> Res.drawable.timeline_wallpaper_charcoal_mist
+    TimelineWallpaper.CoralBloom -> Res.drawable.timeline_wallpaper_coral_bloom
+    TimelineWallpaper.AquaSky -> Res.drawable.timeline_wallpaper_aqua_sky
+    TimelineWallpaper.GoldenHour -> Res.drawable.timeline_wallpaper_golden_hour
+    TimelineWallpaper.VioletHaze -> Res.drawable.timeline_wallpaper_violet_haze
+    TimelineWallpaper.SapphireBlue -> Res.drawable.timeline_wallpaper_sapphire_blue
 }
 
 enum class MemoryDoodleGlyph {

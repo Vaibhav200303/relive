@@ -97,7 +97,7 @@ fun TimelineThemeScreen(
             Text("Choose a backdrop for this timeline.", style = ReliveTheme.typography.body, color = colors.textSecondary)
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
-                userScrollEnabled = false,
+                userScrollEnabled = true,
                 horizontalArrangement = Arrangement.spacedBy(dims.spacing.md),
                 verticalArrangement = Arrangement.spacedBy(dims.spacing.md),
                 modifier = Modifier.height(420.dp),
@@ -213,4 +213,14 @@ private fun TimelineWallpaper.label(): String = when (this) {
     TimelineWallpaper.Lavender -> "Lavender"
     TimelineWallpaper.PowderBlue -> "Powder Blue"
     TimelineWallpaper.SoftPeach -> "Soft Peach"
+    TimelineWallpaper.MidnightNavy -> "Midnight Navy"
+    TimelineWallpaper.Evergreen -> "Evergreen"
+    TimelineWallpaper.MauveDusk -> "Mauve Dusk"
+    TimelineWallpaper.TerracottaGlow -> "Terracotta Glow"
+    TimelineWallpaper.CharcoalMist -> "Charcoal Mist"
+    TimelineWallpaper.CoralBloom -> "Coral Bloom"
+    TimelineWallpaper.AquaSky -> "Aqua Sky"
+    TimelineWallpaper.GoldenHour -> "Golden Hour"
+    TimelineWallpaper.VioletHaze -> "Violet Haze"
+    TimelineWallpaper.SapphireBlue -> "Sapphire Blue"
 }
