@@ -588,6 +588,13 @@ Format for each entry:
 - **Decision:** Bundle the six supplied wallpaper images as shared Compose resources and render the resource associated with the persisted `TimelineWallpaper` identity. The same resource surface remains shared by the timeline and Timeline Theme previews. The bitmap fills the available viewport deterministically and does not change persistence, navigation, Moment Theme behavior, or global appearance.
 - **Consequences:** ADR-0051 is superseded only for the renderer implementation and its no-image-assets consequence. The wallpaper now preserves the exact supplied doodle composition, with no runtime generation, random placement, platform-specific drawable APIs, or additional dependency.
 
+## ADR-0053 — Logical All timeline owns native-local appearance
+
+- **Date:** 2026-08-29 · **Status:** Accepted
+- **Context:** The Timeline Theme editor initially served only persisted custom timelines. The logical editable All timeline uses the same timeline UI and needs the same wallpaper customization without becoming a custom timeline or gaining archive membership data.
+- **Decision:** All owns a non-null `TimelineAppearance` stored in the existing native `AppearanceRepository` alongside other app-local presentation preferences. Custom timeline appearances remain in SQLDelight. The shared Timeline Theme route accepts both editable scopes, while derived read-only collections remain excluded. All's appearance changes only timeline-owned wallpaper/Moment treatment and never the app palette, profile, navigation, Search, Rediscover, or system collections.
+- **Consequences:** All gains the existing Timeline Theme action and reactive wallpaper rendering with no custom-timeline row, schema migration, membership, cover selection, or global retheming. Missing native preference values resolve to the existing Warm Cream / Warm Terracotta defaults.
+
 ## Template for new decisions
 
 ```

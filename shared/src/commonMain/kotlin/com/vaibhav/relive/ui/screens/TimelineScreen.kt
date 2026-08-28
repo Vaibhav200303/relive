@@ -94,6 +94,7 @@ import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.repository.MomentRepository
 import com.vaibhav.relive.domain.repository.RediscoverRepository
 import com.vaibhav.relive.domain.repository.TimelineRepository
+import com.vaibhav.relive.domain.repository.AppearanceRepository
 import com.vaibhav.relive.domain.time.Clock
 import com.vaibhav.relive.platform.media.ActivePlayback
 import com.vaibhav.relive.platform.media.MediaProcessor
@@ -118,6 +119,7 @@ import com.vaibhav.relive.presentation.timeline.resolveTimelineMomentVisibility
 import com.vaibhav.relive.presentation.timeline.TimelineScreenState
 import com.vaibhav.relive.presentation.timeline.TimelineViewModel
 import com.vaibhav.relive.presentation.timeline.resolveMomentContextualActionAvailability
+import com.vaibhav.relive.presentation.timeline.timelineThemeDestinationOrNull
 import com.vaibhav.relive.presentation.date.RediscoverCalendar
 import com.vaibhav.relive.presentation.timeline.toMoment
 import com.vaibhav.relive.presentation.navigation.shouldExpandComposerOnEnter
@@ -227,6 +229,7 @@ internal data class ComposerDiscardTransition(
 fun TimelineScreen(
     momentRepository: MomentRepository,
     timelineRepository: TimelineRepository,
+    appearanceRepository: AppearanceRepository,
     rediscoverRepository: RediscoverRepository,
     clock: Clock,
     idGenerator: IdGenerator,
@@ -284,6 +287,12 @@ fun TimelineScreen(
         )
     }
     val timelineState by timelineViewModel.state.collectAsState()
+    val appearancePreferences by appearanceRepository.preferences.collectAsState()
+    val displayedTimelineState = if (timelineState.currentTimeline == CurrentTimeline.All) {
+        timelineState.copy(appearance = appearancePreferences.allTimelineAppearance)
+    } else {
+        timelineState
+    }
     val composerState by composerViewModel.state.collectAsState()
 
     val leaveTimeline: () -> Unit = {
@@ -410,7 +419,7 @@ fun TimelineScreen(
             },
     ) {
         TimelineContent(
-            timelineState = timelineState,
+            timelineState = displayedTimelineState,
             composerState = composerState,
             mode = mode,
             selectedMomentId = selectedMomentId,
@@ -482,7 +491,7 @@ fun TimelineScreen(
             onOpenAppSettings = composerViewModel::openAppSettings,
             onEditorBoundsChanged = { editorBounds = it },
             onJumpToDate = { showDatePicker = true },
-            onChangeTheme = if (mode.allowsMutations && timelineState.currentTimeline is CurrentTimeline.Custom) onOpenTimelineTheme else null,
+            onChangeTheme = if (mode.allowsMutations && timelineState.currentTimeline.timelineThemeDestinationOrNull() != null) onOpenTimelineTheme else null,
             onUpdateCover = { showCoverPicker = true },
             dateNavigationTargetId = timelineState.dateNavigation?.momentId,
             onDateNavigationHandled = timelineViewModel::consumeDateNavigation,

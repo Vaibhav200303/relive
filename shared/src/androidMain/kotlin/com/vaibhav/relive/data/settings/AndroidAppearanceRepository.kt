@@ -4,6 +4,7 @@ import android.content.Context
 import com.vaibhav.relive.domain.model.AppearanceMode
 import com.vaibhav.relive.domain.model.AppearancePreferences
 import com.vaibhav.relive.domain.model.ThemeReference
+import com.vaibhav.relive.domain.model.TimelineAppearance
 import com.vaibhav.relive.domain.repository.AppearanceRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,6 +31,19 @@ class AndroidAppearanceRepository(context: Context) : AppearanceRepository {
         update = { it.copy(defaultTheme = theme) },
     )
 
+    override suspend fun setAllTimelineAppearance(appearance: TimelineAppearance): Result<Unit> =
+        withContext(Dispatchers.Default) {
+            runCatching {
+                check(
+                    storage.edit()
+                        .putString(ALL_TIMELINE_WALLPAPER_KEY, appearance.wallpaper.encodePreference())
+                        .putString(ALL_TIMELINE_MOMENT_THEME_KEY, appearance.momentTheme.encodePreference())
+                        .commit(),
+                ) { "Preference commit failed" }
+                mutablePreferences.update { it.copy(allTimelineAppearance = appearance) }
+            }
+        }
+
     private suspend fun persist(
         key: String,
         value: String,
@@ -44,6 +58,8 @@ class AndroidAppearanceRepository(context: Context) : AppearanceRepository {
     private fun readPreferences(): AppearancePreferences = decodeAppearancePreferences(
         mode = storage.getString(APPEARANCE_MODE_KEY, null),
         theme = storage.getString(APPEARANCE_THEME_KEY, null),
+        allTimelineWallpaper = storage.getString(ALL_TIMELINE_WALLPAPER_KEY, null),
+        allTimelineMomentTheme = storage.getString(ALL_TIMELINE_MOMENT_THEME_KEY, null),
     )
 
     private companion object {

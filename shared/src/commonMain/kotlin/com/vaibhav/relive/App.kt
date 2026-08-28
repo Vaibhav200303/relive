@@ -302,6 +302,7 @@ fun App(
                     TimelineScreen(
                         momentRepository = container.momentRepository,
                         timelineRepository = container.timelineRepository,
+                        appearanceRepository = container.appearanceRepository,
                         rediscoverRepository = container.rediscoverRepository,
                         clock = container.clock,
                         idGenerator = container.idGenerator,
@@ -341,7 +342,8 @@ fun App(
                 if (destination != null) {
                     TimelineThemeScreen(
                         timelineRepository = container.timelineRepository,
-                        timelineId = destination.timelineId,
+                        appearanceRepository = container.appearanceRepository,
+                        destination = destination,
                         onBack = { timelinesDestination = active.returnTo },
                     )
                 } else {
@@ -355,6 +357,7 @@ fun App(
                 TimelineScreen(
                     momentRepository = container.momentRepository,
                     timelineRepository = container.timelineRepository,
+                    appearanceRepository = container.appearanceRepository,
                     rediscoverRepository = container.rediscoverRepository,
                     clock = container.clock,
                     idGenerator = container.idGenerator,
@@ -374,6 +377,7 @@ fun App(
                 TimelineScreen(
                     momentRepository = container.momentRepository,
                     timelineRepository = container.timelineRepository,
+                    appearanceRepository = container.appearanceRepository,
                     rediscoverRepository = container.rediscoverRepository,
                     clock = container.clock,
                     idGenerator = container.idGenerator,
@@ -393,6 +397,7 @@ fun App(
                 TimelineScreen(
                     momentRepository = container.momentRepository,
                     timelineRepository = container.timelineRepository,
+                    appearanceRepository = container.appearanceRepository,
                     rediscoverRepository = container.rediscoverRepository,
                     clock = container.clock,
                     idGenerator = container.idGenerator,

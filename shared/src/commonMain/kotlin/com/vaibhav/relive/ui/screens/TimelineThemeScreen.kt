@@ -36,9 +36,10 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.vaibhav.relive.domain.model.TimelineId
+import com.vaibhav.relive.domain.repository.AppearanceRepository
 import com.vaibhav.relive.domain.model.TimelineWallpaper
 import com.vaibhav.relive.domain.repository.TimelineRepository
+import com.vaibhav.relive.presentation.timeline.TimelineThemeDestination
 import com.vaibhav.relive.presentation.timeline.TimelineThemeViewModel
 import com.vaibhav.relive.ui.components.timeline.BackGlyph
 import com.vaibhav.relive.ui.components.timeline.TimelineWallpaperSurface
@@ -47,12 +48,13 @@ import com.vaibhav.relive.ui.theme.ReliveTheme
 @Composable
 fun TimelineThemeScreen(
     timelineRepository: TimelineRepository,
-    timelineId: TimelineId,
+    appearanceRepository: AppearanceRepository,
+    destination: TimelineThemeDestination,
     onBack: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
-    val viewModel = remember(timelineRepository, timelineId, scope) {
-        TimelineThemeViewModel(timelineRepository, timelineId, scope)
+    val viewModel = remember(timelineRepository, appearanceRepository, destination, scope) {
+        TimelineThemeViewModel(timelineRepository, appearanceRepository, destination, scope)
     }
     val state by viewModel.state.collectAsState()
     val dims = ReliveTheme.dimensions

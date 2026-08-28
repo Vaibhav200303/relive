@@ -2,6 +2,7 @@ package com.vaibhav.relive.data.settings
 
 import com.vaibhav.relive.domain.model.AppearanceMode
 import com.vaibhav.relive.domain.model.ThemeReference
+import com.vaibhav.relive.domain.model.TimelineWallpaper
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -23,6 +24,13 @@ class AppearancePreferenceCodecTest {
         }
         ThemeReference.entries.forEach { theme ->
             assertEquals(theme, decodeAppearancePreferences(null, theme.encodePreference()).defaultTheme)
+        }
+        TimelineWallpaper.entries.forEach { wallpaper ->
+            assertEquals(
+                wallpaper,
+                decodeAppearancePreferences(null, null, wallpaper.encodePreference())
+                    .allTimelineAppearance.wallpaper,
+            )
         }
     }
 }
