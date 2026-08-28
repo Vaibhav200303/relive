@@ -10,6 +10,7 @@ import com.vaibhav.relive.domain.model.MediaAttachmentId
 import com.vaibhav.relive.domain.model.MediaStorageRef
 import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.domain.model.MomentTheme
+import com.vaibhav.relive.domain.model.AppearancePreferences
 import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.TimelineAppearance
 import com.vaibhav.relive.domain.model.TimelineId
@@ -18,6 +19,7 @@ import com.vaibhav.relive.domain.repository.MomentRepository
 import com.vaibhav.relive.domain.repository.MomentDateNavigationScope
 import com.vaibhav.relive.domain.repository.RediscoverRepository
 import com.vaibhav.relive.domain.repository.TimelineRepository
+import com.vaibhav.relive.domain.repository.AppearanceRepository
 import com.vaibhav.relive.domain.time.Clock
 import com.vaibhav.relive.domain.time.Instant
 import java.util.TimeZone
@@ -118,7 +120,12 @@ class TimelineViewModelTest {
         val timelines = FakeTimelineRepository()
         timelines.createCustom(first, Instant(1L))
         timelines.createCustom(second, Instant(2L))
-        val theme = TimelineThemeViewModel(timelines, first.id, backgroundScope)
+        val theme = TimelineThemeViewModel(
+            timelineRepository = timelines,
+            appearanceRepository = FakeAppearanceRepository(),
+            destination = TimelineThemeDestination.Custom(first.id),
+            scope = backgroundScope,
+        )
 
         testScheduler.runCurrent()
         assertEquals(TimelineAppearance(), theme.state.value.appearance)
@@ -132,6 +139,25 @@ class TimelineViewModelTest {
             timelines.findCustom(first.id)?.appearance,
         )
         assertEquals(second.appearance, timelines.findCustom(second.id)?.appearance)
+    }
+
+    @Test
+    fun allTimelineThemeSelectionPersistsOutsideCustomTimelines() = runTest {
+        val timelines = FakeTimelineRepository()
+        val appearance = FakeAppearanceRepository()
+        val theme = TimelineThemeViewModel(
+            timelineRepository = timelines,
+            appearanceRepository = appearance,
+            destination = TimelineThemeDestination.All,
+            scope = backgroundScope,
+        )
+
+        testScheduler.runCurrent()
+        theme.selectWallpaper(TimelineWallpaper.PowderBlue)
+        testScheduler.runCurrent()
+
+        assertEquals(TimelineWallpaper.PowderBlue, appearance.preferences.value.allTimelineAppearance.wallpaper)
+        assertEquals(emptyList(), timelines.listCustom())
     }
 
     @Test
@@ -544,6 +570,19 @@ private class FakeMomentRepository(
     private fun newestFirst(moments: List<Moment>): List<Moment> = moments.sortedWith(
         compareByDescending<Moment> { it.createdAt }.thenByDescending { it.id.value },
     )
+}
+
+private class FakeAppearanceRepository : AppearanceRepository {
+    override val preferences = MutableStateFlow(AppearancePreferences())
+
+    override suspend fun setMode(mode: com.vaibhav.relive.domain.model.AppearanceMode): Result<Unit> = Result.success(Unit)
+
+    override suspend fun setDefaultTheme(theme: com.vaibhav.relive.domain.model.ThemeReference): Result<Unit> = Result.success(Unit)
+
+    override suspend fun setAllTimelineAppearance(appearance: TimelineAppearance): Result<Unit> {
+        preferences.value = preferences.value.copy(allTimelineAppearance = appearance)
+        return Result.success(Unit)
+    }
 }
 
 private class FakeTimelineRepository(

@@ -3,6 +3,7 @@ package com.vaibhav.relive.presentation.settings
 import com.vaibhav.relive.domain.model.AppearanceMode
 import com.vaibhav.relive.domain.model.AppearancePreferences
 import com.vaibhav.relive.domain.model.ThemeReference
+import com.vaibhav.relive.domain.model.TimelineAppearance
 import com.vaibhav.relive.domain.repository.AppearanceRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -60,6 +61,10 @@ private class FakeAppearanceRepository : AppearanceRepository {
 
     override suspend fun setDefaultTheme(theme: ThemeReference): Result<Unit> = write {
         preferences.value = preferences.value.copy(defaultTheme = theme)
+    }
+
+    override suspend fun setAllTimelineAppearance(appearance: TimelineAppearance): Result<Unit> = write {
+        preferences.value = preferences.value.copy(allTimelineAppearance = appearance)
     }
 
     private fun write(block: () -> Unit): Result<Unit> = if (failWrites) {

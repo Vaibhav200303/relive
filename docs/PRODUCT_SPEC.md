@@ -560,7 +560,7 @@ Selectable palettes:
 - **Blue Hour**
 - **Rosewood**
 
-The global appearance mode is **System**, **Light**, or **Dark**. System follows the live platform appearance. The selected palette is the app default; a custom timeline may optionally override only its palette. All, Profile, Search, Rediscover, and read-only system collections use the app default. A custom timeline's mode always remains global.
+The global appearance mode is **System**, **Light**, or **Dark**. System follows the live platform appearance. The selected palette is the app default. The editable All timeline and each custom timeline own independent `TimelineAppearance` values; All's appearance is stored in native local preferences because All is logical, while custom timeline appearances are archive data. Profile, Search, Rediscover, and read-only system collections use the app default. A timeline's mode always remains global.
 
 Themes **may** affect:
 
