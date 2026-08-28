@@ -1,0 +1,15 @@
+ALTER TABLE custom_timelines
+ADD COLUMN wallpaper TEXT NOT NULL DEFAULT 'WarmCream';
+
+ALTER TABLE custom_timelines
+ADD COLUMN moment_theme TEXT NOT NULL DEFAULT 'WarmTerracotta';
+
+UPDATE custom_timelines
+SET moment_theme = CASE theme
+    WHEN 'Evergreen' THEN 'Evergreen'
+    WHEN 'LilacDusk' THEN 'LilacDusk'
+    WHEN 'CrimsonKeepsake' THEN 'CrimsonKeepsake'
+    WHEN 'BlueHour' THEN 'BlueHour'
+    WHEN 'Rosewood' THEN 'Rosewood'
+    ELSE 'WarmTerracotta'
+END;

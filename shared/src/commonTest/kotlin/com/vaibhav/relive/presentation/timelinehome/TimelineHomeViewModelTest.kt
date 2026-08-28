@@ -5,7 +5,7 @@ import com.vaibhav.relive.domain.model.MediaAttachment
 import com.vaibhav.relive.domain.model.MediaAttachmentId
 import com.vaibhav.relive.domain.model.MediaStorageRef
 import com.vaibhav.relive.domain.model.MediaType
-import com.vaibhav.relive.domain.model.ThemeReference
+import com.vaibhav.relive.domain.model.TimelineAppearance
 import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.TimelineHomeSummary
 import com.vaibhav.relive.domain.model.TimelineId
@@ -257,7 +257,7 @@ private class FakeTimelineRepository : TimelineRepository {
     override suspend fun rename(id: TimelineId, newName: String) {
         renamed += id to newName
     }
-    override suspend fun updateTheme(id: TimelineId, theme: ThemeReference?) = Unit
+    override suspend fun updateAppearance(id: TimelineId, appearance: TimelineAppearance) = Unit
     override suspend fun updateCoverPhoto(id: TimelineId, coverPhotoRef: MediaStorageRef?) = Unit
     override suspend fun deleteCustom(id: TimelineId) {
         deleted += id

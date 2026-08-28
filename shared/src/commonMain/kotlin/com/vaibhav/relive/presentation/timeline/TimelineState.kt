@@ -5,6 +5,7 @@ import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.Tag
 import com.vaibhav.relive.domain.model.Timeline
+import com.vaibhav.relive.domain.model.TimelineAppearance
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.model.ReliveLocation
 import com.vaibhav.relive.domain.model.LocalCalendarDate
@@ -42,6 +43,7 @@ sealed interface TimelineMode {
 data class TimelineScreenState(
     val customTimelines: List<Timeline.Custom> = emptyList(),
     val currentTimeline: CurrentTimeline = CurrentTimeline.All,
+    val appearance: TimelineAppearance = TimelineAppearance(),
     val moments: TimelineMomentsState = TimelineMomentsState.Loading,
     val dateNavigation: DateNavigationState? = null,
     val momentActions: MomentContextualActionState = MomentContextualActionState(),

@@ -107,7 +107,7 @@ Names are indicative; finalize during Phase 1.
   - `isFavorite: Boolean`
   - `attachments: List<MediaAttachment>`
 - **Timeline**
-  - `id`, `name`, `themeId?`
+  - `id`, `name`, `appearance`, where custom-timeline appearance is persisted with that timeline
   - built-in **All** is represented logically, not as a stored custom timeline
 - **MomentTimelineMembership** — many-to-many link between moments and custom timelines
 - **MediaAttachment** — `id`, `momentId`, `type` (image | video | audio), storage reference, ordering index
@@ -197,7 +197,7 @@ Any future platform capability follows the same pattern: interface in shared cod
 
 ## 8. Themes
 
-Themes are a presentation concern implemented as design-token sets consumed by `ReliveTheme`. Global System/Light/Dark mode and the app-default palette are stored by an `AppearanceRepository` backed by Android SharedPreferences or iOS UserDefaults; shared presentation observes only the repository contract. A custom timeline's existing nullable theme id overrides the app palette while inheriting global mode. Themes never alter navigation, timeline structure, moment hierarchy, composer interaction, media data, or search. See [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) §11 and [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md).
+Global app appearance and timeline appearance are separate models and persistence paths. Global System/Light/Dark mode and the app palette are stored by an `AppearanceRepository` backed by Android SharedPreferences or iOS UserDefaults. Each persisted custom timeline owns a non-null `TimelineAppearance` in SQLDelight, containing a `TimelineWallpaper` and a Moment-theme identity. `TimelineViewModel` exposes the active timeline's appearance without writing to app preferences. The shared timeline UI resolves a saved wallpaper identity to its approved Compose resource and renders it behind timeline content; it does not alter global tokens or Moment foreground styling. Later redesign stages may render Moment treatment, but they must not retheme Settings, Profile, navigation, or the global Material theme. Themes never alter navigation, timeline structure, moment hierarchy, composer interaction, media data, or search. See [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) §11 and [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md).
 
 ---
 

@@ -75,6 +75,7 @@ import com.vaibhav.relive.presentation.date.EditorialDateFormatter
 import com.vaibhav.relive.presentation.date.EditorialTimeFormatter
 import com.vaibhav.relive.presentation.timeline.CurrentTimeline
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.components.timeline.LocalTimelineWallpaperPalette
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 
@@ -128,6 +129,7 @@ fun MomentComposer(
     val colors = ReliveTheme.colors
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
+    val wallpaper = LocalTimelineWallpaperPalette.current
     val titleFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(requestInitialFocus) {
@@ -156,7 +158,7 @@ fun MomentComposer(
                 modifier = Modifier
                     .size(dims.timeline.plusSize)
                     .clip(CircleShape)
-                    .background(colors.bgCanvas)
+                    .background(wallpaper.backgroundColor)
                     .border(
                         width = dims.stroke.hairline,
                         color = colors.border,
@@ -357,6 +359,7 @@ fun CollapsedComposerMarker(
 ) {
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
+    val wallpaper = LocalTimelineWallpaperPalette.current
     val haptics = rememberReliveHaptics()
     Row(
         modifier = modifier
@@ -389,7 +392,7 @@ fun CollapsedComposerMarker(
                     modifier = Modifier
                         .size(dims.timeline.plusSize)
                         .clip(CircleShape)
-                        .background(colors.bgCanvas)
+                        .background(wallpaper.backgroundColor)
                         .border(
                             width = dims.stroke.hairline,
                             color = colors.border,

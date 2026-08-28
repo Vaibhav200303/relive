@@ -3,7 +3,6 @@ package com.vaibhav.relive.domain.model
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFails
-import kotlin.test.assertNotNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
@@ -29,11 +28,11 @@ class TimelineTest {
     }
 
     @Test
-    fun custom_timeline_theme_optional() {
+    fun custom_timeline_has_default_independent_appearance() {
         val t = Timeline.Custom(TimelineId("t-japan"), "Japan 2026")
-        assertEquals(null, t.theme)
-        val themed = t.copy(theme = ThemeReference.BlueHour)
-        assertNotNull(themed.theme)
+        assertEquals(TimelineAppearance(), t.appearance)
+        assertEquals(TimelineWallpaper.WarmCream, t.appearance.wallpaper)
+        assertEquals(MomentTheme.WarmTerracotta, t.appearance.momentTheme)
     }
 
     @Test

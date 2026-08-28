@@ -37,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.semantics.contentDescription
@@ -79,7 +80,7 @@ fun MomentCard(
         targetValue = if (isContextuallySelected) {
             colors.accent.copy(alpha = com.vaibhav.relive.ui.theme.ReliveOpacity.Low)
         } else {
-            colors.bgCanvas
+            Color.Transparent
         },
         animationSpec = tween(motion.durations.fastMillis, easing = motion.easings.emphasized),
         label = "moment contextual selection",

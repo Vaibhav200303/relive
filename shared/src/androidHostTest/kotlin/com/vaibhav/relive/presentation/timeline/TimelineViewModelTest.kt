@@ -9,9 +9,11 @@ import com.vaibhav.relive.domain.model.MediaAttachment
 import com.vaibhav.relive.domain.model.MediaAttachmentId
 import com.vaibhav.relive.domain.model.MediaStorageRef
 import com.vaibhav.relive.domain.model.MediaType
-import com.vaibhav.relive.domain.model.ThemeReference
+import com.vaibhav.relive.domain.model.MomentTheme
 import com.vaibhav.relive.domain.model.Timeline
+import com.vaibhav.relive.domain.model.TimelineAppearance
 import com.vaibhav.relive.domain.model.TimelineId
+import com.vaibhav.relive.domain.model.TimelineWallpaper
 import com.vaibhav.relive.domain.repository.MomentRepository
 import com.vaibhav.relive.domain.repository.MomentDateNavigationScope
 import com.vaibhav.relive.domain.repository.RediscoverRepository
@@ -79,6 +81,57 @@ class TimelineViewModelTest {
 
         assertEquals(CurrentTimeline.Custom(familyId), vm.state.value.currentTimeline)
         assertEquals(listOf("family-moment"), loadedMoments(vm).map { it.id.value })
+    }
+
+    @Test
+    fun activeCustomTimelineExposesItsOwnAppearance() = runTest {
+        val timeline = Timeline.Custom(
+            id = TimelineId("styled"),
+            name = "Styled",
+            appearance = TimelineAppearance(momentTheme = MomentTheme.Ocean),
+        )
+        val timelines = FakeTimelineRepository()
+        timelines.createCustom(timeline, Instant(1L))
+        val vm = newViewModel(timelineRepository = timelines)
+
+        vm.selectTimeline(CurrentTimeline.Custom(timeline.id))
+
+        assertEquals(timeline.appearance, vm.state.value.appearance)
+        val updated = TimelineAppearance(momentTheme = MomentTheme.Monochrome)
+        var succeeded: Boolean? = null
+        vm.updateCurrentTimelineAppearance(updated) { succeeded = it }
+        assertEquals(true, succeeded)
+        assertEquals(updated, vm.state.value.appearance)
+    }
+
+    @Test
+    fun timelineThemeSelectionLoadsAndUpdatesOnlyItsTimeline() = runTest {
+        val first = Timeline.Custom(TimelineId("first"), "First")
+        val second = Timeline.Custom(
+            TimelineId("second"),
+            "Second",
+            appearance = TimelineAppearance(
+                wallpaper = TimelineWallpaper.BlushPink,
+                momentTheme = MomentTheme.Rose,
+            ),
+        )
+        val timelines = FakeTimelineRepository()
+        timelines.createCustom(first, Instant(1L))
+        timelines.createCustom(second, Instant(2L))
+        val theme = TimelineThemeViewModel(timelines, first.id, backgroundScope)
+
+        testScheduler.runCurrent()
+        assertEquals(TimelineAppearance(), theme.state.value.appearance)
+
+        theme.selectWallpaper(TimelineWallpaper.SageGreen)
+        theme.selectMomentTheme(MomentTheme.Ocean)
+        testScheduler.runCurrent()
+
+        assertEquals(
+            TimelineAppearance(TimelineWallpaper.SageGreen, MomentTheme.Ocean),
+            timelines.findCustom(first.id)?.appearance,
+        )
+        assertEquals(second.appearance, timelines.findCustom(second.id)?.appearance)
     }
 
     @Test
@@ -519,8 +572,10 @@ private class FakeTimelineRepository(
         timelines.value = timelines.value.map { if (it.id == id) it.copy(name = newName) else it }
     }
 
-    override suspend fun updateTheme(id: TimelineId, theme: ThemeReference?) {
-        timelines.value = timelines.value.map { if (it.id == id) it.copy(theme = theme) else it }
+    override suspend fun updateAppearance(id: TimelineId, appearance: TimelineAppearance) {
+        timelines.value = timelines.value.map {
+            if (it.id == id) it.copy(appearance = appearance) else it
+        }
     }
 
     override suspend fun updateCoverPhoto(id: TimelineId, coverPhotoRef: MediaStorageRef?) {

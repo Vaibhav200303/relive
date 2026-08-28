@@ -3,11 +3,12 @@ package com.vaibhav.relive.data.local.repository
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import com.vaibhav.relive.data.local.db.ReliveDatabase
-import com.vaibhav.relive.data.local.mapper.encodeThemeName
+import com.vaibhav.relive.data.local.mapper.encodeMomentTheme
+import com.vaibhav.relive.data.local.mapper.encodeTimelineWallpaper
 import com.vaibhav.relive.data.local.mapper.toDomain
 import com.vaibhav.relive.domain.model.MomentId
-import com.vaibhav.relive.domain.model.ThemeReference
 import com.vaibhav.relive.domain.model.Timeline
+import com.vaibhav.relive.domain.model.TimelineAppearance
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.repository.TimelineRepository
 import com.vaibhav.relive.domain.time.Instant
@@ -27,7 +28,8 @@ class SqlDelightTimelineRepository(
             database.customTimelinesQueries.insertCustomTimeline(
                 id = timeline.id.value,
                 name = timeline.name,
-                theme = encodeThemeName(timeline.theme),
+                wallpaper = encodeTimelineWallpaper(timeline.appearance.wallpaper),
+                moment_theme = encodeMomentTheme(timeline.appearance.momentTheme),
                 cover_photo_ref = timeline.coverPhotoRef?.value,
                 created_at = createdAt.epochMilliseconds,
             )
@@ -61,19 +63,21 @@ class SqlDelightTimelineRepository(
             .executeAsOneOrNull() ?: return@withContext
         database.customTimelinesQueries.updateCustomTimeline(
             name = newName,
-            theme = existing.theme,
+            wallpaper = existing.wallpaper,
+            momentTheme = existing.moment_theme,
             coverPhotoRef = existing.cover_photo_ref,
             id = id.value,
         )
     }
 
-    override suspend fun updateTheme(id: TimelineId, theme: ThemeReference?) =
+    override suspend fun updateAppearance(id: TimelineId, appearance: TimelineAppearance) =
         withContext(dispatcher) {
             val existing = database.customTimelinesQueries.selectCustomTimelineById(id.value)
                 .executeAsOneOrNull() ?: return@withContext
             database.customTimelinesQueries.updateCustomTimeline(
                 name = existing.name,
-                theme = encodeThemeName(theme),
+                wallpaper = encodeTimelineWallpaper(appearance.wallpaper),
+                momentTheme = encodeMomentTheme(appearance.momentTheme),
                 coverPhotoRef = existing.cover_photo_ref,
                 id = id.value,
             )
@@ -85,7 +89,8 @@ class SqlDelightTimelineRepository(
                 .executeAsOneOrNull() ?: return@withContext
             database.customTimelinesQueries.updateCustomTimeline(
                 name = existing.name,
-                theme = existing.theme,
+                wallpaper = existing.wallpaper,
+                momentTheme = existing.moment_theme,
                 coverPhotoRef = coverPhotoRef?.value,
                 id = id.value,
             )

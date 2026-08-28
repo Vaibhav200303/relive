@@ -26,15 +26,6 @@ class AppearanceStateTest {
     }
 
     @Test
-    fun timelineOverrideWinsWithoutChangingGlobalFallback() {
-        assertEquals(
-            ThemeReference.Evergreen,
-            resolveTimelineTheme(ThemeReference.Evergreen, ThemeReference.Rosewood),
-        )
-        assertEquals(ThemeReference.Rosewood, resolveTimelineTheme(null, ThemeReference.Rosewood))
-    }
-
-    @Test
     fun viewModelPublishesPersistedUpdatesAndWriteFailures() = runTest {
         val repository = FakeAppearanceRepository()
         val viewModel = AppearanceViewModel(repository, backgroundScope)

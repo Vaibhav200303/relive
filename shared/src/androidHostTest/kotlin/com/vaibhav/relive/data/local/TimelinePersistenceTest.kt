@@ -1,13 +1,23 @@
 package com.vaibhav.relive.data.local
 
+import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
+import com.vaibhav.relive.data.local.db.ReliveDatabase
+import com.vaibhav.relive.data.local.repository.SqlDelightTimelineRepository
+import com.vaibhav.relive.domain.model.AppearanceMode
+import com.vaibhav.relive.domain.model.AppearancePreferences
 import com.vaibhav.relive.domain.model.MediaType
+import com.vaibhav.relive.domain.model.MomentTheme
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.ReliveLocation
 import com.vaibhav.relive.domain.model.Tag
 import com.vaibhav.relive.domain.model.ThemeReference
+import com.vaibhav.relive.domain.model.TimelineAppearance
 import com.vaibhav.relive.domain.model.TimelineId
+import com.vaibhav.relive.domain.model.TimelineWallpaper
 import com.vaibhav.relive.domain.repository.MomentDateNavigationScope
 import com.vaibhav.relive.domain.time.Instant
+import java.io.File
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -210,64 +220,146 @@ class TimelinePersistenceTest {
         assertEquals(1L, fx.database.momentsQueries.countMoments().executeAsOne())
     }
 
-    @Test fun renameAndUpdateTheme() = runTest {
-        fx.timelines.createCustom(sampleCustomTimeline("t1", "Old", ThemeReference.WarmJournal), Instant(1L))
+    @Test fun renameAndUpdateAppearance() = runTest {
+        fx.timelines.createCustom(sampleCustomTimeline("t1", "Old"), Instant(1L))
         fx.timelines.rename(TimelineId("t1"), "New")
-        fx.timelines.updateTheme(TimelineId("t1"), ThemeReference.Rosewood)
+        val appearance = TimelineAppearance(momentTheme = MomentTheme.Monochrome)
+        fx.timelines.updateAppearance(TimelineId("t1"), appearance)
         val t = fx.timelines.findCustom(TimelineId("t1"))!!
         assertEquals("New", t.name)
-        assertEquals(ThemeReference.Rosewood, t.theme)
+        assertEquals(appearance, t.appearance)
     }
 
-    @Test fun legacyPlaceholderThemesDecodeAsOriginal() = runTest {
-        fx.timelines.createCustom(sampleCustomTimeline("legacy", "Legacy", null), Instant(1L))
-        fx.driver.execute(
-            identifier = null,
-            sql = "UPDATE custom_timelines SET theme = 'FilmMemory' WHERE id = 'legacy'",
-            parameters = 0,
-        )
+    @Test fun appearanceIsStoredPerTimelineAndTimelinesCanDiffer() = runTest {
+        val familyAppearance = TimelineAppearance(momentTheme = MomentTheme.WarmTerracotta)
+        val travelAppearance = TimelineAppearance(momentTheme = MomentTheme.Ocean)
+        fx.timelines.createCustom(sampleCustomTimeline("family", "Family", familyAppearance), Instant(1L))
+        fx.timelines.createCustom(sampleCustomTimeline("travel", "Travel", travelAppearance), Instant(2L))
 
-        assertEquals(ThemeReference.WarmJournal, fx.timelines.findCustom(TimelineId("legacy"))?.theme)
-
-        fx.driver.execute(
-            identifier = null,
-            sql = "UPDATE custom_timelines SET theme = 'MonochromeArchive' WHERE id = 'legacy'",
-            parameters = 0,
-        )
-        assertEquals(ThemeReference.WarmJournal, fx.timelines.findCustom(TimelineId("legacy"))?.theme)
+        assertEquals(familyAppearance, fx.timelines.findCustom(TimelineId("family"))?.appearance)
+        assertEquals(travelAppearance, fx.timelines.findCustom(TimelineId("travel"))?.appearance)
     }
 
-    @Test fun everySelectableThemeRoundTripsAndCanReturnToInheritance() = runTest {
-        fx.timelines.createCustom(sampleCustomTimeline("themes", "Themes", null), Instant(1L))
+    @Test fun globalAppearanceChangesDoNotOverwriteTimelineAppearance() = runTest {
+        val timelineAppearance = TimelineAppearance(momentTheme = MomentTheme.Lavender)
+        fx.timelines.createCustom(sampleCustomTimeline("independent", "Independent", timelineAppearance), Instant(1L))
+        var global = AppearancePreferences()
 
-        ThemeReference.entries.forEach { theme ->
-            fx.timelines.updateTheme(TimelineId("themes"), theme)
-            assertEquals(theme, fx.timelines.findCustom(TimelineId("themes"))?.theme)
-        }
+        global = global.copy(mode = AppearanceMode.Dark, defaultTheme = ThemeReference.Rosewood)
 
-        fx.timelines.updateTheme(TimelineId("themes"), null)
-        assertEquals(null, fx.timelines.findCustom(TimelineId("themes"))?.theme)
+        assertEquals(AppearanceMode.Dark, global.mode)
+        assertEquals(ThemeReference.Rosewood, global.defaultTheme)
+        assertEquals(timelineAppearance, fx.timelines.findCustom(TimelineId("independent"))?.appearance)
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    @Test fun themeUpdatesAndClearingAreReactive() = runTest {
-        fx.timelines.createCustom(sampleCustomTimeline("reactive-theme", "Reactive", null), Instant(1L))
-        val themes = mutableListOf<ThemeReference?>()
+    @Test fun appearanceUpdatesAreReactive() = runTest {
+        fx.timelines.createCustom(sampleCustomTimeline("reactive-theme", "Reactive"), Instant(1L))
+        val appearances = mutableListOf<TimelineAppearance>()
         val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             fx.timelines.observeCustom()
-                .map { timelines -> timelines.single().theme }
+                .map { timelines -> timelines.single().appearance }
                 .take(3)
-                .toList(themes)
+                .toList(appearances)
         }
 
         runCurrent()
-        fx.timelines.updateTheme(TimelineId("reactive-theme"), ThemeReference.BlueHour)
+        val blue = TimelineAppearance(momentTheme = MomentTheme.Ocean)
+        fx.timelines.updateAppearance(TimelineId("reactive-theme"), blue)
         runCurrent()
-        fx.timelines.updateTheme(TimelineId("reactive-theme"), null)
+        val rosewood = TimelineAppearance(momentTheme = MomentTheme.Monochrome)
+        fx.timelines.updateAppearance(TimelineId("reactive-theme"), rosewood)
         runCurrent()
 
-        assertEquals(listOf(null, ThemeReference.BlueHour, null), themes)
+        assertEquals(listOf(TimelineAppearance(), blue, rosewood), appearances)
         collectJob.cancel()
+    }
+
+    @Test fun existingTimelineReceivesDefaultAppearanceDuringMigration() = runTest {
+        val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+        try {
+            driver.execute(
+                identifier = null,
+                sql = """
+                    CREATE TABLE custom_timelines (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        theme TEXT,
+                        cover_photo_ref TEXT,
+                        created_at INTEGER NOT NULL
+                    )
+                """.trimIndent(),
+                parameters = 0,
+            )
+            driver.execute(
+                identifier = null,
+                sql = "INSERT INTO custom_timelines VALUES ('old', 'Old timeline', NULL, NULL, 1)",
+                parameters = 0,
+            )
+            driver.execute(
+                identifier = null,
+                sql = "INSERT INTO custom_timelines VALUES ('themed', 'Themed timeline', 'BlueHour', NULL, 2)",
+                parameters = 0,
+            )
+
+            ReliveDatabase.Schema.migrate(driver, oldVersion = 3L, newVersion = 4L)
+            val repository = SqlDelightTimelineRepository(
+                ReliveDatabaseFactory.create(driver),
+                Dispatchers.Unconfined,
+            )
+
+            val restored = repository.findCustom(TimelineId("old"))
+            assertEquals("Old timeline", restored?.name)
+            assertEquals(TimelineAppearance(), restored?.appearance)
+            assertEquals(
+                TimelineAppearance(momentTheme = MomentTheme.Ocean),
+                repository.findCustom(TimelineId("themed"))?.appearance,
+            )
+        } finally {
+            driver.close()
+        }
+    }
+
+    @Test fun timelineAppearanceSurvivesRepositoryAndDatabaseReload() = runTest {
+        val file = File.createTempFile("relive-timeline-appearance", ".db")
+        file.delete()
+        val url = "jdbc:sqlite:${file.absolutePath}"
+        try {
+            JdbcSqliteDriver(url).use { driver ->
+                ReliveDatabase.Schema.create(driver)
+                val repository = SqlDelightTimelineRepository(
+                    ReliveDatabaseFactory.create(driver),
+                    Dispatchers.Unconfined,
+                )
+                repository.createCustom(
+                    sampleCustomTimeline(
+                        "reload",
+                        "Reload",
+                        TimelineAppearance(
+                            wallpaper = TimelineWallpaper.WarmCream,
+                            momentTheme = MomentTheme.Rose,
+                        ),
+                    ),
+                    Instant(1L),
+                )
+            }
+
+            JdbcSqliteDriver(url).use { driver ->
+                val repository = SqlDelightTimelineRepository(
+                    ReliveDatabaseFactory.create(driver),
+                    Dispatchers.Unconfined,
+                )
+                assertEquals(
+                    TimelineAppearance(
+                        wallpaper = TimelineWallpaper.WarmCream,
+                        momentTheme = MomentTheme.Rose,
+                    ),
+                    repository.findCustom(TimelineId("reload"))?.appearance,
+                )
+            }
+        } finally {
+            file.delete()
+        }
     }
 
     @Test fun dateNavigationSelectsFirstMomentOnRequestedDay() = runTest {

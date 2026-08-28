@@ -1,8 +1,8 @@
 package com.vaibhav.relive.domain.repository
 
 import com.vaibhav.relive.domain.model.MomentId
-import com.vaibhav.relive.domain.model.ThemeReference
 import com.vaibhav.relive.domain.model.Timeline
+import com.vaibhav.relive.domain.model.TimelineAppearance
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.time.Instant
 import kotlinx.coroutines.flow.Flow
@@ -25,7 +25,7 @@ interface TimelineRepository {
 
     suspend fun rename(id: TimelineId, newName: String)
 
-    suspend fun updateTheme(id: TimelineId, theme: ThemeReference?)
+    suspend fun updateAppearance(id: TimelineId, appearance: TimelineAppearance)
 
     /** Stores an optional Relive-managed image used only as this timeline's cover. */
     suspend fun updateCoverPhoto(id: TimelineId, coverPhotoRef: com.vaibhav.relive.domain.model.MediaStorageRef?)

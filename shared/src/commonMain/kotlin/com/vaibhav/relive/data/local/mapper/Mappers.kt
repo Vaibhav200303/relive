@@ -10,11 +10,13 @@ import com.vaibhav.relive.domain.model.MediaStorageRef
 import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.domain.model.Moment
 import com.vaibhav.relive.domain.model.MomentId
+import com.vaibhav.relive.domain.model.MomentTheme
 import com.vaibhav.relive.domain.model.ReliveLocation
 import com.vaibhav.relive.domain.model.Tag
-import com.vaibhav.relive.domain.model.ThemeReference
 import com.vaibhav.relive.domain.model.Timeline
+import com.vaibhav.relive.domain.model.TimelineAppearance
 import com.vaibhav.relive.domain.model.TimelineId
+import com.vaibhav.relive.domain.model.TimelineWallpaper
 import com.vaibhav.relive.domain.time.Instant
 
 /**
@@ -92,18 +94,33 @@ internal fun Custom_timelines.toDomain(): Timeline.Custom =
         Timeline.Custom(
             id = TimelineId(id),
             name = name,
-            theme = theme?.let(::decodeThemeName),
+            appearance = TimelineAppearance(
+                wallpaper = decodeTimelineWallpaper(wallpaper),
+                momentTheme = decodeMomentTheme(moment_theme),
+            ),
             coverPhotoRef = cover_photo_ref?.let(::MediaStorageRef),
         )
     } catch (e: IllegalArgumentException) {
         throw PersistenceMappingException("Corrupt custom_timelines row id=$id: ${e.message}", e)
     }
 
-internal fun decodeThemeName(raw: String): ThemeReference = when (raw) {
-    "MonochromeArchive", "FilmMemory" -> ThemeReference.WarmJournal
-    else -> ThemeReference.entries.firstOrNull { it.name == raw }
-        ?: throw PersistenceMappingException("Unknown theme='$raw'")
-}
+internal fun decodeTimelineWallpaper(raw: String): TimelineWallpaper =
+    TimelineWallpaper.entries.firstOrNull { it.name == raw }
+        ?: throw PersistenceMappingException("Unknown timeline wallpaper='$raw'")
+
+internal fun decodeMomentTheme(raw: String): MomentTheme =
+    MomentTheme.entries.firstOrNull { it.name == raw }
+        ?: when (raw) {
+            // Values persisted during Part 1 remain readable after the placeholder
+            // names were aligned with the Timeline theme screen.
+            "Evergreen" -> MomentTheme.Sage
+            "LilacDusk" -> MomentTheme.Lavender
+            "CrimsonKeepsake" -> MomentTheme.Rose
+            "BlueHour" -> MomentTheme.Ocean
+            "Rosewood" -> MomentTheme.Monochrome
+            else -> null
+        }
+        ?: throw PersistenceMappingException("Unknown moment theme='$raw'")
 
 internal fun decodeTag(canonicalRow: String, label: String): Tag {
     val restored = Tag.ofOrNull(label)
@@ -113,7 +130,9 @@ internal fun decodeTag(canonicalRow: String, label: String): Tag {
 
 /** Encoders (domain → row scalars) live here so both write and read use the same shape. */
 
-internal fun encodeThemeName(theme: ThemeReference?): String? = theme?.name
+internal fun encodeTimelineWallpaper(wallpaper: TimelineWallpaper): String = wallpaper.name
+
+internal fun encodeMomentTheme(theme: MomentTheme): String = theme.name
 
 internal fun encodeMediaTypeName(type: MediaType): String = type.name
 

@@ -86,7 +86,6 @@ import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.theme.ReliveOpacity
-import com.vaibhav.relive.ui.theme.toReliveThemeId
 import com.vaibhav.relive.ui.icons.ProfileIcons
 import com.vaibhav.relive.ui.icons.TimelineActionIcons
 import com.vaibhav.relive.presentation.cardcover.resolveAllTimelineCollage
@@ -599,25 +598,15 @@ internal fun TimelineHomeCard(
     isSelected: Boolean = false,
     showDraftIndicator: Boolean = false,
 ) {
-    val override = (summary.timeline as? Timeline.Custom)?.theme
-    val themeId = override?.toReliveThemeId() ?: ReliveTheme.tokens.id
-    val darkMode = ReliveTheme.isDark
-    val content: @Composable () -> Unit = {
-        TimelineHomeCardContent(
-            summary = summary,
-            mediaStore = mediaStore,
-            allCollageBucket = allCollageBucket,
-            allCollageCandidates = allCollageCandidates,
-            onClick = onClick,
-            onLongClick = onLongClick,
-            isSelected = isSelected,
-            showDraftIndicator = showDraftIndicator,
-        )
-    }
-    com.vaibhav.relive.ui.theme.ReliveTheme(
-        themeId = themeId,
-        darkMode = darkMode,
-        content = content,
+    TimelineHomeCardContent(
+        summary = summary,
+        mediaStore = mediaStore,
+        allCollageBucket = allCollageBucket,
+        allCollageCandidates = allCollageCandidates,
+        onClick = onClick,
+        onLongClick = onLongClick,
+        isSelected = isSelected,
+        showDraftIndicator = showDraftIndicator,
     )
 }
 

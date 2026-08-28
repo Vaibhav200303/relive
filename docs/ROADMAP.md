@@ -85,7 +85,7 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 
 ## Phase 9 — Themes & settings  ◐
 
-- System/Light/Dark appearance plus Original, Evergreen, Lilac Dusk, Crimson Keepsake, Blue Hour, and Rosewood token sets; global app default with optional per-custom-timeline palette overrides; themes change only presentation.
+- System/Light/Dark appearance plus Original, Evergreen, Lilac Dusk, Crimson Keepsake, Blue Hour, and Rosewood token sets. Custom timelines persist a dedicated `TimelineAppearance` independently of global app appearance; themes change only presentation.
 - Settings screen: Profile, Themes, Upgrade to Pro, Export (entries present; detailed behavior deferred where unspecified).
 - Profile Media & Storage: read-only local archive storage/category insights; management actions remain deferred.
 - Profile Preferences: native-local observable behavior settings for startup destination, explicit composer-discard confirmation, editable-Timeline location/tag presentation, and Rediscover On This Day/Favorites section visibility. Fixed 12-hour time and passive media playback remain unchanged; 24-hour time and media autoplay controls are deferred.

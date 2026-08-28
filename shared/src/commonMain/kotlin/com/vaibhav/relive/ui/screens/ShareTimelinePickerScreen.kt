@@ -50,7 +50,6 @@ import com.vaibhav.relive.ui.components.timeline.BackGlyph
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveTheme
-import com.vaibhav.relive.ui.theme.toReliveThemeId
 
 @Composable
 fun ShareTimelinePickerScreen(
@@ -218,17 +217,12 @@ private fun ShareTimelineCard(
     showDraftIndicator: Boolean,
     onClick: () -> Unit,
 ) {
-    val override = (summary.timeline as? Timeline.Custom)?.theme
-    com.vaibhav.relive.ui.theme.ReliveTheme(
-        themeId = override?.toReliveThemeId() ?: ReliveTheme.tokens.id,
-        darkMode = ReliveTheme.isDark,
-    ) {
-        val colors = ReliveTheme.colors
-        val dims = ReliveTheme.dimensions
-        val picker = dims.shareTimelinePicker
-        val cardShape = RoundedCornerShape(dims.radii.lg)
-        val mediaHeight = if (summary.timeline == Timeline.All) picker.allMediaHeight else picker.customMediaHeight
-        Column(
+    val colors = ReliveTheme.colors
+    val dims = ReliveTheme.dimensions
+    val picker = dims.shareTimelinePicker
+    val cardShape = RoundedCornerShape(dims.radii.lg)
+    val mediaHeight = if (summary.timeline == Timeline.All) picker.allMediaHeight else picker.customMediaHeight
+    Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(cardShape)
@@ -269,7 +263,6 @@ private fun ShareTimelineCard(
                     maxLines = 1,
                 )
             }
-        }
     }
 }
 

@@ -2,9 +2,9 @@ package com.vaibhav.relive.presentation.timeline
 
 import com.vaibhav.relive.domain.model.Moment
 import com.vaibhav.relive.domain.model.MomentId
-import com.vaibhav.relive.domain.model.ThemeReference
 import com.vaibhav.relive.domain.model.MediaStorageRef
 import com.vaibhav.relive.domain.model.Timeline
+import com.vaibhav.relive.domain.model.TimelineAppearance
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.repository.MomentRepository
 import com.vaibhav.relive.domain.repository.MomentDateNavigationScope
@@ -41,7 +41,12 @@ class TimelineViewModel(
     init {
         scope.launch {
             timelineRepository.observeCustom().collect { timelines ->
-                _state.update { it.copy(customTimelines = timelines) }
+                _state.update { current ->
+                    current.copy(
+                        customTimelines = timelines,
+                        appearance = current.currentTimeline.appearanceFrom(timelines),
+                    )
+                }
             }
         }
         observe(initialTimeline)
@@ -50,7 +55,11 @@ class TimelineViewModel(
     fun selectTimeline(timeline: CurrentTimeline) {
         if (timeline == _state.value.currentTimeline) return
         _state.update {
-            it.copy(currentTimeline = timeline, moments = TimelineMomentsState.Loading)
+            it.copy(
+                currentTimeline = timeline,
+                appearance = timeline.appearanceFrom(it.customTimelines),
+                moments = TimelineMomentsState.Loading,
+            )
         }
         observe(timeline)
     }
@@ -60,13 +69,13 @@ class TimelineViewModel(
         scope.launch { momentRepository.setFavorite(id, isFavorite) }
     }
 
-    fun updateCurrentTimelineTheme(
-        theme: ThemeReference?,
+    fun updateCurrentTimelineAppearance(
+        appearance: TimelineAppearance,
         onResult: (Boolean) -> Unit,
     ) {
         val timeline = _state.value.currentTimeline as? CurrentTimeline.Custom ?: return
         scope.launch {
-            onResult(runCatching { timelineRepository.updateTheme(timeline.id, theme) }.isSuccess)
+            onResult(runCatching { timelineRepository.updateAppearance(timeline.id, appearance) }.isSuccess)
         }
     }
 
@@ -256,4 +265,9 @@ class TimelineViewModel(
         is CurrentTimeline.FromYourPast -> rediscoverRepository.observeFromYourPastMoments(query)
         is CurrentTimeline.Custom -> momentRepository.observeInTimeline(id)
     }
+
+    private fun CurrentTimeline.appearanceFrom(timelines: List<Timeline.Custom>): TimelineAppearance =
+        (this as? CurrentTimeline.Custom)
+            ?.let { current -> timelines.firstOrNull { it.id == current.id }?.appearance }
+            ?: TimelineAppearance()
 }

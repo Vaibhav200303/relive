@@ -333,7 +333,11 @@ Themes are presentation-only token sets resolved by palette plus global appearan
 
 Light schemes neutralize the light anchor into the canvas, use the strong anchor for accents, and the dark anchor for text. Dark schemes deepen the dark anchor into canvases/surfaces, use the mid anchor for accents, and lighten the first anchor for text. Supporting tones are opaque semantic blends; accent foregrounds select the highest-contrast candidate and destructive actions remain red. Primary text and accent content pairs meet WCAG AA. Theme changes interpolate semantic colors over `motion.duration.standard` without replacing screen composition.
 
-The generated-cover fallback is a centralized mode-aware theme token. It derives curated rich gradient pairs from the active anchors, remains deterministic for a stable identity, and never modifies stored media. The app palette is global; a custom Timeline's nullable persisted palette may override it while inheriting global System/Light/Dark mode.
+The generated-cover fallback is a centralized mode-aware theme token. It derives curated rich gradient pairs from the active anchors, remains deterministic for a stable identity, and never modifies stored media. Global app appearance remains app-scoped. A custom Timeline separately owns a persisted `TimelineAppearance`; staged rendering of its wallpaper and Moment treatment must remain confined to timeline-owned surfaces.
+
+### Timeline wallpapers
+
+Timeline wallpaper is independent from the global palette. The approved hand-drawn wallpaper artwork is bundled once per wallpaper identity and rendered behind Timeline content, so its doodles retain the exact supplied composition at every size. Light pairs are Warm Cream `#FAF3E9` / `#E7D5BF`, Blush Pink `#FDE7E7` / `#F0B8BA`, Sage Green `#E4E9DD` / `#B8C5AE`, Lavender `#EDE6F9` / `#CBBEE5`, Powder Blue `#E1EEFA` / `#B1CFEA`, and Soft Peach `#FEEBE1` / `#F5B99B`. Moment text, rail/dot, heart, media, and metadata retain their existing semantic colors until Moment treatment is introduced separately.
 
 Profile archive-insights uses one restrained summary surface, then direct canvas sections with subtle dividers and proportional indicators. Its category distinctions derive only from semantic Relive colors and are always accompanied by labels and formatted values.
 

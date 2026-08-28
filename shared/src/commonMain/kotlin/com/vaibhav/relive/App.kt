@@ -30,6 +30,7 @@ import com.vaibhav.relive.ui.screens.TimelineScreen
 import com.vaibhav.relive.ui.screens.TimelineHomeScreen
 import com.vaibhav.relive.ui.screens.RediscoverScreen
 import com.vaibhav.relive.ui.screens.ShareTimelinePickerScreen
+import com.vaibhav.relive.ui.screens.TimelineThemeScreen
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.theme.toReliveThemeId
 import com.vaibhav.relive.domain.model.Timeline
@@ -38,6 +39,7 @@ import com.vaibhav.relive.domain.model.RediscoverQuery
 import com.vaibhav.relive.domain.model.StartDestination
 import com.vaibhav.relive.presentation.timeline.CurrentTimeline
 import com.vaibhav.relive.presentation.timeline.TimelineMode
+import com.vaibhav.relive.presentation.timeline.timelineThemeDestinationOrNull
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeViewModel
 import com.vaibhav.relive.presentation.profile.ProfileViewModel
 import com.vaibhav.relive.presentation.profile.ProfileNavigationState
@@ -66,7 +68,6 @@ import com.vaibhav.relive.presentation.composer.TimelineComposerDraftStore
 import com.vaibhav.relive.presentation.settings.AppearanceViewModel
 import com.vaibhav.relive.presentation.settings.BehaviorPreferencesViewModel
 import com.vaibhav.relive.presentation.settings.resolveDarkMode
-import com.vaibhav.relive.presentation.settings.resolveTimelineTheme
 import com.vaibhav.relive.presentation.profile.AppLockController
 import com.vaibhav.relive.presentation.profile.RediscoverReminderController
 import com.vaibhav.relive.platform.system.openAppSettings
@@ -86,6 +87,7 @@ private sealed interface TimelinesDestination {
         val openComposerOnEnter: Boolean = false,
         val incomingShare: IncomingSharePayload? = null,
     ) : TimelinesDestination
+    data class TimelineTheme(val returnTo: TimelineDetail) : TimelinesDestination
 }
 
 private sealed interface RediscoverDestination {
@@ -139,8 +141,6 @@ fun App(
         val homeState by homeViewModel.state.collectAsState()
         val homeListState = rememberLazyListState()
         val incomingShareState by container.incomingShareGateway.state.collectAsState()
-        val customTimelines by remember(container) { container.timelineRepository.observeCustom() }
-            .collectAsState(emptyList())
         val rediscoverListState = rememberLazyListState()
         val searchListState = rememberLazyListState()
         val searchViewModel = remember(container, scope) { SearchViewModel(container.momentRepository, scope) }
@@ -326,21 +326,27 @@ fun App(
                         onBackToTimelineHome = {
                             timelinesDestination = TimelinesDestination.TimelineHome
                         },
-                        globalTheme = appearanceState.preferences.defaultTheme,
+                        onOpenTimelineTheme = {
+                            if (active.scope.timelineThemeDestinationOrNull() != null) {
+                                timelinesDestination = TimelinesDestination.TimelineTheme(active)
+                            }
+                        },
                         behaviorPreferences = behaviorState.preferences,
                     )
                 }
-                val override = (active.scope as? CurrentTimeline.Custom)?.let { current ->
-                    customTimelines.firstOrNull { it.id == current.id }?.theme
+                timelineContent()
+            }
+            is TimelinesDestination.TimelineTheme -> {
+                val destination = active.returnTo.scope.timelineThemeDestinationOrNull()
+                if (destination != null) {
+                    TimelineThemeScreen(
+                        timelineRepository = container.timelineRepository,
+                        timelineId = destination.timelineId,
+                        onBack = { timelinesDestination = active.returnTo },
+                    )
+                } else {
+                    timelinesDestination = active.returnTo
                 }
-                ReliveTheme(
-                    themeId = resolveTimelineTheme(
-                        override = override,
-                        global = appearanceState.preferences.defaultTheme,
-                    ).toReliveThemeId(),
-                    darkMode = darkMode,
-                    content = timelineContent,
-                )
             }
             TimelinesDestination.TimelineHome -> if (
                 topLevel == ReliveTopLevelDestination.Rediscover && rediscoverDestination is RediscoverDestination.Favorites

@@ -14,7 +14,7 @@ sealed interface Timeline {
     data class Custom(
         val id: TimelineId,
         val name: String,
-        val theme: ThemeReference? = null,
+        val appearance: TimelineAppearance = TimelineAppearance(),
         val coverPhotoRef: MediaStorageRef? = null,
     ) : Timeline {
         init {

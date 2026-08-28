@@ -100,7 +100,19 @@ class AndroidBackupPackageStore(
                     database.momentsQueries.insertMoment(m.getString("id"), m.getLong("createdAt"), if (m.isNull("updatedAt")) null else m.optLong("updatedAt"), m.optString("title"), m.optString("content"), if (m.optBoolean("favorite")) 1L else 0L, if (m.isNull("locationLat")) null else m.optDouble("locationLat"), if (m.isNull("locationLon")) null else m.optDouble("locationLon"), m.optNullableString("locationDisplayName"), m.optNullableString("locationLocality"), m.optNullableString("locationRegion"), m.optNullableString("locationCountry"))
                 }
                 val timelines = payload.getJSONArray("timelines")
-                for (i in 0 until timelines.length()) { val t = timelines.getJSONObject(i); database.customTimelinesQueries.insertCustomTimeline(t.getString("id"), t.getString("name"), t.optNullableString("theme"), t.optNullableString("coverPhotoRef")?.let { newRefs[it] ?: error("Missing cover media reference") }, t.getLong("createdAt")) }
+                for (i in 0 until timelines.length()) {
+                    val t = timelines.getJSONObject(i)
+                    database.customTimelinesQueries.insertCustomTimeline(
+                        id = t.getString("id"),
+                        name = t.getString("name"),
+                        wallpaper = t.optNullableString("wallpaper") ?: DEFAULT_TIMELINE_WALLPAPER,
+                        moment_theme = t.optNullableString("momentTheme")
+                            ?: legacyMomentTheme(t.optNullableString("theme")),
+                        cover_photo_ref = t.optNullableString("coverPhotoRef")
+                            ?.let { newRefs[it] ?: error("Missing cover media reference") },
+                        created_at = t.getLong("createdAt"),
+                    )
+                }
                 val tags = payload.getJSONArray("tags")
                 for (i in 0 until tags.length()) { val t = tags.getJSONObject(i); database.tagsQueries.insertTagIfAbsent(t.getString("canonical"), t.getString("label")) }
                 val memberships = payload.getJSONArray("memberships")
@@ -142,7 +154,18 @@ class AndroidBackupPackageStore(
                 })
             }
         })
-        payload.put("timelines", JSONArray().apply { database.customTimelinesQueries.selectAllCustomTimelines().executeAsList().forEach { put(JSONObject().apply { put("id", it.id); put("name", it.name); put("theme", it.theme); put("coverPhotoRef", it.cover_photo_ref); put("createdAt", it.created_at) }) } })
+        payload.put("timelines", JSONArray().apply {
+            database.customTimelinesQueries.selectAllCustomTimelines().executeAsList().forEach {
+                put(JSONObject().apply {
+                    put("id", it.id)
+                    put("name", it.name)
+                    put("wallpaper", it.wallpaper)
+                    put("momentTheme", it.moment_theme)
+                    put("coverPhotoRef", it.cover_photo_ref)
+                    put("createdAt", it.created_at)
+                })
+            }
+        })
         payload.put("memberships", JSONArray().apply {
             database.membershipsQueries.selectAllMemberships().executeAsList().forEach {
                 put(JSONObject().apply { put("momentId", it.moment_id); put("timelineId", it.timeline_id) })
@@ -184,7 +207,7 @@ class AndroidBackupPackageStore(
             }
             val manifest = JSONObject().apply {
                 put("formatVersion", 2); put("generation", generation); put("createdAt", System.currentTimeMillis())
-                put("schemaVersion", 3); put("momentCount", database.momentsQueries.countMoments().executeAsOne()); put("media", mediaInventory)
+                put("schemaVersion", 4); put("momentCount", database.momentsQueries.countMoments().executeAsOne()); put("media", mediaInventory)
                 put("archiveSha256", sha256(archiveBytes))
             }
             zip.putNextEntry(ZipEntry("manifest.json")); zip.write(manifest.toString().toByteArray(Charsets.UTF_8)); zip.closeEntry()
@@ -208,6 +231,20 @@ class AndroidBackupPackageStore(
 
     private fun JSONObject.optNullableString(name: String): String? = if (isNull(name)) null else optString(name).takeIf { it.isNotEmpty() }
 
+    private fun legacyMomentTheme(theme: String?): String = when (theme) {
+        "Evergreen" -> "Sage"
+        "LilacDusk" -> "Lavender"
+        "CrimsonKeepsake" -> "Rose"
+        "BlueHour" -> "Ocean"
+        "Rosewood" -> "Monochrome"
+        else -> DEFAULT_MOMENT_THEME
+    }
+
     private fun String.isSafeStorageRef(): Boolean =
         matches(Regex("(?:images|videos|audio)/[^/\\\\.][^/\\\\]*")) && !contains("..")
+
+    private companion object {
+        const val DEFAULT_TIMELINE_WALLPAPER = "WarmCream"
+        const val DEFAULT_MOMENT_THEME = "WarmTerracotta"
+    }
 }

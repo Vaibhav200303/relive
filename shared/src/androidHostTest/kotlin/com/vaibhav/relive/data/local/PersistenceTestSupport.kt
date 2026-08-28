@@ -14,9 +14,9 @@ import com.vaibhav.relive.domain.model.MediaStorageRef
 import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.domain.model.Moment
 import com.vaibhav.relive.domain.model.MomentId
+import com.vaibhav.relive.domain.model.TimelineAppearance
 import com.vaibhav.relive.domain.model.ReliveLocation
 import com.vaibhav.relive.domain.model.Tag
-import com.vaibhav.relive.domain.model.ThemeReference
 import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.time.Instant
@@ -74,5 +74,5 @@ internal fun sampleAttachment(
 internal fun sampleCustomTimeline(
     id: String = "tl-1",
     name: String = "Japan 2026",
-    theme: ThemeReference? = ThemeReference.WarmJournal,
-): Timeline.Custom = Timeline.Custom(id = TimelineId(id), name = name, theme = theme)
+    appearance: TimelineAppearance = TimelineAppearance(),
+): Timeline.Custom = Timeline.Custom(id = TimelineId(id), name = name, appearance = appearance)

@@ -4,12 +4,14 @@ import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import com.vaibhav.relive.data.PersistenceMappingException
 import com.vaibhav.relive.data.local.db.ReliveDatabase
-import com.vaibhav.relive.data.local.mapper.decodeThemeName
+import com.vaibhav.relive.data.local.mapper.decodeMomentTheme
+import com.vaibhav.relive.data.local.mapper.decodeTimelineWallpaper
 import com.vaibhav.relive.domain.model.MediaAttachment
 import com.vaibhav.relive.domain.model.MediaAttachmentId
 import com.vaibhav.relive.domain.model.MediaStorageRef
 import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.domain.model.Timeline
+import com.vaibhav.relive.domain.model.TimelineAppearance
 import com.vaibhav.relive.domain.model.TimelineHomeSummary
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.repository.TimelineHomeRepository
@@ -37,7 +39,14 @@ class SqlDelightTimelineHomeRepository(
                 Timeline.Custom(
                     id = TimelineId(count.timeline_id ?: error("Missing custom timeline id")),
                     name = count.name,
-                    theme = count.theme?.let(::decodeThemeName),
+                    appearance = TimelineAppearance(
+                        wallpaper = decodeTimelineWallpaper(
+                            count.wallpaper ?: error("Missing custom timeline wallpaper"),
+                        ),
+                        momentTheme = decodeMomentTheme(
+                            count.moment_theme ?: error("Missing custom timeline moment theme"),
+                        ),
+                    ),
                     coverPhotoRef = count.cover_photo_ref?.let(::MediaStorageRef),
                 )
             }
