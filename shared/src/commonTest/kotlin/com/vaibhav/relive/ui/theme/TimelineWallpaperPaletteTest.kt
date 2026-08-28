@@ -9,6 +9,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 import kotlin.test.assertSame
+import kotlin.test.assertTrue
 
 class TimelineWallpaperPaletteTest {
     @Test
@@ -35,6 +36,20 @@ class TimelineWallpaperPaletteTest {
         expected.forEach { (wallpaper, palette) ->
             assertEquals(palette, timelineWallpaperPalette(wallpaper, true))
             assertNotEquals(palette.backgroundColor, palette.doodleColor)
+        }
+    }
+
+    @Test
+    fun momentForegroundsStayReadableOverTheUnchangedLightWallpaperInDarkMode() {
+        val darkColors = reliveColorsFor(OriginalPaletteAnchors, isDark = true)
+
+        TimelineWallpaper.entries.forEach { wallpaper ->
+            val background = timelineWallpaperPalette(wallpaper, isDark = false)
+            val foreground = timelineMomentForegroundColors(darkColors, background, isDark = true)
+
+            assertTrue(contrastRatio(foreground.textPrimary, background.backgroundColor) >= 4.5f)
+            assertTrue(contrastRatio(foreground.textSecondary, background.backgroundColor) >= 4.5f)
+            assertTrue(contrastRatio(foreground.accent, background.backgroundColor) >= 4.5f)
         }
     }
 

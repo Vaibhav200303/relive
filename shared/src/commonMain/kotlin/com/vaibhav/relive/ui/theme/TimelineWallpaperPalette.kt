@@ -11,6 +11,52 @@ data class TimelineWallpaperPalette(
     val doodleColor: Color,
 )
 
+/** Foreground colors selected for readable Moment content over the bundled wallpaper artwork. */
+@Immutable
+data class TimelineMomentForegroundColors(
+    val textPrimary: Color,
+    val textSecondary: Color,
+    val textMuted: Color,
+    val accent: Color,
+    val accentMuted: Color,
+)
+
+/**
+ * The approved wallpaper assets are light in every appearance mode. Select the
+ * stronger of the active semantic color and a dark editorial fallback so Moment
+ * text retains contrast without modifying the wallpaper.
+ */
+internal fun timelineMomentForegroundColors(
+    colors: ReliveColors,
+    wallpaper: TimelineWallpaperPalette,
+    isDark: Boolean,
+): TimelineMomentForegroundColors {
+    if (!isDark) {
+        return TimelineMomentForegroundColors(
+            textPrimary = colors.textPrimary,
+            textSecondary = colors.textSecondary,
+            textMuted = colors.textMuted,
+            accent = colors.accent,
+            accentMuted = colors.accentMuted,
+        )
+    }
+    val textPrimary = higherContrastText(
+        background = wallpaper.backgroundColor,
+        candidates = listOf(colors.textPrimary, Color(0xFF1C1916)),
+    )
+    val accent = higherContrastText(
+        background = wallpaper.backgroundColor,
+        candidates = listOf(colors.accent, Color(0xFF6F4E37)),
+    )
+    return TimelineMomentForegroundColors(
+        textPrimary = textPrimary,
+        textSecondary = blend(textPrimary, wallpaper.backgroundColor, towardWeight = 0.18f),
+        textMuted = blend(textPrimary, wallpaper.backgroundColor, towardWeight = 0.32f),
+        accent = accent,
+        accentMuted = blend(accent, wallpaper.backgroundColor, towardWeight = 0.18f),
+    )
+}
+
 /** Resolves the saved wallpaper identity without consulting the global app palette. */
 fun timelineWallpaperPalette(
     wallpaper: TimelineWallpaper,
@@ -34,3 +80,12 @@ fun timelineWallpaperPalette(
         TimelineWallpaper.SoftPeach -> TimelineWallpaperPalette(Color(0xFFFEEBE1), Color(0xFFF5B99B))
     }
 }
+
+private fun higherContrastText(background: Color, candidates: List<Color>): Color =
+    candidates.maxBy { contrastRatio(it, background) }
+
+private fun blend(from: Color, toward: Color, towardWeight: Float): Color = Color(
+    red = from.red + (toward.red - from.red) * towardWeight,
+    green = from.green + (toward.green - from.green) * towardWeight,
+    blue = from.blue + (toward.blue - from.blue) * towardWeight,
+)

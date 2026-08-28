@@ -52,6 +52,8 @@ import com.vaibhav.relive.presentation.timeline.MomentPresentation
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.theme.TimelineMomentForegroundColors
+import com.vaibhav.relive.ui.theme.timelineMomentForegroundColors
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -72,6 +74,11 @@ fun MomentCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = ReliveTheme.colors
+    val momentColors = timelineMomentForegroundColors(
+        colors = colors,
+        wallpaper = LocalTimelineWallpaperPalette.current,
+        isDark = ReliveTheme.isDark,
+    )
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
     val haptics = rememberReliveHaptics()
@@ -177,25 +184,25 @@ fun MomentCard(
                         Text(
                             text = moment.formattedDate,
                             style = type.eyebrow,
-                            color = colors.accentMuted,
+                            color = momentColors.accentMuted,
                         )
                         Box(
                             modifier = Modifier
                                 .size(3.dp)
                                 .clip(CircleShape)
-                                .background(colors.accentMuted),
+                                .background(momentColors.accentMuted),
                         )
                         Text(
                             text = moment.formattedTime,
                             style = type.eyebrow,
-                            color = colors.accentMuted,
+                            color = momentColors.accentMuted,
                         )
                     }
                     if (showLocation && moment.locationLabel != null) {
                         Text(
                             text = moment.locationLabel,
                             style = type.eyebrow,
-                            color = colors.textSecondary,
+                            color = momentColors.textSecondary,
                             modifier = Modifier.padding(top = dims.spacing.xs),
                         )
                     }
@@ -203,6 +210,7 @@ fun MomentCard(
                 onToggleFavorite?.let { toggle ->
                     FavoriteHeart(
                         isFavorite = moment.isFavorite,
+                        momentColors = momentColors,
                         onToggle = { toggle(!moment.isFavorite) },
                     )
                 }
@@ -214,14 +222,14 @@ fun MomentCard(
                 Text(
                     text = moment.title,
                     style = type.title,
-                    color = colors.textPrimary,
+                    color = momentColors.textPrimary,
                 )
             }
 
             // CONTENT
             if (moment.hasContent) {
                 Spacer(Modifier.height(dims.spacing.sm))
-                ExpandableContent(text = moment.content)
+                ExpandableContent(text = moment.content, momentColors = momentColors)
             }
 
             // MEDIA
@@ -256,7 +264,7 @@ fun MomentCard(
                             Text(
                                 text = "#" + tag.label.lowercase(),
                                 style = type.tag,
-                                color = colors.textSecondary,
+                                color = momentColors.textSecondary,
                             )
                         }
                     }
@@ -298,9 +306,11 @@ fun MomentCard(
 }
 
 @Composable
-private fun ExpandableContent(text: String) {
+private fun ExpandableContent(
+    text: String,
+    momentColors: TimelineMomentForegroundColors,
+) {
     val type = ReliveTheme.typography
-    val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
     var expanded by remember(text) { mutableStateOf(false) }
     val collapsedLines = 3
@@ -309,7 +319,7 @@ private fun ExpandableContent(text: String) {
         Text(
             text = text,
             style = type.body,
-            color = colors.textSecondary,
+            color = momentColors.textSecondary,
             maxLines = if (expanded) Int.MAX_VALUE else collapsedLines,
             overflow = if (expanded) TextOverflow.Clip else TextOverflow.Ellipsis,
         )
@@ -318,7 +328,7 @@ private fun ExpandableContent(text: String) {
             Text(
                 text = if (expanded) "less" else "... more",
                 style = type.action,
-                color = colors.accent,
+                color = momentColors.accent,
                 modifier = Modifier
                     .heightIn(min = dims.minTouchTarget)
                     .wrapContentHeight(Alignment.CenterVertically)
@@ -337,10 +347,13 @@ private fun ExpandableContent(text: String) {
 private const val MinExpandThreshold = 140
 
 @Composable
-private fun FavoriteHeart(isFavorite: Boolean, onToggle: () -> Unit) {
-    val colors = ReliveTheme.colors
+private fun FavoriteHeart(
+    isFavorite: Boolean,
+    momentColors: TimelineMomentForegroundColors,
+    onToggle: () -> Unit,
+) {
     val dims = ReliveTheme.dimensions
-    val tint = if (isFavorite) colors.accent else colors.textMuted
+    val tint = if (isFavorite) momentColors.accent else momentColors.textMuted
     val description = if (isFavorite) "Unfavorite moment" else "Favorite moment"
     val haptics = rememberReliveHaptics()
     IconButton(

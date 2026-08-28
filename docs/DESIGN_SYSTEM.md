@@ -129,6 +129,7 @@ Only the weights and styles actually referenced by the token mappings below are 
 | Token                   | Family | Size / style                              | Usage                         |
 | ----------------------- | ------ | ----------------------------------------- | ----------------------------- |
 | `type.wordmark`         | serif  | ~30sp, italic                             | "Relive" header               |
+| `type.coverTitle`       | serif  | ~32sp                                     | custom timeline cover heading  |
 | `type.title`            | serif  | ~24sp (2xl)                               | moment title                  |
 | `type.subtitle`         | sans   | ~14sp, italic                             | moment subtitle/summary line  |
 | `type.body`             | sans   | ~14–16sp                                  | content                       |

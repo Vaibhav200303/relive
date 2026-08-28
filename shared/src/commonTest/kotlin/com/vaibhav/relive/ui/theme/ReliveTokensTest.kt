@@ -129,6 +129,7 @@ class ReliveTokensTest {
         val t = DefaultReliveTypography
         assertEquals(30.sp, t.wordmark.fontSize)
         assertEquals(FontStyle.Italic, t.wordmark.fontStyle)
+        assertEquals(32.sp, t.coverTitle.fontSize)
         assertEquals(24.sp, t.title.fontSize)
         assertEquals(FontStyle.Italic, t.subtitle.fontStyle)
         assertEquals(15.sp, t.body.fontSize)
@@ -146,6 +147,7 @@ class ReliveTokensTest {
         val sans = FontFamily.Monospace
         val t = reliveTypography(serif = serif, sans = sans)
         assertEquals(serif, t.wordmark.fontFamily)
+        assertEquals(serif, t.coverTitle.fontFamily)
         assertEquals(serif, t.title.fontFamily)
         assertEquals(sans, t.subtitle.fontFamily)
         assertEquals(sans, t.body.fontFamily)

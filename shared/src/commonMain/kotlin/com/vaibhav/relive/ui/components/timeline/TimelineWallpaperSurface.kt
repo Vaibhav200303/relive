@@ -69,7 +69,10 @@ fun TimelineWallpaperSurface(
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    CompositionLocalProvider(LocalTimelineWallpaperPalette provides visual.palette) {
+    // Wallpaper artwork is a fixed light bitmap in both appearance modes.
+    CompositionLocalProvider(
+        LocalTimelineWallpaperPalette provides timelineWallpaperPalette(visual.wallpaper, isDark = false),
+    ) {
         Box(
             modifier = modifier,
         ) {

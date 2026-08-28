@@ -10,6 +10,7 @@ import androidx.compose.ui.unit.sp
 @Immutable
 data class ReliveTypography(
     val wordmark: TextStyle,
+    val coverTitle: TextStyle,
     val title: TextStyle,
     val subtitle: TextStyle,
     val body: TextStyle,
@@ -30,6 +31,12 @@ fun reliveTypography(serif: FontFamily, sans: FontFamily): ReliveTypography = Re
         fontStyle = FontStyle.Italic,
         fontWeight = FontWeight.Normal,
         fontSize = 30.sp,
+    ),
+    coverTitle = TextStyle(
+        fontFamily = serif,
+        fontWeight = FontWeight.Normal,
+        fontSize = 32.sp,
+        lineHeight = 38.sp,
     ),
     title = TextStyle(
         fontFamily = serif,

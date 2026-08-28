@@ -168,7 +168,7 @@ fun TimelineCoverHero(
             IconButton(onClick = onJumpToDate, modifier = Modifier.size(dims.minTouchTarget).semantics { contentDescription = "Jump to date" }) { CalendarGlyph(dims.icon.md, colors.textPrimary, dims.stroke.icon) }
             if (showUpdateCover) TextButton(onClick = onUpdateCover, modifier = Modifier.background(colors.surfaceFloating.copy(alpha = .9f), CircleShape), contentPadding = PaddingValues(horizontal = dims.spacing.md)) { Text("Update", style = ReliveTheme.typography.body, color = colors.textPrimary) }
         }
-        Text(name, style = ReliveTheme.typography.title, color = colors.textPrimary, modifier = Modifier.align(Alignment.BottomStart).padding(dims.spacing.xl))
+        Text(name, style = ReliveTheme.typography.coverTitle, color = colors.textPrimary, modifier = Modifier.align(Alignment.BottomStart).padding(dims.spacing.xl))
     }
 }
 
