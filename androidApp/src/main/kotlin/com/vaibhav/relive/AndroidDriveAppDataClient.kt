@@ -19,18 +19,18 @@ class AndroidDriveAppDataClient {
         val metadata = JSONObject().apply {
             put("name", "relive-backup-${bundle.manifest.generation}.bundle")
             put("parents", org.json.JSONArray().put("appDataFolder"))
-            put("appProperties", JSONObject().apply { put("kind", "relive-backup-bundle"); put("generation", bundle.manifest.generation); put("formatVersion", "1") })
+            put("appProperties", JSONObject().apply { put("kind", "relive-backup-bundle"); put("generation", bundle.manifest.generation); put("formatVersion", bundle.manifest.formatVersion.toString()) })
         }
         val id = uploadFile(metadata, File(bundle.path), token, onBundleProgress)
         verifyRemoteBundle(id, bundle.byteCount, token)
-        val manifestMetadata = JSONObject().apply { put("name", "relive-backup-${bundle.manifest.generation}.manifest.json"); put("parents", JSONArray().put("appDataFolder")); put("appProperties", JSONObject().apply { put("kind", "relive-backup-manifest"); put("generation", bundle.manifest.generation); put("formatVersion", "1") }) }
+        val manifestMetadata = JSONObject().apply { put("name", "relive-backup-${bundle.manifest.generation}.manifest.json"); put("parents", JSONArray().put("appDataFolder")); put("appProperties", JSONObject().apply { put("kind", "relive-backup-manifest"); put("generation", bundle.manifest.generation); put("formatVersion", bundle.manifest.formatVersion.toString()) }) }
         val manifestId = uploadBytes(manifestMetadata, JSONObject().apply {
             put("formatVersion", bundle.manifest.formatVersion); put("generation", bundle.manifest.generation)
             put("createdAt", bundle.manifest.createdAt); put("momentCount", bundle.manifest.momentCount)
             put("logicalBytes", bundle.manifest.logicalBytes); put("bundleId", id); put("bundleSha256", bundle.manifest.bundleSha256)
         }.toString().toByteArray(), token)
         val indexMetadata = JSONObject().apply { put("name", "relive-backup-index-${bundle.manifest.generation}.json"); put("parents", org.json.JSONArray().put("appDataFolder")); put("appProperties", JSONObject().apply { put("kind", "relive-backup-index"); put("generation", bundle.manifest.generation) }) }
-        uploadBytes(indexMetadata, JSONObject().apply { put("generation", bundle.manifest.generation); put("createdAt", bundle.manifest.createdAt); put("bundleId", id); put("manifestId", manifestId); put("formatVersion", 1) }.toString().toByteArray(), token)
+        uploadBytes(indexMetadata, JSONObject().apply { put("generation", bundle.manifest.generation); put("createdAt", bundle.manifest.createdAt); put("bundleId", id); put("manifestId", manifestId); put("formatVersion", bundle.manifest.formatVersion) }.toString().toByteArray(), token)
         backupAuthLog("Drive upload completed generation=${bundle.manifest.generation}")
         return BackupSummary(bundle.manifest, id)
     }
@@ -57,7 +57,7 @@ class AndroidDriveAppDataClient {
                 logicalBytes = manifest.optLong("logicalBytes", 0),
                 bundleSha256 = manifest.optString("bundleSha256"),
             )
-            if (parsed.formatVersion == 1 && parsed.generation.isNotBlank()) {
+            if (parsed.formatVersion in 1..2 && parsed.generation.isNotBlank()) {
                 backupAuthLog("Drive discovery found a compatible promoted generation")
                 return BackupSummary(parsed, bundle.optString("id"))
             }

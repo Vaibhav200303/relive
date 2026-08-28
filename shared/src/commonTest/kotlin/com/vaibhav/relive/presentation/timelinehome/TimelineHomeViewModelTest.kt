@@ -258,6 +258,7 @@ private class FakeTimelineRepository : TimelineRepository {
         renamed += id to newName
     }
     override suspend fun updateTheme(id: TimelineId, theme: ThemeReference?) = Unit
+    override suspend fun updateCoverPhoto(id: TimelineId, coverPhotoRef: MediaStorageRef?) = Unit
     override suspend fun deleteCustom(id: TimelineId) {
         deleted += id
     }

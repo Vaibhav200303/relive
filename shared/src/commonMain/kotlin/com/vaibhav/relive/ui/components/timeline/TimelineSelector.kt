@@ -3,6 +3,10 @@ package com.vaibhav.relive.ui.components.timeline
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -24,6 +28,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import com.vaibhav.relive.domain.model.Timeline
+import com.vaibhav.relive.platform.media.MediaStore
+import com.vaibhav.relive.platform.media.RelivedImageTile
 import com.vaibhav.relive.presentation.timeline.TimelineCreationState
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
@@ -33,6 +39,9 @@ import com.vaibhav.relive.ui.theme.ReliveTheme
 fun TimelineCreationDialog(
     state: TimelineCreationState,
     onNameChange: (String) -> Unit,
+    mediaStore: MediaStore,
+    onChooseCover: () -> Unit,
+    onClearCover: () -> Unit,
     onCreate: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -86,12 +95,25 @@ fun TimelineCreationDialog(
                     ),
                     modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
                 )
+                Text("Cover photo", style = ReliveTheme.typography.subtitle, color = colors.textPrimary)
+                Box(Modifier.fillMaxWidth().height(120.dp).clip(RoundedCornerShape(dims.radii.lg)).background(colors.surfaceCard)) {
+                    val cover = state.coverPhotoRef
+                    if (cover != null && mediaStore.exists(cover)) {
+                        RelivedImageTile(cover, mediaStore, Modifier.fillMaxWidth())
+                    } else {
+                        Text("No cover photo", style = ReliveTheme.typography.subtitle, color = colors.textMuted, modifier = Modifier.align(androidx.compose.ui.Alignment.Center))
+                    }
+                }
+                androidx.compose.foundation.layout.Row {
+                    TextButton(onClick = onChooseCover, enabled = !state.isSaving && !state.isProcessingCover) { Text(if (state.coverPhotoRef == null) "Choose" else "Replace") }
+                    if (state.coverPhotoRef != null) TextButton(onClick = onClearCover, enabled = !state.isSaving && !state.isProcessingCover) { Text("None") }
+                }
             }
         },
         confirmButton = {
             Button(
                 onClick = onCreate,
-                enabled = !state.isSaving,
+                enabled = !state.isSaving && !state.isProcessingCover,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = colors.accent,
                     contentColor = colors.textOnAccent,
@@ -106,7 +128,7 @@ fun TimelineCreationDialog(
                         strokeWidth = 2.dp,
                     )
                 } else {
-                    Text("Create")
+                    Text(if (state.isProcessingCover) "Preparing photo…" else "Create")
                 }
             }
         },

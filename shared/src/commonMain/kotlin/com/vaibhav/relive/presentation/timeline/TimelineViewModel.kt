@@ -3,6 +3,7 @@ package com.vaibhav.relive.presentation.timeline
 import com.vaibhav.relive.domain.model.Moment
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.ThemeReference
+import com.vaibhav.relive.domain.model.MediaStorageRef
 import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.repository.MomentRepository
@@ -67,6 +68,11 @@ class TimelineViewModel(
         scope.launch {
             onResult(runCatching { timelineRepository.updateTheme(timeline.id, theme) }.isSuccess)
         }
+    }
+
+    fun updateCurrentTimelineCover(coverPhotoRef: MediaStorageRef?, onResult: (Boolean) -> Unit) {
+        val timeline = _state.value.currentTimeline as? CurrentTimeline.Custom ?: return onResult(false)
+        scope.launch { onResult(runCatching { timelineRepository.updateCoverPhoto(timeline.id, coverPhotoRef) }.isSuccess) }
     }
 
     /** Removes only the custom collection and its membership rows, never its Moments. */

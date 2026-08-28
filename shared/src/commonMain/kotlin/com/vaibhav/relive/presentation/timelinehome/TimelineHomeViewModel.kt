@@ -7,6 +7,8 @@ import com.vaibhav.relive.domain.repository.TimelineRepository
 import com.vaibhav.relive.domain.time.Clock
 import com.vaibhav.relive.presentation.timeline.TimelineCreationController
 import com.vaibhav.relive.presentation.timeline.TimelineCreationState
+import com.vaibhav.relive.domain.model.MediaStorageRef
+import com.vaibhav.relive.platform.media.MediaStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +25,7 @@ class TimelineHomeViewModel(
     clock: Clock,
     idGenerator: IdGenerator,
     private val scope: CoroutineScope,
+    mediaStore: MediaStore? = null,
 ) {
     private val _state = MutableStateFlow(TimelineHomeState())
     val state: StateFlow<TimelineHomeState> = _state.asStateFlow()
@@ -30,7 +33,7 @@ class TimelineHomeViewModel(
     private val _navigation = MutableSharedFlow<TimelineHomeNavigation>(extraBufferCapacity = 1)
     val navigation: SharedFlow<TimelineHomeNavigation> = _navigation.asSharedFlow()
 
-    private val creation = TimelineCreationController(timelineRepository, clock, idGenerator, scope)
+    private val creation = TimelineCreationController(timelineRepository, clock, idGenerator, scope, mediaStore)
     val creationState: StateFlow<TimelineCreationState> = creation.state
     val creationOutcomes = creation.outcomes
 
@@ -76,5 +79,7 @@ class TimelineHomeViewModel(
     fun showTimelineCreation() = creation.show()
     fun dismissTimelineCreation() = creation.dismiss()
     fun updateTimelineName(value: String) = creation.updateName(value)
+    fun setTimelineCoverPhoto(value: MediaStorageRef?) = creation.setCoverPhoto(value)
+    fun setTimelineCoverProcessing(value: Boolean) = creation.setCoverProcessing(value)
     fun createTimeline() = creation.create()
 }

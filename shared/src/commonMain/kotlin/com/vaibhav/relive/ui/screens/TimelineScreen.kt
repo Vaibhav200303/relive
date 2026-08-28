@@ -3,6 +3,7 @@ package com.vaibhav.relive.ui.screens
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -42,6 +43,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -50,13 +52,19 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.material3.AlertDialog
@@ -76,6 +84,9 @@ import androidx.compose.material3.animateFloatingActionButton
 import com.vaibhav.relive.domain.id.IdGenerator
 import com.vaibhav.relive.domain.policy.EditWindow
 import com.vaibhav.relive.domain.model.MomentId
+import com.vaibhav.relive.domain.model.MediaAttachment
+import com.vaibhav.relive.domain.model.MediaAttachmentId
+import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.domain.model.BehaviorPreferences
 import com.vaibhav.relive.domain.model.Tag
 import com.vaibhav.relive.domain.model.Timeline
@@ -123,6 +134,8 @@ import com.vaibhav.relive.ui.components.composer.MomentComposer
 import com.vaibhav.relive.ui.components.timeline.EmptyCustomTimelinePlaceholder
 import com.vaibhav.relive.ui.components.timeline.MomentCard
 import com.vaibhav.relive.ui.components.timeline.TimelineHeader
+import com.vaibhav.relive.ui.components.timeline.TimelineCoverHero
+import com.vaibhav.relive.ui.components.timeline.AllTimelineCoverHero
 import com.vaibhav.relive.ui.components.timeline.TimelineMomentActionHeader
 import com.vaibhav.relive.ui.components.timeline.DateNavigationPicker
 import com.vaibhav.relive.ui.components.timeline.DiscardTimelineDraftDialog
@@ -134,10 +147,51 @@ import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.components.settings.RelivePalettePicker
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.presentation.cardcover.allTimelineCollageBucket
 import kotlinx.coroutines.launch
+import kotlin.math.min
 
 private fun timelineViewModelCanEdit(moment: MomentPresentation, clock: Clock): Boolean =
     EditWindow.isEditable(moment.toMoment(), clock)
+
+private fun allTimelineCoverAttachments(moments: List<MomentPresentation>): List<MediaAttachment> =
+    moments.flatMap { moment ->
+        moment.attachments.mapIndexed { index, attachment ->
+            MediaAttachment(
+                // Match the persisted attachment identity used by the All card's
+                // deterministic cover selection, so both surfaces choose the same tile.
+                id = MediaAttachmentId(attachment.id.ifBlank { attachment.storageRef.value }),
+                type = attachment.type,
+                storageRef = attachment.storageRef,
+                sortIndex = index,
+            )
+        }
+    }
+
+private fun allTimelineCoverCandidates(
+    attachments: List<MediaAttachment>,
+    bucket: Long,
+): List<MediaAttachment> = attachments
+    .asSequence()
+    .filter { it.type == MediaType.Image || it.type == MediaType.Video }
+    .sortedWith(compareBy<MediaAttachment>({ allCoverCandidateScore(it.id.value, bucket) }, { it.id.value }))
+    .take(9)
+    .toList()
+
+/** Mirrors TimelineHome.sq's bounded All-card candidate order. */
+private fun allCoverCandidateScore(id: String, bucket: Long): Long {
+    fun codeAt(index: Int): Long = id.getOrNull(index)?.code?.toLong() ?: 0L
+    val length = id.length.toLong()
+    return (
+        codeAt(0) * 1_000_003L +
+            codeAt(1) * 1_000_033L +
+            codeAt(3) * 1_000_037L +
+            codeAt(id.length - 2) * 1_000_039L +
+            codeAt(id.length - 1) * 1_000_081L +
+            length * 1_000_099L +
+            bucket * (codeAt(id.length - 2).coerceAtLeast(1L) + codeAt(id.length - 1).coerceAtLeast(1L) + length) * 2_654_435_761L
+        ) % 2_147_483_647L
+}
 
 internal fun cleanupForgottenAttachments(moment: com.vaibhav.relive.domain.model.Moment, mediaStore: MediaStore) {
     moment.attachments.forEach { attachment -> runCatching { mediaStore.delete(attachment.storageRef) } }
@@ -256,6 +310,7 @@ fun TimelineScreen(
     var discardConfirmation by remember { mutableStateOf(ComposerDiscardConfirmationState()) }
     var requestComposerFocus by remember { mutableStateOf(false) }
     var showThemePicker by remember { mutableStateOf(false) }
+    var showCoverPicker by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val haptics = rememberReliveHaptics()
     val focusManager = LocalFocusManager.current
@@ -436,6 +491,7 @@ fun TimelineScreen(
             } else {
                 null
             },
+            onUpdateCover = { showCoverPicker = true },
             dateNavigationTargetId = timelineState.dateNavigation?.momentId,
             onDateNavigationHandled = timelineViewModel::consumeDateNavigation,
             snackbarHostState = snackbarHostState,
@@ -468,6 +524,32 @@ fun TimelineScreen(
                             scope.launch { snackbarHostState.showSnackbar("Could not save timeline theme.") }
                         }
                     }
+                },
+            )
+        }
+
+        if (showCoverPicker) {
+            val custom = (timelineState.currentTimeline as? CurrentTimeline.Custom)?.let { current ->
+                timelineState.customTimelines.firstOrNull { it.id == current.id }
+            }
+            TimelineCoverDialog(
+                hasCover = custom?.coverPhotoRef != null,
+                onDismiss = { showCoverPicker = false },
+                onChoose = {
+                    showCoverPicker = false
+                    scope.launch {
+                        val raw = pickerHandle.pickImage().firstOrNull() ?: return@launch
+                        runCatching { mediaProcessor.process(raw) }.onSuccess { processed ->
+                            timelineViewModel.updateCurrentTimelineCover(processed.storageRef) { ok ->
+                                if (ok) custom?.coverPhotoRef?.let(mediaStore::delete) else mediaStore.delete(processed.storageRef)
+                            }
+                        }
+                    }
+                },
+                onClear = {
+                    val old = custom?.coverPhotoRef
+                    timelineViewModel.updateCurrentTimelineCover(null) { ok -> if (ok) old?.let(mediaStore::delete) }
+                    showCoverPicker = false
                 },
             )
         }
@@ -746,6 +828,7 @@ private fun TimelineContent(
     onComposerFocusHandled: () -> Unit,
     onJumpToDate: () -> Unit,
     onChangeTheme: (() -> Unit)?,
+    onUpdateCover: () -> Unit,
     dateNavigationTargetId: MomentId?,
     onDateNavigationHandled: () -> Unit,
     snackbarHostState: SnackbarHostState,
@@ -770,11 +853,69 @@ private fun TimelineContent(
         )
     }
     val isContextualActionMode = actionAvailability?.canEnter == true
+    val hasTimelineCoverHero = timelineState.currentTimeline is CurrentTimeline.Custom ||
+        timelineState.currentTimeline == CurrentTimeline.All
+    var coverStretchPx by remember { mutableFloatStateOf(0f) }
+    val maxCoverStretchPx = with(LocalDensity.current) { (dims.spacing.huge * 3).toPx() }
+    val maxCoverPullDeltaPx = with(LocalDensity.current) { dims.spacing.xl.toPx() }
+    val coverStretchConnection = remember(hasTimelineCoverHero, maxCoverStretchPx, maxCoverPullDeltaPx) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                // Let the LazyColumn consume all normal upward movement first. Only its
+                // unconsumed boundary motion grows the cover in onPostScroll, so a fast
+                // scroll transitions into the elastic state without a visible stop.
+                if (!hasTimelineCoverHero || available.y >= 0f || coverStretchPx <= 0f) {
+                    return Offset.Zero
+                }
+                val consumedY = min(-available.y, coverStretchPx)
+                coverStretchPx -= consumedY
+                return Offset.Zero
+            }
+
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset {
+                // A non-zero `available` value is only delivered after the list itself
+                // has reached its boundary. Rely on it directly so one fast gesture
+                // transitions into the elastic cover without waiting for list-state
+                // observation to catch up on the following frame.
+                if (!hasTimelineCoverHero || source != NestedScrollSource.UserInput || available.y <= 0f) return Offset.Zero
+                val pullDelta = (available.y * 0.7f).coerceAtMost(maxCoverPullDeltaPx)
+                coverStretchPx = (coverStretchPx + pullDelta).coerceAtMost(maxCoverStretchPx)
+                return Offset.Zero
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                if (coverStretchPx > 0f) {
+                    animate(
+                        initialValue = coverStretchPx,
+                        targetValue = 0f,
+                        animationSpec = tween(motion.durations.slowMillis, easing = motion.easings.standard),
+                    ) { value, _ -> coverStretchPx = value }
+                }
+                return Velocity.Zero
+            }
+
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                if (coverStretchPx > 0f) {
+                    animate(
+                        initialValue = coverStretchPx,
+                        targetValue = 0f,
+                        animationSpec = tween(motion.durations.slowMillis, easing = motion.easings.standard),
+                    ) { value, _ -> coverStretchPx = value }
+                }
+                return Velocity.Zero
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.bgCanvas),
+            .background(colors.bgCanvas)
+            .nestedScroll(coverStretchConnection),
     ) {
         AnimatedContent(
             targetState = isContextualActionMode,
@@ -800,6 +941,29 @@ private fun TimelineContent(
                 )
             } else if (mode is TimelineMode.ReadOnlySystemCollection) {
                 SystemCollectionHeader(title = mode.title, onBack = onBack ?: {})
+            } else if (timelineState.currentTimeline == CurrentTimeline.All) {
+                val collageBucket = allTimelineCollageBucket(clock.now())
+                AllTimelineCoverHero(
+                    attachments = allTimelineCoverCandidates(allTimelineCoverAttachments(moments), collageBucket),
+                    collageBucket = collageBucket,
+                    mediaStore = mediaStore,
+                    onBack = onBack,
+                    onJumpToDate = onJumpToDate,
+                    onChangeTheme = onChangeTheme ?: {},
+                    stretchPx = coverStretchPx,
+                )
+            } else if (timelineState.currentTimeline is CurrentTimeline.Custom) {
+                val custom = timelineState.customTimelines.firstOrNull { it.id == (timelineState.currentTimeline as CurrentTimeline.Custom).id }
+                if (custom != null) TimelineCoverHero(
+                    name = custom.name,
+                    coverPhotoRef = custom.coverPhotoRef,
+                    mediaStore = mediaStore,
+                    onBack = onBack,
+                    onJumpToDate = onJumpToDate,
+                    onChangeTheme = onChangeTheme ?: {},
+                    onUpdateCover = onUpdateCover,
+                    stretchPx = coverStretchPx,
+                )
             } else {
                 TimelineHeader(
                     onBack = onBack,
@@ -827,6 +991,16 @@ private fun TimelineContent(
                 var returnToBottomState by remember { mutableStateOf(TimelineReturnToBottomState()) }
                 val autoScrollController = remember { TimelineAutoScrollController() }
                 val listScope = rememberCoroutineScope()
+
+                LaunchedEffect(listState.isScrollInProgress) {
+                    if (!listState.isScrollInProgress && coverStretchPx > 0f) {
+                        animate(
+                            initialValue = coverStretchPx,
+                            targetValue = 0f,
+                            animationSpec = tween(motion.durations.slowMillis, easing = motion.easings.standard),
+                        ) { value, _ -> coverStretchPx = value }
+                    }
+                }
 
                 LaunchedEffect(listState) {
                     snapshotFlow {
@@ -1150,6 +1324,29 @@ private fun TimelineThemeDialog(
                 onClick = onDismiss,
                 colors = ButtonDefaults.textButtonColors(contentColor = ReliveTheme.colors.accent),
             ) { Text("Close") }
+        },
+    )
+}
+
+@Composable
+private fun TimelineCoverDialog(
+    hasCover: Boolean,
+    onDismiss: () -> Unit,
+    onChoose: () -> Unit,
+    onClear: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(ReliveTheme.dimensions.radii.dialog),
+        containerColor = ReliveTheme.colors.surfaceOverlay,
+        title = { Text("Timeline cover", style = ReliveTheme.typography.title, color = ReliveTheme.colors.textPrimary) },
+        text = { Text(if (hasCover) "Replace or remove this local cover photo." else "Choose a cover photo for this timeline.", style = ReliveTheme.typography.body, color = ReliveTheme.colors.textSecondary) },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = {
+            Row {
+                if (hasCover) TextButton(onClick = onClear) { Text("None") }
+                TextButton(onClick = onChoose) { Text(if (hasCover) "Replace" else "Choose") }
+            }
         },
     )
 }

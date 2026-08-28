@@ -6,8 +6,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.IconButton
@@ -16,12 +18,26 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.icons.TimelineActionIcons
+import com.vaibhav.relive.domain.model.MediaStorageRef
+import com.vaibhav.relive.domain.model.MediaAttachment
+import com.vaibhav.relive.platform.media.MediaStore
+import com.vaibhav.relive.platform.media.RelivedImageTile
+import com.vaibhav.relive.presentation.cardcover.resolveAllTimelineCollage
+import com.vaibhav.relive.ui.components.AllTimelineCollage
+import com.vaibhav.relive.ui.screens.NoCoverPhotoPlaceholder
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material3.TextButton
 
 /** Timeline detail header with optional back navigation and a centered wordmark. */
 @Composable
@@ -86,6 +102,113 @@ fun TimelineHeader(
             }
         }
     }
+}
+
+/** Custom-timeline identity hero. The cover is independent from Moment media. */
+@Composable
+fun TimelineCoverHero(
+    name: String,
+    coverPhotoRef: MediaStorageRef?,
+    mediaStore: MediaStore,
+    onBack: (() -> Unit)?,
+    onJumpToDate: () -> Unit,
+    onChangeTheme: () -> Unit,
+    onUpdateCover: () -> Unit,
+    stretchPx: Float = 0f,
+    showUpdateCover: Boolean = true,
+    coverContent: (@Composable (Modifier) -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    val colors = ReliveTheme.colors
+    val dims = ReliveTheme.dimensions
+    val density = LocalDensity.current
+    val stretchHeight = with(density) { stretchPx.toDp() }
+    val zoom = 1f + (stretchPx / with(density) { dims.timeline.coverHeroHeight.toPx() }) * .65f
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(dims.timeline.coverHeroHeight + stretchHeight)
+            .clipToBounds()
+            .background(colors.bgCanvas),
+    ) {
+        if (coverContent != null) {
+            coverContent(Modifier.fillMaxSize())
+        } else if (coverPhotoRef != null && mediaStore.exists(coverPhotoRef)) {
+            RelivedImageTile(
+                coverPhotoRef,
+                mediaStore,
+                Modifier.fillMaxSize().graphicsLayer {
+                    scaleX = zoom
+                    scaleY = zoom
+                },
+            )
+        } else NoCoverPhotoPlaceholder(Modifier.fillMaxSize())
+        // The lower canvas-color wash lets the cover resolve into the timeline instead
+        // of ending at a hard visual boundary. It also keeps the title legible without
+        // changing the centered crop of the selected image.
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0.42f to colors.bgCanvas.copy(alpha = 0f),
+                            0.76f to colors.bgCanvas.copy(alpha = 0.74f),
+                            1f to colors.bgCanvas,
+                        ),
+                    ),
+                ),
+        )
+        if (onBack != null) IconButton(
+            onClick = onBack,
+            modifier = Modifier.align(Alignment.TopStart).windowInsetsPadding(WindowInsets.statusBars).padding(dims.spacing.md).size(dims.minTouchTarget).background(colors.surfaceFloating.copy(alpha = .88f), CircleShape).semantics { contentDescription = "Back to Timeline Home" },
+        ) { BackGlyph(dims.icon.lg, colors.textPrimary, dims.stroke.icon) }
+        Row(modifier = Modifier.align(Alignment.TopEnd).windowInsetsPadding(WindowInsets.statusBars).padding(dims.spacing.md), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onChangeTheme, modifier = Modifier.size(dims.minTouchTarget).semantics { contentDescription = "Change timeline theme" }) { PaletteGlyph(dims.icon.md, colors.textPrimary, dims.stroke.icon) }
+            IconButton(onClick = onJumpToDate, modifier = Modifier.size(dims.minTouchTarget).semantics { contentDescription = "Jump to date" }) { CalendarGlyph(dims.icon.md, colors.textPrimary, dims.stroke.icon) }
+            if (showUpdateCover) TextButton(onClick = onUpdateCover, modifier = Modifier.background(colors.surfaceFloating.copy(alpha = .9f), CircleShape), contentPadding = PaddingValues(horizontal = dims.spacing.md)) { Text("Update", style = ReliveTheme.typography.body, color = colors.textPrimary) }
+        }
+        Text(name, style = ReliveTheme.typography.title, color = colors.textPrimary, modifier = Modifier.align(Alignment.BottomStart).padding(dims.spacing.xl))
+    }
+}
+
+/** Automatic All-timeline cover: an existing deterministic photo collage or no-media placeholder. */
+@Composable
+fun AllTimelineCoverHero(
+    attachments: List<MediaAttachment>,
+    collageBucket: Long,
+    mediaStore: MediaStore,
+    onBack: (() -> Unit)?,
+    onJumpToDate: () -> Unit,
+    onChangeTheme: () -> Unit,
+    stretchPx: Float = 0f,
+    modifier: Modifier = Modifier,
+) {
+    val selection = resolveAllTimelineCollage(available = attachments, bucket = collageBucket)
+    TimelineCoverHero(
+        name = "All",
+        coverPhotoRef = null,
+        mediaStore = mediaStore,
+        onBack = onBack,
+        onJumpToDate = onJumpToDate,
+        onChangeTheme = onChangeTheme,
+        onUpdateCover = {},
+        stretchPx = stretchPx,
+        showUpdateCover = false,
+        coverContent = { modifier ->
+            if (selection.attachments.isEmpty()) {
+                NoCoverPhotoPlaceholder(modifier)
+            } else {
+                AllTimelineCollage(
+                    attachments = selection.attachments,
+                    layout = requireNotNull(selection.layout),
+                    mediaStore = mediaStore,
+                    modifier = modifier,
+                )
+            }
+        },
+        modifier = modifier,
+    )
 }
 
 /** A temporary All-timeline action bar for one long-pressed Moment. */

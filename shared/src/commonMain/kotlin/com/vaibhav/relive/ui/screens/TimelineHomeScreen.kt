@@ -47,11 +47,16 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
@@ -63,9 +68,10 @@ import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.TimelineHomeSummary
 import com.vaibhav.relive.platform.media.MediaStore
+import com.vaibhav.relive.platform.media.MediaProcessor
+import com.vaibhav.relive.platform.media.rememberMediaPickerHandle
 import com.vaibhav.relive.platform.media.RelivedImageTile
 import com.vaibhav.relive.platform.media.RelivedVideoTile
-import com.vaibhav.relive.presentation.cardcover.cardCoverStableKey
 import com.vaibhav.relive.presentation.date.TimelineCreatedDateFormatter
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeContent
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeNavigation
@@ -84,11 +90,13 @@ import com.vaibhav.relive.ui.theme.toReliveThemeId
 import com.vaibhav.relive.ui.icons.ProfileIcons
 import com.vaibhav.relive.ui.icons.TimelineActionIcons
 import com.vaibhav.relive.presentation.cardcover.resolveAllTimelineCollage
+import kotlinx.coroutines.launch
 
 @Composable
 fun TimelineHomeScreen(
     viewModel: TimelineHomeViewModel,
     mediaStore: MediaStore,
+    mediaProcessor: MediaProcessor,
     listState: LazyListState,
     onOpenTimeline: (TimelineHomeNavigation) -> Unit,
     onOpenProfile: () -> Unit,
@@ -101,6 +109,8 @@ fun TimelineHomeScreen(
     val state by viewModel.state.collectAsState()
     val creation by viewModel.creationState.collectAsState()
     val haptics = rememberReliveHaptics()
+    val coroutineScope = rememberCoroutineScope()
+    val mediaPicker = rememberMediaPickerHandle(mediaStore)
     var selectedTimelines by remember { mutableStateOf<Set<Timeline.Custom>>(emptySet()) }
     var timelineToRename by remember { mutableStateOf<Timeline.Custom?>(null) }
     var timelinesToDelete by remember { mutableStateOf<List<Timeline.Custom>>(emptyList()) }
@@ -187,6 +197,18 @@ fun TimelineHomeScreen(
     TimelineCreationDialog(
         state = creation,
         onNameChange = viewModel::updateTimelineName,
+        mediaStore = mediaStore,
+        onChooseCover = {
+            coroutineScope.launch {
+                viewModel.setTimelineCoverProcessing(true)
+                val raw = mediaPicker.pickImage().firstOrNull()
+                if (raw == null) viewModel.setTimelineCoverProcessing(false)
+                else runCatching { mediaProcessor.process(raw) }
+                    .onSuccess { viewModel.setTimelineCoverPhoto(it.storageRef) }
+                    .onFailure { viewModel.setTimelineCoverProcessing(false) }
+            }
+        },
+        onClearCover = { viewModel.setTimelineCoverPhoto(null) },
         onCreate = viewModel::createTimeline,
         onDismiss = viewModel::dismissTimelineCreation,
     )
@@ -715,9 +737,9 @@ internal fun TimelineHomeMediaPreview(
                 bucket = allCollageBucket,
             )
             if (selection.attachments.isEmpty()) {
-                com.vaibhav.relive.ui.theme.ReliveGeneratedCover(
-                    stableKey = summary.timeline.cardCoverStableKey(),
+                NoCoverPhotoPlaceholder(
                     modifier = Modifier.matchParentSize(),
+                    useFixedCardBackground = true,
                 )
             } else {
                 AllTimelineCollage(
@@ -727,35 +749,64 @@ internal fun TimelineHomeMediaPreview(
                     modifier = Modifier.matchParentSize(),
                 )
             }
-        } else when (attachments.size) {
-            0 -> com.vaibhav.relive.ui.theme.ReliveGeneratedCover(
-                stableKey = summary.timeline.cardCoverStableKey(),
-                modifier = Modifier.matchParentSize(),
-            )
-            1 -> PreviewTile(attachments.single(), mediaStore, Modifier.matchParentSize())
-            2 -> Row(Modifier.matchParentSize()) {
-                PreviewTile(attachments[0], mediaStore, Modifier.weight(1f))
-                Box(Modifier.size(dims.media.collageGap).background(ReliveTheme.colors.accent))
-                PreviewTile(attachments[1], mediaStore, Modifier.weight(1f))
-            }
-            else -> Row(Modifier.matchParentSize()) {
-                PreviewTile(attachments[0], mediaStore, Modifier.weight(1.4f))
-                Box(Modifier.size(dims.media.collageGap).background(ReliveTheme.colors.accent))
-                Column(Modifier.weight(1f)) {
-                    PreviewTile(attachments[1], mediaStore, Modifier.weight(1f).fillMaxWidth())
-                    Box(Modifier.height(dims.media.collageGap).fillMaxWidth().background(ReliveTheme.colors.accent))
-                    Row(Modifier.weight(1f)) {
-                        PreviewTile(attachments[2], mediaStore, Modifier.weight(1f))
-                        if (attachments.size == 4) {
-                            Box(Modifier.size(dims.media.collageGap).background(ReliveTheme.colors.accent))
-                            PreviewTile(attachments[3], mediaStore, Modifier.weight(1f))
-                        }
-                    }
-                }
+        } else {
+            val cover = (summary.timeline as Timeline.Custom).coverPhotoRef
+            if (cover == null || !mediaStore.exists(cover)) {
+                NoCoverPhotoPlaceholder(
+                    modifier = Modifier.matchParentSize(),
+                    useFixedCardBackground = true,
+                )
+            } else {
+                RelivedImageTile(cover, mediaStore, Modifier.matchParentSize())
             }
         }
     }
 }
+
+@Composable
+internal fun NoCoverPhotoPlaceholder(
+    modifier: Modifier = Modifier,
+    useFixedCardBackground: Boolean = false,
+) {
+    val colors = ReliveTheme.colors
+    val dims = ReliveTheme.dimensions
+    val background = if (useFixedCardBackground) NeutralCoverPlaceholderBackground else colors.surfaceCardTranslucent
+    val foreground = if (useFixedCardBackground) Color.White else colors.surfaceOverlay
+    Canvas(modifier = modifier.background(background)) {
+        val iconWidth = size.minDimension * .54f
+        val iconHeight = iconWidth * .58f
+        val left = (size.width - iconWidth) / 2f
+        val top = (size.height - iconHeight) / 2f
+        val stroke = dims.stroke.icon.toPx() * 2f
+        drawRoundRect(
+            color = foreground,
+            topLeft = Offset(left, top),
+            size = Size(iconWidth, iconHeight),
+            cornerRadius = CornerRadius(iconHeight * .08f),
+            style = Stroke(width = stroke),
+        )
+        drawCircle(
+            color = foreground,
+            radius = iconHeight * .12f,
+            center = Offset(left + iconWidth * .67f, top + iconHeight * .30f),
+        )
+        drawPath(
+            path = Path().apply {
+                moveTo(left + stroke, top + iconHeight - stroke)
+                lineTo(left + iconWidth * .31f, top + iconHeight * .23f)
+                lineTo(left + iconWidth * .62f, top + iconHeight * .62f)
+                lineTo(left + iconWidth * .78f, top + iconHeight * .39f)
+                lineTo(left + iconWidth - stroke, top + iconHeight * .73f)
+                lineTo(left + iconWidth - stroke, top + iconHeight - stroke)
+                close()
+            },
+            color = foreground,
+        )
+    }
+}
+
+// Intentionally neutral: the empty custom-timeline card must not imply a theme-specific cover.
+private val NeutralCoverPlaceholderBackground = Color(0xFFB8B8B8)
 
 @Composable
 private fun PreviewTile(attachment: MediaAttachment, mediaStore: MediaStore, modifier: Modifier) {

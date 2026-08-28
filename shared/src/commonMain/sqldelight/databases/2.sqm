@@ -1,0 +1,11 @@
+-- SQLDelight's historical migration snapshot starts at profile_metadata, while
+-- custom_timelines predates that tracked migration. The guarded create lets
+-- migration verification reconstruct the older schema and is a no-op on every
+-- existing Relive database.
+CREATE TABLE IF NOT EXISTS custom_timelines (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    theme TEXT,
+    created_at INTEGER NOT NULL
+);
+ALTER TABLE custom_timelines ADD COLUMN cover_photo_ref TEXT;

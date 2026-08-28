@@ -90,6 +90,8 @@ data class DateNavigationState(
 data class TimelineCreationState(
     val isVisible: Boolean = false,
     val name: String = "",
+    val coverPhotoRef: MediaStorageRef? = null,
+    val isProcessingCover: Boolean = false,
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
 )

@@ -38,6 +38,7 @@ class SqlDelightTimelineHomeRepository(
                     id = TimelineId(count.timeline_id ?: error("Missing custom timeline id")),
                     name = count.name,
                     theme = count.theme?.let(::decodeThemeName),
+                    coverPhotoRef = count.cover_photo_ref?.let(::MediaStorageRef),
                 )
             }
             TimelineHomeSummary(

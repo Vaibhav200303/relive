@@ -207,6 +207,7 @@ From the reference:
 | `timeline.rail.width` | `1px`   | thin vertical rail                        |
 | `timeline.dot.size`   | `10dp`  | circular dot for an existing moment        |
 | `timeline.plus.size`  | `32dp`  | plus-circle marker for the active composer |
+| `timeline.cover.hero.height` | `300dp` | custom-timeline cover hero resting height |
 | `timeline.item.gap`   | `48dp`  | vertical spacing between moments            |
 | `timeline.content.inset` | `32dp` | left inset from rail to content (`pl-8`) |
 | `timeline.dot.color`  | `#6F4E37` | dot fill (accent)                        |
@@ -340,7 +341,7 @@ Profile archive-insights uses one restrained summary surface, then direct canvas
 
 Collection-card visual regions use `ReliveGeneratedCover` when their preview data contains no image or video. The cover uses a deterministic stable hash of the Timeline ID (or logical `timeline-all`) or Moment ID to choose a curated gradient; it is never persisted, random, time-based, or animated. A reactive image/video preview replaces it automatically. Audio-only and text-only collection cards use the cover, without a waveform, generic icon, or empty-state copy. Normal Timeline MomentCard media presentation remains unchanged.
 
-The logical All card is the one exception to static media-preview selection: its available visual candidates remain a bounded reactive projection, while a deterministic three-hour bucket chooses 1–9 distinct candidates and a curated layout. The generated fallback itself remains stable and unchanged when there are zero candidates.
+The logical All card and its timeline hero share one automatic cover: its available visual candidates remain a bounded reactive projection, while a deterministic three-hour bucket chooses 1–9 distinct candidates and a curated layout. When there are zero candidates, both use the neutral no-cover placeholder rather than a generated cover.
 
 ## 20. Rediscover and top-level navigation
 

@@ -93,6 +93,7 @@ internal fun Custom_timelines.toDomain(): Timeline.Custom =
             id = TimelineId(id),
             name = name,
             theme = theme?.let(::decodeThemeName),
+            coverPhotoRef = cover_photo_ref?.let(::MediaStorageRef),
         )
     } catch (e: IllegalArgumentException) {
         throw PersistenceMappingException("Corrupt custom_timelines row id=$id: ${e.message}", e)

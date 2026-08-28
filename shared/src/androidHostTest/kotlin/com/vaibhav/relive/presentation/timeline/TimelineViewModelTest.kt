@@ -523,6 +523,10 @@ private class FakeTimelineRepository(
         timelines.value = timelines.value.map { if (it.id == id) it.copy(theme = theme) else it }
     }
 
+    override suspend fun updateCoverPhoto(id: TimelineId, coverPhotoRef: MediaStorageRef?) {
+        timelines.value = timelines.value.map { if (it.id == id) it.copy(coverPhotoRef = coverPhotoRef) else it }
+    }
+
     override suspend fun deleteCustom(id: TimelineId) {
         timelines.value = timelines.value.filterNot { it.id == id }
         memberships.values.forEach { it.remove(id) }

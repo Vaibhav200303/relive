@@ -27,6 +27,9 @@ interface TimelineRepository {
 
     suspend fun updateTheme(id: TimelineId, theme: ThemeReference?)
 
+    /** Stores an optional Relive-managed image used only as this timeline's cover. */
+    suspend fun updateCoverPhoto(id: TimelineId, coverPhotoRef: com.vaibhav.relive.domain.model.MediaStorageRef?)
+
     /**
      * Deletes the custom timeline and every membership row referencing it.
      * Does NOT delete referenced moments.

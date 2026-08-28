@@ -5,6 +5,8 @@ import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.repository.TimelineRepository
 import com.vaibhav.relive.domain.time.Clock
+import com.vaibhav.relive.domain.model.MediaStorageRef
+import com.vaibhav.relive.platform.media.MediaStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -21,6 +23,7 @@ class TimelineCreationController(
     private val clock: Clock,
     private val idGenerator: IdGenerator,
     private val scope: CoroutineScope,
+    private val mediaStore: MediaStore? = null,
 ) {
     private val _state = MutableStateFlow(TimelineCreationState())
     val state: StateFlow<TimelineCreationState> = _state.asStateFlow()
@@ -35,6 +38,7 @@ class TimelineCreationController(
 
     fun dismiss() {
         if (_state.value.isSaving) return
+        _state.value.coverPhotoRef?.let { mediaStore?.delete(it) }
         _state.update { TimelineCreationState() }
     }
 
@@ -42,9 +46,19 @@ class TimelineCreationController(
         _state.update { it.copy(name = value, errorMessage = null) }
     }
 
+    fun setCoverPhoto(ref: MediaStorageRef?) {
+        val prior = _state.value.coverPhotoRef
+        if (prior != null && prior != ref) mediaStore?.delete(prior)
+        _state.update { it.copy(coverPhotoRef = ref, isProcessingCover = false, errorMessage = null) }
+    }
+
+    fun setCoverProcessing(value: Boolean) {
+        _state.update { it.copy(isProcessingCover = value, errorMessage = null) }
+    }
+
     fun create() {
         val creation = _state.value
-        if (creation.isSaving) return
+        if (creation.isSaving || creation.isProcessingCover) return
         val trimmed = creation.name.trim()
         val error = when {
             trimmed.isEmpty() -> "Enter a timeline name."
@@ -60,7 +74,7 @@ class TimelineCreationController(
         _state.update { it.copy(isSaving = true) }
         scope.launch {
             try {
-                val timeline = Timeline.Custom(TimelineId(idGenerator.newId()), trimmed)
+                val timeline = Timeline.Custom(TimelineId(idGenerator.newId()), trimmed, coverPhotoRef = creation.coverPhotoRef)
                 timelineRepository.createCustom(
                     timeline = timeline,
                     createdAt = clock.now(),

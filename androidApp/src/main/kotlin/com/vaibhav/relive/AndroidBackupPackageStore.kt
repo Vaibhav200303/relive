@@ -57,7 +57,7 @@ class AndroidBackupPackageStore(
             }
         }
         val manifest = JSONObject(manifestBytes?.toString(Charsets.UTF_8) ?: error("Missing backup manifest"))
-        require(manifest.optInt("formatVersion") == 1) { "Unsupported backup format" }
+        require(manifest.optInt("formatVersion") in 1..2) { "Unsupported backup format" }
         val rawArchive = archiveBytes ?: error("Missing backup archive")
         require(manifest.optString("archiveSha256") == sha256(rawArchive)) { "Archive checksum mismatch" }
         val payload = JSONObject(rawArchive.toString(Charsets.UTF_8))
@@ -65,7 +65,8 @@ class AndroidBackupPackageStore(
         val newRefs = mutableMapOf<String, String>()
         val createdFiles = mutableListOf<File>()
         val oldRefs = database.mediaAttachmentsQueries.selectArchiveAttachmentRefs().executeAsList()
-            .map { it.storage_ref }
+            .map { it.storage_ref } + database.customTimelinesQueries.selectAllCustomTimelines()
+            .executeAsList().mapNotNull { it.cover_photo_ref }
         for (i in 0 until inventory.length()) {
             val item = inventory.getJSONObject(i); val hash = item.getString("sha256")
             require(hash.matches(Regex("[0-9a-f]{64}"))) { "Invalid media checksum" }
@@ -99,7 +100,7 @@ class AndroidBackupPackageStore(
                     database.momentsQueries.insertMoment(m.getString("id"), m.getLong("createdAt"), if (m.isNull("updatedAt")) null else m.optLong("updatedAt"), m.optString("title"), m.optString("content"), if (m.optBoolean("favorite")) 1L else 0L, if (m.isNull("locationLat")) null else m.optDouble("locationLat"), if (m.isNull("locationLon")) null else m.optDouble("locationLon"), m.optNullableString("locationDisplayName"), m.optNullableString("locationLocality"), m.optNullableString("locationRegion"), m.optNullableString("locationCountry"))
                 }
                 val timelines = payload.getJSONArray("timelines")
-                for (i in 0 until timelines.length()) { val t = timelines.getJSONObject(i); database.customTimelinesQueries.insertCustomTimeline(t.getString("id"), t.getString("name"), t.optNullableString("theme"), t.getLong("createdAt")) }
+                for (i in 0 until timelines.length()) { val t = timelines.getJSONObject(i); database.customTimelinesQueries.insertCustomTimeline(t.getString("id"), t.getString("name"), t.optNullableString("theme"), t.optNullableString("coverPhotoRef")?.let { newRefs[it] ?: error("Missing cover media reference") }, t.getLong("createdAt")) }
                 val tags = payload.getJSONArray("tags")
                 for (i in 0 until tags.length()) { val t = tags.getJSONObject(i); database.tagsQueries.insertTagIfAbsent(t.getString("canonical"), t.getString("label")) }
                 val memberships = payload.getJSONArray("memberships")
@@ -125,8 +126,9 @@ class AndroidBackupPackageStore(
     override suspend fun create(): PackagedBackup = withContext(Dispatchers.IO) {
         backupAuthLog("archive snapshot started")
         val generation = UUID.randomUUID().toString()
-        val mediaRefs = database.mediaAttachmentsQueries.selectArchiveAttachmentRefs().executeAsList()
-            .map { it.storage_ref }.distinct().sorted()
+        val mediaRefs = (database.mediaAttachmentsQueries.selectArchiveAttachmentRefs().executeAsList().map { it.storage_ref } +
+            database.customTimelinesQueries.selectAllCustomTimelines().executeAsList().mapNotNull { it.cover_photo_ref })
+            .distinct().sorted()
         val mediaInventory = JSONArray()
         val payload = JSONObject()
         payload.put("moments", JSONArray().apply {
@@ -140,7 +142,7 @@ class AndroidBackupPackageStore(
                 })
             }
         })
-        payload.put("timelines", JSONArray().apply { database.customTimelinesQueries.selectAllCustomTimelines().executeAsList().forEach { put(JSONObject().apply { put("id", it.id); put("name", it.name); put("theme", it.theme); put("createdAt", it.created_at) }) } })
+        payload.put("timelines", JSONArray().apply { database.customTimelinesQueries.selectAllCustomTimelines().executeAsList().forEach { put(JSONObject().apply { put("id", it.id); put("name", it.name); put("theme", it.theme); put("coverPhotoRef", it.cover_photo_ref); put("createdAt", it.created_at) }) } })
         payload.put("memberships", JSONArray().apply {
             database.membershipsQueries.selectAllMemberships().executeAsList().forEach {
                 put(JSONObject().apply { put("momentId", it.moment_id); put("timelineId", it.timeline_id) })
@@ -181,14 +183,14 @@ class AndroidBackupPackageStore(
                 }
             }
             val manifest = JSONObject().apply {
-                put("formatVersion", 1); put("generation", generation); put("createdAt", System.currentTimeMillis())
-                put("schemaVersion", 2); put("momentCount", database.momentsQueries.countMoments().executeAsOne()); put("media", mediaInventory)
+                put("formatVersion", 2); put("generation", generation); put("createdAt", System.currentTimeMillis())
+                put("schemaVersion", 3); put("momentCount", database.momentsQueries.countMoments().executeAsOne()); put("media", mediaInventory)
                 put("archiveSha256", sha256(archiveBytes))
             }
             zip.putNextEntry(ZipEntry("manifest.json")); zip.write(manifest.toString().toByteArray(Charsets.UTF_8)); zip.closeEntry()
             backupAuthLog("archive package completed generation=$generation moments=${database.momentsQueries.countMoments().executeAsOne()}")
         }
-        val manifest = BackupManifest(1, generation, System.currentTimeMillis(), database.momentsQueries.countMoments().executeAsOne(), temp.length(), sha256(temp))
+        val manifest = BackupManifest(2, generation, System.currentTimeMillis(), database.momentsQueries.countMoments().executeAsOne(), temp.length(), sha256(temp))
         PackagedBackup(temp.absolutePath, manifest, temp.length())
     }
 

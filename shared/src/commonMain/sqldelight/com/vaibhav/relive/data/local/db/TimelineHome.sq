@@ -7,6 +7,7 @@ SELECT
     NULL AS timeline_id,
     'All' AS name,
     NULL AS theme,
+    NULL AS cover_photo_ref,
     NULL AS created_at,
     COUNT(m.id) AS moment_count
 FROM moments m
@@ -17,11 +18,12 @@ SELECT
     ct.id AS timeline_id,
     ct.name AS name,
     ct.theme AS theme,
+    ct.cover_photo_ref AS cover_photo_ref,
     ct.created_at AS created_at,
     COUNT(mtm.moment_id) AS moment_count
 FROM custom_timelines ct
 LEFT JOIN moment_timeline_memberships mtm ON mtm.timeline_id = ct.id
-GROUP BY ct.id, ct.name, ct.theme, ct.created_at
+GROUP BY ct.id, ct.name, ct.theme, ct.cover_photo_ref, ct.created_at
 ORDER BY display_order, created_at DESC, scope_key ASC;
 
 -- Visual attachments only. All exposes at most nine collage candidates;

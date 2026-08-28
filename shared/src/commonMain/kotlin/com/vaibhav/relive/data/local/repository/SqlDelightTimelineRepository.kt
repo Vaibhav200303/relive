@@ -28,6 +28,7 @@ class SqlDelightTimelineRepository(
                 id = timeline.id.value,
                 name = timeline.name,
                 theme = encodeThemeName(timeline.theme),
+                cover_photo_ref = timeline.coverPhotoRef?.value,
                 created_at = createdAt.epochMilliseconds,
             )
         }
@@ -61,6 +62,7 @@ class SqlDelightTimelineRepository(
         database.customTimelinesQueries.updateCustomTimeline(
             name = newName,
             theme = existing.theme,
+            coverPhotoRef = existing.cover_photo_ref,
             id = id.value,
         )
     }
@@ -72,6 +74,19 @@ class SqlDelightTimelineRepository(
             database.customTimelinesQueries.updateCustomTimeline(
                 name = existing.name,
                 theme = encodeThemeName(theme),
+                coverPhotoRef = existing.cover_photo_ref,
+                id = id.value,
+            )
+        }
+
+    override suspend fun updateCoverPhoto(id: TimelineId, coverPhotoRef: com.vaibhav.relive.domain.model.MediaStorageRef?) =
+        withContext(dispatcher) {
+            val existing = database.customTimelinesQueries.selectCustomTimelineById(id.value)
+                .executeAsOneOrNull() ?: return@withContext
+            database.customTimelinesQueries.updateCustomTimeline(
+                name = existing.name,
+                theme = existing.theme,
+                coverPhotoRef = coverPhotoRef?.value,
                 id = id.value,
             )
         }

@@ -15,6 +15,7 @@ sealed interface Timeline {
         val id: TimelineId,
         val name: String,
         val theme: ThemeReference? = null,
+        val coverPhotoRef: MediaStorageRef? = null,
     ) : Timeline {
         init {
             val trimmed = name.trim()

@@ -133,6 +133,7 @@ fun App(
                 clock = container.clock,
                 idGenerator = container.idGenerator,
                 scope = scope,
+                mediaStore = container.mediaStore,
             )
         }
         val homeState by homeViewModel.state.collectAsState()
@@ -403,6 +404,7 @@ fun App(
                         ReliveTopLevelDestination.Timelines -> TimelineHomeScreen(
                             viewModel = homeViewModel,
                             mediaStore = container.mediaStore,
+                            mediaProcessor = container.mediaProcessor,
                             listState = homeListState,
                             onOpenTimeline = { destination ->
                                 timelinesDestination = TimelinesDestination.TimelineDetail(

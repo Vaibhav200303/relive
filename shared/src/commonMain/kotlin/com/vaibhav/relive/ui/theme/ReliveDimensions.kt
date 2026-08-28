@@ -46,6 +46,7 @@ data class ReliveTimelineDimensions(
     val railWidth: Dp = 1.dp,
     val dotSize: Dp = 10.dp,
     val plusSize: Dp = 32.dp,
+    val coverHeroHeight: Dp = 300.dp,
     val itemGap: Dp = 48.dp,
     val contentInset: Dp = 32.dp,
     val horizontalPadding: Dp = 24.dp,
