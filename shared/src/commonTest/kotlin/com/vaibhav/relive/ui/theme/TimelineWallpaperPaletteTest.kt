@@ -62,7 +62,7 @@ class TimelineWallpaperPaletteTest {
     @Test
     fun momentForegroundsStayReadableOverEveryWallpaperInEveryAppearanceMode() {
         listOf(false, true).forEach { isDark ->
-            val colors = reliveColorsFor(OriginalPaletteAnchors, isDark)
+            val colors = reliveColorsFor(DefaultRelivePalette.roles(isDark), isDark)
 
             TimelineWallpaper.entries.forEach { wallpaper ->
                 val background = timelineWallpaperPalette(wallpaper, isDark = false)

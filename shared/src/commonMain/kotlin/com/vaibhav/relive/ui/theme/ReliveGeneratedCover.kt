@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 
 /** A dark, restrained gradient pair used when a collection card has no visual media. */
 data class ReliveGeneratedCoverColors(
@@ -61,39 +62,24 @@ fun ReliveGeneratedCover(
     )
 }
 
-val WarmJournalGeneratedCoverPalette = ReliveGeneratedCoverPalette(
-    covers = listOf(
-        ReliveGeneratedCoverColors(Color(0xFF241332), Color(0xFF5A2748)),
-        ReliveGeneratedCoverColors(Color(0xFF111C35), Color(0xFF244D73)),
-        ReliveGeneratedCoverColors(Color(0xFF102D2A), Color(0xFF275B4F)),
-        ReliveGeneratedCoverColors(Color(0xFF321A17), Color(0xFF70402F)),
-        ReliveGeneratedCoverColors(Color(0xFF191631), Color(0xFF443A70)),
-        ReliveGeneratedCoverColors(Color(0xFF16272E), Color(0xFF285967)),
-        ReliveGeneratedCoverColors(Color(0xFF321522), Color(0xFF653048)),
-        ReliveGeneratedCoverColors(Color(0xFF222817), Color(0xFF4B5932)),
-    ),
-)
-
-fun generatedCoverPaletteFor(
-    anchors: RelivePaletteAnchors,
-    isDark: Boolean,
-): ReliveGeneratedCoverPalette {
-    if (!isDark && anchors == OriginalPaletteAnchors) return WarmJournalGeneratedCoverPalette
+/**
+ * Media-less covers are always deep tiles carrying light-on-dark content, so they are seeded from
+ * the palette's dark roles regardless of the active mode — a card without a photo reads the same
+ * whether the app is light or dark, and stays tied to the selected palette's hue.
+ */
+fun generatedCoverPaletteFor(palette: RelivePalette): ReliveGeneratedCoverPalette {
+    val d = palette.dark
     return ReliveGeneratedCoverPalette(
-        covers = if (isDark) {
-            listOf(
-                ReliveGeneratedCoverColors(anchors.dark, anchors.mid),
-                ReliveGeneratedCoverColors(anchors.dark, anchors.strong),
-                ReliveGeneratedCoverColors(anchors.strong, anchors.dark),
-                ReliveGeneratedCoverColors(anchors.strong, anchors.mid),
-            )
-        } else {
-            listOf(
-                ReliveGeneratedCoverColors(anchors.strong, anchors.dark),
-                ReliveGeneratedCoverColors(anchors.dark, anchors.mid),
-                ReliveGeneratedCoverColors(anchors.mid, anchors.strong),
-                ReliveGeneratedCoverColors(anchors.dark, anchors.strong),
-            )
-        },
+        covers = listOf(
+            ReliveGeneratedCoverColors(d.canvas, d.surface),
+            ReliveGeneratedCoverColors(lerp(d.canvas, d.primary, 0.30f), d.canvas),
+            ReliveGeneratedCoverColors(d.surface, lerp(d.surface, d.primary, 0.42f)),
+            ReliveGeneratedCoverColors(lerp(d.canvas, Color.Black, 0.12f), d.tint),
+            ReliveGeneratedCoverColors(d.tint, d.canvas),
+            ReliveGeneratedCoverColors(lerp(d.primary, Color.Black, 0.45f), d.canvas),
+        ),
     )
 }
+
+/** The app-wide default cover palette (Ink &amp; Lilac). */
+val DefaultGeneratedCoverPalette: ReliveGeneratedCoverPalette = generatedCoverPaletteFor(DefaultRelivePalette)

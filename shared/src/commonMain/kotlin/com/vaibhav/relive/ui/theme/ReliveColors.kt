@@ -1,6 +1,7 @@
 package com.vaibhav.relive.ui.theme
 
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
@@ -21,8 +22,16 @@ data class ReliveColors(
     val textMuted: Color,
     val textOnAccent: Color,
     val textOnDestructive: Color,
+    /** Calm workhorse accent: buttons, pills, active nav, selection. Safe at size. */
     val accent: Color,
     val accentMuted: Color,
+    /**
+     * Loud highlight, small use only: dots, sparkles, active indicators. Never used as a text
+     * colour and never as a large fill — it exists to draw the eye to a single point.
+     */
+    val spark: Color,
+    /** Soft supporting fill: chips, quiet backgrounds, the search field. */
+    val tint: Color,
     val surfaceCard: Color,
     val surfaceFloating: Color,
     val surfaceOverlay: Color,
@@ -39,113 +48,76 @@ data class ReliveColors(
     val shadow: Color,
 )
 
-private val WarmJournalInk = Color(0xFF3C3633)
-private val WarmJournalAccent = Color(0xFF6F4E37)
-private val WarmJournalCanvas = Color(0xFFF6F4F0)
-private val WarmJournalCard = Color(0xFFEFECE5)
-private val WarmJournalFloatingSurface = Color(0xFFE1D8CB)
-private val WarmJournalBorder = Color(0xFFD5CDBF)
-private val WarmJournalDestructive = Color(0xFF98111E)
-private val WarmJournalCanvasGlow = Color(0xFFF2E7D5)
-private val WarmJournalShadow = Color(0xFF3C2A1A)
-
-val WarmJournalColors: ReliveColors = ReliveColors(
-    bgCanvas = WarmJournalCanvas,
-    bgCanvasGlow = WarmJournalCanvasGlow,
-    bgHeader = WarmJournalCanvas.copy(alpha = ReliveOpacity.VeryHigh),
-    textPrimary = WarmJournalInk,
-    textSecondary = WarmJournalInk.copy(alpha = ReliveOpacity.High),
-    textMuted = WarmJournalInk.copy(alpha = ReliveOpacity.Medium),
-    textOnAccent = Color.White,
-    textOnDestructive = Color.White,
-    accent = WarmJournalAccent,
-    accentMuted = WarmJournalAccent.copy(alpha = ReliveOpacity.High),
-    surfaceCard = WarmJournalCard,
-    surfaceFloating = WarmJournalFloatingSurface,
-    surfaceOverlay = WarmJournalCanvas,
-    surfaceCardTranslucent = WarmJournalCard.copy(alpha = ReliveOpacity.Medium),
-    surfaceAudio = Color(0xFF171514),
-    actionDestructive = WarmJournalDestructive,
-    border = WarmJournalBorder,
-    borderMuted = WarmJournalBorder.copy(alpha = ReliveOpacity.Medium),
-    shadow = WarmJournalShadow,
-)
-
-private val DarkCanvasNeutral = Color(0xFF0B0A09)
 private val DestructiveLight = Color(0xFF98111E)
 private val DestructiveDark = Color(0xFFFF8A95)
 
+/**
+ * Build the full semantic token bundle for one palette in one mode from its seven [roles].
+ * Derived tokens (borders, muted text, glow, translucency, shadow) are computed the same way for
+ * every palette, so all five stay internally consistent and any new palette drops in for free.
+ * On-accent and on-destructive text are chosen for guaranteed >= 4.5:1 contrast.
+ */
 internal fun reliveColorsFor(
-    anchors: RelivePaletteAnchors,
+    roles: RelivePaletteRoles,
     isDark: Boolean,
 ): ReliveColors {
-    if (!isDark && anchors == OriginalPaletteAnchors) return WarmJournalColors
-
-    val canvas = if (isDark) {
-        mix(anchors.dark, DarkCanvasNeutral, 0.35f)
-    } else {
-        mix(anchors.light, WarmJournalCanvas, 0.72f)
-    }
-    val surface = if (isDark) {
-        mix(anchors.dark, anchors.strong, 0.18f)
-    } else {
-        mix(anchors.light, Color.White, 0.38f)
-    }
-    val floating = if (isDark) {
-        mix(anchors.dark, anchors.mid, 0.28f)
-    } else {
-        mix(anchors.light, anchors.mid, 0.35f)
-    }
-    val overlay = if (isDark) mix(anchors.dark, anchors.strong, 0.25f) else canvas
-    val primaryText = if (isDark) mix(anchors.light, Color.White, 0.18f) else anchors.dark
-    val accent = if (isDark) anchors.mid else anchors.strong
-    val border = if (isDark) {
-        mix(anchors.dark, anchors.mid, 0.32f)
-    } else {
-        mix(anchors.light, anchors.mid, 0.45f)
-    }
-    val textOnAccent = higherContrastText(accent, listOf(anchors.dark, Color.White, Color.Black))
-    val actionDestructive = if (isDark) DestructiveDark else DestructiveLight
-    val textOnDestructive = higherContrastText(actionDestructive, listOf(Color.White, Color.Black))
-    // Light source is the canvas pulled toward the palette's own mid hue. Dark canvases need a
-    // much stronger lift than light ones: a subtle hue mix is invisible against near-black, so the
-    // dark glow leans harder on the mid anchor to read as an actual light source at the top edge.
-    val canvasGlow = if (isDark) mix(canvas, anchors.mid, 0.22f) else mix(canvas, anchors.mid, 0.16f)
-    val shadow = mix(anchors.dark, Color.Black, 0.35f)
-
+    val canvas = roles.canvas
+    val surface = roles.surface
+    val ink = roles.ink
+    val primary = roles.primary
+    val destructive = if (isDark) DestructiveDark else DestructiveLight
     return ReliveColors(
         bgCanvas = canvas,
-        bgCanvasGlow = canvasGlow,
+        // A subtle light source at the top edge: dark canvases lift toward their primary hue,
+        // light canvases settle toward the soft tint. One hue, low contrast, never neon.
+        bgCanvasGlow = if (isDark) mix(canvas, primary, 0.18f) else mix(canvas, roles.tint, 0.45f),
         bgHeader = canvas.copy(alpha = ReliveOpacity.VeryHigh),
-        textPrimary = primaryText,
-        textSecondary = mix(primaryText, canvas, if (isDark) 0.18f else 0.20f),
-        textMuted = mix(primaryText, canvas, if (isDark) 0.32f else 0.34f),
-        textOnAccent = textOnAccent,
-        textOnDestructive = textOnDestructive,
-        accent = accent,
-        accentMuted = mix(accent, canvas, 0.18f),
+        textPrimary = ink,
+        textSecondary = roles.inkSoft,
+        textMuted = mix(roles.inkSoft, canvas, 0.34f),
+        textOnAccent = readableTextOn(primary, ink),
+        textOnDestructive = higherContrastText(destructive, listOf(Color.White, Color.Black)),
+        accent = primary,
+        accentMuted = mix(primary, canvas, 0.18f),
+        spark = roles.spark,
+        tint = roles.tint,
         surfaceCard = surface,
-        surfaceFloating = floating,
-        surfaceOverlay = overlay,
+        surfaceFloating = roles.tint,
+        surfaceOverlay = if (isDark) mix(surface, ink, 0.06f) else surface,
         surfaceCardTranslucent = surface.copy(alpha = ReliveOpacity.Medium),
-        surfaceAudio = if (isDark) mix(anchors.dark, Color.Black, 0.45f) else anchors.dark,
-        actionDestructive = actionDestructive,
-        border = border,
-        borderMuted = mix(border, canvas, 0.42f),
-        shadow = shadow,
+        surfaceAudio = if (isDark) mix(canvas, Color.Black, 0.35f) else mix(ink, Color.Black, 0.08f),
+        actionDestructive = destructive,
+        border = mix(surface, ink, if (isDark) 0.20f else 0.14f),
+        borderMuted = mix(canvas, ink, if (isDark) 0.14f else 0.10f),
+        shadow = mix(ink, Color.Black, 0.35f),
     )
 }
 
+/** The app-wide default token bundle (Ink &amp; Lilac, light). */
+val DefaultReliveColors: ReliveColors = reliveColorsFor(DefaultRelivePalette.light, isDark = false)
+
+/** Prefer the palette ink on a filled accent when it is legible; otherwise fall back to B/W. */
+private fun readableTextOn(background: Color, preferredInk: Color): Color =
+    if (contrastRatio(preferredInk, background) >= 4.5f) {
+        preferredInk
+    } else {
+        higherContrastText(background, listOf(Color.White, Color.Black))
+    }
+
 /**
- * Vertical light-source gradient for screen canvases: a warm glow ([ReliveColors.bgCanvasGlow])
- * concentrated at the top that settles into the flat [ReliveColors.bgCanvas] by the upper
- * third. Applied at the screen root so content scrolls over a single, calm light source rather
- * than a flat fill. Kept intentionally subtle — one hue, low contrast.
+ * Diagonal light-source gradient for screen canvases: a warm glow ([ReliveColors.bgCanvasGlow])
+ * gathered in the top-left corner that settles into the flat [ReliveColors.bgCanvas] toward the
+ * bottom-right. `Offset.Infinite` as the end lets the gradient span whatever area it fills, so it
+ * runs corner-to-corner on any screen size. Applied at the screen root so content scrolls over a
+ * single, calm light source rather than a flat fill. Kept intentionally subtle — one hue, low
+ * contrast.
  */
-fun ReliveColors.canvasBrush(): Brush = Brush.verticalGradient(
+fun ReliveColors.canvasBrush(): Brush = Brush.linearGradient(
     0.0f to bgCanvasGlow,
-    0.35f to bgCanvas,
+    0.55f to bgCanvas,
     1.0f to bgCanvas,
+    start = Offset.Zero,
+    end = Offset.Infinite,
 )
 
 /**

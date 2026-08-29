@@ -13,7 +13,7 @@ class AppearancePreferenceCodecTest {
         val invalid = decodeAppearancePreferences("unexpected", "unknown")
 
         assertEquals(AppearanceMode.System, missing.mode)
-        assertEquals(ThemeReference.WarmJournal, missing.defaultTheme)
+        assertEquals(ThemeReference.InkLilac, missing.defaultTheme)
         assertEquals(missing, invalid)
     }
 

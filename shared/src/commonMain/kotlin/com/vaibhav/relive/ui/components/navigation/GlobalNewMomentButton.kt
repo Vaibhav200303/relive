@@ -61,9 +61,10 @@ fun GlobalNewMomentButton(
             .width(toolbarWidth)
             .height(dims.floatingToolbar.height)
             .semantics { contentDescription = "Create new moment" },
+        // The primary create action: a filled primary pill, the one workhorse-accent CTA.
         colors = FloatingToolbarDefaults.standardFloatingToolbarColors(
-            toolbarContainerColor = colors.surfaceFloating,
-            toolbarContentColor = colors.accent,
+            toolbarContainerColor = colors.accent,
+            toolbarContentColor = colors.textOnAccent,
         ),
         shape = RoundedCornerShape(dims.radii.pill),
         contentPadding = PaddingValues(),
@@ -84,14 +85,14 @@ fun GlobalNewMomentButton(
             ) {
                 PlusGlyph(
                     size = dims.icon.md,
-                    color = colors.textMuted,
+                    color = colors.textOnAccent,
                     strokeWidth = dims.stroke.iconBold,
                 )
                 if (expanded && expandedWidth >= dims.floatingToolbar.newLabelMinimumWidth) {
                     Text(
                         text = "New",
                         style = ReliveTheme.typography.prominentAction,
-                        color = colors.textMuted,
+                        color = colors.textOnAccent,
                     )
                 }
             }

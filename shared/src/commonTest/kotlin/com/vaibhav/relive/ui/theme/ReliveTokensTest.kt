@@ -14,28 +14,26 @@ import kotlin.test.assertTrue
 class ReliveTokensTest {
 
     @Test
-    fun warmJournalColorsMatchDesignSystem() {
-        val c = WarmJournalColors
-        assertEquals(Color(0xFFF6F4F0), c.bgCanvas)
-        assertEquals(Color(0xFF3C3633), c.textPrimary)
-        assertEquals(Color(0xFF6F4E37), c.accent)
-        assertEquals(Color(0xFFEFECE5), c.surfaceCard)
-        assertEquals(Color(0xFFF6F4F0), c.surfaceOverlay)
+    fun defaultColorsMatchInkLilacLight() {
+        val c = DefaultReliveColors
+        assertEquals(Color(0xFFF0EEE9), c.bgCanvas)
+        assertEquals(Color(0xFF17184B), c.textPrimary)
+        assertEquals(Color(0xFF55567A), c.textSecondary)
+        assertEquals(Color(0xFF7E5BC6), c.accent)
+        assertEquals(Color(0xFFCDE24A), c.spark)
+        assertEquals(Color(0xFFD3DDE7), c.tint)
+        assertEquals(Color(0xFFFFFFFF), c.surfaceCard)
+        assertEquals(Color(0xFFFFFFFF), c.surfaceOverlay)
         assertEquals(Color(0xFF98111E), c.actionDestructive)
-        assertEquals(Color(0xFFD5CDBF), c.border)
-        assertEquals(Color.White, c.textOnAccent)
     }
 
     @Test
     fun opacityDerivedColorsUseSharedScale() {
         // Color.copy quantizes alpha to 8 bits, so compare within one channel step.
         val tolerance = 1f / 255f
-        val c = WarmJournalColors
+        val c = DefaultReliveColors
         assertEquals(ReliveOpacity.VeryHigh, c.bgHeader.alpha, tolerance)
-        assertEquals(ReliveOpacity.High, c.textSecondary.alpha, tolerance)
-        assertEquals(ReliveOpacity.Medium, c.textMuted.alpha, tolerance)
-        assertEquals(ReliveOpacity.High, c.accentMuted.alpha, tolerance)
-        assertEquals(ReliveOpacity.Medium, c.borderMuted.alpha, tolerance)
+        assertEquals(ReliveOpacity.Medium, c.surfaceCardTranslucent.alpha, tolerance)
     }
 
     @Test
@@ -264,16 +262,16 @@ class ReliveTokensTest {
     }
 
     @Test
-    fun warmJournalRequestsDarkSystemBarIcons() {
-        // Warm Journal is a light canvas; platform status/nav icons must render dark
-        // for readability. Future dark themes flip this to false.
-        assertTrue(WarmJournalTokens.systemBarIconsDark)
+    fun defaultThemeRequestsDarkSystemBarIcons() {
+        // The default palette is a light canvas; platform status/nav icons must render dark
+        // for readability. Dark mode flips this to false.
+        assertTrue(DefaultReliveTokens.systemBarIconsDark)
     }
 
     @Test
     fun generatedCoverPalettesRespectTheActiveTheme() {
-        assertEquals(ReliveThemeId.WarmJournal, WarmJournalTokens.id)
-        assertEquals(WarmJournalGeneratedCoverPalette, reliveTokensFor(ReliveThemeId.WarmJournal).generatedCoverPalette)
+        assertEquals(ReliveThemeId.InkLilac, DefaultReliveTokens.id)
+        assertEquals(DefaultGeneratedCoverPalette, reliveTokensFor(ReliveThemeId.InkLilac).generatedCoverPalette)
         ReliveThemeId.entries.drop(1).forEach { theme ->
             assertTrue(reliveTokensFor(theme).generatedCoverPalette.covers.isNotEmpty())
             assertTrue(reliveTokensFor(theme, isDark = true).generatedCoverPalette.covers.isNotEmpty())
@@ -281,27 +279,25 @@ class ReliveTokensTest {
     }
 
     @Test
-    fun suppliedPaletteAnchorsAreExact() {
-        assertEquals(Color(0xFFD1F2EB), EvergreenPaletteAnchors.light)
-        assertEquals(Color(0xFF50C878), EvergreenPaletteAnchors.mid)
-        assertEquals(Color(0xFF0B6E4F), EvergreenPaletteAnchors.strong)
-        assertEquals(Color(0xFF013220), EvergreenPaletteAnchors.dark)
-        assertEquals(Color(0xFF98111E), CrimsonKeepsakePaletteAnchors.strong)
-        assertEquals(Color(0xFF3F0D12), CrimsonKeepsakePaletteAnchors.dark)
-        assertEquals(Color(0xFF000926), BlueHourPaletteAnchors.dark)
-        assertEquals(Color(0xFF3B1F1B), RosewoodPaletteAnchors.dark)
+    fun suppliedPaletteRolesAreExact() {
+        assertEquals(Color(0xFF17184B), InkLilacPalette.light.ink)
+        assertEquals(Color(0xFFC4A9F2), InkLilacPalette.dark.primary)
+        assertEquals(Color(0xFF2E8079), TealSaffronPalette.light.primary)
+        assertEquals(Color(0xFFFF6B3D), EmberAquaPalette.light.spark)
+        assertEquals(Color(0xFF6E3F97), PlumGoldPalette.light.primary)
+        assertEquals(Color(0xFF63C6A0), RoseSagePalette.light.spark)
     }
 
     @Test
-    fun previewsUseTheLiteralModeSpecificAnchors() {
+    fun previewsUseTheModeCanvasIntoPrimary() {
         RelivePaletteOptions.forEach { option ->
             assertEquals(
-                listOf(option.anchors.light, option.anchors.strong),
-                previewGradientFor(option.anchors, isDark = false),
+                listOf(option.light.canvas, option.light.primary),
+                previewGradientFor(option, isDark = false),
             )
             assertEquals(
-                listOf(option.anchors.dark, option.anchors.mid),
-                previewGradientFor(option.anchors, isDark = true),
+                listOf(option.dark.canvas, option.dark.primary),
+                previewGradientFor(option, isDark = true),
             )
         }
     }

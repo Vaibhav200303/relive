@@ -245,10 +245,10 @@ class TimelinePersistenceTest {
         fx.timelines.createCustom(sampleCustomTimeline("independent", "Independent", timelineAppearance), Instant(1L))
         var global = AppearancePreferences()
 
-        global = global.copy(mode = AppearanceMode.Dark, defaultTheme = ThemeReference.Rosewood)
+        global = global.copy(mode = AppearanceMode.Dark, defaultTheme = ThemeReference.RoseSage)
 
         assertEquals(AppearanceMode.Dark, global.mode)
-        assertEquals(ThemeReference.Rosewood, global.defaultTheme)
+        assertEquals(ThemeReference.RoseSage, global.defaultTheme)
         assertEquals(timelineAppearance, fx.timelines.findCustom(TimelineId("independent"))?.appearance)
     }
 

@@ -9,23 +9,23 @@ class ReliveGeneratedCoverTest {
     @Test
     fun sameKeySelectsTheSameGradient() {
         assertEquals(
-            generatedCoverSelection("moment-42", WarmJournalGeneratedCoverPalette),
-            generatedCoverSelection("moment-42", WarmJournalGeneratedCoverPalette),
+            generatedCoverSelection("moment-42", DefaultGeneratedCoverPalette),
+            generatedCoverSelection("moment-42", DefaultGeneratedCoverPalette),
         )
     }
 
     @Test
     fun differentKeysDistributeAcrossThePalette() {
         val selectedIndices = (0..64).map { key ->
-            generatedCoverSelection("moment-$key", WarmJournalGeneratedCoverPalette).paletteIndex
+            generatedCoverSelection("moment-$key", DefaultGeneratedCoverPalette).paletteIndex
         }.toSet()
         assertTrue(selectedIndices.size > 1)
     }
 
     @Test
     fun recomputationIsStable() {
-        val first = (0..16).map { generatedCoverSelection("timeline-$it", WarmJournalGeneratedCoverPalette) }
-        val second = (0..16).map { generatedCoverSelection("timeline-$it", WarmJournalGeneratedCoverPalette) }
+        val first = (0..16).map { generatedCoverSelection("timeline-$it", DefaultGeneratedCoverPalette) }
+        val second = (0..16).map { generatedCoverSelection("timeline-$it", DefaultGeneratedCoverPalette) }
         assertEquals(first, second)
     }
 

@@ -1,6 +1,7 @@
 package com.vaibhav.relive.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -281,7 +282,7 @@ private fun ProfileAppearanceSection(
             .padding(horizontal = dims.spacing.xl, vertical = dims.spacing.xxl),
         verticalArrangement = Arrangement.spacedBy(dims.spacing.md),
     ) {
-        Text("APPEARANCE", style = ReliveTheme.typography.eyebrow, color = colors.accentMuted)
+        Text("APPEARANCE", style = ReliveTheme.typography.eyebrow, color = colors.textSecondary)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -320,17 +321,26 @@ private fun ProfileHeader(onBack: () -> Unit) {
 private fun ProfileAvatar(photo: com.vaibhav.relive.domain.model.MediaStorageRef?, mediaStore: MediaStore) {
     val dims = ReliveTheme.dimensions
     val colors = ReliveTheme.colors
-    if (photo != null) {
-        RelivedImageTile(photo, mediaStore, Modifier.size(dims.profile.avatarSize).clip(RoundedCornerShape(dims.radii.pill)).semantics { contentDescription = "Change profile photo" })
-    } else Box(
+    val ringShape = RoundedCornerShape(dims.radii.pill)
+    // Accent ring (matching the primary CTA) with a gap between ring and avatar.
+    Box(
         modifier = Modifier
-            .size(dims.profile.avatarSize)
-            .clip(RoundedCornerShape(dims.radii.pill))
-            .background(colors.surfaceCard)
-            .semantics { contentDescription = "Profile avatar" },
+            .border(dims.stroke.cardOuter, colors.accent, ringShape)
+            .padding(dims.spacing.sm),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(ProfileIcons.Person, contentDescription = null, modifier = Modifier.size(dims.profile.avatarSize * 0.42f), tint = colors.textSecondary)
+        if (photo != null) {
+            RelivedImageTile(photo, mediaStore, Modifier.size(dims.profile.avatarSize).clip(ringShape).semantics { contentDescription = "Change profile photo" })
+        } else Box(
+            modifier = Modifier
+                .size(dims.profile.avatarSize)
+                .clip(ringShape)
+                .background(colors.surfaceCard)
+                .semantics { contentDescription = "Profile avatar" },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(ProfileIcons.Person, contentDescription = null, modifier = Modifier.size(dims.profile.avatarSize * 0.42f), tint = colors.textSecondary)
+        }
     }
 }
 
@@ -383,7 +393,7 @@ private fun ProfileSection(
                 bottom = if (last) dims.spacing.huge else dims.spacing.none,
             ),
     ) {
-        Text(title, style = ReliveTheme.typography.eyebrow, color = ReliveTheme.colors.accentMuted)
+        Text(title, style = ReliveTheme.typography.eyebrow, color = ReliveTheme.colors.textSecondary)
         labels.forEach { label ->
             ProfileSettingRow(
                 label = label,

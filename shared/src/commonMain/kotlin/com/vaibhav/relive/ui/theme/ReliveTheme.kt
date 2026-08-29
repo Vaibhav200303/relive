@@ -20,21 +20,19 @@ import com.vaibhav.relive.domain.model.ThemeReference
 
 /** Identifier for a selectable Relive palette. Appearance mode is resolved separately. */
 enum class ReliveThemeId {
-    WarmJournal,
-    Evergreen,
-    LilacDusk,
-    CrimsonKeepsake,
-    BlueHour,
-    Rosewood,
+    InkLilac,
+    TealSaffron,
+    EmberAqua,
+    PlumGold,
+    RoseSage,
 }
 
 fun ThemeReference.toReliveThemeId(): ReliveThemeId = when (this) {
-    ThemeReference.WarmJournal -> ReliveThemeId.WarmJournal
-    ThemeReference.Evergreen -> ReliveThemeId.Evergreen
-    ThemeReference.LilacDusk -> ReliveThemeId.LilacDusk
-    ThemeReference.CrimsonKeepsake -> ReliveThemeId.CrimsonKeepsake
-    ThemeReference.BlueHour -> ReliveThemeId.BlueHour
-    ThemeReference.Rosewood -> ReliveThemeId.Rosewood
+    ThemeReference.InkLilac -> ReliveThemeId.InkLilac
+    ThemeReference.TealSaffron -> ReliveThemeId.TealSaffron
+    ThemeReference.EmberAqua -> ReliveThemeId.EmberAqua
+    ThemeReference.PlumGold -> ReliveThemeId.PlumGold
+    ThemeReference.RoseSage -> ReliveThemeId.RoseSage
 }
 
 /**
@@ -59,13 +57,14 @@ data class ReliveThemeTokens(
     val systemBarIconsDark: Boolean,
 )
 
-val WarmJournalTokens: ReliveThemeTokens = ReliveThemeTokens(
-    id = ReliveThemeId.WarmJournal,
-    colors = WarmJournalColors,
+/** The app-wide default token bundle (Ink &amp; Lilac, light). */
+val DefaultReliveTokens: ReliveThemeTokens = ReliveThemeTokens(
+    id = ReliveThemeId.InkLilac,
+    colors = DefaultReliveColors,
     typography = DefaultReliveTypography,
     dimensions = DefaultReliveDimensions,
     motion = DefaultReliveMotion,
-    generatedCoverPalette = WarmJournalGeneratedCoverPalette,
+    generatedCoverPalette = DefaultGeneratedCoverPalette,
     isDark = false,
     systemBarIconsDark = true,
 )
@@ -74,31 +73,30 @@ fun reliveTokensFor(
     id: ReliveThemeId,
     isDark: Boolean = false,
 ): ReliveThemeTokens {
-    if (id == ReliveThemeId.WarmJournal && !isDark) return WarmJournalTokens
-    val anchors = paletteAnchorsFor(id.toThemeReference())
-    return WarmJournalTokens.copy(
+    if (id == ReliveThemeId.InkLilac && !isDark) return DefaultReliveTokens
+    val palette = paletteFor(id.toThemeReference())
+    return DefaultReliveTokens.copy(
         id = id,
-        colors = reliveColorsFor(anchors, isDark),
-        generatedCoverPalette = generatedCoverPaletteFor(anchors, isDark),
+        colors = reliveColorsFor(palette.roles(isDark), isDark),
+        generatedCoverPalette = generatedCoverPaletteFor(palette),
         isDark = isDark,
         systemBarIconsDark = !isDark,
     )
 }
 
 private fun ReliveThemeId.toThemeReference(): ThemeReference = when (this) {
-    ReliveThemeId.WarmJournal -> ThemeReference.WarmJournal
-    ReliveThemeId.Evergreen -> ThemeReference.Evergreen
-    ReliveThemeId.LilacDusk -> ThemeReference.LilacDusk
-    ReliveThemeId.CrimsonKeepsake -> ThemeReference.CrimsonKeepsake
-    ReliveThemeId.BlueHour -> ThemeReference.BlueHour
-    ReliveThemeId.Rosewood -> ThemeReference.Rosewood
+    ReliveThemeId.InkLilac -> ThemeReference.InkLilac
+    ReliveThemeId.TealSaffron -> ThemeReference.TealSaffron
+    ReliveThemeId.EmberAqua -> ThemeReference.EmberAqua
+    ReliveThemeId.PlumGold -> ThemeReference.PlumGold
+    ReliveThemeId.RoseSage -> ThemeReference.RoseSage
 }
 
-private val LocalReliveTokens = staticCompositionLocalOf { WarmJournalTokens }
+private val LocalReliveTokens = staticCompositionLocalOf { DefaultReliveTokens }
 
 @Composable
 fun ReliveTheme(
-    themeId: ReliveThemeId = ReliveThemeId.WarmJournal,
+    themeId: ReliveThemeId = ReliveThemeId.InkLilac,
     darkMode: Boolean = false,
     content: @Composable () -> Unit,
 ) {
@@ -174,6 +172,8 @@ private fun animateReliveColors(target: ReliveColors, durationMillis: Int): Reli
         textOnDestructive = animated(target.textOnDestructive),
         accent = animated(target.accent),
         accentMuted = animated(target.accentMuted),
+        spark = animated(target.spark),
+        tint = animated(target.tint),
         surfaceCard = animated(target.surfaceCard),
         surfaceFloating = animated(target.surfaceFloating),
         surfaceOverlay = animated(target.surfaceOverlay),

@@ -171,7 +171,7 @@ private fun ArchiveHero(insights: ArchiveInsights) {
             modifier = Modifier.padding(dims.spacing.lg),
             verticalArrangement = Arrangement.spacedBy(dims.spacing.md),
         ) {
-            Text("YOUR RELIVE ARCHIVE", style = ReliveTheme.typography.eyebrow, color = ReliveTheme.colors.accentMuted)
+            Text("YOUR RELIVE ARCHIVE", style = ReliveTheme.typography.eyebrow, color = ReliveTheme.colors.textSecondary)
             Text(formatByteSize(insights.totalBytes), style = ReliveTheme.typography.title, color = ReliveTheme.colors.textPrimary)
             Text("Total media stored", style = ReliveTheme.typography.subtitle, color = ReliveTheme.colors.textSecondary)
             if (insights.totalBytes > 0L) ArchiveComposition(insights)
@@ -223,7 +223,7 @@ private fun ArchiveComposition(insights: ArchiveInsights) {
 private fun ArchiveSection(title: String, content: @Composable () -> Unit) {
     val dims = ReliveTheme.dimensions
     Column(verticalArrangement = Arrangement.spacedBy(dims.spacing.md)) {
-        Text(title, style = ReliveTheme.typography.eyebrow, color = ReliveTheme.colors.accentMuted, modifier = Modifier.semantics { heading() })
+        Text(title, style = ReliveTheme.typography.eyebrow, color = ReliveTheme.colors.textSecondary, modifier = Modifier.semantics { heading() })
         content()
     }
 }
