@@ -71,6 +71,7 @@ import com.vaibhav.relive.presentation.settings.resolveDarkMode
 import com.vaibhav.relive.presentation.profile.AppLockController
 import com.vaibhav.relive.presentation.profile.RediscoverReminderController
 import com.vaibhav.relive.platform.system.openAppSettings
+import com.vaibhav.relive.platform.system.ReliveBackHandler
 import com.vaibhav.relive.platform.share.IncomingSharePayload
 import com.vaibhav.relive.platform.share.IncomingShareState
 import androidx.lifecycle.Lifecycle
@@ -174,7 +175,6 @@ fun App(
                 resolveStartupDestination(behaviorState.preferences.startDestination).toTopLevelDestination(),
             )
         }
-        var searchReturnDestination by remember { mutableStateOf(ReliveTopLevelDestination.Timelines) }
         var timelinesDestination by remember { mutableStateOf<TimelinesDestination>(TimelinesDestination.TimelineHome) }
         var rediscoverDestination by remember { mutableStateOf<RediscoverDestination>(RediscoverDestination.Root) }
         var profileNavigation by remember { mutableStateOf(ProfileNavigationState()) }
@@ -201,6 +201,16 @@ fun App(
         val backupRestoreViewModel = remember(container, scope) {
             BackupRestoreViewModel(container.backupPreferencesRepository, container.googleDriveAccountManager, container.backupCoordinator, scope)
         }
+        val canReturnToTimelineHome = profileNavigation.destination == ProfileDestination.Closed &&
+            timelinesDestination == TimelinesDestination.TimelineHome &&
+            rediscoverDestination == RediscoverDestination.Root &&
+            topLevel != ReliveTopLevelDestination.Timelines
+        val returnToTimelineHome = {
+            ActivePlayback.stopActive()
+            topLevel = ReliveTopLevelDestination.Timelines
+            navigationToolbarExpanded = true
+        }
+        ReliveBackHandler(enabled = !locked && canReturnToTimelineHome, onBack = returnToTimelineHome)
         if (locked) ReliveLockSurface(onUnlock = { scope.launch { lockController.unlock() } }) else {
             val motion = ReliveTheme.motion
             val showIncomingSharePicker = incomingShareState !is IncomingShareState.Idle &&
@@ -463,7 +473,7 @@ fun App(
                             mediaStore = container.mediaStore,
                             listState = searchListState,
                             clock = container.clock,
-                            onBack = { topLevel = searchReturnDestination },
+                            onBack = returnToTimelineHome,
                             onOpenAllAtMoment = { momentId ->
                                 timelinesDestination = TimelinesDestination.TimelineDetail(CurrentTimeline.All, momentId)
                                 topLevel = ReliveTopLevelDestination.Timelines
@@ -480,9 +490,6 @@ fun App(
                     modifier = Modifier.align(Alignment.BottomCenter),
                     onSelect = {
                         ActivePlayback.stopActive()
-                        if (it == ReliveTopLevelDestination.Search && topLevel != ReliveTopLevelDestination.Search) {
-                            searchReturnDestination = topLevel
-                        }
                         topLevel = it
                         navigationToolbarExpanded = true
                     },
