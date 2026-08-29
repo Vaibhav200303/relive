@@ -10,7 +10,7 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 
 - Establish module layering in `shared/` (domain, data, platform, presentation, ui, di) per [`ARCHITECTURE.md`](ARCHITECTURE.md).
 - Implement the tokenized design system and `ReliveTheme` (Warm Journal base) from [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md); bundle Playfair Display + Inter.
-- Replace the starter `App()` scaffold with the Relive app shell (header, canvas background) matching the reference.
+- Replace the initial `App()` scaffold with the Relive app shell (header, canvas background) matching the reference.
 - Wire formatting + static analysis into the build.
 - **Exit:** app builds on Android and iOS showing the themed shell; tokens in place; no feature logic yet.
 
@@ -76,6 +76,8 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 - Render the bounded local On This Day shelf directly below Favorites when at least one eligible previous-year local-date match exists, with exact calendar-year labels and selected-Moment read-only navigation; omit the complete section and its spacing when empty. Render From Your Past below On This Day when present, or directly after Favorites with normal spacing when absent: deterministic daily local selection of up to ten Moments at least 90 days old, excluding current On This Day matches and future timestamps, with the same compact card family as Favorites and read-only selected-Moment navigation. Preserve Places and Tags as deferred capability.
 - **Exit:** The bounded Favorites, On This Day, and From Your Past shelves render reactively from persisted data, each opens its read-only system collection at a selected Moment, and deferred Rediscover projections remain tested and isolated from the active root.
 
+Current implementation note: Favorites, On This Day, and From Your Past are implemented as bounded reactive shelves with read-only collection navigation. Places and Tags remain deferred, and the phase stays in progress for final polish and verification.
+
 ## Phase 8 — Search  ◐
 
 - Add Search as a top-level destination with a dedicated, autofocus search screen.
@@ -83,13 +85,18 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 - Provide match count, up/down active-match navigation, scroll-to-Moment, and read-only results. Filters, categories, Places, Tags, ranking, history, and AI search remain out of scope for v1.
 - **Exit:** Search v1 is SQL-backed, globally scoped, read-only, state-preserving across top-level tabs, and covered by focused search/navigation tests.
 
+Current implementation note: the dedicated autofocus screen, debounced SQL-backed matching, active-result counter/navigation, read-only timeline presentation, and session state preservation are implemented. The phase remains in progress for final verification.
+
 ## Phase 9 — Themes & settings  ◐
 
 - System/Light/Dark appearance plus Original, Evergreen, Lilac Dusk, Crimson Keepsake, Blue Hour, and Rosewood token sets. Custom timelines persist a dedicated `TimelineAppearance` independently of global app appearance; themes change only presentation.
 - Settings screen: Profile, Themes, Upgrade to Pro, Export (entries present; detailed behavior deferred where unspecified).
 - Profile Media & Storage: read-only local archive storage/category insights; management actions remain deferred.
 - Profile Preferences: native-local observable behavior settings for startup destination, explicit composer-discard confirmation, editable-Timeline location/tag presentation, and Rediscover On This Day/Favorites section visibility. Fixed 12-hour time and passive media playback remain unchanged; 24-hour time and media autoplay controls are deferred.
+- Timeline-owned appearance: editable All and custom timelines persist independent wallpaper selections and render the approved bundled wallpaper artwork without changing global appearance.
 - **Exit:** switching themes changes only presentation; navigation/structure/interaction unchanged; theme tests pass.
+
+Current implementation note: global appearance, Profile, Preferences, Media & Storage, Backup & Restore, Rediscover reminders, Privacy & Security/App Lock, Help, About/Licenses, custom-timeline themes, and All-timeline themes are present. Upgrade to Pro and Export remain entries/deferred behavior.
 
 ### Approved Phase override — Profile foundation
 

@@ -1,6 +1,6 @@
 # Relive — Architecture
 
-This document proposes a production-quality structure for Relive. It is a target architecture: not every module below exists yet. Build it out phase by phase per [`ROADMAP.md`](ROADMAP.md). Do not over-engineer — add structure when a phase needs it, not before.
+This document describes Relive's implemented architecture and the boundaries still being completed. Build remaining work phase by phase per [`ROADMAP.md`](ROADMAP.md). Do not over-engineer — add structure when a phase needs it, not before.
 
 Contributor rules that constrain this architecture are in [`../AGENTS.md`](../AGENTS.md). Product behavior is in [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md).
 
@@ -19,14 +19,14 @@ Contributor rules that constrain this architecture are in [`../AGENTS.md`](../AG
 
 ## 2. Current repository layout
 
-Generated Kotlin Multiplatform + Compose Multiplatform starter:
+Kotlin Multiplatform + Compose Multiplatform application:
 
 ```
 Relive/
-├── androidApp/            # Android application entry point
-│   └── src/main/kotlin/com/vaibhav/relive/MainActivity.kt
+├── androidApp/            # Android application entry point and debug/release wiring
+│   └── src/*/kotlin/com/vaibhav/relive/MainActivity.kt
 ├── iosApp/                # iOS application entry point (Xcode project, SwiftUI host)
-├── shared/                # shared KMP module
+├── shared/                # shared KMP module, domain, data, presentation, and Compose UI
 │   └── src/
 │       ├── commonMain/    # shared code for all targets
 │       ├── androidMain/   # Android-specific implementations
@@ -37,6 +37,8 @@ Relive/
 ├── gradle/libs.versions.toml
 └── docs/
 ```
+
+Implemented shared feature areas include `timeline`, `timelinehome`, `rediscover`, `search`, `composer`, `viewer`, `profile`, `settings`, and `navigation` presentation packages, plus media, backup, notifications, and Android share platform boundaries. The source tree is intentionally still a single shared module; separate Gradle modules are not part of the current architecture.
 
 - Package root: `com.vaibhav.relive`
 - Android: `applicationId = com.vaibhav.relive`, `minSdk 24`, `compileSdk 36`, `targetSdk 36`
@@ -78,7 +80,7 @@ shared/src/commonMain/kotlin/com/vaibhav/relive/
 Platform implementations live in the platform source sets:
 
 ```
-shared/src/androidMain/kotlin/com/vaibhav/relive/  # Android impls (location, media, storage)
+shared/src/androidMain/kotlin/com/vaibhav/relive/  # Android impls (media, storage, backup, sharing)
 shared/src/iosMain/kotlin/com/vaibhav/relive/      # iOS impls (Core Location, media, storage)
 ```
 
@@ -94,7 +96,7 @@ shared/src/iosMain/kotlin/com/vaibhav/relive/      # iOS impls (Core Location, m
 
 ## 4. Domain model (conceptual)
 
-Names are indicative; finalize during Phase 1.
+The following domain model is implemented and persisted through the repository interfaces:
 
 - **Moment**
   - `id`
@@ -125,7 +127,7 @@ Names are indicative; finalize during Phase 1.
 
 ## 5. Persistence design
 
-Local-first, on-device. The concrete engine (e.g. a KMP-compatible local database) is selected in Phase 1 and recorded in [`DECISIONS.md`](DECISIONS.md). Regardless of engine, the schema must satisfy [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) §13:
+Local-first, on-device. The implemented engine is SQLDelight/SQLite (ADR-0013), and its schema satisfies [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) §13:
 
 - **moments** — one row per moment, stored once.
 - **custom timelines** — reference moments; never duplicate moment data.
@@ -153,15 +155,13 @@ Any capability that differs by platform is declared as an interface in shared co
 
 Product requirements: [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) §7.
 
-Define a **platform-independent location abstraction** in shared code, conceptually:
+The shared model and composer currently support **optional manual readable location labels**. The platform-independent GPS abstraction is defined as a future seam, but GPS acquisition and reverse geocoding are not active in the current app:
 
 ```
 Composer → LocationProvider → current coordinates → PlaceResolver → human-readable location
 ```
 
-- **`LocationProvider`** — obtains the current device coordinates on demand (moment-scoped, one-shot; **never** continuous/background). Declared in shared code.
-  - Android implementation uses Android location APIs.
-  - iOS implementation uses Core Location.
+- **`LocationProvider`** — future on-demand, moment-scoped coordinate capability. No Android or iOS GPS implementation is currently active.
 - **`PlaceResolver`** — reverse-geocodes coordinates into a readable `ReliveLocation` (place name, locality, region, country). Behind its own interface so the resolution implementation can change later.
 
 The moment **domain model must not couple to any specific GPS SDK.** Shared domain/presentation code must not import Android location or Core Location types.
@@ -174,7 +174,7 @@ Location acquisition must model and surface these outcomes so the composer can c
 - location unavailable
 - timeout / failure
 
-A sealed result type (e.g. `LocationResult { Available, PermissionDenied, PermissionPermanentlyDenied, ServicesDisabled, Unavailable, Timeout }`) is the recommended shape. Permission requests use the platform's normal permission flow and happen only when needed.
+A sealed result type (e.g. `LocationResult { Available, PermissionDenied, PermissionPermanentlyDenied, ServicesDisabled, Unavailable, Timeout }`) is the recommended future shape. Permission requests and reverse geocoding are future work; the current manual-label flow requests no location permission.
 
 ### 6.2 Media capture and storage
 
@@ -209,7 +209,7 @@ RevenueCat (Pro entitlement), RevenueCat Funnels, and Stripe (web subscription) 
 - Keep gating decisions (what Pro unlocks) in the domain/presentation layers so a real entitlement source can be swapped in later.
 - Do not add RevenueCat/Stripe dependencies until the monetization phase.
 
-See [`ROADMAP.md`](ROADMAP.md) Phase 9 and [`RELEASE.md`](RELEASE.md).
+See [`ROADMAP.md`](ROADMAP.md) Phase 10 and [`RELEASE.md`](RELEASE.md).
 
 ---
 

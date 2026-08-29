@@ -88,7 +88,7 @@ Format for each entry:
 - **Date:** 2026-08-20 · **Status:** Accepted
 - **Context:** RevenueCat (Pro), RevenueCat Funnels, and Stripe (web) are planned later but must not be built now.
 - **Decision:** Represent Pro entitlement behind an interface in shared code, initially backed by a local stub. No RevenueCat/Stripe dependencies are added until the monetization phase. Gating logic lives in domain/presentation so a real source can be swapped in.
-- **Consequences:** The app ships free-tier now and can add real entitlements later without restructuring. See [`ARCHITECTURE.md`](ARCHITECTURE.md) §9, [`ROADMAP.md`](ROADMAP.md) Phase 9, [`RELEASE.md`](RELEASE.md).
+- **Consequences:** The app ships free-tier now and can add real entitlements later without restructuring. See [`ARCHITECTURE.md`](ARCHITECTURE.md) §9, [`ROADMAP.md`](ROADMAP.md) Phase 10, [`RELEASE.md`](RELEASE.md).
 
 ---
 
@@ -595,16 +595,16 @@ Format for each entry:
 - **Decision:** All owns a non-null `TimelineAppearance` stored in the existing native `AppearanceRepository` alongside other app-local presentation preferences. Custom timeline appearances remain in SQLDelight. The shared Timeline Theme route accepts both editable scopes, while derived read-only collections remain excluded. All's appearance changes only timeline-owned wallpaper/Moment treatment and never the app palette, profile, navigation, Search, Rediscover, or system collections.
 - **Consequences:** All gains the existing Timeline Theme action and reactive wallpaper rendering with no custom-timeline row, schema migration, membership, cover selection, or global retheming. Missing native preference values resolve to the existing Warm Cream / Warm Terracotta defaults.
 
-## Template for new decisions
-
-```
-
-## ADR-0045 — Versioned Google Drive app-data archive generations
+## ADR-0054 — Versioned Google Drive app-data archive generations
 
 - **Date:** 2026-08-25 · **Status:** Accepted
 - **Context:** Relive's explicit Google Drive backup must remain private to the app, preserve durable archive relationships, and remain safe when large uploads or restores are interrupted.
 - **Decision:** Backup uses a self-contained format-v1 bundle containing moments, custom timelines, memberships, tags, moment-tag links, attachment identity/order/storage references, and referenced media bytes. Installation-owned profile creation time is excluded because its SQLDelight immutability trigger must remain active and v1 restore cannot safely replace it. OAuth identity/tokens, client configuration, active jobs/resumable sessions, drafts, navigation/playback state, caches, and regenerable thumbnails are excluded. Objects are written to Drive's `appDataFolder` as immutable bundle, manifest, then index generations; the index is the promotion record and is created only after bundle/manifest upload succeeds. The prior promoted generation is never removed as part of candidate upload. Archive bytes are sent through an 8 MiB resumable stream rather than loaded into memory. Restore discovery accepts only a complete, version- and hash-verified indexed generation and activates it transactionally after staging.
 - **Consequences:** Drive storage is not visible in normal My Drive browsing and the scope remains exactly `drive.appdata`. A failed or partial candidate cannot become current, and large mobile archives have bounded upload memory. SHA-256 provides integrity only; encryption and iOS transport remain deferred until their platform-safe recovery designs are implemented.
+
+## Template for new decisions
+
+```text
 ## ADR-XXXX — <short title>
 - **Date:** YYYY-MM-DD · **Status:** Proposed | Accepted | Superseded
 - **Context:** …
