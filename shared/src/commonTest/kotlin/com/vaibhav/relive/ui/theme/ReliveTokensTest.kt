@@ -127,18 +127,39 @@ class ReliveTokensTest {
     @Test
     fun defaultTypographySizesAndStylesMatchDesignSystem() {
         val t = DefaultReliveTypography
+        assertEquals(38.sp, t.display.fontSize)
         assertEquals(30.sp, t.wordmark.fontSize)
         assertEquals(FontStyle.Italic, t.wordmark.fontStyle)
-        assertEquals(32.sp, t.coverTitle.fontSize)
+        assertEquals(30.sp, t.coverTitle.fontSize)
         assertEquals(24.sp, t.title.fontSize)
         assertEquals(FontStyle.Italic, t.subtitle.fontStyle)
-        assertEquals(15.sp, t.body.fontSize)
-        assertEquals(10.sp, t.eyebrow.fontSize)
+        assertEquals(15.sp, t.subtitle.fontSize)
+        assertEquals(16.sp, t.body.fontSize)
+        assertEquals(13.sp, t.caption.fontSize)
+        assertEquals(11.sp, t.eyebrow.fontSize)
         assertEquals(FontWeight.SemiBold, t.eyebrow.fontWeight)
-        assertEquals(10.sp, t.tag.fontSize)
+        assertEquals(11.sp, t.tag.fontSize)
         assertEquals(FontWeight.SemiBold, t.tag.fontWeight)
         assertEquals(14.sp, t.action.fontSize)
         assertEquals(FontWeight.SemiBold, t.action.fontWeight)
+    }
+
+    @Test
+    fun typographyScaleHasConsistentVerticalRhythmAndDistinctSteps() {
+        val t = DefaultReliveTypography
+        // Every role sets an explicit line height (no silent per-role default).
+        listOf(
+            t.display, t.wordmark, t.coverTitle, t.title, t.subtitle,
+            t.body, t.caption, t.eyebrow, t.tag, t.action, t.prominentAction,
+        ).forEach { style ->
+            assertTrue(style.lineHeight.value > 0f, "line height set for $style")
+        }
+        // The former muddy middle now steps clearly: caption < subtitle < body.
+        assertTrue(t.caption.fontSize.value < t.subtitle.fontSize.value)
+        assertTrue(t.subtitle.fontSize.value < t.body.fontSize.value)
+        // Large serif carries tight optical tracking; small caps carry open tracking.
+        assertTrue(t.title.letterSpacing.value < 0f)
+        assertTrue(t.eyebrow.letterSpacing.value > 1f)
     }
 
     @Test
@@ -146,14 +167,73 @@ class ReliveTokensTest {
         val serif = FontFamily.Cursive
         val sans = FontFamily.Monospace
         val t = reliveTypography(serif = serif, sans = sans)
+        assertEquals(serif, t.display.fontFamily)
         assertEquals(serif, t.wordmark.fontFamily)
         assertEquals(serif, t.coverTitle.fontFamily)
         assertEquals(serif, t.title.fontFamily)
         assertEquals(sans, t.subtitle.fontFamily)
         assertEquals(sans, t.body.fontFamily)
+        assertEquals(sans, t.caption.fontFamily)
         assertEquals(sans, t.eyebrow.fontFamily)
         assertEquals(sans, t.tag.fontFamily)
         assertEquals(sans, t.action.fontFamily)
+    }
+
+    @Test
+    fun darkModeStepsHeavyLabelsDownToCompensateHalation() {
+        val serif = FontFamily.Cursive
+        val sans = FontFamily.Monospace
+        val light = reliveTypography(serif = serif, sans = sans, isDark = false)
+        val dark = reliveTypography(serif = serif, sans = sans, isDark = true)
+
+        // Light keeps the approved SemiBold labels.
+        assertEquals(FontWeight.SemiBold, light.eyebrow.fontWeight)
+        assertEquals(FontWeight.SemiBold, light.tag.fontWeight)
+        assertEquals(FontWeight.SemiBold, light.action.fontWeight)
+        assertEquals(FontWeight.SemiBold, light.prominentAction.fontWeight)
+
+        // Dark steps them one weight lighter (bundled Medium) so glare-bloated
+        // light-on-dark labels carry the same typographic color as light mode.
+        assertEquals(FontWeight.Medium, dark.eyebrow.fontWeight)
+        assertEquals(FontWeight.Medium, dark.tag.fontWeight)
+        assertEquals(FontWeight.Medium, dark.action.fontWeight)
+        assertEquals(FontWeight.Medium, dark.prominentAction.fontWeight)
+
+        // Body/serif roles are identical across modes (no lighter cut is bundled).
+        assertEquals(light.body.fontWeight, dark.body.fontWeight)
+        assertEquals(light.title.fontWeight, dark.title.fontWeight)
+        assertEquals(light.body.fontSize, dark.body.fontSize)
+    }
+
+    @Test
+    fun materialTypographyFillsEveryRoleWithBrandedFamilies() {
+        val serif = FontFamily.Cursive
+        val sans = FontFamily.Monospace
+        val t = reliveTypography(serif = serif, sans = sans)
+        val m = reliveMaterialTypography(t)
+
+        // Display/headline had no Relive binding and previously fell back to the
+        // Material default; they must now use the bundled serif family.
+        assertEquals(serif, m.displayLarge.fontFamily)
+        assertEquals(serif, m.displayMedium.fontFamily)
+        assertEquals(serif, m.displaySmall.fontFamily)
+        assertEquals(serif, m.headlineLarge.fontFamily)
+        assertEquals(serif, m.headlineMedium.fontFamily)
+        assertEquals(serif, m.headlineSmall.fontFamily)
+
+        // The previously-mapped roles keep their exact Relive bindings.
+        assertEquals(t.title, m.titleLarge)
+        assertEquals(t.body, m.bodyLarge)
+        assertEquals(t.action, m.labelLarge)
+        assertEquals(t.eyebrow, m.labelMedium)
+        assertEquals(t.tag, m.labelSmall)
+        assertEquals(t.display, m.displayLarge)
+        assertEquals(t.caption, m.bodySmall)
+        assertEquals(t.subtitle, m.titleSmall)
+
+        // Optical tracking: display sizes are set tighter than headlineSmall.
+        assertTrue(m.displayLarge.letterSpacing.value < 0f)
+        assertTrue(m.displayLarge.fontSize > m.headlineLarge.fontSize)
     }
 
     @Test

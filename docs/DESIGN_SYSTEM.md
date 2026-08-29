@@ -126,20 +126,41 @@ Two families, both bundled locally in the app via the Compose Multiplatform reso
 
 Only the weights and styles actually referenced by the token mappings below are bundled. License files are stored alongside the font binaries in the design-system layer. Callers reference typography exclusively through `ReliveTheme.typography.*` — the underlying font resource names are an implementation detail of the design-system layer.
 
-| Token                   | Family | Size / style                              | Usage                         |
+The scale is one modular editorial system (§8.4), not a bag of per-screen sizes. Every role sets size, line height, tracking, and weight; the serif carries the large brand roles and the sans carries every text and label role.
+
+| Token                   | Family | Size / line / style                       | Usage                         |
 | ----------------------- | ------ | ----------------------------------------- | ----------------------------- |
-| `type.wordmark`         | serif  | ~30sp, italic                             | "Relive" header               |
-| `type.coverTitle`       | serif  | ~32sp                                     | custom timeline cover heading  |
-| `type.title`            | serif  | ~24sp (2xl)                               | moment title                  |
-| `type.subtitle`         | sans   | ~14sp, italic                             | moment subtitle/summary line  |
-| `type.body`             | sans   | ~14–16sp                                  | content                       |
-| `type.eyebrow`          | sans   | ~10sp, semibold, uppercase, wide tracking | timeline metadata line (`DATE • TIME` / location)        |
-| `type.tag`              | sans   | ~10sp, semibold, wide tracking            | tag chips (rendered `#lowercase`; `#` is supplied by the UI, not stored on the tag label) |
-| `type.action`           | sans   | ~14sp, semibold                           | buttons                       |
+| `type.display`          | serif  | 38 / 44, tight tracking                    | hero / empty-state heading     |
+| `type.wordmark`         | serif  | 30 / 34, italic                           | "Relive" header               |
+| `type.coverTitle`       | serif  | 30 / 36                                    | custom timeline cover heading  |
+| `type.title`            | serif  | 24 / 30                                    | moment title                  |
+| `type.subtitle`         | sans   | 15 / 22, italic                           | moment subtitle/summary line  |
+| `type.body`             | sans   | 16 / 24                                    | content (long-form reading)   |
+| `type.caption`          | sans   | 13 / 18                                    | small secondary text          |
+| `type.eyebrow`          | sans   | 11 / 16, semibold, uppercase, wide tracking | timeline metadata line (`DATE • TIME` / location)        |
+| `type.tag`              | sans   | 11 / 16, semibold, medium tracking         | tag chips (rendered `#lowercase`; `#` is supplied by the UI, not stored on the tag label) |
+| `type.action`           | sans   | 14 / 20, semibold                          | buttons                       |
+| `type.prominentAction`  | sans   | 16 / 22, semibold                          | primary call-to-action         |
 
 The composer location input uses `type.body` with muted/secondary text, the `icon.sm` location pin, and a `48dp` minimum row target. It is an inline editorial field directly below `DATE • TIME`, never a heavy outlined address form. Saved Moment locations use the same `type.eyebrow` role and left edge as saved date/time, but `color.text.secondary`; presentation trims whitespace and capitalizes only the first character.
 
 Sizes are expressed in scalable units (`sp`) so they respect system font scaling (§16).
+
+### 8.1 Material type scale mapping
+
+All fifteen Material 3 `Typography` roles are populated from Relive tokens via `reliveMaterialTypography`, so any Material component reading `MaterialTheme.typography.*` renders in the bundled Relive families and never the Material default (Roboto). The `title`, `body`, and `label` roles map to the existing Relive tokens; the `display` and `headline` roles have no Relive equivalent and are derived from the serif `type.title` family. Do not rely on Material components using an unmapped role — every role is branded.
+
+### 8.2 Optical sizing (structural)
+
+The bundled fonts are static cuts, so there is no variable `opsz` axis. Optical-size intent is met structurally instead: the serif is a high-contrast **display** face used only at large sizes (24–38sp) and the sans is a **text** face used only at small sizes (11–16sp), so each role already carries the stroke contrast appropriate to its size. Tracking is tuned per size the way an optical axis would tune it — tight (negative) on the large serif roles, open on the small-caps roles (`type.eyebrow`, `type.tag`). Adopting variable fonts with a real `opsz`/`GRAD` axis is deferred (see [`DECISIONS.md`](DECISIONS.md) ADR-0055).
+
+### 8.3 Dark-mode label weight (halation)
+
+On a dark canvas, light-on-dark text glares and its strokes visually bloat, so a weight that looks right on light reads too heavy on dark. The four heavy label roles (`type.eyebrow`, `type.tag`, `type.action`, `type.prominentAction`) step one weight lighter in dark mode — **SemiBold on light, Medium on dark** — via `labelWeightFor(isDark)`, so they carry the same typographic color in both modes. Body and serif roles are unchanged (no lighter cut is bundled).
+
+### 8.4 Modular scale (professional redesign)
+
+The scale was redesigned (see [`DECISIONS.md`](DECISIONS.md) ADR-0056) to give the app professional typographic hierarchy. The prior scale had a muddy middle (subtitle 14 / body 15 / prominent action 16 read as one size) and broken rhythm (a cramped small cluster then a jump to 24/30/32). The redesigned scale: reading `type.body` is **16 / 24** (the comfortable long-form size for a journaling app); the text roles step clearly (`caption` 13 < `subtitle` 15 < `body` 16); the serif brand roles run 24 → 30 → 38; and every role sets an explicit line height and optical tracking. Same two bundled families — no new binaries. The pairing (Playfair Display + Inter) is the established Relive brand and is unchanged.
 
 ---
 
