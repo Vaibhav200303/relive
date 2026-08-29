@@ -2,6 +2,7 @@ package com.vaibhav.relive.ui.components.timeline
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -26,6 +27,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.Role
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.icons.TimelineActionIcons
 import com.vaibhav.relive.domain.model.MediaStorageRef
@@ -35,9 +37,9 @@ import com.vaibhav.relive.platform.media.RelivedImageTile
 import com.vaibhav.relive.presentation.cardcover.resolveAllTimelineCollage
 import com.vaibhav.relive.ui.components.AllTimelineCollage
 import com.vaibhav.relive.ui.screens.NoCoverPhotoPlaceholder
+import com.vaibhav.relive.ui.theme.ReliveOpacity
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.material3.TextButton
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 /** Timeline detail header with optional back navigation and a centered wordmark. */
 @Composable
@@ -113,9 +115,8 @@ fun TimelineCoverHero(
     onBack: (() -> Unit)?,
     onJumpToDate: () -> Unit,
     onChangeTheme: () -> Unit,
-    onUpdateCover: () -> Unit,
+    onUpdateCover: (() -> Unit)? = null,
     stretchPx: Float = 0f,
-    showUpdateCover: Boolean = true,
     coverContent: (@Composable (Modifier) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -129,7 +130,17 @@ fun TimelineCoverHero(
             .fillMaxWidth()
             .height(dims.timeline.coverHeroHeight + stretchHeight)
             .clipToBounds()
-            .background(colors.bgCanvas),
+            .background(colors.bgCanvas)
+            .then(
+                if (onUpdateCover != null) {
+                    Modifier.clickable(
+                        onClick = onUpdateCover,
+                        role = Role.Button,
+                    ).semantics { contentDescription = "Update cover photo" }
+                } else {
+                    Modifier
+                },
+            ),
     ) {
         if (coverContent != null) {
             coverContent(Modifier.fillMaxSize())
@@ -161,12 +172,21 @@ fun TimelineCoverHero(
         )
         if (onBack != null) IconButton(
             onClick = onBack,
-            modifier = Modifier.align(Alignment.TopStart).windowInsetsPadding(WindowInsets.statusBars).padding(dims.spacing.md).size(dims.minTouchTarget).background(colors.surfaceFloating.copy(alpha = .88f), CircleShape).semantics { contentDescription = "Back to Timeline Home" },
+            modifier = Modifier.align(Alignment.TopStart).windowInsetsPadding(WindowInsets.statusBars).padding(dims.spacing.md).size(dims.minTouchTarget).background(colors.surfaceFloating.copy(alpha = ReliveOpacity.VeryHigh), CircleShape).semantics { contentDescription = "Back to Timeline Home" },
         ) { BackGlyph(dims.icon.lg, colors.textPrimary, dims.stroke.icon) }
-        Row(modifier = Modifier.align(Alignment.TopEnd).windowInsetsPadding(WindowInsets.statusBars).padding(dims.spacing.md), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(dims.spacing.md)
+                .background(
+                    colors.surfaceFloating.copy(alpha = ReliveOpacity.VeryHigh),
+                    RoundedCornerShape(dims.radii.pill),
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             IconButton(onClick = onChangeTheme, modifier = Modifier.size(dims.minTouchTarget).semantics { contentDescription = "Change timeline theme" }) { PaletteGlyph(dims.icon.md, colors.textPrimary, dims.stroke.icon) }
             IconButton(onClick = onJumpToDate, modifier = Modifier.size(dims.minTouchTarget).semantics { contentDescription = "Jump to date" }) { CalendarGlyph(dims.icon.md, colors.textPrimary, dims.stroke.icon) }
-            if (showUpdateCover) TextButton(onClick = onUpdateCover, modifier = Modifier.background(colors.surfaceFloating.copy(alpha = .9f), CircleShape), contentPadding = PaddingValues(horizontal = dims.spacing.md)) { Text("Update", style = ReliveTheme.typography.body, color = colors.textPrimary) }
         }
         Text(name, style = ReliveTheme.typography.coverTitle, color = colors.textPrimary, modifier = Modifier.align(Alignment.BottomStart).padding(dims.spacing.xl))
     }
@@ -192,9 +212,8 @@ fun AllTimelineCoverHero(
         onBack = onBack,
         onJumpToDate = onJumpToDate,
         onChangeTheme = onChangeTheme,
-        onUpdateCover = {},
+        onUpdateCover = null,
         stretchPx = stretchPx,
-        showUpdateCover = false,
         coverContent = { modifier ->
             if (selection.attachments.isEmpty()) {
                 NoCoverPhotoPlaceholder(modifier)
