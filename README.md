@@ -22,7 +22,9 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full picture.
 
 ## Current development status
 
-**Documentation / foundation phase.** The repository currently contains the generated Kotlin Multiplatform + Compose Multiplatform starter project plus the authoritative product, architecture, and design documentation. Application features have **not** been implemented yet.
+**Active implementation / polish phase.** The repository contains a working Kotlin Multiplatform + Compose Multiplatform app with persistent Moments and custom timelines, Timeline Home, the chronological All timeline, inline capture and editing, media capture/playback, favorites, Rediscover, global Search, appearance and timeline wallpapers, Profile settings, Android external-share capture, and local archive insights. Android also contains the Google Drive backup/restore integration seam and implementation; account/OAuth configuration and physical-device verification remain release setup work.
+
+The current product is local-first and uses persistent SQLDelight/SQLite storage in both debug and release builds. GPS detection, monetization, Export, and production release configuration remain deferred or incomplete as tracked in [`docs/ROADMAP.md`](docs/ROADMAP.md) and [`docs/RELEASE.md`](docs/RELEASE.md).
 
 Progress is tracked in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 

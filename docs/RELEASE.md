@@ -1,6 +1,6 @@
 # Relive — Release
 
-Release requirements tracker. **None of these are configured yet.** This document records what will be needed so it is not forgotten; items are checked off only when actually done. Do not treat any item as complete until it is verified in the repository.
+Release requirements tracker. The app's core implementation is present, but release signing, store configuration, production OAuth setup, and submission verification are not complete. This document records what remains; items are checked off only when actually done. Do not treat any item as complete until it is verified in the repository.
 
 Status legend: ☐ not started · ◐ in progress · ☑ done.
 
@@ -56,7 +56,7 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 ## 8. Privacy checks  ☐
 
 - ☐ Confirm local-first posture holds: no backend, no cloud sync, no login, no third-party analytics, no location history separate from moments, no background location tracking.
-- ☐ Location usage strings / permission descriptions written (Android manifest strings, iOS `Info.plist` usage descriptions) — moment-scoped, requested only when needed.
+- ☐ GPS usage strings / permission descriptions written once GPS capture is activated (Android manifest strings, iOS `Info.plist` usage descriptions) — moment-scoped, requested only when needed. The current manual location-label flow requests no location permission.
 - ☐ Store data-safety / privacy labels accurately reflect on-device-only data and optional location.
 - ☐ Export feature (Settings) privacy reviewed once its behavior is defined.
 - ☐ Media and location data confirmed to remain local with the moment.
