@@ -31,6 +31,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.vaibhav.relive.domain.model.MediaType
+import com.vaibhav.relive.domain.model.TimelineWallpaper
+import com.vaibhav.relive.ui.components.timeline.TimelineWallpaperSurface
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.platform.media.RelivedAudioTile
 import com.vaibhav.relive.platform.media.RelivedImageTile
@@ -54,35 +56,42 @@ fun MomentMediaGallery(
     onOpenItem: (Int) -> Unit,
     onClose: () -> Unit,
     backEnabled: Boolean = true,
+    wallpaper: TimelineWallpaper = TimelineWallpaper.WarmCream,
 ) {
     val gridState = rememberLazyGridState()
 
     ReliveBackHandler(enabled = backEnabled, onBack = onClose)
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-            .windowInsetsPadding(WindowInsets.systemBars),
+    // The grid lays its tiles over the timeline's own doodle wallpaper; the gaps between tiles
+    // let the wallpaper breathe through so the gallery stays part of the memory's world.
+    TimelineWallpaperSurface(
+        wallpaper = wallpaper,
+        modifier = Modifier.fillMaxSize(),
     ) {
-        GalleryTopBar(count = state.size, onClose = onClose)
-        LazyVerticalGrid(
-            state = gridState,
-            columns = GridCells.Adaptive(minSize = 160.dp),
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = GalleryGutter, vertical = GalleryGutter),
-            horizontalArrangement = Arrangement.spacedBy(GalleryGap),
-            verticalArrangement = Arrangement.spacedBy(GalleryGap),
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.systemBars),
         ) {
-            itemsIndexed(
-                items = state.attachments,
-                key = { i, a -> a.storageRef.value + ":" + i },
-            ) { index, att ->
-                GalleryTile(
-                    att = att,
-                    mediaStore = mediaStore,
-                    onClick = { onOpenItem(index) },
-                )
+            GalleryTopBar(count = state.size, onClose = onClose)
+            LazyVerticalGrid(
+                state = gridState,
+                columns = GridCells.Adaptive(minSize = 160.dp),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = GalleryGutter, vertical = GalleryGutter),
+                horizontalArrangement = Arrangement.spacedBy(GalleryGap),
+                verticalArrangement = Arrangement.spacedBy(GalleryGap),
+            ) {
+                itemsIndexed(
+                    items = state.attachments,
+                    key = { i, a -> a.storageRef.value + ":" + i },
+                ) { index, att ->
+                    GalleryTile(
+                        att = att,
+                        mediaStore = mediaStore,
+                        onClick = { onOpenItem(index) },
+                    )
+                }
             }
         }
     }
@@ -103,8 +112,8 @@ private fun GalleryTile(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(1f)
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color.Black)
+            .clip(RoundedCornerShape(14.dp))
+            .background(GalleryTileBase)
             .clickable(onClick = onClick)
             .semantics { contentDescription = desc },
     ) {
@@ -121,23 +130,40 @@ private fun GalleryTopBar(count: Int, onClose: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 8.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
-        IconButton(
-            onClick = onClose,
+        Box(
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .size(48.dp)
-                .semantics { contentDescription = "Close media gallery" },
-        ) { Text("✕", color = Color.White) }
+                .size(44.dp)
+                .clip(RoundedCornerShape(GalleryChromeRadius))
+                .background(GalleryChromeScrim),
+            contentAlignment = Alignment.Center,
+        ) {
+            IconButton(
+                onClick = onClose,
+                modifier = Modifier
+                    .size(44.dp)
+                    .semantics { contentDescription = "Close media gallery" },
+            ) { Text("✕", color = GalleryChromeInk) }
+        }
         Text(
             text = "$count items",
-            color = Color(0xFFEFECE5),
-            modifier = Modifier.align(Alignment.Center),
+            color = GalleryChromeInk,
+            modifier = Modifier
+                .align(Alignment.Center)
+                .clip(RoundedCornerShape(GalleryChromeRadius))
+                .background(GalleryChromeScrim)
+                .padding(horizontal = 14.dp, vertical = 8.dp),
         )
-        Box(modifier = Modifier.align(Alignment.CenterEnd).size(48.dp))
+        Box(modifier = Modifier.align(Alignment.CenterEnd).size(44.dp))
     }
 }
 
-private val GalleryGutter = 8.dp
-private val GalleryGap = 4.dp
+private val GalleryGutter = 12.dp
+private val GalleryGap = 8.dp
+// Chrome and tile bases sit over the fixed-light wallpaper, so they use mode-independent tones.
+private val GalleryChromeScrim = Color(0xE6FFFFFF)
+private val GalleryChromeInk = Color(0xFF23202B)
+private val GalleryChromeRadius = 999.dp
+private val GalleryTileBase = Color(0x1F000000)

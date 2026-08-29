@@ -19,12 +19,11 @@ internal fun AppearanceMode.encodePreference(): String = when (this) {
 }
 
 internal fun ThemeReference.encodePreference(): String = when (this) {
-    ThemeReference.WarmJournal -> "original"
-    ThemeReference.Evergreen -> "evergreen"
-    ThemeReference.LilacDusk -> "lilac_dusk"
-    ThemeReference.CrimsonKeepsake -> "crimson_keepsake"
-    ThemeReference.BlueHour -> "blue_hour"
-    ThemeReference.Rosewood -> "rosewood"
+    ThemeReference.InkLilac -> "ink_lilac"
+    ThemeReference.TealSaffron -> "teal_saffron"
+    ThemeReference.EmberAqua -> "ember_aqua"
+    ThemeReference.PlumGold -> "plum_gold"
+    ThemeReference.RoseSage -> "rose_sage"
 }
 
 internal fun TimelineWallpaper.encodePreference(): String = name
@@ -43,12 +42,12 @@ internal fun decodeAppearancePreferences(
             else -> AppearanceMode.System
         },
         defaultTheme = when (theme) {
-            "evergreen" -> ThemeReference.Evergreen
-            "lilac_dusk" -> ThemeReference.LilacDusk
-            "crimson_keepsake" -> ThemeReference.CrimsonKeepsake
-            "blue_hour" -> ThemeReference.BlueHour
-            "rosewood" -> ThemeReference.Rosewood
-            else -> ThemeReference.WarmJournal
+            "teal_saffron" -> ThemeReference.TealSaffron
+            "ember_aqua" -> ThemeReference.EmberAqua
+            "plum_gold" -> ThemeReference.PlumGold
+            "rose_sage" -> ThemeReference.RoseSage
+            // Retired palette keys and the default both resolve to Ink & Lilac.
+            else -> ThemeReference.InkLilac
         },
         allTimelineAppearance = TimelineAppearance(
             wallpaper = TimelineWallpaper.entries.firstOrNull { it.name == allTimelineWallpaper }

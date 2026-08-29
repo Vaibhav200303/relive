@@ -45,7 +45,7 @@ fun ProfilePageHeader(title: String, onBack: () -> Unit, backDescription: String
 @Composable
 fun ProfileSectionHeading(text: String) {
     val d = ReliveTheme.dimensions
-    Text(text, modifier = Modifier.fillMaxWidth().padding(start = d.spacing.xl, end = d.spacing.xl, top = d.spacing.xxl, bottom = d.spacing.sm).semantics { heading() }, color = ReliveTheme.colors.accentMuted, style = ReliveTheme.typography.eyebrow)
+    Text(text, modifier = Modifier.fillMaxWidth().padding(start = d.spacing.xl, end = d.spacing.xl, top = d.spacing.xxl, bottom = d.spacing.sm).semantics { heading() }, color = ReliveTheme.colors.textSecondary, style = ReliveTheme.typography.eyebrow)
 }
 
 @Composable

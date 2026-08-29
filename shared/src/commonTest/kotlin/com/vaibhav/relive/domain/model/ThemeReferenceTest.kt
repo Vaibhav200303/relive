@@ -10,12 +10,11 @@ class ThemeReferenceTest {
         val ids = ThemeReference.entries.toSet()
         assertEquals(
             setOf(
-                ThemeReference.WarmJournal,
-                ThemeReference.Evergreen,
-                ThemeReference.LilacDusk,
-                ThemeReference.CrimsonKeepsake,
-                ThemeReference.BlueHour,
-                ThemeReference.Rosewood,
+                ThemeReference.InkLilac,
+                ThemeReference.TealSaffron,
+                ThemeReference.EmberAqua,
+                ThemeReference.PlumGold,
+                ThemeReference.RoseSage,
             ),
             ids,
         )

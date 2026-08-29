@@ -43,9 +43,9 @@ class AppearanceStateTest {
         assertEquals(AppearanceMode.Dark, restoredViewModel.state.value.preferences.mode)
 
         repository.failWrites = true
-        viewModel.setDefaultTheme(ThemeReference.BlueHour)
+        viewModel.setDefaultTheme(ThemeReference.TealSaffron)
         runCurrent()
-        assertEquals(ThemeReference.WarmJournal, viewModel.state.value.preferences.defaultTheme)
+        assertEquals(ThemeReference.InkLilac, viewModel.state.value.preferences.defaultTheme)
         assertEquals("Could not save appearance.", viewModel.state.value.errorMessage)
         collectJob.cancel()
     }

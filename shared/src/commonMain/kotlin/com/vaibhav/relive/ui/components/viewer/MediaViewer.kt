@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.Text
@@ -39,6 +40,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.vaibhav.relive.domain.model.MediaType
+import com.vaibhav.relive.domain.model.TimelineWallpaper
+import com.vaibhav.relive.ui.components.timeline.TimelineWallpaperSurface
 import com.vaibhav.relive.platform.media.ActivePlayback
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.platform.media.RelivedAudioViewer
@@ -64,6 +67,7 @@ fun MediaViewer(
     mediaStore: MediaStore,
     onIndexChange: (Int) -> Unit,
     onClose: () -> Unit,
+    wallpaper: TimelineWallpaper = TimelineWallpaper.WarmCream,
 ) {
     val pagerState = rememberPagerState(
         initialPage = state.initialIndex,
@@ -87,36 +91,43 @@ fun MediaViewer(
         } else onClose()
     })
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-            .windowInsetsPadding(WindowInsets.systemBars),
+    // The viewer sits on the timeline's own doodle wallpaper rather than a flat black field,
+    // so opening a photo stays inside the memory's world. Letterbox margins around a photo,
+    // and the gaps between chrome, reveal the wallpaper.
+    TimelineWallpaperSurface(
+        wallpaper = wallpaper,
+        modifier = Modifier.fillMaxSize(),
     ) {
-        HorizontalPager(
-            state = pagerState,
-            userScrollEnabled = !ZoomableImageMath.isZoomed(currentZoom),
-            modifier = Modifier.fillMaxSize(),
-            key = { i -> state.attachments[i].storageRef.value + ":" + i },
-        ) { page ->
-            val att = state.attachments[page]
-            val isActive = page == pagerState.currentPage
-            MediaViewerPage(
-                attachment = att,
-                index = page,
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.systemBars),
+        ) {
+            HorizontalPager(
+                state = pagerState,
+                userScrollEnabled = !ZoomableImageMath.isZoomed(currentZoom),
+                modifier = Modifier.fillMaxSize(),
+                key = { i -> state.attachments[i].storageRef.value + ":" + i },
+            ) { page ->
+                val att = state.attachments[page]
+                val isActive = page == pagerState.currentPage
+                MediaViewerPage(
+                    attachment = att,
+                    index = page,
+                    total = state.attachments.size,
+                    mediaStore = mediaStore,
+                    isActive = isActive,
+                    onZoomChange = { z -> if (isActive) currentZoom = z },
+                    resetZoomKey = if (isActive) resetZoomRequest else 0f,
+                )
+            }
+
+            TopBar(
+                index = pagerState.currentPage,
                 total = state.attachments.size,
-                mediaStore = mediaStore,
-                isActive = isActive,
-                onZoomChange = { z -> if (isActive) currentZoom = z },
-                resetZoomKey = if (isActive) resetZoomRequest else 0f,
+                onClose = onClose,
             )
         }
-
-        TopBar(
-            index = pagerState.currentPage,
-            total = state.attachments.size,
-            onClose = onClose,
-        )
     }
 }
 
@@ -138,7 +149,6 @@ private fun MediaViewerPage(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
@@ -276,19 +286,41 @@ private fun TopBar(index: Int, total: Int, onClose: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 8.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        IconButton(
-            onClick = onClose,
+        // Chrome rides in soft pills so it stays legible over any (always-light) wallpaper.
+        Box(
             modifier = Modifier
-                .size(48.dp)
-                .semantics { contentDescription = "Close media viewer" },
-        ) { Text("✕", color = Color.White) }
-        if (total > 1) {
-            Text("${index + 1} / $total", color = Color(0xFFEFECE5))
+                .size(44.dp)
+                .clip(RoundedCornerShape(ViewerChromeRadius))
+                .background(ViewerChromeScrim),
+            contentAlignment = Alignment.Center,
+        ) {
+            IconButton(
+                onClick = onClose,
+                modifier = Modifier
+                    .size(44.dp)
+                    .semantics { contentDescription = "Close media viewer" },
+            ) { Text("✕", color = ViewerChromeInk) }
         }
-        Box(modifier = Modifier.size(48.dp))
+        if (total > 1) {
+            Text(
+                text = "${index + 1} / $total",
+                color = ViewerChromeInk,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(ViewerChromeRadius))
+                    .background(ViewerChromeScrim)
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+            )
+        }
+        Box(modifier = Modifier.size(44.dp))
     }
 }
+
+// Media chrome sits over the fixed-light timeline wallpaper, so it uses a light frosted scrim
+// with dark ink in both app modes — independent of the app theme, which flips with dark mode.
+private val ViewerChromeScrim = Color(0xE6FFFFFF)
+private val ViewerChromeInk = Color(0xFF23202B)
+private val ViewerChromeRadius = 999.dp

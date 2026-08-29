@@ -414,11 +414,21 @@ private fun TimelineHomeHeader(
                         .size(dims.minTouchTarget)
                         .semantics { contentDescription = "Create timeline" },
                 ) {
-                    PlusGlyph(
-                        size = dims.timelineHome.createTimelineGlyphSize,
-                        color = colors.accent,
-                        strokeWidth = dims.stroke.iconBold,
-                    )
+                    // The add action mirrors the "New" CTA: a filled primary circle with an
+                    // on-accent glyph, not a bare accent mark.
+                    Box(
+                        modifier = Modifier
+                            .size(dims.icon.lg + dims.spacing.md)
+                            .clip(RoundedCornerShape(dims.radii.pill))
+                            .background(colors.accent),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        PlusGlyph(
+                            size = dims.timelineHome.createTimelineGlyphSize,
+                            color = colors.textOnAccent,
+                            strokeWidth = dims.stroke.iconBold,
+                        )
+                    }
                 }
             }
         }
@@ -436,11 +446,13 @@ private fun TimelineHomeSearchBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(colors.bgHeader)
+            // No header band: the field floats over the canvas gradient below the app bar,
+            // separate from it, rather than extending the app-bar surface.
             .padding(horizontal = dims.spacing.xl, vertical = dims.spacing.sm)
             .height(dims.search.containerHeight)
             .clip(shape)
-            .background(colors.surfaceCard)
+            // The search field is a soft tint fill (its declared role), not a raised card.
+            .background(colors.surfaceFloating)
             .border(dims.stroke.hairline, colors.borderMuted, shape)
             .padding(horizontal = dims.spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
@@ -462,7 +474,7 @@ private fun TimelineHomeSearchBar(
                         Text(
                             text = "Search timelines...",
                             style = ReliveTheme.typography.body,
-                            color = colors.textMuted,
+                            color = colors.textSecondary,
                         )
                     }
                     innerTextField()
@@ -498,16 +510,25 @@ private fun TimelineSearchGlyph() {
 private fun ProfileAffordanceGlyph(photo: MediaStorageRef?, mediaStore: MediaStore) {
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
-    if (photo != null) {
-        com.vaibhav.relive.platform.media.RelivedImageTile(photo, mediaStore, Modifier.size(dims.icon.lg).clip(RoundedCornerShape(dims.radii.pill)))
-    } else Box(
+    val ringShape = RoundedCornerShape(dims.radii.pill)
+    // Accent ring (matching the primary CTA) with a gap between ring and avatar.
+    Box(
         modifier = Modifier
-            .size(dims.icon.lg)
-            .clip(RoundedCornerShape(dims.radii.pill))
-            .background(colors.surfaceCard),
+            .border(dims.stroke.iconBold, colors.accent, ringShape)
+            .padding(dims.spacing.xs),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(ProfileIcons.Person, contentDescription = null, modifier = Modifier.size(dims.icon.md), tint = colors.textSecondary)
+        if (photo != null) {
+            com.vaibhav.relive.platform.media.RelivedImageTile(photo, mediaStore, Modifier.size(dims.icon.lg).clip(ringShape))
+        } else Box(
+            modifier = Modifier
+                .size(dims.icon.lg)
+                .clip(ringShape)
+                .background(colors.surfaceCard),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(ProfileIcons.Person, contentDescription = null, modifier = Modifier.size(dims.icon.md), tint = colors.textSecondary)
+        }
     }
 }
 
@@ -550,7 +571,7 @@ private fun TimelineHomeContent(
         verticalArrangement = Arrangement.spacedBy(dims.spacing.xl),
     ) {
         item(key = "your-timeline-heading") {
-            Text("YOUR TIMELINE", style = ReliveTheme.typography.title, color = ReliveTheme.colors.accentMuted)
+            Text("YOUR TIMELINE", style = ReliveTheme.typography.title, color = ReliveTheme.colors.textPrimary)
         }
         if (summaries.isEmpty()) {
             if (query.isNotBlank() || hasCustomTimelines) {
@@ -702,7 +723,7 @@ private fun TimelineHomeCardContent(
                     Text(
                         text = "DRAFT",
                         style = ReliveTheme.typography.tag,
-                        color = colors.accentMuted,
+                        color = colors.textSecondary,
                     )
                 }
             }

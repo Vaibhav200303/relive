@@ -33,10 +33,10 @@ import com.vaibhav.relive.domain.model.AppearanceMode
 import com.vaibhav.relive.domain.model.ThemeReference
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
-import com.vaibhav.relive.ui.theme.RelivePaletteAnchors
+import com.vaibhav.relive.ui.theme.RelivePalette
 import com.vaibhav.relive.ui.theme.RelivePaletteOptions
 import com.vaibhav.relive.ui.theme.ReliveTheme
-import com.vaibhav.relive.ui.theme.paletteAnchorsFor
+import com.vaibhav.relive.ui.theme.paletteFor
 import com.vaibhav.relive.ui.theme.previewGradientFor
 
 @Composable
@@ -90,7 +90,7 @@ fun AppearanceModeControl(
 private data class PaletteChoice(
     val theme: ThemeReference?,
     val label: String,
-    val anchors: RelivePaletteAnchors,
+    val palette: RelivePalette,
 )
 
 @Composable
@@ -105,10 +105,10 @@ fun RelivePalettePicker(
     val haptics = rememberReliveHaptics()
     val choices = buildList {
         if (includeUseAppTheme) {
-            add(PaletteChoice(null, "Use app theme", paletteAnchorsFor(globalTheme)))
+            add(PaletteChoice(null, "Use app theme", paletteFor(globalTheme)))
         }
         RelivePaletteOptions.forEach { option ->
-            add(PaletteChoice(option.theme, option.label, option.anchors))
+            add(PaletteChoice(option.theme, option.label, option))
         }
     }
     LazyRow(
@@ -168,7 +168,7 @@ private fun PaletteChoiceItem(
                 modifier = Modifier
                     .size(dims.profile.appearancePreviewSize)
                     .clip(CircleShape)
-                    .background(Brush.linearGradient(previewGradientFor(choice.anchors, isDark))),
+                    .background(Brush.linearGradient(previewGradientFor(choice.palette, isDark))),
                 contentAlignment = Alignment.Center,
             ) {
                 if (selected) PaletteCheck()

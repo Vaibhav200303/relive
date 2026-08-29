@@ -198,7 +198,7 @@ private fun TimelineWallpaperOption(
         Box(Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(dims.radii.sm))) { TimelineWallpaperThumbnail(wallpaper) }
         Column(modifier = Modifier.padding(top = dims.spacing.sm)) {
             Text(wallpaper.label(), style = ReliveTheme.typography.body, color = colors.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (selected) Text("Selected", style = ReliveTheme.typography.eyebrow, color = colors.accent)
+            if (selected) Text("Selected", style = ReliveTheme.typography.eyebrow, color = colors.textSecondary)
         }
     }
 }

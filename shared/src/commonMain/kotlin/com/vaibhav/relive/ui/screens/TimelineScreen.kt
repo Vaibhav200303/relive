@@ -583,6 +583,7 @@ fun TimelineScreen(
                     navState = navState.closeGallery()
                 },
                 backEnabled = viewer == null,
+                wallpaper = timelineState.appearance.wallpaper,
             )
         }
         if (viewer != null) {
@@ -594,6 +595,7 @@ fun TimelineScreen(
                     ActivePlayback.stopActive()
                     navState = navState.closeViewer()
                 },
+                wallpaper = timelineState.appearance.wallpaper,
             )
         }
     }

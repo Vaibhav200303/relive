@@ -43,7 +43,9 @@ fun ReliveWordmarkAppBar(
         Text(
             text = title,
             style = style ?: ReliveTheme.typography.wordmark,
-            color = colors.accent,
+            // The wordmark is the app's primary title: it uses ink like every other heading,
+            // never the accent. Hierarchy comes from the serif wordmark style, not colour.
+            color = colors.textPrimary,
             modifier = Modifier.align(Alignment.Center),
         )
         action()

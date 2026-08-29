@@ -157,7 +157,7 @@ fun RediscoverScreen(
                 Text(
                     text = "FAVOURITES",
                     style = ReliveTheme.typography.title,
-                    color = ReliveTheme.colors.accentMuted,
+                    color = ReliveTheme.colors.textPrimary,
                     modifier = Modifier
                         .fillMaxWidth()
                         .combinedClickable(
@@ -229,7 +229,7 @@ fun RediscoverScreen(
                 Text(
                     text = "ON THIS DAY",
                     style = ReliveTheme.typography.title,
-                    color = ReliveTheme.colors.accentMuted,
+                    color = ReliveTheme.colors.textPrimary,
                     modifier = Modifier.padding(
                         start = dims.spacing.xl,
                         end = dims.spacing.xl,
@@ -273,7 +273,7 @@ fun RediscoverScreen(
                 Text(
                     text = "FROM YOUR PAST",
                     style = ReliveTheme.typography.title,
-                    color = ReliveTheme.colors.accentMuted,
+                    color = ReliveTheme.colors.textPrimary,
                     modifier = Modifier.padding(start = dims.spacing.xl, end = dims.spacing.xl, top = topSpacing),
                 )
             }
