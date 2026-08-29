@@ -42,8 +42,10 @@ internal fun rememberReliveSansFamily(): FontFamily {
 }
 
 @Composable
-internal fun rememberReliveTypography(): ReliveTypography {
+internal fun rememberReliveTypography(isDark: Boolean): ReliveTypography {
     val serif = rememberReliveSerifFamily()
     val sans = rememberReliveSansFamily()
-    return remember(serif, sans) { reliveTypography(serif = serif, sans = sans) }
+    return remember(serif, sans, isDark) {
+        reliveTypography(serif = serif, sans = sans, isDark = isDark)
+    }
 }

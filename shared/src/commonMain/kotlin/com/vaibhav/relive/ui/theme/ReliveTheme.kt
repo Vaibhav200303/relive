@@ -12,6 +12,10 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import com.vaibhav.relive.domain.model.ThemeReference
 
 /** Identifier for a selectable Relive palette. Appearance mode is resolved separately. */
@@ -99,7 +103,7 @@ fun ReliveTheme(
     content: @Composable () -> Unit,
 ) {
     val baseTokens = reliveTokensFor(themeId, darkMode)
-    val bundledTypography = rememberReliveTypography()
+    val bundledTypography = rememberReliveTypography(baseTokens.isDark)
     val animatedColors = animateReliveColors(baseTokens.colors, baseTokens.motion.durations.standardMillis)
     val tokens = baseTokens.copy(typography = bundledTypography, colors = animatedColors)
     val c = tokens.colors
@@ -140,16 +144,7 @@ fun ReliveTheme(
             outlineVariant = c.borderMuted,
         )
     }
-    val materialTypography = Typography(
-        titleLarge = tokens.typography.title,
-        titleMedium = tokens.typography.title,
-        bodyLarge = tokens.typography.body,
-        bodyMedium = tokens.typography.body,
-        bodySmall = tokens.typography.subtitle,
-        labelLarge = tokens.typography.action,
-        labelMedium = tokens.typography.eyebrow,
-        labelSmall = tokens.typography.tag,
-    )
+    val materialTypography = reliveMaterialTypography(tokens.typography)
     ApplyReliveSystemBars(tokens)
     CompositionLocalProvider(
         LocalReliveTokens provides tokens,
@@ -186,6 +181,47 @@ private fun animateReliveColors(target: ReliveColors, durationMillis: Int): Reli
         actionDestructive = animated(target.actionDestructive),
         border = animated(target.border),
         borderMuted = animated(target.borderMuted),
+    )
+}
+
+/**
+ * Map the Relive semantic type roles onto the full Material 3 type scale so that any
+ * Material component reading `MaterialTheme.typography.*` renders in the bundled Relive
+ * families — never the Material default (Roboto). The Material display/headline/title/body/
+ * label roles are seeded from the Relive brand-serif roles ([ReliveTypography.display],
+ * [ReliveTypography.coverTitle], [ReliveTypography.title]) and text-sans roles; the few
+ * intermediate steps that have no Relive equivalent are derived from the same serif family.
+ *
+ * Every serif role carries optical tracking: at larger sizes the letters are set tighter,
+ * as a large optical size would be (Google Fonts, "Choosing typefaces that have optical
+ * sizes").
+ */
+fun reliveMaterialTypography(t: ReliveTypography): Typography {
+    val serif = t.title.fontFamily
+    fun serifRole(size: Int, lineHeight: Int, tracking: Double): TextStyle = TextStyle(
+        fontFamily = serif,
+        fontStyle = FontStyle.Normal,
+        fontWeight = FontWeight.Normal,
+        fontSize = size.sp,
+        lineHeight = lineHeight.sp,
+        letterSpacing = tracking.sp,
+    )
+    return Typography(
+        displayLarge = t.display,
+        displayMedium = serifRole(32, 38, -0.5),
+        displaySmall = t.coverTitle,
+        headlineLarge = serifRole(26, 32, -0.25),
+        headlineMedium = t.title,
+        headlineSmall = serifRole(20, 26, -0.25),
+        titleLarge = t.title,
+        titleMedium = t.title,
+        titleSmall = t.subtitle,
+        bodyLarge = t.body,
+        bodyMedium = t.body,
+        bodySmall = t.caption,
+        labelLarge = t.action,
+        labelMedium = t.eyebrow,
+        labelSmall = t.tag,
     )
 }
 
