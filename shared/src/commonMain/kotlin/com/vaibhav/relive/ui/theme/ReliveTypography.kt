@@ -13,6 +13,7 @@ data class ReliveTypography(
     val wordmark: TextStyle,
     val coverTitle: TextStyle,
     val title: TextStyle,
+    val dateLarge: TextStyle,
     val subtitle: TextStyle,
     val body: TextStyle,
     val caption: TextStyle,
@@ -27,17 +28,23 @@ data class ReliveTypography(
  * locally bundled serif/sans families; the fallback default below uses platform families so
  * a `ReliveThemeTokens` value can exist outside a Composable scope.
  *
- * The scale is one modular editorial system, not a bag of per-screen sizes. It follows the
- * Material 3 brand/plain split — the expressive serif carries the large brand roles
- * ([display]/[wordmark]/[coverTitle]/[title]) and the readable sans carries every text and
- * label role — and each role sets size, line height, tracking, and weight explicitly so the
- * vertical rhythm stays consistent everywhere.
+ * The scale is one modular editorial system — the "Kept" direction — not a bag of per-screen
+ * sizes. It follows the Material 3 brand/plain split: the expressive serif (Fraunces) carries
+ * the large brand/emotional roles ([display]/[wordmark]/[coverTitle]/[title]/[dateLarge]) and
+ * the readable sans (Inter) carries every text and label role. Each role sets size, line
+ * height, tracking, and weight explicitly so the vertical rhythm stays consistent everywhere.
  *
- * Optical sizing: the app satisfies optical-size intent structurally rather than with an
- * `opsz` axis (the bundled cuts are static, not variable). The serif is a high-contrast
- * DISPLAY face used only at large sizes (24–38sp) and the sans is a TEXT face used only at
- * small sizes (11–16sp), so each role already carries the contrast appropriate to its size.
- * Tracking is tuned per size the way an optical axis would tune it — tight on the large
+ * Weight is used intentionally, not "everything bold": brand roles are serif Medium; the
+ * moment [title] is serif SemiBold (the strongest text element — the opening sentence of a
+ * journal); reading [body]/[subtitle]/[caption] are sans Regular; metadata and controls
+ * ([eyebrow]/[tag]/[action]) are sans Medium; only the primary call to action
+ * ([prominentAction]) is sans SemiBold.
+ *
+ * Optical sizing: the app satisfies optical-size intent structurally rather than with a live
+ * `opsz` axis (the bundled cuts are static instances). The serif is Fraunces' 72pt display
+ * optical cut, used only at large sizes (24–34sp), and the sans is a text face used only at
+ * small sizes (11–16sp), so each role carries the contrast appropriate to its size. Tracking
+ * is tuned per size the way an optical axis would tune it — tight (negative) on the large
  * serif, open on the small-caps roles ([eyebrow]/[tag]). See Google Fonts, "Choosing
  * typefaces that have optical sizes."
  *
@@ -49,34 +56,42 @@ fun reliveTypography(
     isDark: Boolean = false,
 ): ReliveTypography {
     val labelWeight = labelWeightFor(isDark)
+    val prominentWeight = prominentLabelWeightFor(isDark)
     return ReliveTypography(
         display = TextStyle(
             fontFamily = serif,
-            fontWeight = FontWeight.Normal,
-            fontSize = 38.sp,
-            lineHeight = 44.sp,
+            fontWeight = FontWeight.Medium,
+            fontSize = 34.sp,
+            lineHeight = 40.sp,
             letterSpacing = (-0.5).sp,
         ),
         wordmark = TextStyle(
             fontFamily = serif,
-            fontStyle = FontStyle.Italic,
-            fontWeight = FontWeight.Normal,
+            fontStyle = FontStyle.Normal,
+            fontWeight = FontWeight.Medium,
             fontSize = 30.sp,
             lineHeight = 34.sp,
             letterSpacing = (-0.25).sp,
         ),
         coverTitle = TextStyle(
             fontFamily = serif,
-            fontWeight = FontWeight.Normal,
+            fontWeight = FontWeight.Medium,
             fontSize = 30.sp,
             lineHeight = 36.sp,
             letterSpacing = (-0.25).sp,
         ),
         title = TextStyle(
             fontFamily = serif,
-            fontWeight = FontWeight.Normal,
+            fontWeight = FontWeight.SemiBold,
             fontSize = 24.sp,
             lineHeight = 30.sp,
+            letterSpacing = (-0.25).sp,
+        ),
+        dateLarge = TextStyle(
+            fontFamily = serif,
+            fontWeight = FontWeight.Medium,
+            fontSize = 28.sp,
+            lineHeight = 32.sp,
             letterSpacing = (-0.25).sp,
         ),
         subtitle = TextStyle(
@@ -90,8 +105,8 @@ fun reliveTypography(
             fontFamily = sans,
             fontWeight = FontWeight.Normal,
             fontSize = 16.sp,
-            lineHeight = 24.sp,
-            letterSpacing = 0.1.sp,
+            lineHeight = 26.sp,
+            letterSpacing = 0.sp,
         ),
         caption = TextStyle(
             fontFamily = sans,
@@ -105,14 +120,14 @@ fun reliveTypography(
             fontWeight = labelWeight,
             fontSize = 11.sp,
             lineHeight = 16.sp,
-            letterSpacing = 1.5.sp,
+            letterSpacing = 1.2.sp,
         ),
         tag = TextStyle(
             fontFamily = sans,
             fontWeight = labelWeight,
-            fontSize = 11.sp,
+            fontSize = 12.sp,
             lineHeight = 16.sp,
-            letterSpacing = 0.8.sp,
+            letterSpacing = 0.4.sp,
         ),
         action = TextStyle(
             fontFamily = sans,
@@ -123,7 +138,7 @@ fun reliveTypography(
         ),
         prominentAction = TextStyle(
             fontFamily = sans,
-            fontWeight = labelWeight,
+            fontWeight = prominentWeight,
             fontSize = 16.sp,
             lineHeight = 22.sp,
             letterSpacing = 0.1.sp,
@@ -132,24 +147,37 @@ fun reliveTypography(
 }
 
 /**
- * Weight used for the heavy label roles ([ReliveTypography.eyebrow], [ReliveTypography.tag],
- * [ReliveTypography.action], [ReliveTypography.prominentAction]).
+ * Weight used for the standard label roles ([ReliveTypography.eyebrow],
+ * [ReliveTypography.tag], [ReliveTypography.action]) — the calm metadata and control text.
  *
  * Halation compensation: on a dark canvas, light-on-dark text glares and its strokes
  * visually bloat, so a weight that looks right on a light canvas reads too heavy on dark
  * (Google Fonts, "Exploring typefaces with multiple weights or grades"). We step these
- * labels down one bundled weight — SemiBold on light, Medium on dark — so they carry the
- * same typographic color in both modes. The lighter body/serif roles are left untouched:
- * no lighter cut is bundled, and lightening 15sp+ text would trade legibility for a glare
- * benefit that is negligible at those sizes.
+ * labels down one bundled weight — **Medium on light, Regular on dark** — so they carry the
+ * same typographic color in both modes. This is the same one-step mechanism the system has
+ * always used, rebased one weight lighter than the previous SemiBold/Medium baseline because
+ * the "Kept" scale deliberately makes metadata and controls calmer (Medium, not SemiBold).
+ * The lighter body/serif roles are left untouched: no lighter serif cut is bundled, and
+ * lightening 15sp+ reading text would trade legibility for a negligible glare benefit.
  */
 fun labelWeightFor(isDark: Boolean): FontWeight =
+    if (isDark) FontWeight.Normal else FontWeight.Medium
+
+/**
+ * Weight used for the single heaviest label role, the primary call to action
+ * ([ReliveTypography.prominentAction], e.g. "Save moment" / "+ New").
+ *
+ * It keeps the original SemiBold-on-light / Medium-on-dark halation step so the one genuinely
+ * emphatic control retains its presence while still shedding a weight on dark canvases. Only
+ * the CTA is this heavy; ordinary buttons use the lighter [labelWeightFor].
+ */
+fun prominentLabelWeightFor(isDark: Boolean): FontWeight =
     if (isDark) FontWeight.Medium else FontWeight.SemiBold
 
 /**
  * Structural default used when a token bundle is materialized outside a Composable scope.
  * Uses platform families so no font resource is loaded here; `ReliveTheme` swaps in the
- * bundled Playfair Display + Inter families during composition.
+ * bundled Fraunces + Inter families during composition.
  */
 val DefaultReliveTypography: ReliveTypography =
     reliveTypography(serif = FontFamily.Serif, sans = FontFamily.SansSerif)

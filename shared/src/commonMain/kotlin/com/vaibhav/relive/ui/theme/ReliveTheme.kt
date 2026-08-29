@@ -198,10 +198,13 @@ private fun animateReliveColors(target: ReliveColors, durationMillis: Int): Reli
  */
 fun reliveMaterialTypography(t: ReliveTypography): Typography {
     val serif = t.title.fontFamily
+    // The bundled serif (Fraunces) ships only Medium and SemiBold cuts, so the additive
+    // display/headline steps are set at Medium to match the serif brand roles rather than a
+    // Normal weight that has no bundled file.
     fun serifRole(size: Int, lineHeight: Int, tracking: Double): TextStyle = TextStyle(
         fontFamily = serif,
         fontStyle = FontStyle.Normal,
-        fontWeight = FontWeight.Normal,
+        fontWeight = FontWeight.Medium,
         fontSize = size.sp,
         lineHeight = lineHeight.sp,
         letterSpacing = tracking.sp,

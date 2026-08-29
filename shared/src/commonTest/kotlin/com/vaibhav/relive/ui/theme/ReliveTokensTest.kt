@@ -127,21 +127,31 @@ class ReliveTokensTest {
     @Test
     fun defaultTypographySizesAndStylesMatchDesignSystem() {
         val t = DefaultReliveTypography
-        assertEquals(38.sp, t.display.fontSize)
+        assertEquals(34.sp, t.display.fontSize)
         assertEquals(30.sp, t.wordmark.fontSize)
-        assertEquals(FontStyle.Italic, t.wordmark.fontStyle)
+        // The wordmark is now a roman Medium masthead, not the previous fashion-italic.
+        assertEquals(FontStyle.Normal, t.wordmark.fontStyle)
+        assertEquals(FontWeight.Medium, t.wordmark.fontWeight)
         assertEquals(30.sp, t.coverTitle.fontSize)
+        // The moment title is the strongest text element: serif SemiBold.
         assertEquals(24.sp, t.title.fontSize)
+        assertEquals(FontWeight.SemiBold, t.title.fontWeight)
+        // Optional editorial day-header role (not yet wired into the timeline UI).
+        assertEquals(28.sp, t.dateLarge.fontSize)
+        assertEquals(FontWeight.Medium, t.dateLarge.fontWeight)
         assertEquals(FontStyle.Italic, t.subtitle.fontStyle)
         assertEquals(15.sp, t.subtitle.fontSize)
         assertEquals(16.sp, t.body.fontSize)
+        assertEquals(26.sp, t.body.lineHeight)
         assertEquals(13.sp, t.caption.fontSize)
         assertEquals(11.sp, t.eyebrow.fontSize)
-        assertEquals(FontWeight.SemiBold, t.eyebrow.fontWeight)
-        assertEquals(11.sp, t.tag.fontSize)
-        assertEquals(FontWeight.SemiBold, t.tag.fontWeight)
+        assertEquals(FontWeight.Medium, t.eyebrow.fontWeight)
+        assertEquals(12.sp, t.tag.fontSize)
+        assertEquals(FontWeight.Medium, t.tag.fontWeight)
         assertEquals(14.sp, t.action.fontSize)
-        assertEquals(FontWeight.SemiBold, t.action.fontWeight)
+        assertEquals(FontWeight.Medium, t.action.fontWeight)
+        assertEquals(16.sp, t.prominentAction.fontSize)
+        assertEquals(FontWeight.SemiBold, t.prominentAction.fontWeight)
     }
 
     @Test
@@ -149,7 +159,7 @@ class ReliveTokensTest {
         val t = DefaultReliveTypography
         // Every role sets an explicit line height (no silent per-role default).
         listOf(
-            t.display, t.wordmark, t.coverTitle, t.title, t.subtitle,
+            t.display, t.wordmark, t.coverTitle, t.title, t.dateLarge, t.subtitle,
             t.body, t.caption, t.eyebrow, t.tag, t.action, t.prominentAction,
         ).forEach { style ->
             assertTrue(style.lineHeight.value > 0f, "line height set for $style")
@@ -171,6 +181,7 @@ class ReliveTokensTest {
         assertEquals(serif, t.wordmark.fontFamily)
         assertEquals(serif, t.coverTitle.fontFamily)
         assertEquals(serif, t.title.fontFamily)
+        assertEquals(serif, t.dateLarge.fontFamily)
         assertEquals(sans, t.subtitle.fontFamily)
         assertEquals(sans, t.body.fontFamily)
         assertEquals(sans, t.caption.fontFamily)
@@ -186,17 +197,19 @@ class ReliveTokensTest {
         val light = reliveTypography(serif = serif, sans = sans, isDark = false)
         val dark = reliveTypography(serif = serif, sans = sans, isDark = true)
 
-        // Light keeps the approved SemiBold labels.
-        assertEquals(FontWeight.SemiBold, light.eyebrow.fontWeight)
-        assertEquals(FontWeight.SemiBold, light.tag.fontWeight)
-        assertEquals(FontWeight.SemiBold, light.action.fontWeight)
+        // Light: the calm "Kept" scale sets standard labels at Medium and the single
+        // heaviest control (the primary CTA) at SemiBold.
+        assertEquals(FontWeight.Medium, light.eyebrow.fontWeight)
+        assertEquals(FontWeight.Medium, light.tag.fontWeight)
+        assertEquals(FontWeight.Medium, light.action.fontWeight)
         assertEquals(FontWeight.SemiBold, light.prominentAction.fontWeight)
 
-        // Dark steps them one weight lighter (bundled Medium) so glare-bloated
-        // light-on-dark labels carry the same typographic color as light mode.
-        assertEquals(FontWeight.Medium, dark.eyebrow.fontWeight)
-        assertEquals(FontWeight.Medium, dark.tag.fontWeight)
-        assertEquals(FontWeight.Medium, dark.action.fontWeight)
+        // Dark steps each label one bundled weight lighter (standard Medium -> Regular,
+        // CTA SemiBold -> Medium) so glare-bloated light-on-dark labels carry the same
+        // typographic color as light mode.
+        assertEquals(FontWeight.Normal, dark.eyebrow.fontWeight)
+        assertEquals(FontWeight.Normal, dark.tag.fontWeight)
+        assertEquals(FontWeight.Normal, dark.action.fontWeight)
         assertEquals(FontWeight.Medium, dark.prominentAction.fontWeight)
 
         // Body/serif roles are identical across modes (no lighter cut is bundled).

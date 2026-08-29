@@ -9,7 +9,7 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 ## Phase 0 — Foundation & design system  ☑
 
 - Establish module layering in `shared/` (domain, data, platform, presentation, ui, di) per [`ARCHITECTURE.md`](ARCHITECTURE.md).
-- Implement the tokenized design system and `ReliveTheme` (Warm Journal base) from [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md); bundle Playfair Display + Inter.
+- Implement the tokenized design system and `ReliveTheme` (Warm Journal base) from [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md); bundle the brand serif + Inter (Fraunces + Inter as of the "Kept" typography redesign, ADR-0057).
 - Replace the initial `App()` scaffold with the Relive app shell (header, canvas background) matching the reference.
 - Wire formatting + static analysis into the build.
 - **Exit:** app builds on Android and iOS showing the themed shell; tokens in place; no feature logic yet.

@@ -136,7 +136,9 @@ fun RediscoverScreen(
                 ),
             contentPadding = PaddingValues(bottom = bottomPadding),
         ) {
-        item(key = "relive-app-bar") { ReliveWordmarkAppBar() }
+        item(key = "relive-app-bar") {
+            ReliveWordmarkAppBar(title = "Rediscover", style = ReliveTheme.typography.title)
+        }
         allSummary?.let { summary ->
             item(key = "all") {
                 Box(modifier = Modifier.padding(horizontal = dims.spacing.xl, vertical = dims.spacing.md)) {
