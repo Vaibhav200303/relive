@@ -24,7 +24,9 @@ import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.platform.media.RelivedImageTile
 import com.vaibhav.relive.platform.media.RelivedVideoTile
 import com.vaibhav.relive.presentation.cardcover.firstVisualPreviewAttachment
+import com.vaibhav.relive.ui.theme.ReliveOpacity
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.theme.accentHeroBrush
 
 @Composable
 fun OnThisDayMomentCard(
@@ -63,6 +65,7 @@ fun OnThisDayMomentCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = dims.rediscover.heroInfoAreaMinHeight)
+                .background(colors.accentHeroBrush())
                 .padding(dims.spacing.lg),
         ) {
             Box(
@@ -72,7 +75,7 @@ fun OnThisDayMomentCard(
                 Text(
                     text = moment.title.ifBlank { moment.content.ifBlank { "A saved memory" } },
                     style = ReliveTheme.typography.title,
-                    color = colors.textPrimary,
+                    color = colors.textOnAccent,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -80,7 +83,7 @@ fun OnThisDayMomentCard(
             Text(
                 text = anniversaryLabel,
                 style = ReliveTheme.typography.eyebrow,
-                color = colors.textMuted,
+                color = colors.textOnAccent.copy(alpha = ReliveOpacity.High),
                 modifier = Modifier.padding(top = dims.spacing.xs),
             )
         }

@@ -52,6 +52,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -84,8 +85,11 @@ import com.vaibhav.relive.ui.components.timeline.TimelineCreationDialog
 import com.vaibhav.relive.ui.components.timeline.BackGlyph
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
+import com.vaibhav.relive.ui.components.ReliveDoodles
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.theme.ReliveOpacity
+import com.vaibhav.relive.ui.theme.canvasBrush
+import com.vaibhav.relive.ui.theme.rememberGrainBrush
 import com.vaibhav.relive.ui.icons.ProfileIcons
 import com.vaibhav.relive.ui.icons.TimelineActionIcons
 import com.vaibhav.relive.presentation.cardcover.resolveAllTimelineCollage
@@ -127,15 +131,19 @@ fun TimelineHomeScreen(
         }
     }
 
+    val grainBrush = rememberGrainBrush(isDark = ReliveTheme.isDark)
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(ReliveTheme.colors.bgCanvas),
+            .background(ReliveTheme.colors.canvasBrush()),
     ) {
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(ReliveTheme.colors.bgCanvas),
+                .background(brush = grainBrush, alpha = if (ReliveTheme.isDark) 0.07f else 0.05f),
+        )
+        Column(
+            modifier = Modifier.fillMaxSize(),
         ) {
             TimelineHomeHeader(
                 selectedTimelineCount = selectedTimelines.size,
@@ -639,8 +647,19 @@ private fun TimelineHomeCardContent(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .shadow(
+                elevation = dims.timelineHome.cardElevation,
+                shape = cardShape,
+                clip = false,
+                ambientColor = colors.shadow,
+                spotColor = colors.shadow,
+            )
             .clip(cardShape)
             .background(cardColor)
+            // A drop shadow cannot separate a dark card from a dark canvas, so a hairline outline
+            // carries the card edge in dark mode; it stays subtle enough to read as a soft edge in
+            // light mode too, under the shadow.
+            .border(dims.stroke.hairline, colors.borderMuted, cardShape)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
     ) {
         TimelineHomeMediaPreview(
@@ -699,6 +718,7 @@ private fun TimelineHomeEmptyCustomState() {
         modifier = Modifier.fillMaxWidth().padding(vertical = dims.spacing.lg),
         verticalArrangement = Arrangement.spacedBy(dims.spacing.xs),
     ) {
+        ReliveDoodles.OpenJournal(modifier = Modifier.padding(bottom = dims.spacing.sm))
         Text("A new chapter can begin whenever you are ready.", style = ReliveTheme.typography.title, color = colors.textPrimary)
         Text("Use + to create your first timeline.", style = ReliveTheme.typography.subtitle, color = colors.textSecondary)
     }

@@ -58,6 +58,8 @@ data class ReliveTimelineHomeDimensions(
     val customMediaHeight: Dp = 232.dp,
     val infoAreaMinHeight: Dp = 112.dp,
     val createTimelineGlyphSize: Dp = 32.dp,
+    /** Resting elevation for a timeline card so it lifts off the canvas as a distinct plane. */
+    val cardElevation: Dp = 8.dp,
 )
 
 @Immutable

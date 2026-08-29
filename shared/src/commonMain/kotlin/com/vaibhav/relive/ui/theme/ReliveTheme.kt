@@ -165,6 +165,7 @@ private fun animateReliveColors(target: ReliveColors, durationMillis: Int): Reli
     fun animated(color: Color): Color = animateColorAsState(color, animationSpec = animation).value
     return ReliveColors(
         bgCanvas = animated(target.bgCanvas),
+        bgCanvasGlow = animated(target.bgCanvasGlow),
         bgHeader = animated(target.bgHeader),
         textPrimary = animated(target.textPrimary),
         textSecondary = animated(target.textSecondary),
@@ -181,6 +182,7 @@ private fun animateReliveColors(target: ReliveColors, durationMillis: Int): Reli
         actionDestructive = animated(target.actionDestructive),
         border = animated(target.border),
         borderMuted = animated(target.borderMuted),
+        shadow = animated(target.shadow),
     )
 }
 

@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import com.vaibhav.relive.ui.components.ReliveDoodles
 import com.vaibhav.relive.ui.theme.ReliveTheme
 
 @Composable
@@ -28,6 +29,7 @@ fun EmptyTimelinePlaceholder(modifier: Modifier = Modifier) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(dims.spacing.md),
         ) {
+            ReliveDoodles.OpenJournal()
             Text(
                 text = "Your timeline is waiting.",
                 style = type.title,
@@ -63,6 +65,7 @@ fun EmptyCustomTimelinePlaceholder(
             ),
         verticalArrangement = Arrangement.spacedBy(dims.spacing.sm),
     ) {
+        ReliveDoodles.FramedMemory(modifier = Modifier.padding(bottom = dims.spacing.xs))
         Text(
             text = "$timelineName is waiting for its first Moment.",
             style = type.title,
