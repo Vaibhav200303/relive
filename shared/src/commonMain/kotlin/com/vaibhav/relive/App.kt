@@ -10,6 +10,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
@@ -53,6 +55,7 @@ import com.vaibhav.relive.presentation.profile.ProfileDestination
 import com.vaibhav.relive.presentation.profile.MediaStorageViewModel
 import com.vaibhav.relive.ui.components.navigation.ReliveFloatingBottomControls
 import com.vaibhav.relive.ui.components.navigation.ReliveTopLevelDestination
+import com.vaibhav.relive.ui.components.composer.ComposerSharedTransition
 import com.vaibhav.relive.platform.media.ActivePlayback
 import com.vaibhav.relive.ui.screens.ProfileScreen
 import com.vaibhav.relive.ui.screens.PreferencesScreen
@@ -134,6 +137,9 @@ fun App(
         themeId = appearanceState.preferences.defaultTheme.toReliveThemeId(),
         darkMode = darkMode,
     ) {
+        @OptIn(ExperimentalSharedTransitionApi::class)
+        SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
+        val sharedTransitionScope = this
         val composerDraftStore = remember { TimelineComposerDraftStore() }
         val homeViewModel = remember(container, scope) {
             TimelineHomeViewModel(
@@ -185,6 +191,7 @@ fun App(
         var rediscoverDestination by remember { mutableStateOf<RediscoverDestination>(RediscoverDestination.Root) }
         var profileNavigation by remember { mutableStateOf(ProfileNavigationState()) }
         var navigationToolbarExpanded by remember { mutableStateOf(true) }
+        var composerExpanded by remember { mutableStateOf(false) }
         var selectedIncomingShareId by remember { mutableStateOf<String?>(null) }
         LaunchedEffect(incomingShareState) {
             val ready = incomingShareState as? IncomingShareState.Ready
@@ -201,6 +208,11 @@ fun App(
                 )
             }
         }
+        val composerSharedTransition = ComposerSharedTransition(
+            scope = sharedTransitionScope,
+            composerVisible = composerExpanded,
+            reduceMotion = ReliveTheme.reduceMotion,
+        )
         val mediaStorageViewModel = remember(container, scope) {
             MediaStorageViewModel(container.archiveInsightsRepository, scope)
         }
@@ -362,11 +374,6 @@ fun App(
                         selectedMomentId = active.selectedMomentId,
                         openComposerOnEnter = active.openComposerOnEnter,
                         incomingShare = active.incomingShare,
-                        onComposerOpenIntentConsumed = {
-                            (timelinesDestination as? TimelinesDestination.TimelineDetail)?.let { current ->
-                                timelinesDestination = current.copy(openComposerOnEnter = false)
-                            }
-                        },
                         onIncomingShareApplied = { requestId ->
                             container.incomingShareGateway.claim(requestId)
                             (timelinesDestination as? TimelinesDestination.TimelineDetail)?.let { current ->
@@ -382,6 +389,8 @@ fun App(
                             }
                         },
                         behaviorPreferences = behaviorState.preferences,
+                        composerSharedTransition = composerSharedTransition,
+                        onComposerExpandedChanged = { composerExpanded = it },
                     )
                 }
                 timelineContent()
@@ -582,6 +591,7 @@ fun App(
                             },
                         )
                     },
+                    newMomentModifier = composerSharedTransition.sourceModifier(),
                 )
             }
                             }
@@ -589,6 +599,7 @@ fun App(
                         }
                     }
                 }
+        }
         }
     }
 }

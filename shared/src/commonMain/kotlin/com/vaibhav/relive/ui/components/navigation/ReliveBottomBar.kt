@@ -96,6 +96,7 @@ fun ReliveFloatingBottomControls(
     onSelect: (ReliveTopLevelDestination) -> Unit,
     onCreateMoment: () -> Unit,
     modifier: Modifier = Modifier,
+    newMomentModifier: Modifier = Modifier,
 ) {
     val dims = ReliveTheme.dimensions
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
@@ -123,6 +124,7 @@ fun ReliveFloatingBottomControls(
                 onClick = onCreateMoment,
                 expanded = expanded,
                 expandedWidth = layout.newExpandedWidth,
+                modifier = newMomentModifier,
             )
         }
     }
