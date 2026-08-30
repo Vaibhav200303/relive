@@ -21,7 +21,7 @@ new chat" at the bottom.)
 | Done | Step | Summary |
 |---|---|---|
 | [ ] | 0.1 | Complete/correct motion tokens (durations + 6 easings, fix emphasized) |
-| [ ] | 0.2 | Reduced-motion capability (accessibility gate) |
+| [x] | 0.2 | Reduced-motion capability (accessibility gate) |
 | [ ] | 0.3 | 10-step shape scale + shape-library availability decision |
 | [ ] | 0.4 | Skeleton loader primitive |
 | [ ] | 1.1 | Top-level fade-through (bottom nav) |

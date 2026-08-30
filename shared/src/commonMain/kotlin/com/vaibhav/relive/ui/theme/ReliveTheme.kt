@@ -144,8 +144,10 @@ fun ReliveTheme(
     }
     val materialTypography = reliveMaterialTypography(tokens.typography)
     ApplyReliveSystemBars(tokens)
+    val reduceMotion = rememberReducedMotion()
     CompositionLocalProvider(
         LocalReliveTokens provides tokens,
+        LocalReliveReduceMotion provides reduceMotion,
         LocalContentColor provides c.textPrimary,
     ) {
         MaterialTheme(
@@ -268,4 +270,14 @@ object ReliveTheme {
         @Composable
         @ReadOnlyComposable
         get() = LocalReliveTokens.current.isDark
+
+    /**
+     * True when the host OS has signalled a preference for reduced motion (see
+     * [rememberReducedMotion]). Every animated composable should route its spec through
+     * [ReliveMotion.spec] with this value so slides/scales/morphs degrade to a plain fade.
+     */
+    val reduceMotion: Boolean
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalReliveReduceMotion.current
 }
