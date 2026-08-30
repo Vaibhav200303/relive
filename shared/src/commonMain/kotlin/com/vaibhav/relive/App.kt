@@ -9,7 +9,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -261,7 +264,59 @@ fun App(
                         },
                         onRetry = container.incomingShareGateway::retry,
                     )
-                } else when (profileNavigation.destination) {
+                } else if (profileNavigation.destination != ProfileDestination.Closed) {
+                    AnimatedContent(
+                        targetState = profileNavigation.destination,
+                        transitionSpec = {
+                            val movingForward = profileDestinationDepth(targetState) >
+                                profileDestinationDepth(initialState)
+                            val enterSpec = motion.spec<Float>(
+                                reduceMotion = reduceMotion,
+                                full = tween(
+                                    durationMillis = motion.durations.medium4,
+                                    easing = motion.easings.emphasizedDecelerate,
+                                ),
+                            )
+                            val exitSpec = motion.spec<Float>(
+                                reduceMotion = reduceMotion,
+                                full = tween(
+                                    durationMillis = motion.durations.short4,
+                                    easing = motion.easings.emphasizedAccelerate,
+                                ),
+                            )
+                            val enterSlideSpec = motion.spec<IntOffset>(
+                                reduceMotion = reduceMotion,
+                                full = tween(
+                                    durationMillis = motion.durations.medium4,
+                                    easing = motion.easings.emphasizedDecelerate,
+                                ),
+                            )
+                            val exitSlideSpec = motion.spec<IntOffset>(
+                                reduceMotion = reduceMotion,
+                                full = tween(
+                                    durationMillis = motion.durations.short4,
+                                    easing = motion.easings.emphasizedAccelerate,
+                                ),
+                            )
+                            val enter = fadeIn(animationSpec = enterSpec) + if (reduceMotion) {
+                                EnterTransition.None
+                            } else {
+                                slideInHorizontally(animationSpec = enterSlideSpec) { width ->
+                                    if (movingForward) width / 5 else -width / 5
+                                }
+                            }
+                            val exit = fadeOut(animationSpec = exitSpec) + if (reduceMotion) {
+                                ExitTransition.None
+                            } else {
+                                slideOutHorizontally(animationSpec = exitSlideSpec) { width ->
+                                    if (movingForward) -width / 5 else width / 5
+                                }
+                            }
+                            enter togetherWith exit
+                        },
+                        label = "profile hierarchy navigation",
+                    ) { destination ->
+                        when (destination) {
             ProfileDestination.Profile -> ProfileScreen(
                 viewModel = profileViewModel,
                 appearanceViewModel = appearanceViewModel,
@@ -310,7 +365,10 @@ fun App(
             ProfileDestination.HelpFeedback -> HelpFeedbackScreen(onBack = { profileNavigation = profileNavigation.returnToProfile() }, onMessage = {})
             ProfileDestination.AboutRelive -> AboutReliveScreen(onOpenLicenses = { profileNavigation = profileNavigation.openLicenses() }, onBack = { profileNavigation = profileNavigation.returnToProfile() })
             ProfileDestination.Licenses -> LicensesScreen(onBack = { profileNavigation = profileNavigation.openAbout() })
-            ProfileDestination.Closed -> when (val active = timelinesDestination) {
+                            ProfileDestination.Closed -> error("Closed is not a Profile hierarchy destination")
+                        }
+                    }
+                } else when (val active = timelinesDestination) {
             is TimelinesDestination.TimelineDetail -> {
                 val timelineContent: @Composable () -> Unit = {
                     TimelineScreen(
@@ -551,10 +609,9 @@ fun App(
             }
                 }
             }
-        }
+            }
         }
     }
-}
 
 @Composable
 private fun ReliveLockSurface(onUnlock: () -> Unit) {
@@ -572,4 +629,19 @@ private fun ReliveLockSurface(onUnlock: () -> Unit) {
 private fun StartDestination.toTopLevelDestination(): ReliveTopLevelDestination = when (this) {
     StartDestination.Timelines -> ReliveTopLevelDestination.Timelines
     StartDestination.Rediscover -> ReliveTopLevelDestination.Rediscover
+}
+
+private fun profileDestinationDepth(destination: ProfileDestination): Int = when (destination) {
+    ProfileDestination.Profile -> 0
+    ProfileDestination.Licenses -> 2
+    ProfileDestination.Closed,
+    ProfileDestination.Preferences,
+    ProfileDestination.MediaStorage,
+    ProfileDestination.BackupRestore,
+    ProfileDestination.Location,
+    ProfileDestination.RediscoverNotifications,
+    ProfileDestination.PrivacySecurity,
+    ProfileDestination.HelpFeedback,
+    ProfileDestination.AboutRelive,
+    -> 1
 }
