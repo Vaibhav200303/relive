@@ -112,7 +112,11 @@ private fun SingleVisualTile(
         MediaType.Audio -> null
     }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxWidth(),
+        // A single tile shrink-wraps its media; centre it in the card rather than left-align.
+        contentAlignment = Alignment.TopCenter,
+    ) {
         val maxW = maxWidth
         val maxH = dims.media.timelineSinglePreviewMaxHeight
         val displaySize: DpSize
