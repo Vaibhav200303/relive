@@ -247,6 +247,7 @@ class ReliveTokensTest {
         assertTrue(m.displayLarge.fontSize > m.headlineLarge.fontSize)
     }
 
+    @Suppress("DEPRECATION")
     @Test
     fun motionDurationsAreOrdered() {
         val d = DefaultReliveMotion.durations
@@ -254,11 +255,49 @@ class ReliveTokensTest {
         assertTrue(d.timelineReturnMillis < d.fastMillis)
         assertTrue(d.timelineReturnMillis < d.standardMillis)
         assertTrue(d.standardMillis < d.slowMillis)
-        assertEquals(120, d.fastMillis)
+        assertEquals(150, d.fastMillis)
         assertEquals(100, d.timelineReturnMillis)
-        assertEquals(240, d.standardMillis)
-        assertEquals(360, d.slowMillis)
+        assertEquals(300, d.standardMillis)
+        assertEquals(500, d.slowMillis)
         assertNotNull(DefaultReliveMotion.easings.standard)
+    }
+
+    @Test
+    fun motionDurationsExposeFullM3Scale() {
+        val d = DefaultReliveMotion.durations
+        assertEquals(50, d.short1)
+        assertEquals(100, d.short2)
+        assertEquals(150, d.short3)
+        assertEquals(200, d.short4)
+        assertEquals(250, d.medium1)
+        assertEquals(300, d.medium2)
+        assertEquals(350, d.medium3)
+        assertEquals(400, d.medium4)
+        assertEquals(450, d.long1)
+        assertEquals(500, d.long2)
+        assertEquals(550, d.long3)
+        assertEquals(600, d.long4)
+        assertEquals(700, d.extraLong1)
+    }
+
+    @Test
+    fun motionEasingsExposeAllSixM3Curves() {
+        val e = DefaultReliveMotion.easings
+        assertNotNull(e.standard)
+        assertNotNull(e.standardDecelerate)
+        assertNotNull(e.standardAccelerate)
+        assertNotNull(e.emphasizedDecelerate)
+        assertNotNull(e.emphasizedAccelerate)
+        // The cubic curves must round-trip 0 and 1. `emphasized` is a PathEasing whose
+        // backing `Path` needs an Android runtime, so its transform is exercised in a
+        // Compose UI test, not this host-JVM unit test.
+        listOf(
+            e.standard, e.standardDecelerate, e.standardAccelerate,
+            e.emphasizedDecelerate, e.emphasizedAccelerate,
+        ).forEach { easing ->
+            assertEquals(0f, easing.transform(0f))
+            assertEquals(1f, easing.transform(1f))
+        }
     }
 
     @Test
