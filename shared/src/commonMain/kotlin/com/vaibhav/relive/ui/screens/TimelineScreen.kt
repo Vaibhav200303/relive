@@ -135,7 +135,6 @@ import com.vaibhav.relive.ui.components.composer.CollapsedComposerMarker
 import com.vaibhav.relive.ui.components.composer.ComposerOverlayHost
 import com.vaibhav.relive.ui.components.composer.MediaPickerDriver
 import com.vaibhav.relive.ui.components.composer.MomentComposer
-import com.vaibhav.relive.ui.components.composer.ComposerSharedTransition
 import com.vaibhav.relive.ui.components.timeline.EmptyCustomTimelinePlaceholder
 import com.vaibhav.relive.ui.components.timeline.MomentCard
 import com.vaibhav.relive.ui.components.timeline.TimelineMediaSharedTransition
@@ -253,7 +252,6 @@ fun TimelineScreen(
     onBackToTimelineHome: (() -> Unit)? = null,
     onOpenTimelineTheme: (() -> Unit)? = null,
     behaviorPreferences: BehaviorPreferences = BehaviorPreferences(),
-    composerSharedTransition: ComposerSharedTransition? = null,
     onComposerExpandedChanged: ((Boolean) -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
@@ -558,7 +556,6 @@ fun TimelineScreen(
             snackbarHostState = snackbarHostState,
             momentVisibility = resolveTimelineMomentVisibility(mode, behaviorPreferences),
             sharedTransition = mediaSharedTransition,
-            composerSharedTransition = composerSharedTransition,
         )
 
         if (showDatePicker) {
@@ -880,7 +877,6 @@ private fun TimelineContent(
     onShowTimelineAssignmentPicker: () -> Unit,
     onOpenMedia: (List<MomentAttachmentPresentation>, Int) -> Unit,
     sharedTransition: TimelineMediaSharedTransition?,
-    composerSharedTransition: ComposerSharedTransition?,
     onBack: (() -> Unit)?,
     onTitleChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
@@ -1232,14 +1228,27 @@ private fun TimelineContent(
                         AnimatedContent(
                             targetState = isComposerExpanded,
                             transitionSpec = {
-                                val fadeSpec = motion.spec<Float>(
-                                    reduceMotion = reduceMotion,
-                                    full = tween(
-                                        durationMillis = motion.durations.medium4,
-                                        easing = motion.easings.emphasized,
+                                val expandMs = motion.durations.slowMillis
+                                val collapseMs = motion.durations.standardMillis
+                                val enter = expandVertically(
+                                    animationSpec = tween(expandMs, easing = motion.easings.standard),
+                                    expandFrom = Alignment.Top,
+                                ) + fadeIn(animationSpec = tween(expandMs, easing = motion.easings.standard))
+                                val exit = shrinkVertically(
+                                    animationSpec = tween(collapseMs, easing = motion.easings.standard),
+                                    shrinkTowards = Alignment.Top,
+                                ) + fadeOut(animationSpec = tween(collapseMs, easing = motion.easings.standard))
+                                (enter togetherWith exit).using(
+                                    SizeTransform(
+                                        clip = false,
+                                        sizeAnimationSpec = { _, _ ->
+                                            tween(
+                                                durationMillis = if (targetState) expandMs else collapseMs,
+                                                easing = motion.easings.standard,
+                                            )
+                                        },
                                     ),
                                 )
-                                fadeIn(animationSpec = fadeSpec) togetherWith fadeOut(animationSpec = fadeSpec)
                             },
                             label = "composer-expand",
                             modifier = Modifier.fillMaxWidth(),
@@ -1270,8 +1279,7 @@ private fun TimelineContent(
                                     onMicPermissionResult = onMicPermissionResult,
                                     onDismissMicPermissionMessage = onDismissMicPermissionMessage,
                                     onOpenAppSettings = onOpenAppSettings,
-                                    modifier = composerSharedTransition?.targetModifier()?.fillMaxWidth()
-                                        ?: Modifier.fillMaxWidth(),
+                                    modifier = Modifier.fillMaxWidth(),
                                 )
                             } else {
                                 CollapsedComposerMarker(
