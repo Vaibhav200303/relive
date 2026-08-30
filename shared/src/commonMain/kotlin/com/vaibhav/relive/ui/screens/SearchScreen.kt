@@ -62,6 +62,7 @@ import com.vaibhav.relive.presentation.viewer.closeViewer
 import com.vaibhav.relive.presentation.viewer.openFromCollage
 import com.vaibhav.relive.presentation.viewer.openFromGallery
 import com.vaibhav.relive.presentation.date.RediscoverCalendar
+import com.vaibhav.relive.domain.model.TimelineWallpaper
 import com.vaibhav.relive.domain.time.Clock
 
 @Composable
@@ -73,6 +74,7 @@ fun SearchScreen(
     onBack: () -> Unit,
     onOpenAllAtMoment: (com.vaibhav.relive.domain.model.MomentId?) -> Unit,
     onCreateMoment: (() -> Unit)? = null,
+    wallpaper: TimelineWallpaper = TimelineWallpaper.WarmCream,
     navigationToolbarExpanded: Boolean = true,
     onNavigationToolbarExpand: () -> Unit = {},
     onNavigationToolbarCollapse: () -> Unit = {},
@@ -180,6 +182,7 @@ fun SearchScreen(
                 onOpenItem = { index -> navState = navState.openFromGallery(index) },
                 onClose = { navState = navState.closeGallery() },
                 backEnabled = navState.viewer == null,
+                wallpaper = wallpaper,
             )
         }
         navState.viewer?.let { viewer ->
@@ -188,6 +191,7 @@ fun SearchScreen(
                 mediaStore = mediaStore,
                 onIndexChange = { index -> navState = navState.copy(viewer = viewer.withCurrent(index)) },
                 onClose = { navState = navState.closeViewer() },
+                wallpaper = wallpaper,
             )
         }
     }

@@ -479,6 +479,7 @@ fun App(
                                 topLevel = ReliveTopLevelDestination.Timelines
                             },
                             onCreateMoment = { openQuickCapture(QuickCaptureSurface.Search) },
+                            wallpaper = appearanceState.preferences.allTimelineAppearance.wallpaper,
                             navigationToolbarExpanded = navigationToolbarExpanded,
                             onNavigationToolbarExpand = { navigationToolbarExpanded = true },
                             onNavigationToolbarCollapse = { navigationToolbarExpanded = false },
