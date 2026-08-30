@@ -177,6 +177,21 @@ data class ReliveMediaDimensions(
     val timelineSingleFallbackAspect: Float = 4f / 3f,
 )
 
+/** Layout tokens for loading silhouettes that reserve the same visual space as their content. */
+@Immutable
+data class ReliveSkeletonDimensions(
+    val fullWidthFraction: Float = 1f,
+    val lineHeight: Dp = 12.dp,
+    val titleLineHeight: Dp = 24.dp,
+    val shortLineWidthFraction: Float = 0.35f,
+    val mediumLineWidthFraction: Float = 0.6f,
+    val longLineWidthFraction: Float = 0.82f,
+    val timelineDetailMediaHeight: Dp = 180.dp,
+    val timelineDetailRailWidth: Dp = 1.dp,
+    val timelineDetailDotSize: Dp = 10.dp,
+    val rediscoverShelfCardWidthFraction: Float = 0.68f,
+)
+
 @Immutable
 data class ReliveDimensions(
     val spacing: ReliveSpacing = ReliveSpacing(),
@@ -192,6 +207,7 @@ data class ReliveDimensions(
     val composer: ReliveComposerDimensions = ReliveComposerDimensions(),
     val floatingToolbar: ReliveFloatingToolbarDimensions = ReliveFloatingToolbarDimensions(),
     val media: ReliveMediaDimensions = ReliveMediaDimensions(),
+    val skeleton: ReliveSkeletonDimensions = ReliveSkeletonDimensions(),
     val minTouchTarget: Dp = 48.dp,
 )
 

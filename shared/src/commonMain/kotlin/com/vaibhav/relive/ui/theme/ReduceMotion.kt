@@ -1,5 +1,6 @@
 package com.vaibhav.relive.ui.theme
 
+import androidx.compose.animation.core.DurationBasedAnimationSpec
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
@@ -33,3 +34,17 @@ fun <T> ReliveMotion.spec(
         easing = easings.standard,
     ),
 ): FiniteAnimationSpec<T> = if (reduceMotion) reduced else full
+
+/**
+ * Duration-based counterpart to [spec] for repeating animations. A repeating animation is
+ * never started while reduced motion is enabled, but using the same gate keeps its full-motion
+ * configuration on the shared accessibility path.
+ */
+fun <T> ReliveMotion.durationSpec(
+    reduceMotion: Boolean,
+    full: DurationBasedAnimationSpec<T>,
+    reduced: DurationBasedAnimationSpec<T> = tween(
+        durationMillis = durations.short3,
+        easing = easings.standard,
+    ),
+): DurationBasedAnimationSpec<T> = if (reduceMotion) reduced else full
