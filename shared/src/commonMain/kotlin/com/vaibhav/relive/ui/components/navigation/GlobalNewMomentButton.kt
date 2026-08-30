@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
@@ -35,6 +34,7 @@ fun GlobalNewMomentButton(
     onClick: () -> Unit,
     expanded: Boolean,
     expandedWidth: Dp,
+    modifier: Modifier = Modifier,
 ) {
     val dims = ReliveTheme.dimensions
     val colors = ReliveTheme.colors
@@ -57,7 +57,7 @@ fun GlobalNewMomentButton(
     )
     HorizontalFloatingToolbar(
         expanded = expanded,
-        modifier = Modifier
+        modifier = modifier
             .width(toolbarWidth)
             .height(dims.floatingToolbar.height)
             .semantics { contentDescription = "Create new moment" },
@@ -66,7 +66,7 @@ fun GlobalNewMomentButton(
             toolbarContainerColor = colors.accent,
             toolbarContentColor = colors.textOnAccent,
         ),
-        shape = RoundedCornerShape(dims.radii.pill),
+        shape = ReliveTheme.shapes.pill,
         contentPadding = PaddingValues(),
     ) {
         IconButton(
