@@ -71,6 +71,7 @@ fun MomentCard(
     mediaStore: MediaStore,
     onToggleFavorite: ((Boolean) -> Unit)?,
     onOpenMedia: (List<MomentAttachmentPresentation>, Int) -> Unit,
+    sharedTransition: TimelineMediaSharedTransition? = null,
     canEditOrForget: Boolean,
     onEdit: () -> Unit,
     onForget: () -> Unit,
@@ -233,6 +234,7 @@ fun MomentCard(
                 moment = moment,
                 mediaStore = mediaStore,
                 onOpenMedia = onOpenMedia,
+                sharedTransition = sharedTransition,
                 showTags = showTags,
             )
         }
@@ -284,6 +286,7 @@ private fun PinnedMomentCard(
     moment: MomentPresentation,
     mediaStore: MediaStore,
     onOpenMedia: (List<MomentAttachmentPresentation>, Int) -> Unit,
+    sharedTransition: TimelineMediaSharedTransition?,
     showTags: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -348,6 +351,7 @@ private fun PinnedMomentCard(
                     attachments = moment.attachments,
                     mediaStore = mediaStore,
                     onOpen = onOpenMedia,
+                    sharedTransition = sharedTransition,
                 )
             }
 

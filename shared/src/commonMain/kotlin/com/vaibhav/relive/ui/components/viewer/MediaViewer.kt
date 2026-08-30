@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.domain.model.TimelineWallpaper
 import com.vaibhav.relive.ui.components.timeline.TimelineWallpaperSurface
+import com.vaibhav.relive.ui.components.timeline.TimelineMediaSharedTransition
 import com.vaibhav.relive.platform.media.ActivePlayback
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.platform.media.RelivedAudioViewer
@@ -68,6 +69,7 @@ fun MediaViewer(
     onIndexChange: (Int) -> Unit,
     onClose: () -> Unit,
     wallpaper: TimelineWallpaper = TimelineWallpaper.WarmCream,
+    sharedTransition: TimelineMediaSharedTransition? = null,
 ) {
     val pagerState = rememberPagerState(
         initialPage = state.initialIndex,
@@ -119,6 +121,7 @@ fun MediaViewer(
                     isActive = isActive,
                     onZoomChange = { z -> if (isActive) currentZoom = z },
                     resetZoomKey = if (isActive) resetZoomRequest else 0f,
+                    sharedTransition = sharedTransition,
                 )
             }
 
@@ -140,6 +143,7 @@ private fun MediaViewerPage(
     isActive: Boolean,
     onZoomChange: (Float) -> Unit,
     resetZoomKey: Float,
+    sharedTransition: TimelineMediaSharedTransition?,
 ) {
     val label = when (attachment.type) {
         MediaType.Image -> "Image ${index + 1} of $total"
@@ -149,6 +153,7 @@ private fun MediaViewerPage(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .then(sharedTransition?.viewerModifier(attachment) ?: Modifier)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
