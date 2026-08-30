@@ -9,7 +9,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -37,6 +36,7 @@ import com.vaibhav.relive.ui.screens.RediscoverScreen
 import com.vaibhav.relive.ui.screens.ShareTimelinePickerScreen
 import com.vaibhav.relive.ui.screens.TimelineThemeScreen
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.theme.reliveForwardBackward
 import com.vaibhav.relive.ui.theme.spec
 import com.vaibhav.relive.ui.theme.toReliveThemeId
 import com.vaibhav.relive.domain.model.Timeline
@@ -264,55 +264,16 @@ fun App(
                         },
                         onRetry = container.incomingShareGateway::retry,
                     )
-                } else if (profileNavigation.destination != ProfileDestination.Closed) {
+                } else {
                     AnimatedContent(
                         targetState = profileNavigation.destination,
                         transitionSpec = {
-                            val movingForward = profileDestinationDepth(targetState) >
-                                profileDestinationDepth(initialState)
-                            val enterSpec = motion.spec<Float>(
+                            reliveForwardBackward(
+                                motion = motion,
                                 reduceMotion = reduceMotion,
-                                full = tween(
-                                    durationMillis = motion.durations.medium4,
-                                    easing = motion.easings.emphasizedDecelerate,
-                                ),
+                                movingForward = profileDestinationDepth(targetState) >
+                                    profileDestinationDepth(initialState),
                             )
-                            val exitSpec = motion.spec<Float>(
-                                reduceMotion = reduceMotion,
-                                full = tween(
-                                    durationMillis = motion.durations.short4,
-                                    easing = motion.easings.emphasizedAccelerate,
-                                ),
-                            )
-                            val enterSlideSpec = motion.spec<IntOffset>(
-                                reduceMotion = reduceMotion,
-                                full = tween(
-                                    durationMillis = motion.durations.medium4,
-                                    easing = motion.easings.emphasizedDecelerate,
-                                ),
-                            )
-                            val exitSlideSpec = motion.spec<IntOffset>(
-                                reduceMotion = reduceMotion,
-                                full = tween(
-                                    durationMillis = motion.durations.short4,
-                                    easing = motion.easings.emphasizedAccelerate,
-                                ),
-                            )
-                            val enter = fadeIn(animationSpec = enterSpec) + if (reduceMotion) {
-                                EnterTransition.None
-                            } else {
-                                slideInHorizontally(animationSpec = enterSlideSpec) { width ->
-                                    if (movingForward) width / 5 else -width / 5
-                                }
-                            }
-                            val exit = fadeOut(animationSpec = exitSpec) + if (reduceMotion) {
-                                ExitTransition.None
-                            } else {
-                                slideOutHorizontally(animationSpec = exitSlideSpec) { width ->
-                                    if (movingForward) -width / 5 else width / 5
-                                }
-                            }
-                            enter togetherWith exit
                         },
                         label = "profile hierarchy navigation",
                     ) { destination ->
@@ -365,10 +326,26 @@ fun App(
             ProfileDestination.HelpFeedback -> HelpFeedbackScreen(onBack = { profileNavigation = profileNavigation.returnToProfile() }, onMessage = {})
             ProfileDestination.AboutRelive -> AboutReliveScreen(onOpenLicenses = { profileNavigation = profileNavigation.openLicenses() }, onBack = { profileNavigation = profileNavigation.returnToProfile() })
             ProfileDestination.Licenses -> LicensesScreen(onBack = { profileNavigation = profileNavigation.openAbout() })
-                            ProfileDestination.Closed -> error("Closed is not a Profile hierarchy destination")
-                        }
-                    }
-                } else when (val active = timelinesDestination) {
+                            ProfileDestination.Closed -> AnimatedContent(
+                                targetState = timelinesDestination,
+                                transitionSpec = {
+                                    val isThemeNavigation =
+                                        (initialState is TimelinesDestination.TimelineDetail &&
+                                            targetState is TimelinesDestination.TimelineTheme) ||
+                                            (initialState is TimelinesDestination.TimelineTheme &&
+                                                targetState is TimelinesDestination.TimelineDetail)
+                                    if (isThemeNavigation) {
+                                        reliveForwardBackward(
+                                            motion = motion,
+                                            reduceMotion = reduceMotion,
+                                            movingForward = targetState is TimelinesDestination.TimelineTheme,
+                                        )
+                                    } else {
+                                        EnterTransition.None togetherWith ExitTransition.None
+                                    }
+                                },
+                                label = "timeline detail theme navigation",
+                            ) { destination -> when (val active = destination) {
             is TimelinesDestination.TimelineDetail -> {
                 val timelineContent: @Composable () -> Unit = {
                     TimelineScreen(
@@ -607,11 +584,16 @@ fun App(
                     },
                 )
             }
+                            }
+                            }
+                        }
+                    }
                 }
-            }
-            }
         }
     }
+}
+
+}
 
 @Composable
 private fun ReliveLockSurface(onUnlock: () -> Unit) {
@@ -632,9 +614,9 @@ private fun StartDestination.toTopLevelDestination(): ReliveTopLevelDestination 
 }
 
 private fun profileDestinationDepth(destination: ProfileDestination): Int = when (destination) {
-    ProfileDestination.Profile -> 0
-    ProfileDestination.Licenses -> 2
-    ProfileDestination.Closed,
+    ProfileDestination.Closed -> 0
+    ProfileDestination.Profile -> 1
+    ProfileDestination.Licenses -> 3
     ProfileDestination.Preferences,
     ProfileDestination.MediaStorage,
     ProfileDestination.BackupRestore,
@@ -643,5 +625,5 @@ private fun profileDestinationDepth(destination: ProfileDestination): Int = when
     ProfileDestination.PrivacySecurity,
     ProfileDestination.HelpFeedback,
     ProfileDestination.AboutRelive,
-    -> 1
+    -> 2
 }
