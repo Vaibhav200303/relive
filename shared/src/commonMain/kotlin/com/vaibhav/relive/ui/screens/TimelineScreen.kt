@@ -1,6 +1,9 @@
 package com.vaibhav.relive.ui.screens
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.BoundsTransform
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animate
@@ -134,6 +137,8 @@ import com.vaibhav.relive.ui.components.composer.MediaPickerDriver
 import com.vaibhav.relive.ui.components.composer.MomentComposer
 import com.vaibhav.relive.ui.components.timeline.EmptyCustomTimelinePlaceholder
 import com.vaibhav.relive.ui.components.timeline.MomentCard
+import com.vaibhav.relive.ui.components.timeline.TimelineMediaSharedTransition
+import com.vaibhav.relive.ui.components.timeline.sharedTransitionKey
 import com.vaibhav.relive.ui.components.timeline.TimelineHeader
 import com.vaibhav.relive.ui.components.timeline.TimelineWallpaperSurface
 import com.vaibhav.relive.ui.components.timeline.TimelineCoverHero
@@ -148,7 +153,9 @@ import com.vaibhav.relive.ui.components.viewer.MomentMediaGallery
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.theme.spec
 import com.vaibhav.relive.presentation.cardcover.allTimelineCollageBucket
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.min
 
@@ -399,6 +406,44 @@ fun TimelineScreen(
         !composerState.pendingMicPermissionRequest &&
         momentToForget == null
 
+    @OptIn(ExperimentalSharedTransitionApi::class)
+    SharedTransitionLayout(
+        modifier = Modifier.fillMaxSize(),
+    ) {
+    val sharedTransitionScope = this
+    val motion = ReliveTheme.motion
+    val reduceMotion = ReliveTheme.reduceMotion
+    val viewer = navState.viewer
+    val heroAttachment = viewer?.takeIf { it.attachments.size == 1 }?.current
+    var activeHeroAttachmentId by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(heroAttachment?.sharedTransitionKey()) {
+        heroAttachment?.let { activeHeroAttachmentId = it.sharedTransitionKey() }
+    }
+    LaunchedEffect(viewer, activeHeroAttachmentId, motion.durations.long2) {
+        if (viewer == null && activeHeroAttachmentId != null) {
+            delay(motion.durations.long2.toLong())
+            if (navState.viewer == null) activeHeroAttachmentId = null
+        }
+    }
+    val heroAttachmentId = heroAttachment?.sharedTransitionKey() ?: activeHeroAttachmentId
+    val heroBoundsTransform = remember(motion, reduceMotion) {
+        BoundsTransform { _, _ ->
+            motion.spec(
+                reduceMotion = reduceMotion,
+                full = tween(
+                    durationMillis = motion.durations.long2,
+                    easing = motion.easings.emphasized,
+                ),
+            )
+        }
+    }
+    val mediaSharedTransition = TimelineMediaSharedTransition(
+        scope = sharedTransitionScope,
+        activeAttachmentId = heroAttachmentId,
+        viewerVisible = heroAttachment != null,
+        reduceMotion = reduceMotion,
+        boundsTransform = heroBoundsTransform,
+    )
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -497,6 +542,7 @@ fun TimelineScreen(
             onDateNavigationHandled = timelineViewModel::consumeDateNavigation,
             snackbarHostState = snackbarHostState,
             momentVisibility = resolveTimelineMomentVisibility(mode, behaviorPreferences),
+            sharedTransition = mediaSharedTransition,
         )
 
         if (showDatePicker) {
@@ -569,7 +615,6 @@ fun TimelineScreen(
         )
 
         val gallery = navState.gallery
-        val viewer = navState.viewer
         if (gallery != null) {
             MomentMediaGallery(
                 state = gallery,
@@ -586,18 +631,36 @@ fun TimelineScreen(
                 wallpaper = timelineState.appearance.wallpaper,
             )
         }
-        if (viewer != null) {
-            MediaViewer(
-                state = viewer,
-                mediaStore = mediaStore,
-                onIndexChange = { index -> navState = navState.copy(viewer = viewer.withCurrent(index)) },
-                onClose = {
-                    ActivePlayback.stopActive()
-                    navState = navState.closeViewer()
-                },
-                wallpaper = timelineState.appearance.wallpaper,
-            )
+        AnimatedContent(
+            targetState = viewer,
+            contentKey = { it != null },
+            transitionSpec = {
+                val fadeSpec = motion.spec<Float>(
+                    reduceMotion = reduceMotion,
+                    full = tween(
+                        durationMillis = motion.durations.medium4,
+                        easing = motion.easings.emphasizedDecelerate,
+                    ),
+                )
+                fadeIn(animationSpec = fadeSpec) togetherWith fadeOut(animationSpec = fadeSpec)
+            },
+            label = "media-viewer-chrome",
+        ) { viewerState ->
+            viewerState?.let { openViewer ->
+                MediaViewer(
+                    state = openViewer,
+                    mediaStore = mediaStore,
+                    onIndexChange = { index -> navState = navState.copy(viewer = openViewer.withCurrent(index)) },
+                    onClose = {
+                        ActivePlayback.stopActive()
+                        navState = navState.closeViewer()
+                    },
+                    wallpaper = timelineState.appearance.wallpaper,
+                    sharedTransition = mediaSharedTransition,
+                )
+            }
         }
+    }
     }
 
     if (mode.allowsMutations) momentToForget?.let { moment ->
@@ -784,6 +847,7 @@ private fun TimelineContent(
     onExitMomentActions: () -> Unit,
     onShowTimelineAssignmentPicker: () -> Unit,
     onOpenMedia: (List<MomentAttachmentPresentation>, Int) -> Unit,
+    sharedTransition: TimelineMediaSharedTransition?,
     onBack: (() -> Unit)?,
     onTitleChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
@@ -1099,6 +1163,7 @@ private fun TimelineContent(
                                     null
                                 },
                                 onOpenMedia = onOpenMedia,
+                                sharedTransition = sharedTransition,
                                 canEditOrForget = mode.allowsMutations && timelineViewModelCanEdit(moment, clock),
                                 onEdit = { onEditMoment(moment) },
                                 onForget = { onForgetMoment(moment) },

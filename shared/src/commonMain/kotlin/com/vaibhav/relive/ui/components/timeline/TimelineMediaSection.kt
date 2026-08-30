@@ -62,6 +62,7 @@ fun TimelineMediaSection(
     attachments: List<MomentAttachmentPresentation>,
     mediaStore: MediaStore,
     onOpen: (List<MomentAttachmentPresentation>, Int) -> Unit,
+    sharedTransition: TimelineMediaSharedTransition? = null,
     modifier: Modifier = Modifier,
 ) {
     if (attachments.isEmpty()) return
@@ -69,11 +70,11 @@ fun TimelineMediaSection(
     val openAt: (Int) -> Unit = { idx -> onOpen(attachments, idx) }
     Box(modifier = modifier.fillMaxWidth()) {
         when (selection.shape) {
-            CollageShape.Single -> SingleTile(selection.visible[0], mediaStore, onClick = { openAt(0) })
-            CollageShape.Two -> TwoTiles(selection.visible, mediaStore, openAt)
-            CollageShape.Three -> ThreeTiles(selection.visible, mediaStore, openAt)
-            CollageShape.Four -> FourTiles(selection.visible, mediaStore, overflow = 0, openAt = openAt)
-            CollageShape.FourPlus -> FourTiles(selection.visible, mediaStore, overflow = selection.overflow, openAt = openAt)
+            CollageShape.Single -> SingleTile(selection.visible[0], mediaStore, sharedTransition, onClick = { openAt(0) })
+            CollageShape.Two -> TwoTiles(selection.visible, mediaStore, sharedTransition, openAt)
+            CollageShape.Three -> ThreeTiles(selection.visible, mediaStore, sharedTransition, openAt)
+            CollageShape.Four -> FourTiles(selection.visible, mediaStore, sharedTransition, overflow = 0, openAt = openAt)
+            CollageShape.FourPlus -> FourTiles(selection.visible, mediaStore, sharedTransition, overflow = selection.overflow, openAt = openAt)
         }
     }
 }
@@ -82,13 +83,14 @@ fun TimelineMediaSection(
 private fun SingleTile(
     att: MomentAttachmentPresentation,
     mediaStore: MediaStore,
+    sharedTransition: TimelineMediaSharedTransition?,
     onClick: () -> Unit,
 ) {
     if (att.type == MediaType.Audio) {
-        SingleAudioTile(att, mediaStore, onClick)
+        SingleAudioTile(att, mediaStore, sharedTransition, onClick)
         return
     }
-    SingleVisualTile(att, mediaStore, onClick)
+    SingleVisualTile(att, mediaStore, sharedTransition, onClick)
 }
 
 /**
@@ -100,6 +102,7 @@ private fun SingleTile(
 private fun SingleVisualTile(
     att: MomentAttachmentPresentation,
     mediaStore: MediaStore,
+    sharedTransition: TimelineMediaSharedTransition?,
     onClick: () -> Unit,
 ) {
     val dims = ReliveTheme.dimensions
@@ -134,7 +137,7 @@ private fun SingleVisualTile(
             )
             inlineVideoAllowed = false
         }
-        val outerModifier = Modifier
+        val outerModifier = (sharedTransition?.sourceModifier(att) ?: Modifier)
             .size(displaySize.width, displaySize.height)
             .clip(RoundedCornerShape(dims.radii.md))
             .border(
@@ -176,12 +179,13 @@ private fun SingleVisualTile(
 private fun SingleAudioTile(
     att: MomentAttachmentPresentation,
     mediaStore: MediaStore,
+    sharedTransition: TimelineMediaSharedTransition?,
     onClick: () -> Unit,
 ) {
     val dims = ReliveTheme.dimensions
     val colors = ReliveTheme.colors
     Box(
-        modifier = Modifier
+        modifier = (sharedTransition?.sourceModifier(att) ?: Modifier)
             .fillMaxWidth()
             .height(dims.media.timelineSingleAudioHeight)
             .clip(RoundedCornerShape(dims.radii.md))
@@ -201,6 +205,7 @@ private fun SingleAudioTile(
 private fun TwoTiles(
     items: List<MomentAttachmentPresentation>,
     mediaStore: MediaStore,
+    sharedTransition: TimelineMediaSharedTransition?,
     openAt: (Int) -> Unit,
 ) {
     val dims = ReliveTheme.dimensions
@@ -217,8 +222,8 @@ private fun TwoTiles(
             ),
         horizontalArrangement = Arrangement.spacedBy(dims.media.collageBorder),
     ) {
-        GridCellImpl(items[0], mediaStore, Modifier.weight(1f).aspectRatio(dims.media.collageTileAspectSquare), overflow = 0, onClick = { openAt(0) })
-        GridCellImpl(items[1], mediaStore, Modifier.weight(1f).aspectRatio(dims.media.collageTileAspectSquare), overflow = 0, onClick = { openAt(1) })
+        GridCellImpl(items[0], mediaStore, sharedTransition, Modifier.weight(1f).aspectRatio(dims.media.collageTileAspectSquare), overflow = 0, onClick = { openAt(0) })
+        GridCellImpl(items[1], mediaStore, sharedTransition, Modifier.weight(1f).aspectRatio(dims.media.collageTileAspectSquare), overflow = 0, onClick = { openAt(1) })
     }
 }
 
@@ -226,6 +231,7 @@ private fun TwoTiles(
 private fun ThreeTiles(
     items: List<MomentAttachmentPresentation>,
     mediaStore: MediaStore,
+    sharedTransition: TimelineMediaSharedTransition?,
     openAt: (Int) -> Unit,
 ) {
     val dims = ReliveTheme.dimensions
@@ -243,13 +249,13 @@ private fun ThreeTiles(
             ),
         horizontalArrangement = Arrangement.spacedBy(dims.media.collageBorder),
     ) {
-        GridCellImpl(items[0], mediaStore, Modifier.weight(2f).fillMaxSize(), overflow = 0, onClick = { openAt(0) })
+        GridCellImpl(items[0], mediaStore, sharedTransition, Modifier.weight(2f).fillMaxSize(), overflow = 0, onClick = { openAt(0) })
         Column(
             modifier = Modifier.weight(1f).fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(dims.media.collageBorder),
         ) {
-            GridCellImpl(items[1], mediaStore, Modifier.weight(1f).fillMaxSize(), overflow = 0, onClick = { openAt(1) })
-            GridCellImpl(items[2], mediaStore, Modifier.weight(1f).fillMaxSize(), overflow = 0, onClick = { openAt(2) })
+            GridCellImpl(items[1], mediaStore, sharedTransition, Modifier.weight(1f).fillMaxSize(), overflow = 0, onClick = { openAt(1) })
+            GridCellImpl(items[2], mediaStore, sharedTransition, Modifier.weight(1f).fillMaxSize(), overflow = 0, onClick = { openAt(2) })
         }
     }
 }
@@ -258,6 +264,7 @@ private fun ThreeTiles(
 private fun FourTiles(
     items: List<MomentAttachmentPresentation>,
     mediaStore: MediaStore,
+    sharedTransition: TimelineMediaSharedTransition?,
     overflow: Int,
     openAt: (Int) -> Unit,
 ) {
@@ -275,8 +282,8 @@ private fun FourTiles(
             ),
         verticalArrangement = Arrangement.spacedBy(dims.media.collageBorder),
     ) {
-        FourRow(items[0], items[1], mediaStore, overlayIndex = -1, overflow = 0, baseIndex = 0, openAt = openAt)
-        FourRow(items[2], items[3], mediaStore, overlayIndex = 1, overflow = overflow, baseIndex = 2, openAt = openAt)
+        FourRow(items[0], items[1], mediaStore, sharedTransition, overlayIndex = -1, overflow = 0, baseIndex = 0, openAt = openAt)
+        FourRow(items[2], items[3], mediaStore, sharedTransition, overlayIndex = 1, overflow = overflow, baseIndex = 2, openAt = openAt)
     }
 }
 
@@ -285,6 +292,7 @@ private fun FourRow(
     left: MomentAttachmentPresentation,
     right: MomentAttachmentPresentation,
     mediaStore: MediaStore,
+    sharedTransition: TimelineMediaSharedTransition?,
     overlayIndex: Int,
     overflow: Int,
     baseIndex: Int,
@@ -298,6 +306,7 @@ private fun FourRow(
         GridCellImpl(
             att = left,
             mediaStore = mediaStore,
+            sharedTransition = sharedTransition,
             modifier = Modifier.weight(1f).aspectRatio(dims.media.collageTileAspectSquare),
             overflow = if (overlayIndex == 0) overflow else 0,
             onClick = { openAt(baseIndex) },
@@ -305,6 +314,7 @@ private fun FourRow(
         GridCellImpl(
             att = right,
             mediaStore = mediaStore,
+            sharedTransition = sharedTransition,
             modifier = Modifier.weight(1f).aspectRatio(dims.media.collageTileAspectSquare),
             overflow = if (overlayIndex == 1) overflow else 0,
             onClick = { openAt(baseIndex + 1) },
@@ -316,6 +326,7 @@ private fun FourRow(
 private fun GridCellImpl(
     att: MomentAttachmentPresentation,
     mediaStore: MediaStore,
+    sharedTransition: TimelineMediaSharedTransition?,
     modifier: Modifier,
     overflow: Int,
     onClick: () -> Unit,
@@ -323,7 +334,8 @@ private fun GridCellImpl(
     val dims = ReliveTheme.dimensions
     val desc = if (overflow > 0) "Open $overflow more media" else openLabelFor(att.type)
     Box(
-        modifier = modifier
+        modifier = (sharedTransition?.sourceModifier(att) ?: Modifier)
+            .then(modifier)
             .clip(RoundedCornerShape(dims.radii.md))
             .clickable(onClick = onClick)
             .semantics { contentDescription = desc },
