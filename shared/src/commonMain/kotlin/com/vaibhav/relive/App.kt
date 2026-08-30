@@ -12,6 +12,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
@@ -32,6 +34,7 @@ import com.vaibhav.relive.ui.screens.RediscoverScreen
 import com.vaibhav.relive.ui.screens.ShareTimelinePickerScreen
 import com.vaibhav.relive.ui.screens.TimelineThemeScreen
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.theme.spec
 import com.vaibhav.relive.ui.theme.toReliveThemeId
 import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.MomentId
@@ -213,6 +216,7 @@ fun App(
         ReliveBackHandler(enabled = !locked && canReturnToTimelineHome, onBack = returnToTimelineHome)
         if (locked) ReliveLockSurface(onUnlock = { scope.launch { lockController.unlock() } }) else {
             val motion = ReliveTheme.motion
+            val reduceMotion = ReliveTheme.reduceMotion
             val showIncomingSharePicker = incomingShareState !is IncomingShareState.Idle &&
                 (incomingShareState !is IncomingShareState.Ready ||
                     (incomingShareState as IncomingShareState.Ready).payload.requestId != selectedIncomingShareId)
@@ -421,7 +425,46 @@ fun App(
                     behaviorPreferences = behaviorState.preferences,
                 )
             } else Box(Modifier.fillMaxSize()) {
-                when (topLevel) {
+                AnimatedContent(
+                    targetState = topLevel,
+                    transitionSpec = {
+                        val exitSpec = motion.spec<Float>(
+                            reduceMotion = reduceMotion,
+                            full = tween(
+                                durationMillis = motion.durations.short4,
+                                easing = motion.easings.emphasizedAccelerate,
+                            ),
+                        )
+                        val enterSpec = motion.spec<Float>(
+                            reduceMotion = reduceMotion,
+                            full = tween(
+                                durationMillis = motion.durations.medium2,
+                                delayMillis = motion.durations.short4,
+                                easing = motion.easings.emphasizedDecelerate,
+                            ),
+                            reduced = tween(
+                                durationMillis = motion.durations.short3,
+                                delayMillis = motion.durations.short3,
+                                easing = motion.easings.standard,
+                            ),
+                        )
+                        val exit = fadeOut(animationSpec = exitSpec).let { fade ->
+                            if (reduceMotion) fade else fade + scaleOut(
+                                animationSpec = exitSpec,
+                                targetScale = 0.92f,
+                            )
+                        }
+                        val enter = fadeIn(animationSpec = enterSpec).let { fade ->
+                            if (reduceMotion) fade else fade + scaleIn(
+                                animationSpec = enterSpec,
+                                initialScale = 0.92f,
+                            )
+                        }
+                        enter togetherWith exit
+                    },
+                    label = "top-level fade through",
+                ) { destination ->
+                    when (destination) {
                         ReliveTopLevelDestination.Timelines -> TimelineHomeScreen(
                             viewModel = homeViewModel,
                             mediaStore = container.mediaStore,
@@ -485,6 +528,7 @@ fun App(
                             onNavigationToolbarCollapse = { navigationToolbarExpanded = false },
                         )
                     }
+                }
                 ReliveFloatingBottomControls(
                     selected = topLevel,
                     expanded = navigationToolbarExpanded,
