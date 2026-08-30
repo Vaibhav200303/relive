@@ -28,6 +28,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -54,6 +60,7 @@ import com.vaibhav.relive.presentation.profile.ProfileNavigationState
 import com.vaibhav.relive.presentation.profile.ProfileDestination
 import com.vaibhav.relive.presentation.profile.MediaStorageViewModel
 import com.vaibhav.relive.ui.components.navigation.ReliveFloatingBottomControls
+import com.vaibhav.relive.ui.components.navigation.GlobalNewMomentButton
 import com.vaibhav.relive.ui.components.navigation.ReliveTopLevelDestination
 import com.vaibhav.relive.ui.components.composer.ComposerSharedTransition
 import com.vaibhav.relive.platform.media.ActivePlayback
@@ -192,6 +199,9 @@ fun App(
         var profileNavigation by remember { mutableStateOf(ProfileNavigationState()) }
         var navigationToolbarExpanded by remember { mutableStateOf(true) }
         var composerExpanded by remember { mutableStateOf(false) }
+        var composerTransformActive by remember { mutableStateOf(false) }
+        var composerHasOpened by remember { mutableStateOf(false) }
+        val composerTransformDuration = ReliveTheme.motion.durations.medium4
         var selectedIncomingShareId by remember { mutableStateOf<String?>(null) }
         LaunchedEffect(incomingShareState) {
             val ready = incomingShareState as? IncomingShareState.Ready
@@ -202,10 +212,19 @@ fun App(
         val openQuickCapture: (QuickCaptureSurface) -> Unit = { surface ->
             quickCaptureCommand(surface)?.let { command ->
                 ActivePlayback.stopActive()
+                composerTransformActive = true
+                composerHasOpened = false
                 timelinesDestination = TimelinesDestination.TimelineDetail(
                     scope = command.timeline,
                     openComposerOnEnter = command.openComposer,
                 )
+            }
+        }
+        LaunchedEffect(composerExpanded, composerTransformActive, composerHasOpened) {
+            if (!composerExpanded && composerTransformActive && composerHasOpened) {
+                kotlinx.coroutines.delay(composerTransformDuration.toLong())
+                composerTransformActive = false
+                composerHasOpened = false
             }
         }
         val composerSharedTransition = ComposerSharedTransition(
@@ -390,10 +409,33 @@ fun App(
                         },
                         behaviorPreferences = behaviorState.preferences,
                         composerSharedTransition = composerSharedTransition,
-                        onComposerExpandedChanged = { composerExpanded = it },
+                        onComposerExpandedChanged = {
+                            composerExpanded = it
+                            if (it) composerHasOpened = true
+                        },
                     )
                 }
-                timelineContent()
+                Box(Modifier.fillMaxSize()) {
+                    timelineContent()
+                    if (composerTransformActive) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime))
+                                .padding(
+                                    end = ReliveTheme.dimensions.spacing.lg,
+                                    bottom = ReliveTheme.dimensions.spacing.lg,
+                                ),
+                        ) {
+                            GlobalNewMomentButton(
+                                onClick = {},
+                                expanded = false,
+                                expandedWidth = ReliveTheme.dimensions.floatingToolbar.compactWidth,
+                                modifier = composerSharedTransition.sourceModifier(),
+                            )
+                        }
+                    }
+                }
             }
             is TimelinesDestination.TimelineTheme -> {
                 val destination = active.returnTo.scope.timelineThemeDestinationOrNull()
