@@ -65,7 +65,7 @@ class TimelineMediaNavStateTest {
         listOf(0, 1, 2).forEach { i ->
             val s = TimelineMediaNavState.Idle.openFromCollage(list, i)
             assertNull(s.viewer, "tap at index $i must not open viewer")
-            assertNotNull(s.gallery)
+            assertSame(list[i], assertNotNull(s.gallery).heroAttachment)
         }
     }
 
@@ -98,12 +98,14 @@ class TimelineMediaNavStateTest {
         assertNull(s.viewer, "+N must not open viewer directly")
         val g = assertNotNull(s.gallery)
         assertEquals(7, g.size, "gallery must expose ALL attachments including hidden overflow")
+        assertSame(list[3], g.heroAttachment, "+N must expand from the visible fourth tile")
     }
 
     @Test
     fun galleryStateRejectsSingleAttachment() {
+        val solo = att("solo")
         assertFailsWith<IllegalArgumentException> {
-            MomentMediaGalleryState(listOf(att("solo")))
+            MomentMediaGalleryState(listOf(solo), solo)
         }
     }
 

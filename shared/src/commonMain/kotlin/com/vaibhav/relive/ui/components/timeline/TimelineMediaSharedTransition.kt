@@ -12,22 +12,25 @@ import com.vaibhav.relive.presentation.timeline.MomentAttachmentPresentation
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.theme.spec
 
-/** Coordinates the Phase 3.1 thumbnail-to-viewer shared container for one attachment. */
+/** Coordinates the Phase 3 shared media containers for timeline media destinations. */
 @OptIn(ExperimentalSharedTransitionApi::class)
 class TimelineMediaSharedTransition(
     private val scope: SharedTransitionScope,
     private val activeAttachmentId: String?,
     private val viewerVisible: Boolean,
+    private val activeGalleryAttachmentId: String?,
+    private val galleryVisible: Boolean,
     private val reduceMotion: Boolean,
     private val boundsTransform: BoundsTransform,
 ) {
     @Composable
     fun sourceModifier(attachment: MomentAttachmentPresentation): Modifier {
         if (reduceMotion) return Modifier
-        val isHero = attachment.sharedTransitionKey() == activeAttachmentId
+        val isViewerHero = attachment.sharedTransitionKey() == activeAttachmentId
+        val isGalleryHero = attachment.sharedTransitionKey() == activeGalleryAttachmentId
         val motion = ReliveTheme.motion
         val radius = androidx.compose.animation.core.animateDpAsState(
-            targetValue = if (isHero && viewerVisible) ReliveTheme.dimensions.radii.none else ReliveTheme.dimensions.radii.medium,
+            targetValue = if (isViewerHero && viewerVisible) ReliveTheme.dimensions.radii.none else ReliveTheme.dimensions.radii.medium,
             animationSpec = motion.spec(
                 reduceMotion = reduceMotion,
                 full = tween(motion.durations.long2, easing = motion.easings.emphasized),
@@ -38,7 +41,7 @@ class TimelineMediaSharedTransition(
             Modifier
                 .sharedElementWithCallerManagedVisibility(
                     sharedContentState = rememberSharedContentState(attachment.sharedTransitionKey()),
-                    visible = !(isHero && viewerVisible),
+                    visible = !((isViewerHero && viewerVisible) || (isGalleryHero && galleryVisible)),
                     boundsTransform = boundsTransform,
                 )
                 .clip(RoundedCornerShape(radius))
@@ -56,6 +59,18 @@ class TimelineMediaSharedTransition(
                     boundsTransform = boundsTransform,
                 )
                 .clip(RoundedCornerShape(ReliveTheme.dimensions.radii.none))
+        }
+    }
+
+    @Composable
+    fun galleryModifier(attachment: MomentAttachmentPresentation): Modifier {
+        if (attachment.sharedTransitionKey() != activeGalleryAttachmentId || reduceMotion) return Modifier
+        return with(scope) {
+            Modifier.sharedElementWithCallerManagedVisibility(
+                sharedContentState = rememberSharedContentState(attachment.sharedTransitionKey()),
+                visible = galleryVisible,
+                boundsTransform = boundsTransform,
+            )
         }
     }
 }
