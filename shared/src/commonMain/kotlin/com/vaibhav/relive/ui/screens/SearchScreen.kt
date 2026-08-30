@@ -1,5 +1,13 @@
 package com.vaibhav.relive.ui.screens
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.BoundsTransform
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -50,11 +58,14 @@ import com.vaibhav.relive.ui.components.timeline.BackGlyph
 import com.vaibhav.relive.ui.components.timeline.CalendarGlyph
 import com.vaibhav.relive.ui.components.timeline.DateNavigationPicker
 import com.vaibhav.relive.ui.components.timeline.MomentCard
+import com.vaibhav.relive.ui.components.timeline.TimelineMediaSharedTransition
+import com.vaibhav.relive.ui.components.timeline.sharedTransitionKey
 import com.vaibhav.relive.ui.components.viewer.MediaViewer
 import com.vaibhav.relive.ui.components.viewer.MomentMediaGallery
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.theme.spec
 import com.vaibhav.relive.platform.media.ActivePlayback
 import com.vaibhav.relive.presentation.viewer.TimelineMediaNavState
 import com.vaibhav.relive.presentation.viewer.closeGallery
@@ -64,6 +75,7 @@ import com.vaibhav.relive.presentation.viewer.openFromGallery
 import com.vaibhav.relive.presentation.date.RediscoverCalendar
 import com.vaibhav.relive.domain.model.TimelineWallpaper
 import com.vaibhav.relive.domain.time.Clock
+import kotlinx.coroutines.delay
 
 @Composable
 fun SearchScreen(
@@ -105,7 +117,44 @@ fun SearchScreen(
         }
     }
 
-    Box(Modifier.fillMaxSize()) {
+    @OptIn(ExperimentalSharedTransitionApi::class)
+    SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
+        val motion = ReliveTheme.motion
+        val reduceMotion = ReliveTheme.reduceMotion
+        val gallery = navState.gallery
+        val galleryHeroAttachment = gallery?.heroAttachment
+        var activeGalleryHeroAttachmentId by remember { mutableStateOf<String?>(null) }
+        LaunchedEffect(galleryHeroAttachment?.sharedTransitionKey()) {
+            galleryHeroAttachment?.let { activeGalleryHeroAttachmentId = it.sharedTransitionKey() }
+        }
+        LaunchedEffect(gallery, activeGalleryHeroAttachmentId, motion.durations.long2) {
+            if (gallery == null && activeGalleryHeroAttachmentId != null) {
+                delay(motion.durations.long2.toLong())
+                if (navState.gallery == null) activeGalleryHeroAttachmentId = null
+            }
+        }
+        val galleryHeroAttachmentId = galleryHeroAttachment?.sharedTransitionKey() ?: activeGalleryHeroAttachmentId
+        val galleryBoundsTransform = remember(motion, reduceMotion) {
+            BoundsTransform { _, _ ->
+                motion.spec(
+                    reduceMotion = reduceMotion,
+                    full = tween(
+                        durationMillis = motion.durations.long2,
+                        easing = motion.easings.emphasized,
+                    ),
+                )
+            }
+        }
+        val mediaSharedTransition = TimelineMediaSharedTransition(
+            scope = this,
+            activeAttachmentId = null,
+            viewerVisible = false,
+            activeGalleryAttachmentId = galleryHeroAttachmentId,
+            galleryVisible = galleryHeroAttachment != null,
+            reduceMotion = reduceMotion,
+            boundsTransform = galleryBoundsTransform,
+        )
+        Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize().background(ReliveTheme.colors.bgCanvas)) {
         SearchHeader(
             query = state.query,
@@ -167,6 +216,7 @@ fun SearchScreen(
                             canEditOrForget = false,
                             onEdit = {},
                             onForget = {},
+                            sharedTransition = mediaSharedTransition,
                             hasPreviousMoment = index > 0,
                             isActive = state.activeIndex == index,
                         )
@@ -175,15 +225,32 @@ fun SearchScreen(
             }
         }
         }
-        navState.gallery?.let { gallery ->
-            MomentMediaGallery(
-                state = gallery,
-                mediaStore = mediaStore,
-                onOpenItem = { index -> navState = navState.openFromGallery(index) },
-                onClose = { navState = navState.closeGallery() },
-                backEnabled = navState.viewer == null,
-                wallpaper = wallpaper,
-            )
+        AnimatedContent(
+            targetState = gallery,
+            contentKey = { it != null },
+            transitionSpec = {
+                val fadeSpec = motion.spec<Float>(
+                    reduceMotion = reduceMotion,
+                    full = tween(
+                        durationMillis = motion.durations.long2,
+                        easing = motion.easings.emphasized,
+                    ),
+                )
+                fadeIn(animationSpec = fadeSpec) togetherWith fadeOut(animationSpec = fadeSpec)
+            },
+            label = "search-moment-media-gallery-container",
+        ) { galleryState ->
+            galleryState?.let { openGallery ->
+                MomentMediaGallery(
+                    state = openGallery,
+                    mediaStore = mediaStore,
+                    onOpenItem = { index -> navState = navState.openFromGallery(index) },
+                    onClose = { navState = navState.closeGallery() },
+                    backEnabled = navState.viewer == null,
+                    wallpaper = wallpaper,
+                    sharedTransition = mediaSharedTransition,
+                )
+            }
         }
         navState.viewer?.let { viewer ->
             MediaViewer(
@@ -194,6 +261,7 @@ fun SearchScreen(
                 wallpaper = wallpaper,
             )
         }
+    }
     }
     if (showDatePicker) {
         DateNavigationPicker(
