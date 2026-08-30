@@ -40,6 +40,7 @@ import com.vaibhav.relive.platform.media.RelivedVideoTile
 import com.vaibhav.relive.platform.system.ReliveBackHandler
 import com.vaibhav.relive.presentation.timeline.MomentAttachmentPresentation
 import com.vaibhav.relive.presentation.viewer.MomentMediaGalleryState
+import com.vaibhav.relive.ui.components.timeline.TimelineMediaSharedTransition
 
 /**
  * Dedicated per-Moment media gallery (multi-attachment flow only). Black
@@ -57,6 +58,7 @@ fun MomentMediaGallery(
     onClose: () -> Unit,
     backEnabled: Boolean = true,
     wallpaper: TimelineWallpaper = TimelineWallpaper.WarmCream,
+    sharedTransition: TimelineMediaSharedTransition? = null,
 ) {
     val gridState = rememberLazyGridState()
 
@@ -89,6 +91,7 @@ fun MomentMediaGallery(
                     GalleryTile(
                         att = att,
                         mediaStore = mediaStore,
+                        sharedTransition = sharedTransition,
                         onClick = { onOpenItem(index) },
                     )
                 }
@@ -101,6 +104,7 @@ fun MomentMediaGallery(
 private fun GalleryTile(
     att: MomentAttachmentPresentation,
     mediaStore: MediaStore,
+    sharedTransition: TimelineMediaSharedTransition?,
     onClick: () -> Unit,
 ) {
     val desc = when (att.type) {
@@ -110,6 +114,7 @@ private fun GalleryTile(
     }
     Box(
         modifier = Modifier
+            .then(sharedTransition?.galleryModifier(att) ?: Modifier)
             .fillMaxWidth()
             .aspectRatio(1f)
             .clip(RoundedCornerShape(14.dp))

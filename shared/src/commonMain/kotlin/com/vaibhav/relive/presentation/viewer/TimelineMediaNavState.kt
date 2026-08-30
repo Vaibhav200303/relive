@@ -10,10 +10,15 @@ import com.vaibhav.relive.presentation.timeline.MomentAttachmentPresentation
  */
 data class MomentMediaGalleryState(
     val attachments: List<MomentAttachmentPresentation>,
+    /** Timeline attachment that opened this gallery and remains its shared-transform hero. */
+    val heroAttachment: MomentAttachmentPresentation,
 ) {
     init {
         require(attachments.size >= 2) {
             "gallery requires 2+ attachments; single-attachment moments open the viewer directly"
+        }
+        require(heroAttachment in attachments) {
+            "gallery hero must be one of the gallery attachments"
         }
     }
 
@@ -37,18 +42,21 @@ data class TimelineMediaNavState(
 
 /**
  * Timeline collage tap. 1 attachment → viewer directly. 2+ attachments
- * (including a +N tile) → gallery for that Moment; the tapped index is
- * discarded because the gallery is the required intermediate surface.
+ * (including a +N tile) → gallery for that Moment. The tapped attachment
+ * remains the hero so the gallery opens from, and collapses back to, that
+ * exact card tile.
  */
 fun TimelineMediaNavState.openFromCollage(
     attachments: List<MomentAttachmentPresentation>,
-    @Suppress("UNUSED_PARAMETER") tappedIndex: Int,
+    tappedIndex: Int,
 ): TimelineMediaNavState {
     require(attachments.isNotEmpty()) { "collage tap requires at least one attachment" }
+    val tappedAttachment = attachments.getOrNull(tappedIndex)
+        ?: error("collage tap index must reference an attachment")
     return if (attachments.size == 1) {
         copy(viewer = openAt(attachments, 0))
     } else {
-        copy(gallery = MomentMediaGalleryState(attachments), viewer = null)
+        copy(gallery = MomentMediaGalleryState(attachments, tappedAttachment), viewer = null)
     }
 }
 

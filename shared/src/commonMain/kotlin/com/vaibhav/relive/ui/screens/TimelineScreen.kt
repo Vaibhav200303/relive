@@ -414,10 +414,16 @@ fun TimelineScreen(
     val motion = ReliveTheme.motion
     val reduceMotion = ReliveTheme.reduceMotion
     val viewer = navState.viewer
+    val gallery = navState.gallery
     val heroAttachment = viewer?.takeIf { it.attachments.size == 1 }?.current
+    val galleryHeroAttachment = gallery?.heroAttachment
     var activeHeroAttachmentId by remember { mutableStateOf<String?>(null) }
+    var activeGalleryHeroAttachmentId by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(heroAttachment?.sharedTransitionKey()) {
         heroAttachment?.let { activeHeroAttachmentId = it.sharedTransitionKey() }
+    }
+    LaunchedEffect(galleryHeroAttachment?.sharedTransitionKey()) {
+        galleryHeroAttachment?.let { activeGalleryHeroAttachmentId = it.sharedTransitionKey() }
     }
     LaunchedEffect(viewer, activeHeroAttachmentId, motion.durations.long2) {
         if (viewer == null && activeHeroAttachmentId != null) {
@@ -425,7 +431,14 @@ fun TimelineScreen(
             if (navState.viewer == null) activeHeroAttachmentId = null
         }
     }
+    LaunchedEffect(gallery, activeGalleryHeroAttachmentId, motion.durations.long2) {
+        if (gallery == null && activeGalleryHeroAttachmentId != null) {
+            delay(motion.durations.long2.toLong())
+            if (navState.gallery == null) activeGalleryHeroAttachmentId = null
+        }
+    }
     val heroAttachmentId = heroAttachment?.sharedTransitionKey() ?: activeHeroAttachmentId
+    val galleryHeroAttachmentId = galleryHeroAttachment?.sharedTransitionKey() ?: activeGalleryHeroAttachmentId
     val heroBoundsTransform = remember(motion, reduceMotion) {
         BoundsTransform { _, _ ->
             motion.spec(
@@ -441,6 +454,8 @@ fun TimelineScreen(
         scope = sharedTransitionScope,
         activeAttachmentId = heroAttachmentId,
         viewerVisible = heroAttachment != null,
+        activeGalleryAttachmentId = galleryHeroAttachmentId,
+        galleryVisible = galleryHeroAttachment != null,
         reduceMotion = reduceMotion,
         boundsTransform = heroBoundsTransform,
     )
@@ -614,22 +629,38 @@ fun TimelineScreen(
             },
         )
 
-        val gallery = navState.gallery
-        if (gallery != null) {
-            MomentMediaGallery(
-                state = gallery,
-                mediaStore = mediaStore,
-                onOpenItem = { index ->
-                    ActivePlayback.stopActive()
-                    navState = navState.openFromGallery(index)
-                },
-                onClose = {
-                    ActivePlayback.stopActive()
-                    navState = navState.closeGallery()
-                },
-                backEnabled = viewer == null,
-                wallpaper = timelineState.appearance.wallpaper,
-            )
+        AnimatedContent(
+            targetState = gallery,
+            contentKey = { it != null },
+            transitionSpec = {
+                val fadeSpec = motion.spec<Float>(
+                    reduceMotion = reduceMotion,
+                    full = tween(
+                        durationMillis = motion.durations.long2,
+                        easing = motion.easings.emphasized,
+                    ),
+                )
+                fadeIn(animationSpec = fadeSpec) togetherWith fadeOut(animationSpec = fadeSpec)
+            },
+            label = "moment-media-gallery-container",
+        ) { galleryState ->
+            galleryState?.let { openGallery ->
+                MomentMediaGallery(
+                    state = openGallery,
+                    mediaStore = mediaStore,
+                    onOpenItem = { index ->
+                        ActivePlayback.stopActive()
+                        navState = navState.openFromGallery(index)
+                    },
+                    onClose = {
+                        ActivePlayback.stopActive()
+                        navState = navState.closeGallery()
+                    },
+                    backEnabled = viewer == null,
+                    wallpaper = timelineState.appearance.wallpaper,
+                    sharedTransition = mediaSharedTransition,
+                )
+            }
         }
         AnimatedContent(
             targetState = viewer,
