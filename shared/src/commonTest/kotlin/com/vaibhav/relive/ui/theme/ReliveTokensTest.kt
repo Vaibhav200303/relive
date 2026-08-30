@@ -1,5 +1,7 @@
 package com.vaibhav.relive.ui.theme
 
+import androidx.compose.animation.core.TweenSpec
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
@@ -9,6 +11,7 @@ import androidx.compose.ui.unit.sp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class ReliveTokensTest {
@@ -298,6 +301,33 @@ class ReliveTokensTest {
             assertEquals(0f, easing.transform(0f))
             assertEquals(1f, easing.transform(1f))
         }
+    }
+
+    @Test
+    fun reducedMotionSpecReturnsFullSpecWhenMotionAllowed() {
+        val motion = DefaultReliveMotion
+        val full = tween<Float>(durationMillis = motion.durations.long2, easing = motion.easings.emphasizedDecelerate)
+        val chosen = motion.spec(reduceMotion = false, full = full)
+        assertSame(full, chosen)
+    }
+
+    @Test
+    fun reducedMotionSpecDegradesToShortFadeByDefault() {
+        val motion = DefaultReliveMotion
+        val full = tween<Float>(durationMillis = motion.durations.long2, easing = motion.easings.emphasizedDecelerate)
+        val chosen = motion.spec(reduceMotion = true, full = full)
+        val fade = chosen as? TweenSpec<Float>
+        assertNotNull(fade, "reduced spec must be a tween fade")
+        assertEquals(motion.durations.short3, fade.durationMillis)
+        assertEquals(motion.easings.standard, fade.easing)
+    }
+
+    @Test
+    fun reducedMotionSpecHonoursCallerOverride() {
+        val motion = DefaultReliveMotion
+        val full = tween<Float>(durationMillis = motion.durations.long2)
+        val reduced = tween<Float>(durationMillis = motion.durations.short1)
+        assertSame(reduced, motion.spec(reduceMotion = true, full = full, reduced = reduced))
     }
 
     @Test
