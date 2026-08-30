@@ -657,7 +657,7 @@ fun TimelineScreen(
                         navState = navState.closeGallery()
                     },
                     backEnabled = viewer == null,
-                    wallpaper = timelineState.appearance.wallpaper,
+                    wallpaper = displayedTimelineState.appearance.wallpaper,
                     sharedTransition = mediaSharedTransition,
                 )
             }
@@ -686,7 +686,7 @@ fun TimelineScreen(
                         ActivePlayback.stopActive()
                         navState = navState.closeViewer()
                     },
-                    wallpaper = timelineState.appearance.wallpaper,
+                    wallpaper = displayedTimelineState.appearance.wallpaper,
                     sharedTransition = mediaSharedTransition,
                 )
             }
