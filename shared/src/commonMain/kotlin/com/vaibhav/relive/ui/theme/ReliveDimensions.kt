@@ -16,15 +16,49 @@ data class ReliveSpacing(
     val huge: Dp = 48.dp,
 )
 
+/**
+ * Corner radius scale — the full M3 10-step system.
+ *
+ * Names match the M3 spec so components can pick the tier they actually mean instead of
+ * a generic sm/md/lg. Legacy names remain as `@Deprecated` computed aliases so nothing
+ * breaks; migrate them opportunistically. Note: the old `lg` was **20dp** — that is M3
+ * `largeIncreased`, not M3 `large` (16dp). A later audit step confirms per call site.
+ */
 @Immutable
 data class ReliveRadii(
-    val sm: Dp = 8.dp,
-    val md: Dp = 12.dp,
-    val lg: Dp = 20.dp,
-    val dialog: Dp = 28.dp,
-    val menu: Dp = md,
-    val pill: Dp = 999.dp,
-)
+    val none: Dp = 0.dp,
+    val xs: Dp = 4.dp,
+    val small: Dp = 8.dp,
+    val medium: Dp = 12.dp,
+    val large: Dp = 16.dp,
+    val largeIncreased: Dp = 20.dp,
+    val xl: Dp = 28.dp,
+    val xlIncreased: Dp = 32.dp,
+    val xxl: Dp = 48.dp,
+    /** Fully rounded — value large enough to fully round any realistic container. */
+    val full: Dp = 999.dp,
+) {
+    @Deprecated("use small (M3 8dp)", ReplaceWith("small"))
+    val sm: Dp get() = small
+
+    @Deprecated("use medium (M3 12dp)", ReplaceWith("medium"))
+    val md: Dp get() = medium
+
+    @Deprecated(
+        "use largeIncreased (M3 20dp); audit call site — M3 `large` is 16dp",
+        ReplaceWith("largeIncreased"),
+    )
+    val lg: Dp get() = largeIncreased
+
+    @Deprecated("use xl (M3 28dp)", ReplaceWith("xl"))
+    val dialog: Dp get() = xl
+
+    @Deprecated("use medium (M3 12dp)", ReplaceWith("medium"))
+    val menu: Dp get() = medium
+
+    @Deprecated("use full (fully rounded)", ReplaceWith("full"))
+    val pill: Dp get() = full
+}
 
 @Immutable
 data class ReliveIconSizes(

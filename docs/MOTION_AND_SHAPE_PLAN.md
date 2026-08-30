@@ -22,7 +22,7 @@ new chat" at the bottom.)
 |---|---|---|
 | [ ] | 0.1 | Complete/correct motion tokens (durations + 6 easings, fix emphasized) |
 | [x] | 0.2 | Reduced-motion capability (accessibility gate) |
-| [ ] | 0.3 | 10-step shape scale + shape-library availability decision |
+| [x] | 0.3 | 10-step shape scale + shape-library availability decision |
 | [ ] | 0.4 | Skeleton loader primitive |
 | [ ] | 1.1 | Top-level fade-through (bottom nav) |
 | [ ] | 2.1 | Forward/backward — profile settings tree |

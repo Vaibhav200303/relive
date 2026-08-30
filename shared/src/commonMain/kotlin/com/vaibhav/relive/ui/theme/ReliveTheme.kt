@@ -46,6 +46,7 @@ data class ReliveThemeTokens(
     val typography: ReliveTypography,
     val dimensions: ReliveDimensions,
     val motion: ReliveMotion,
+    val shapes: ReliveShapes,
     val generatedCoverPalette: ReliveGeneratedCoverPalette,
     val isDark: Boolean,
     /**
@@ -64,6 +65,7 @@ val DefaultReliveTokens: ReliveThemeTokens = ReliveThemeTokens(
     typography = DefaultReliveTypography,
     dimensions = DefaultReliveDimensions,
     motion = DefaultReliveMotion,
+    shapes = DefaultReliveShapes,
     generatedCoverPalette = DefaultGeneratedCoverPalette,
     isDark = false,
     systemBarIconsDark = true,
@@ -265,6 +267,11 @@ object ReliveTheme {
         @Composable
         @ReadOnlyComposable
         get() = LocalReliveTokens.current.motion
+
+    val shapes: ReliveShapes
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalReliveTokens.current.shapes
 
     val isDark: Boolean
         @Composable
