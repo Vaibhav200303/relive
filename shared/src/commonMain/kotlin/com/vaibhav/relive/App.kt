@@ -3,6 +3,7 @@ package com.vaibhav.relive
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -28,12 +29,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.union
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -60,9 +55,8 @@ import com.vaibhav.relive.presentation.profile.ProfileNavigationState
 import com.vaibhav.relive.presentation.profile.ProfileDestination
 import com.vaibhav.relive.presentation.profile.MediaStorageViewModel
 import com.vaibhav.relive.ui.components.navigation.ReliveFloatingBottomControls
-import com.vaibhav.relive.ui.components.navigation.GlobalNewMomentButton
 import com.vaibhav.relive.ui.components.navigation.ReliveTopLevelDestination
-import com.vaibhav.relive.ui.components.composer.ComposerSharedTransition
+import com.vaibhav.relive.ui.components.composer.quickCaptureSharedBounds
 import com.vaibhav.relive.platform.media.ActivePlayback
 import com.vaibhav.relive.ui.screens.ProfileScreen
 import com.vaibhav.relive.ui.screens.PreferencesScreen
@@ -103,6 +97,7 @@ private sealed interface TimelinesDestination {
         val selectedMomentId: MomentId? = null,
         val openComposerOnEnter: Boolean = false,
         val incomingShare: IncomingSharePayload? = null,
+        val cameFromQuickCapture: Boolean = false,
     ) : TimelinesDestination
     data class TimelineTheme(val returnTo: TimelineDetail) : TimelinesDestination
 }
@@ -198,10 +193,9 @@ fun App(
         var rediscoverDestination by remember { mutableStateOf<RediscoverDestination>(RediscoverDestination.Root) }
         var profileNavigation by remember { mutableStateOf(ProfileNavigationState()) }
         var navigationToolbarExpanded by remember { mutableStateOf(true) }
-        var composerExpanded by remember { mutableStateOf(false) }
-        var composerTransformActive by remember { mutableStateOf(false) }
-        var composerHasOpened by remember { mutableStateOf(false) }
-        val composerTransformDuration = ReliveTheme.motion.durations.medium4
+        var quickCaptureTransformActive by remember { mutableStateOf(false) }
+        var quickCaptureTransformEpoch by remember { mutableIntStateOf(0) }
+        val quickCaptureTransformDuration = ReliveTheme.motion.durations.long2
         var selectedIncomingShareId by remember { mutableStateOf<String?>(null) }
         LaunchedEffect(incomingShareState) {
             val ready = incomingShareState as? IncomingShareState.Ready
@@ -212,26 +206,21 @@ fun App(
         val openQuickCapture: (QuickCaptureSurface) -> Unit = { surface ->
             quickCaptureCommand(surface)?.let { command ->
                 ActivePlayback.stopActive()
-                composerTransformActive = true
-                composerHasOpened = false
+                quickCaptureTransformActive = true
+                quickCaptureTransformEpoch += 1
                 timelinesDestination = TimelinesDestination.TimelineDetail(
                     scope = command.timeline,
                     openComposerOnEnter = command.openComposer,
+                    cameFromQuickCapture = true,
                 )
             }
         }
-        LaunchedEffect(composerExpanded, composerTransformActive, composerHasOpened) {
-            if (!composerExpanded && composerTransformActive && composerHasOpened) {
-                kotlinx.coroutines.delay(composerTransformDuration.toLong())
-                composerTransformActive = false
-                composerHasOpened = false
+        LaunchedEffect(quickCaptureTransformEpoch) {
+            if (quickCaptureTransformActive) {
+                kotlinx.coroutines.delay(quickCaptureTransformDuration.toLong())
+                quickCaptureTransformActive = false
             }
         }
-        val composerSharedTransition = ComposerSharedTransition(
-            scope = sharedTransitionScope,
-            composerVisible = composerExpanded,
-            reduceMotion = ReliveTheme.reduceMotion,
-        )
         val mediaStorageViewModel = remember(container, scope) {
             MediaStorageViewModel(container.archiveInsightsRepository, scope)
         }
@@ -365,20 +354,48 @@ fun App(
                                             targetState is TimelinesDestination.TimelineTheme) ||
                                             (initialState is TimelinesDestination.TimelineTheme &&
                                                 targetState is TimelinesDestination.TimelineDetail)
+                                    val isQuickCaptureSwap = quickCaptureTransformActive &&
+                                        ((initialState is TimelinesDestination.TimelineHome &&
+                                            targetState is TimelinesDestination.TimelineDetail) ||
+                                            (initialState is TimelinesDestination.TimelineDetail &&
+                                                targetState is TimelinesDestination.TimelineHome))
                                     if (isThemeNavigation) {
                                         reliveForwardBackward(
                                             motion = motion,
                                             reduceMotion = reduceMotion,
                                             movingForward = targetState is TimelinesDestination.TimelineTheme,
                                         )
+                                    } else if (isQuickCaptureSwap && !reduceMotion) {
+                                        val spec = tween<Float>(
+                                            durationMillis = motion.durations.long2,
+                                            easing = motion.easings.emphasized,
+                                        )
+                                        fadeIn(animationSpec = spec) togetherWith fadeOut(animationSpec = spec)
                                     } else {
                                         EnterTransition.None togetherWith ExitTransition.None
                                     }
                                 },
                                 label = "timeline detail theme navigation",
-                            ) { destination -> when (val active = destination) {
+                            ) { destination ->
+                                val animatedScope = this
+                                when (val active = destination) {
             is TimelinesDestination.TimelineDetail -> {
-                val timelineContent: @Composable () -> Unit = {
+                val transformActive = quickCaptureTransformActive && active.cameFromQuickCapture
+                val containerModifier = if (transformActive) {
+                    Modifier.fillMaxSize().quickCaptureSharedBounds(
+                        sharedScope = sharedTransitionScope,
+                        animatedScope = animatedScope,
+                        reduceMotion = reduceMotion,
+                    )
+                } else {
+                    Modifier.fillMaxSize()
+                }
+                val innerModifier = if (transformActive && !reduceMotion) {
+                    with(sharedTransitionScope) {
+                        Modifier.fillMaxSize().skipToLookaheadSize()
+                    }
+                } else Modifier.fillMaxSize()
+                Box(containerModifier) { Box(innerModifier) {
                     TimelineScreen(
                         momentRepository = container.momentRepository,
                         timelineRepository = container.timelineRepository,
@@ -400,6 +417,10 @@ fun App(
                             }
                         },
                         onBackToTimelineHome = {
+                            if (active.cameFromQuickCapture) {
+                                quickCaptureTransformActive = true
+                                quickCaptureTransformEpoch += 1
+                            }
                             timelinesDestination = TimelinesDestination.TimelineHome
                         },
                         onOpenTimelineTheme = {
@@ -408,34 +429,8 @@ fun App(
                             }
                         },
                         behaviorPreferences = behaviorState.preferences,
-                        composerSharedTransition = composerSharedTransition,
-                        onComposerExpandedChanged = {
-                            composerExpanded = it
-                            if (it) composerHasOpened = true
-                        },
                     )
-                }
-                Box(Modifier.fillMaxSize()) {
-                    timelineContent()
-                    if (composerTransformActive) {
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime))
-                                .padding(
-                                    end = ReliveTheme.dimensions.spacing.lg,
-                                    bottom = ReliveTheme.dimensions.spacing.lg,
-                                ),
-                        ) {
-                            GlobalNewMomentButton(
-                                onClick = {},
-                                expanded = false,
-                                expandedWidth = ReliveTheme.dimensions.floatingToolbar.compactWidth,
-                                modifier = composerSharedTransition.sourceModifier(),
-                            )
-                        }
-                    }
-                }
+                } }
             }
             is TimelinesDestination.TimelineTheme -> {
                 val destination = active.returnTo.scope.timelineThemeDestinationOrNull()
@@ -633,9 +628,16 @@ fun App(
                             },
                         )
                     },
-                    newMomentModifier = composerSharedTransition.sourceModifier(),
+                    newMomentModifier = if (quickCaptureTransformActive) {
+                        Modifier.quickCaptureSharedBounds(
+                            sharedScope = sharedTransitionScope,
+                            animatedScope = animatedScope,
+                            reduceMotion = reduceMotion,
+                        )
+                    } else Modifier,
                 )
             }
+                            }
                             }
                             }
                         }
@@ -644,8 +646,6 @@ fun App(
         }
         }
     }
-}
-
 }
 
 @Composable
