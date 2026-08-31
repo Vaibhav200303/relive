@@ -445,7 +445,69 @@ fun App(
                     timelinesDestination = active.returnTo
                 }
             }
-            TimelinesDestination.TimelineHome -> if (topLevel == ReliveTopLevelDestination.Rediscover) {
+            TimelinesDestination.TimelineHome -> Box(Modifier.fillMaxSize()) {
+                AnimatedContent(
+                    targetState = topLevel,
+                    transitionSpec = {
+                        val exitSpec = motion.spec<Float>(
+                            reduceMotion = reduceMotion,
+                            full = tween(
+                                durationMillis = motion.durations.short4,
+                                easing = motion.easings.emphasizedAccelerate,
+                            ),
+                        )
+                        val enterSpec = motion.spec<Float>(
+                            reduceMotion = reduceMotion,
+                            full = tween(
+                                durationMillis = motion.durations.medium2,
+                                delayMillis = motion.durations.short4,
+                                easing = motion.easings.emphasizedDecelerate,
+                            ),
+                            reduced = tween(
+                                durationMillis = motion.durations.short3,
+                                delayMillis = motion.durations.short3,
+                                easing = motion.easings.standard,
+                            ),
+                        )
+                        val exit = fadeOut(animationSpec = exitSpec).let { fade ->
+                            if (reduceMotion) fade else fade + scaleOut(
+                                animationSpec = exitSpec,
+                                targetScale = 0.92f,
+                            )
+                        }
+                        val enter = fadeIn(animationSpec = enterSpec).let { fade ->
+                            if (reduceMotion) fade else fade + scaleIn(
+                                animationSpec = enterSpec,
+                                initialScale = 0.92f,
+                            )
+                        }
+                        enter togetherWith exit
+                    },
+                    label = "top-level fade through",
+                ) { destination ->
+                    when (destination) {
+                        ReliveTopLevelDestination.Timelines -> TimelineHomeScreen(
+                            viewModel = homeViewModel,
+                            mediaStore = container.mediaStore,
+                            mediaProcessor = container.mediaProcessor,
+                            listState = homeListState,
+                            onOpenTimeline = { destination ->
+                                timelinesDestination = TimelinesDestination.TimelineDetail(
+                                    scope = when (val timeline = destination.timeline) {
+                                        Timeline.All -> CurrentTimeline.All
+                                        is Timeline.Custom -> CurrentTimeline.Custom(timeline.id)
+                                    },
+                                    openComposerOnEnter = destination.openComposerOnEnter,
+                                )
+                            },
+                            onOpenProfile = { profileNavigation = profileNavigation.openProfile() },
+                            profilePhoto = profileSettings.profilePhoto,
+                            onCreateMoment = { openQuickCapture(QuickCaptureSurface.TimelineHome) },
+                            navigationToolbarExpanded = navigationToolbarExpanded,
+                            onNavigationToolbarExpand = { navigationToolbarExpanded = true },
+                            onNavigationToolbarCollapse = { navigationToolbarExpanded = false },
+                        )
+                        ReliveTopLevelDestination.Rediscover -> {
                 AnimatedContent(
                     targetState = rediscoverDestination,
                     transitionSpec = {
@@ -557,93 +619,7 @@ fun App(
                         }
                     }
                 }
-            } else Box(Modifier.fillMaxSize()) {
-                AnimatedContent(
-                    targetState = topLevel,
-                    transitionSpec = {
-                        val exitSpec = motion.spec<Float>(
-                            reduceMotion = reduceMotion,
-                            full = tween(
-                                durationMillis = motion.durations.short4,
-                                easing = motion.easings.emphasizedAccelerate,
-                            ),
-                        )
-                        val enterSpec = motion.spec<Float>(
-                            reduceMotion = reduceMotion,
-                            full = tween(
-                                durationMillis = motion.durations.medium2,
-                                delayMillis = motion.durations.short4,
-                                easing = motion.easings.emphasizedDecelerate,
-                            ),
-                            reduced = tween(
-                                durationMillis = motion.durations.short3,
-                                delayMillis = motion.durations.short3,
-                                easing = motion.easings.standard,
-                            ),
-                        )
-                        val exit = fadeOut(animationSpec = exitSpec).let { fade ->
-                            if (reduceMotion) fade else fade + scaleOut(
-                                animationSpec = exitSpec,
-                                targetScale = 0.92f,
-                            )
                         }
-                        val enter = fadeIn(animationSpec = enterSpec).let { fade ->
-                            if (reduceMotion) fade else fade + scaleIn(
-                                animationSpec = enterSpec,
-                                initialScale = 0.92f,
-                            )
-                        }
-                        enter togetherWith exit
-                    },
-                    label = "top-level fade through",
-                ) { destination ->
-                    when (destination) {
-                        ReliveTopLevelDestination.Timelines -> TimelineHomeScreen(
-                            viewModel = homeViewModel,
-                            mediaStore = container.mediaStore,
-                            mediaProcessor = container.mediaProcessor,
-                            listState = homeListState,
-                            onOpenTimeline = { destination ->
-                                timelinesDestination = TimelinesDestination.TimelineDetail(
-                                    scope = when (val timeline = destination.timeline) {
-                                        Timeline.All -> CurrentTimeline.All
-                                        is Timeline.Custom -> CurrentTimeline.Custom(timeline.id)
-                                    },
-                                    openComposerOnEnter = destination.openComposerOnEnter,
-                                )
-                            },
-                            onOpenProfile = { profileNavigation = profileNavigation.openProfile() },
-                            profilePhoto = profileSettings.profilePhoto,
-                            onCreateMoment = { openQuickCapture(QuickCaptureSurface.TimelineHome) },
-                            navigationToolbarExpanded = navigationToolbarExpanded,
-                            onNavigationToolbarExpand = { navigationToolbarExpanded = true },
-                            onNavigationToolbarCollapse = { navigationToolbarExpanded = false },
-                        )
-                        ReliveTopLevelDestination.Rediscover -> RediscoverScreen(
-                            repository = container.rediscoverRepository,
-                            timelineHomeRepository = container.timelineHomeRepository,
-                            clock = container.clock,
-                            mediaStore = container.mediaStore,
-                            listState = rediscoverListState,
-                            onOpenAll = {
-                                timelinesDestination = TimelinesDestination.TimelineDetail(CurrentTimeline.All)
-                            },
-                            onOpenFavorites = { selectedMomentId ->
-                                rediscoverDestination = RediscoverDestination.Favorites(selectedMomentId)
-                            },
-                            onOpenOnThisDay = { selectedMomentId, date ->
-                                rediscoverDestination = RediscoverDestination.OnThisDay(selectedMomentId, date)
-                            },
-                            onOpenFromYourPast = { selectedMomentId, query ->
-                                rediscoverDestination = RediscoverDestination.FromYourPast(selectedMomentId, query)
-                            },
-                            behaviorPreferences = behaviorState.preferences,
-                            debugControls = rediscoverDebugControls,
-                            onCreateMoment = { openQuickCapture(QuickCaptureSurface.Rediscover) },
-                            navigationToolbarExpanded = navigationToolbarExpanded,
-                            onNavigationToolbarExpand = { navigationToolbarExpanded = true },
-                            onNavigationToolbarCollapse = { navigationToolbarExpanded = false },
-                        )
                         ReliveTopLevelDestination.Search -> SearchScreen(
                             viewModel = searchViewModel,
                             mediaStore = container.mediaStore,
@@ -662,7 +638,10 @@ fun App(
                         )
                     }
                 }
-                ReliveFloatingBottomControls(
+                if (
+                    topLevel != ReliveTopLevelDestination.Rediscover ||
+                        rediscoverDestination is RediscoverDestination.Root
+                ) ReliveFloatingBottomControls(
                     selected = topLevel,
                     expanded = navigationToolbarExpanded,
                     modifier = Modifier.align(Alignment.BottomCenter),
