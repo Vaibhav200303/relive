@@ -11,6 +11,15 @@ Format for each entry:
 
 ---
 
+## ADR-0060 — Rediscover collection navigation uses fade-through, not a container transform
+
+- **Date:** 2026-08-31 · **Status:** Accepted
+- **Context:** The Rediscover card cover is not retained in the read-only collection screen. A container transform therefore created a false spatial continuity: the cover moved toward the destination before the collection surface appeared.
+- **Decision:** Favorites, On This Day, and From Your Past collection navigation uses the M3 fade-through pattern. The source exits with `short4` emphasized-accelerate; the destination enters after that with `medium2` emphasized-decelerate. Reduced motion uses the theme helper's short standard fade.
+- **Consequences:** Collection navigation remains purposeful and accessible without implying that a card cover is a persistent element of the destination. The Phase 3.4 container-transform instruction is superseded for this route.
+
+---
+
 ## ADR-0001 — Local-first, no backend
 
 - **Date:** 2026-08-20 · **Status:** Accepted

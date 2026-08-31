@@ -445,66 +445,118 @@ fun App(
                     timelinesDestination = active.returnTo
                 }
             }
-            TimelinesDestination.TimelineHome -> if (
-                topLevel == ReliveTopLevelDestination.Rediscover && rediscoverDestination is RediscoverDestination.Favorites
-            ) {
-                val favorites = rediscoverDestination as RediscoverDestination.Favorites
-                TimelineScreen(
-                    momentRepository = container.momentRepository,
-                    timelineRepository = container.timelineRepository,
-                    appearanceRepository = container.appearanceRepository,
-                    rediscoverRepository = container.rediscoverRepository,
-                    clock = container.clock,
-                    idGenerator = container.idGenerator,
-                    mediaStore = container.mediaStore,
-                    mediaProcessor = container.mediaProcessor,
-                    draftStore = composerDraftStore,
-                    initialTimeline = CurrentTimeline.Favorites,
-                    mode = TimelineMode.ReadOnlySystemCollection(title = "Favorites"),
-                    selectedMomentId = favorites.selectedMomentId,
-                    onBackToTimelineHome = { rediscoverDestination = RediscoverDestination.Root },
-                    behaviorPreferences = behaviorState.preferences,
-                )
-            } else if (
-                topLevel == ReliveTopLevelDestination.Rediscover && rediscoverDestination is RediscoverDestination.OnThisDay
-            ) {
-                val onThisDay = rediscoverDestination as RediscoverDestination.OnThisDay
-                TimelineScreen(
-                    momentRepository = container.momentRepository,
-                    timelineRepository = container.timelineRepository,
-                    appearanceRepository = container.appearanceRepository,
-                    rediscoverRepository = container.rediscoverRepository,
-                    clock = container.clock,
-                    idGenerator = container.idGenerator,
-                    mediaStore = container.mediaStore,
-                    mediaProcessor = container.mediaProcessor,
-                    draftStore = composerDraftStore,
-                    initialTimeline = CurrentTimeline.OnThisDay(onThisDay.date),
-                    mode = TimelineMode.ReadOnlySystemCollection(title = "On This Day"),
-                    selectedMomentId = onThisDay.selectedMomentId,
-                    onBackToTimelineHome = { rediscoverDestination = RediscoverDestination.Root },
-                    behaviorPreferences = behaviorState.preferences,
-                )
-            } else if (
-                topLevel == ReliveTopLevelDestination.Rediscover && rediscoverDestination is RediscoverDestination.FromYourPast
-            ) {
-                val fromYourPast = rediscoverDestination as RediscoverDestination.FromYourPast
-                TimelineScreen(
-                    momentRepository = container.momentRepository,
-                    timelineRepository = container.timelineRepository,
-                    appearanceRepository = container.appearanceRepository,
-                    rediscoverRepository = container.rediscoverRepository,
-                    clock = container.clock,
-                    idGenerator = container.idGenerator,
-                    mediaStore = container.mediaStore,
-                    mediaProcessor = container.mediaProcessor,
-                    draftStore = composerDraftStore,
-                    initialTimeline = CurrentTimeline.FromYourPast(fromYourPast.query),
-                    mode = TimelineMode.ReadOnlySystemCollection(title = "From Your Past"),
-                    selectedMomentId = fromYourPast.selectedMomentId,
-                    onBackToTimelineHome = { rediscoverDestination = RediscoverDestination.Root },
-                    behaviorPreferences = behaviorState.preferences,
-                )
+            TimelinesDestination.TimelineHome -> if (topLevel == ReliveTopLevelDestination.Rediscover) {
+                AnimatedContent(
+                    targetState = rediscoverDestination,
+                    transitionSpec = {
+                        val exitSpec = motion.spec<Float>(
+                            reduceMotion = reduceMotion,
+                            full = tween(
+                                durationMillis = motion.durations.short4,
+                                easing = motion.easings.emphasizedAccelerate,
+                            ),
+                        )
+                        val enterSpec = motion.spec<Float>(
+                            reduceMotion = reduceMotion,
+                            full = tween(
+                                durationMillis = motion.durations.medium2,
+                                delayMillis = motion.durations.short4,
+                                easing = motion.easings.emphasizedDecelerate,
+                            ),
+                            reduced = tween(
+                                durationMillis = motion.durations.short3,
+                                easing = motion.easings.standard,
+                            ),
+                        )
+                        fadeIn(enterSpec) togetherWith fadeOut(exitSpec)
+                    },
+                    label = "rediscover collection fade through",
+                ) { destination ->
+                    when (destination) {
+                        RediscoverDestination.Root -> RediscoverScreen(
+                            repository = container.rediscoverRepository,
+                            timelineHomeRepository = container.timelineHomeRepository,
+                            clock = container.clock,
+                            mediaStore = container.mediaStore,
+                            listState = rediscoverListState,
+                            onOpenAll = {
+                                timelinesDestination = TimelinesDestination.TimelineDetail(CurrentTimeline.All)
+                            },
+                            onOpenFavorites = { selectedMomentId ->
+                                rediscoverDestination = RediscoverDestination.Favorites(selectedMomentId)
+                            },
+                            onOpenOnThisDay = { selectedMomentId, date ->
+                                rediscoverDestination = RediscoverDestination.OnThisDay(selectedMomentId, date)
+                            },
+                            onOpenFromYourPast = { selectedMomentId, query ->
+                                rediscoverDestination = RediscoverDestination.FromYourPast(selectedMomentId, query)
+                            },
+                            behaviorPreferences = behaviorState.preferences,
+                            debugControls = rediscoverDebugControls,
+                            onCreateMoment = { openQuickCapture(QuickCaptureSurface.Rediscover) },
+                            navigationToolbarExpanded = navigationToolbarExpanded,
+                            onNavigationToolbarExpand = { navigationToolbarExpanded = true },
+                            onNavigationToolbarCollapse = { navigationToolbarExpanded = false },
+                        )
+                        is RediscoverDestination.Favorites -> {
+                            val favorites = destination
+                            TimelineScreen(
+                                    momentRepository = container.momentRepository,
+                                    timelineRepository = container.timelineRepository,
+                                    appearanceRepository = container.appearanceRepository,
+                                    rediscoverRepository = container.rediscoverRepository,
+                                    clock = container.clock,
+                                    idGenerator = container.idGenerator,
+                                    mediaStore = container.mediaStore,
+                                    mediaProcessor = container.mediaProcessor,
+                                    draftStore = composerDraftStore,
+                                    initialTimeline = CurrentTimeline.Favorites,
+                                    mode = TimelineMode.ReadOnlySystemCollection(title = "Favorites"),
+                                    selectedMomentId = favorites.selectedMomentId,
+                                    onBackToTimelineHome = { rediscoverDestination = RediscoverDestination.Root },
+                                    behaviorPreferences = behaviorState.preferences,
+                            )
+                        }
+                        is RediscoverDestination.OnThisDay -> {
+                            val onThisDay = destination
+                            TimelineScreen(
+                                    momentRepository = container.momentRepository,
+                                    timelineRepository = container.timelineRepository,
+                                    appearanceRepository = container.appearanceRepository,
+                                    rediscoverRepository = container.rediscoverRepository,
+                                    clock = container.clock,
+                                    idGenerator = container.idGenerator,
+                                    mediaStore = container.mediaStore,
+                                    mediaProcessor = container.mediaProcessor,
+                                    draftStore = composerDraftStore,
+                                    initialTimeline = CurrentTimeline.OnThisDay(onThisDay.date),
+                                    mode = TimelineMode.ReadOnlySystemCollection(title = "On This Day"),
+                                    selectedMomentId = onThisDay.selectedMomentId,
+                                    onBackToTimelineHome = { rediscoverDestination = RediscoverDestination.Root },
+                                    behaviorPreferences = behaviorState.preferences,
+                            )
+                        }
+                        is RediscoverDestination.FromYourPast -> {
+                            val fromYourPast = destination
+                            TimelineScreen(
+                                    momentRepository = container.momentRepository,
+                                    timelineRepository = container.timelineRepository,
+                                    appearanceRepository = container.appearanceRepository,
+                                    rediscoverRepository = container.rediscoverRepository,
+                                    clock = container.clock,
+                                    idGenerator = container.idGenerator,
+                                    mediaStore = container.mediaStore,
+                                    mediaProcessor = container.mediaProcessor,
+                                    draftStore = composerDraftStore,
+                                    initialTimeline = CurrentTimeline.FromYourPast(fromYourPast.query),
+                                    mode = TimelineMode.ReadOnlySystemCollection(title = "From Your Past"),
+                                    selectedMomentId = fromYourPast.selectedMomentId,
+                                    onBackToTimelineHome = { rediscoverDestination = RediscoverDestination.Root },
+                                    behaviorPreferences = behaviorState.preferences,
+                            )
+                        }
+                    }
+                }
             } else Box(Modifier.fillMaxSize()) {
                 AnimatedContent(
                     targetState = topLevel,
