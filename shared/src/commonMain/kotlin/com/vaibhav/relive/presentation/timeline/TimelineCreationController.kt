@@ -7,6 +7,10 @@ import com.vaibhav.relive.domain.repository.TimelineRepository
 import com.vaibhav.relive.domain.time.Clock
 import com.vaibhav.relive.domain.model.MediaStorageRef
 import com.vaibhav.relive.platform.media.MediaStore
+import com.vaibhav.relive.domain.entitlement.EntitlementProvider
+import com.vaibhav.relive.domain.entitlement.EntitlementPolicy
+import com.vaibhav.relive.domain.entitlement.ReliveMonetization
+import com.vaibhav.relive.domain.entitlement.UnavailableEntitlementProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -16,6 +20,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 
 /** Shared Create Timeline flow used by both Timeline Home and Timeline detail. */
 class TimelineCreationController(
@@ -24,6 +29,7 @@ class TimelineCreationController(
     private val idGenerator: IdGenerator,
     private val scope: CoroutineScope,
     private val mediaStore: MediaStore? = null,
+    private val entitlementProvider: EntitlementProvider = UnavailableEntitlementProvider(),
 ) {
     private val _state = MutableStateFlow(TimelineCreationState())
     val state: StateFlow<TimelineCreationState> = _state.asStateFlow()
@@ -74,6 +80,17 @@ class TimelineCreationController(
         _state.update { it.copy(isSaving = true) }
         scope.launch {
             try {
+                val existingCount = timelineRepository.observeCustom().first().size
+                if (!EntitlementPolicy(entitlementProvider.state.value).mayCreateCustomTimeline(existingCount)) {
+                    _state.update {
+                        it.copy(
+                            isSaving = false,
+                            errorMessage = "Relive Pro lets you create more than ${ReliveMonetization.freeCustomTimelineLimit} timelines.",
+                        )
+                    }
+                    _outcomes.emit(TimelineCreationOutcome.RequiresPro)
+                    return@launch
+                }
                 val timeline = Timeline.Custom(TimelineId(idGenerator.newId()), trimmed, coverPhotoRef = creation.coverPhotoRef)
                 timelineRepository.createCustom(
                     timeline = timeline,
@@ -95,4 +112,5 @@ class TimelineCreationController(
 enum class TimelineCreationOutcome {
     Succeeded,
     Rejected,
+    RequiresPro,
 }

@@ -29,6 +29,8 @@ import com.vaibhav.relive.presentation.time.SystemClock
 import com.vaibhav.relive.data.local.db.ReliveDatabase
 import com.vaibhav.relive.platform.backup.AndroidBackupPreferencesRepository
 import com.vaibhav.relive.platform.share.IncomingShareGateway
+import com.vaibhav.relive.domain.entitlement.EntitlementProvider
+import com.vaibhav.relive.domain.entitlement.ReliveLegalLinks
 
 fun createDefaultReliveAppContainer(
     context: Context,
@@ -42,6 +44,9 @@ fun createDefaultReliveAppContainer(
     deviceAuthentication: DeviceAuthentication? = null,
     rediscoverReminderService: RediscoverReminderService? = null,
     incomingShareGateway: IncomingShareGateway? = null,
+    entitlementProvider: EntitlementProvider,
+    termsOfServiceUrl: String = "",
+    privacyPolicyUrl: String = "",
 ): ReliveAppContainer {
     val app = context.applicationContext
     installAndroidMediaContext { app }
@@ -81,5 +86,7 @@ fun createDefaultReliveAppContainer(
         deviceAuthentication = deviceAuthentication ?: com.vaibhav.relive.platform.system.UnavailableDeviceAuthentication,
         rediscoverReminderService = rediscoverReminderService ?: com.vaibhav.relive.platform.notifications.UnavailableRediscoverReminderService,
         incomingShareGateway = incomingShareGateway ?: com.vaibhav.relive.platform.share.UnavailableIncomingShareGateway,
+        entitlementProvider = entitlementProvider,
+        legalLinks = ReliveLegalLinks(termsOfServiceUrl, privacyPolicyUrl),
     )
 }

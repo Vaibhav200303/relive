@@ -21,7 +21,7 @@ import com.vaibhav.relive.ui.components.profile.ProfilePageHeader
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun BackupRestoreScreen(viewModel: BackupRestoreViewModel, onBack: () -> Unit) {
+fun BackupRestoreScreen(viewModel: BackupRestoreViewModel, onBack: () -> Unit, onUpgrade: () -> Unit) {
     val state by viewModel.state.collectAsState()
     var sheet by remember { mutableStateOf<String?>(null) }
     var disconnectDialog by remember { mutableStateOf(false) }
@@ -68,6 +68,13 @@ fun BackupRestoreScreen(viewModel: BackupRestoreViewModel, onBack: () -> Unit) {
     (state.operation as? BackupOperationState.Failed)?.let { failure ->
         AlertDialog(onDismissRequest = viewModel::clearOperation, title = { Text("Google Drive unavailable") }, text = { Text(failure.message) }, confirmButton = { TextButton(onClick = viewModel::clearOperation) { Text("OK") } })
     }
+    if (state.upgradeRequired) AlertDialog(
+        onDismissRequest = viewModel::clearUpgradeRequired,
+        title = { Text("Scheduled backup is a Relive Pro feature") },
+        text = { Text("Manual backup and every restore option remain free.") },
+        confirmButton = { TextButton(onClick = { viewModel.clearUpgradeRequired(); onUpgrade() }) { Text("View Relive Pro") } },
+        dismissButton = { TextButton(onClick = viewModel::clearUpgradeRequired) { Text("Not now") } },
+    )
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)

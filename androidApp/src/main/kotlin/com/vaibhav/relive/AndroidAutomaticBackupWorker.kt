@@ -11,9 +11,14 @@ import com.vaibhav.relive.domain.backup.GoogleDriveAuthorizationUnavailableExcep
 import com.vaibhav.relive.platform.backup.AndroidBackupPreferencesRepository
 import com.vaibhav.relive.platform.media.AndroidMediaStore
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.filter
 
 class AndroidAutomaticBackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
+        val entitlement = (applicationContext as ReliveApplication).entitlementProvider.state
+            .filter { !it.isLoading }
+            .first()
+        if (!entitlement.isPro) return Result.success()
         val prefs = AndroidBackupPreferencesRepository(applicationContext)
         if (prefs.cadence.first().name == "Off") return Result.success()
         val driver = DatabaseDriverFactory(applicationContext).create()

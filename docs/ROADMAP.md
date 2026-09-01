@@ -106,11 +106,14 @@ Current implementation note: global appearance, Profile, Preferences, Media & St
 
 - Android system shares of supported Moment media/text may enter the existing composer through a timeline-selection surface. This is an additive Phase 4/5 capability: it adds no schema, dependency, duplicate composer, automatic persistence, or iOS share extension.
 
-## Phase 10 — RevenueCat / Pro  ☐
+## Phase 10 — RevenueCat / Pro  ◐
 
-- Implement Pro entitlement behind the existing entitlement interface using RevenueCat; wire "Upgrade to Pro."
+- Implement the `relive_pro` entitlement behind a swappable shared interface using RevenueCat; wire upgrade and store restore flows.
+- Offer monthly (`relive_pro_monthly`), annual (`relive_pro_annual`), and non-consumable lifetime (`relive_pro_lifetime`) billing choices. Configure annual trials store-side only.
+- Gate scheduled automatic backup, creation beyond three custom timelines, and premium appearance; retain manual backup, every restore operation, existing archive access, Original/Warm Cream, and Evergreen/Sage Green in Free.
+- Keep platform public API keys and product IDs configuration-driven. A missing key must degrade to Free without a crash.
 - (Later/optional) RevenueCat Funnels + Stripe for web subscription conversion — see [`RELEASE.md`](RELEASE.md).
-- **Exit:** Pro state drives gated features; entitlement is swappable; monetization dependencies added only now.
+- **Exit:** Pro state drives the approved gates; entitlement is swappable; purchase/restore state is graceful when unavailable; monetization dependencies are isolated to this phase.
 
 ## Phase 11 — Production polish + Shipaton release  ☐
 

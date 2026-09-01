@@ -9,6 +9,8 @@ import com.vaibhav.relive.presentation.timeline.TimelineCreationController
 import com.vaibhav.relive.presentation.timeline.TimelineCreationState
 import com.vaibhav.relive.domain.model.MediaStorageRef
 import com.vaibhav.relive.platform.media.MediaStore
+import com.vaibhav.relive.domain.entitlement.EntitlementProvider
+import com.vaibhav.relive.domain.entitlement.UnavailableEntitlementProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +28,7 @@ class TimelineHomeViewModel(
     idGenerator: IdGenerator,
     private val scope: CoroutineScope,
     mediaStore: MediaStore? = null,
+    entitlementProvider: EntitlementProvider = UnavailableEntitlementProvider(),
 ) {
     private val _state = MutableStateFlow(TimelineHomeState())
     val state: StateFlow<TimelineHomeState> = _state.asStateFlow()
@@ -33,7 +36,7 @@ class TimelineHomeViewModel(
     private val _navigation = MutableSharedFlow<TimelineHomeNavigation>(extraBufferCapacity = 1)
     val navigation: SharedFlow<TimelineHomeNavigation> = _navigation.asSharedFlow()
 
-    private val creation = TimelineCreationController(timelineRepository, clock, idGenerator, scope, mediaStore)
+    private val creation = TimelineCreationController(timelineRepository, clock, idGenerator, scope, mediaStore, entitlementProvider)
     val creationState: StateFlow<TimelineCreationState> = creation.state
     val creationOutcomes = creation.outcomes
 

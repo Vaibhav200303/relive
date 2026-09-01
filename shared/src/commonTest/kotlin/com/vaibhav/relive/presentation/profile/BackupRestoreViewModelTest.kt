@@ -12,12 +12,18 @@ import com.vaibhav.relive.domain.backup.GoogleDriveAccount
 import com.vaibhav.relive.domain.backup.GoogleDriveAccountManager
 import com.vaibhav.relive.domain.backup.GoogleDriveAuthorizationUnavailableException
 import com.vaibhav.relive.domain.backup.RestorePreview
+import com.vaibhav.relive.domain.entitlement.EntitlementProvider
+import com.vaibhav.relive.domain.entitlement.EntitlementState
+import com.vaibhav.relive.domain.entitlement.PurchaseOutcome
+import com.vaibhav.relive.domain.entitlement.RelivePurchaseOption
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 class BackupRestoreViewModelTest {
     @Test
@@ -53,8 +59,29 @@ class BackupRestoreViewModelTest {
         assertIs<BackupOperationState.AuthorizationRequired>(preferences.operation.value)
     }
 
-    private class FakePreferences(initialAccount: GoogleDriveAccount?) : BackupPreferencesRepository {
-        private val cadenceState = MutableStateFlow(BackupCadence.Weekly)
+    @Test
+    fun free_user_cannot_enable_scheduled_backup() = runTest {
+        val preferences = FakePreferences(initialAccount = null, initialCadence = BackupCadence.Off)
+        val viewModel = BackupRestoreViewModel(
+            preferences,
+            FakeAccountManager(),
+            FakeCoordinator(),
+            backgroundScope,
+            FakeEntitlementProvider(EntitlementState(isPro = false)),
+        )
+
+        viewModel.setCadence(BackupCadence.Daily)
+        runCurrent()
+
+        assertEquals(BackupCadence.Off, preferences.cadence.value)
+        assertTrue(viewModel.state.first { it.upgradeRequired }.upgradeRequired)
+    }
+
+    private class FakePreferences(
+        initialAccount: GoogleDriveAccount?,
+        initialCadence: BackupCadence = BackupCadence.Weekly,
+    ) : BackupPreferencesRepository {
+        private val cadenceState = MutableStateFlow(initialCadence)
         private val networkState = MutableStateFlow(BackupNetworkPolicy.WifiOnly)
         private val accountState = MutableStateFlow(initialAccount)
         override val operation = MutableStateFlow<BackupOperationState>(BackupOperationState.Idle)
@@ -67,6 +94,12 @@ class BackupRestoreViewModelTest {
         override suspend fun setAccount(value: GoogleDriveAccount?) { accountState.value = value }
         override suspend fun setOperation(value: BackupOperationState) { operation.value = value }
         override suspend fun setRemoteSummary(value: BackupSummary) { remoteSummary.value = value }
+    }
+
+    private class FakeEntitlementProvider(initialState: EntitlementState) : EntitlementProvider {
+        override val state = MutableStateFlow(initialState)
+        override suspend fun purchase(option: RelivePurchaseOption) = PurchaseOutcome.Unavailable("Unavailable")
+        override suspend fun restorePurchases() = PurchaseOutcome.Unavailable("Unavailable")
     }
 
     private class FakeAccountManager : GoogleDriveAccountManager {

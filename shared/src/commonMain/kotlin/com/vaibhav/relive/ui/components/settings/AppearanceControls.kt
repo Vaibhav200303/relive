@@ -99,6 +99,8 @@ fun RelivePalettePicker(
     globalTheme: ThemeReference,
     includeUseAppTheme: Boolean,
     onSelect: (ThemeReference?) -> Unit,
+    isSelectionAllowed: (ThemeReference?) -> Boolean = { true },
+    onRestrictedSelection: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val dims = ReliveTheme.dimensions
@@ -122,9 +124,11 @@ fun RelivePalettePicker(
                 selected = selected,
                 isDark = ReliveTheme.isDark,
                 onClick = {
-                    if (!selected) {
+                    if (!selected && isSelectionAllowed(choice.theme)) {
                         haptics.perform(ReliveHapticCue.Selection)
                         onSelect(choice.theme)
+                    } else if (!selected) {
+                        onRestrictedSelection()
                     }
                 },
             )

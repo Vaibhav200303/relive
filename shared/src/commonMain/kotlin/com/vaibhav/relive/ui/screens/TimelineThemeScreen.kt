@@ -44,6 +44,8 @@ import com.vaibhav.relive.presentation.timeline.TimelineThemeViewModel
 import com.vaibhav.relive.ui.components.timeline.BackGlyph
 import com.vaibhav.relive.ui.components.timeline.TimelineWallpaperSurface
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.domain.entitlement.EntitlementProvider
+import com.vaibhav.relive.domain.entitlement.EntitlementPolicy
 
 @Composable
 fun TimelineThemeScreen(
@@ -51,12 +53,15 @@ fun TimelineThemeScreen(
     appearanceRepository: AppearanceRepository,
     destination: TimelineThemeDestination,
     onBack: () -> Unit,
+    entitlementProvider: EntitlementProvider,
+    onUpgrade: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val viewModel = remember(timelineRepository, appearanceRepository, destination, scope) {
         TimelineThemeViewModel(timelineRepository, appearanceRepository, destination, scope)
     }
     val state by viewModel.state.collectAsState()
+    val entitlement by entitlementProvider.state.collectAsState()
     val dims = ReliveTheme.dimensions
     val colors = ReliveTheme.colors
 
@@ -108,7 +113,10 @@ fun TimelineThemeScreen(
                     TimelineWallpaperOption(
                         wallpaper = wallpaper,
                         selected = wallpaper == state.appearance.wallpaper,
-                        onClick = { viewModel.selectWallpaper(wallpaper) },
+                        onClick = {
+                            if (EntitlementPolicy(entitlement).maySelectWallpaper(wallpaper)) viewModel.selectWallpaper(wallpaper)
+                            else onUpgrade()
+                        },
                     )
                 }
             }

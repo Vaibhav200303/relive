@@ -646,6 +646,13 @@ Format for each entry:
 - **Decision:** Opening the inline composer never requests title focus or opens the IME. The person explicitly taps a text field to begin typing. The existing IME inset and bring-into-view behavior still applies after that deliberate focus.
 - **Consequences:** Quick capture opens as a keyboard-free review surface. ADR-0038 and ADR-0039 are superseded only for their automatic-focus behavior; their single inline-composer route, one collapsed-frame staging, and keyboard-safe media actions remain unchanged.
 
+## ADR-0060 — One Free tier and one Relive Pro entitlement
+
+- **Date:** 2026-08-31 · **Status:** Accepted
+- **Context:** Relive needs monetization that protects the local-first archive promise without introducing multiple feature tiers, accounts, a backend, or hostage-like access to personal memories.
+- **Decision:** Relive launches with Free and Relive Pro only. RevenueCat exposes one `relive_pro` entitlement, purchasable through `relive_pro_monthly`, `relive_pro_annual`, and the non-consumable `relive_pro_lifetime` product. Annual trial eligibility and duration are store configuration, never app behavior. Free permanently includes core capture and reading, Search, Favorites, On This Day, From Your Past, App Lock/privacy, manual backup, every restore flow, and access to existing archive data. Pro gates scheduled automatic backup and its cadence/network settings, creation beyond three custom timelines, and selection of premium appearance. Free appearance consists of Original/Warm Cream and Evergreen/Sage Green; a retained premium appearance continues rendering after expiry. Product IDs, free appearance allowlists, entitlement ID, and platform public API keys are configuration values. If a public key is missing, entitlement resolution remains Free and purchasing reports unavailable without crashing.
+- **Consequences:** Gates use a shared entitlement/policy boundary instead of store SDK checks in UI. Existing timelines, Memories, manual backup, and restore can never be removed by expiry. RevenueCat and the platform keys are the only first-launch billing integration; RevenueCat Funnels and Stripe remain deferred. This supersedes ADR-0009 only for its "deferred" decision while retaining its interface and layering requirements.
+
 ## Template for new decisions
 
 ```text

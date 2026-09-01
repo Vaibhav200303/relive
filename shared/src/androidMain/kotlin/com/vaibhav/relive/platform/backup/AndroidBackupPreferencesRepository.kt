@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 class AndroidBackupPreferencesRepository(context: Context) : BackupPreferencesRepository {
     private val prefs = context.getSharedPreferences("relive_backup", Context.MODE_PRIVATE)
-    private val cadenceState = MutableStateFlow(runCatching { BackupCadence.valueOf(prefs.getString("cadence", "Weekly")!!) }.getOrDefault(BackupCadence.Weekly))
+    private val cadenceState = MutableStateFlow(runCatching { BackupCadence.valueOf(prefs.getString("cadence", "Off")!!) }.getOrDefault(BackupCadence.Off))
     private val networkState = MutableStateFlow(runCatching { BackupNetworkPolicy.valueOf(prefs.getString("network", "WifiOnly")!!) }.getOrDefault(BackupNetworkPolicy.WifiOnly))
     private val accountState = MutableStateFlow(
         prefs.getString("account_email", null)?.takeIf { it.isNotBlank() }?.let { email ->
