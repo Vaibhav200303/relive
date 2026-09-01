@@ -31,7 +31,7 @@ new chat" at the bottom.)
 | [ ] | 3.2 | Container transform — MomentCard → MomentMediaGallery |
 | [ ] | 3.3 | Container transform — New-Moment FAB → composer |
 | [ ] | 3.4 | Container transform — Rediscover card → collection screen |
-| [ ] | 4.1 | Lateral — verify media pager (no fade/parallax) |
+| [x] | 4.1 | Lateral — verify media pager (no fade/parallax) |
 | [ ] | 5.1 | Enter/exit — sheets, dialogs, snackbars, menus |
 | [ ] | 5.2 | Enter/exit — scroll-driven app bar & floating controls |
 | [ ] | 6.1 | Skeleton loaders wired into loading states |
