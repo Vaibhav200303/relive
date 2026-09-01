@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.Text
 import androidx.compose.material3.IconButton
@@ -43,6 +44,8 @@ import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.domain.model.TimelineWallpaper
 import com.vaibhav.relive.ui.components.timeline.TimelineWallpaperSurface
 import com.vaibhav.relive.ui.components.timeline.TimelineMediaSharedTransition
+import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.theme.reliveLateralPagerSnapSpec
 import com.vaibhav.relive.platform.media.ActivePlayback
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.platform.media.RelivedAudioViewer
@@ -74,6 +77,11 @@ fun MediaViewer(
     val pagerState = rememberPagerState(
         initialPage = state.initialIndex,
         pageCount = { state.attachments.size },
+    )
+    val motion = ReliveTheme.motion
+    val pagerFlingBehavior = PagerDefaults.flingBehavior(
+        state = pagerState,
+        snapAnimationSpec = motion.reliveLateralPagerSnapSpec(ReliveTheme.reduceMotion),
     )
     var currentZoom by remember { mutableFloatStateOf(1f) }
     var resetZoomRequest by remember { mutableFloatStateOf(0f) }
@@ -107,6 +115,7 @@ fun MediaViewer(
         ) {
             HorizontalPager(
                 state = pagerState,
+                flingBehavior = pagerFlingBehavior,
                 userScrollEnabled = !ZoomableImageMath.isZoomed(currentZoom),
                 modifier = Modifier.fillMaxSize(),
                 key = { i -> state.attachments[i].storageRef.value + ":" + i },

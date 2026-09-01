@@ -331,6 +331,24 @@ class ReliveTokensTest {
     }
 
     @Test
+    fun lateralPagerUsesTokenizedStandardSettle() {
+        val motion = DefaultReliveMotion
+        val settle = motion.reliveLateralPagerSnapSpec(reduceMotion = false) as? TweenSpec<Float>
+        assertNotNull(settle)
+        assertEquals(motion.durations.medium2, settle.durationMillis)
+        assertEquals(motion.easings.standard, settle.easing)
+    }
+
+    @Test
+    fun lateralPagerSettleRoutesThroughReducedMotion() {
+        val motion = DefaultReliveMotion
+        val settle = motion.reliveLateralPagerSnapSpec(reduceMotion = true) as? TweenSpec<Float>
+        assertNotNull(settle)
+        assertEquals(motion.durations.short3, settle.durationMillis)
+        assertEquals(motion.easings.standard, settle.easing)
+    }
+
+    @Test
     fun defaultThemeRequestsDarkSystemBarIcons() {
         // The default palette is a light canvas; platform status/nav icons must render dark
         // for readability. Dark mode flips this to false.

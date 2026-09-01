@@ -9,8 +9,20 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.unit.IntOffset
+
+/** Tokenized M3 lateral settle used by pagers after the drag leaves the user's finger. */
+fun ReliveMotion.reliveLateralPagerSnapSpec(
+    reduceMotion: Boolean,
+): FiniteAnimationSpec<Float> = spec(
+    reduceMotion = reduceMotion,
+    full = tween(
+        durationMillis = durations.medium2,
+        easing = easings.standard,
+    ),
+)
 
 /**
  * Shared M3 forward/backward transition for hierarchical destinations.
