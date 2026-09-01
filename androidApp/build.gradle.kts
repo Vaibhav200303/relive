@@ -1,4 +1,8 @@
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+val localProperties = Properties()
+rootProject.file("local.properties").takeIf { it.isFile }?.inputStream()?.use { localProperties.load(it) }
 
 plugins {
     alias(libs.plugins.androidApplication)
@@ -70,5 +74,20 @@ android {
             ?: System.getenv("RELIVE_GOOGLE_WEB_CLIENT_ID")
             ?: ""
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
+        val revenueCatApiKey = project.findProperty("RELIVE_REVENUECAT_ANDROID_PUBLIC_API_KEY")?.toString()
+            ?: System.getenv("RELIVE_REVENUECAT_ANDROID_PUBLIC_API_KEY")
+            ?: localProperties.getProperty("RELIVE_REVENUECAT_ANDROID_PUBLIC_API_KEY")
+            ?: "RELIVE_REVENUECAT_ANDROID_PUBLIC_API_KEY"
+        buildConfigField("String", "REVENUECAT_PUBLIC_API_KEY", "\"$revenueCatApiKey\"")
+        val termsOfServiceUrl = project.findProperty("RELIVE_TERMS_OF_SERVICE_URL")?.toString()
+            ?: System.getenv("RELIVE_TERMS_OF_SERVICE_URL")
+            ?: localProperties.getProperty("RELIVE_TERMS_OF_SERVICE_URL")
+            ?: ""
+        buildConfigField("String", "TERMS_OF_SERVICE_URL", "\"$termsOfServiceUrl\"")
+        val privacyPolicyUrl = project.findProperty("RELIVE_PRIVACY_POLICY_URL")?.toString()
+            ?: System.getenv("RELIVE_PRIVACY_POLICY_URL")
+            ?: localProperties.getProperty("RELIVE_PRIVACY_POLICY_URL")
+            ?: ""
+        buildConfigField("String", "PRIVACY_POLICY_URL", "\"$privacyPolicyUrl\"")
     }
 }

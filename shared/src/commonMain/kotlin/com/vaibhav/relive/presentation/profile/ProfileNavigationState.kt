@@ -8,6 +8,7 @@ data class ProfileNavigationState(val destination: ProfileDestination = ProfileD
     fun openPreferences(): ProfileNavigationState = copy(destination = ProfileDestination.Preferences)
     fun openMediaStorage(): ProfileNavigationState = copy(destination = ProfileDestination.MediaStorage)
     fun openBackupRestore(): ProfileNavigationState = copy(destination = ProfileDestination.BackupRestore)
+    fun openUpgrade(): ProfileNavigationState = copy(destination = ProfileDestination.Upgrade)
     fun openLocation() = copy(destination = ProfileDestination.Location)
     fun openNotifications() = copy(destination = ProfileDestination.RediscoverNotifications)
     fun openPrivacy() = copy(destination = ProfileDestination.PrivacySecurity)
@@ -18,4 +19,4 @@ data class ProfileNavigationState(val destination: ProfileDestination = ProfileD
     fun returnToTimelineHome(): ProfileNavigationState = copy(destination = ProfileDestination.Closed)
 }
 
-enum class ProfileDestination { Closed, Profile, Preferences, MediaStorage, BackupRestore, Location, RediscoverNotifications, PrivacySecurity, HelpFeedback, AboutRelive, Licenses }
+enum class ProfileDestination { Closed, Profile, Preferences, MediaStorage, BackupRestore, Upgrade, Location, RediscoverNotifications, PrivacySecurity, HelpFeedback, AboutRelive, Licenses }

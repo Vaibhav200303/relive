@@ -562,6 +562,8 @@ Selectable palettes:
 
 The global appearance mode is **System**, **Light**, or **Dark**. System follows the live platform appearance. The selected palette is the app default. The editable All timeline and each custom timeline own independent `TimelineAppearance` values; All's appearance is stored in native local preferences because All is logical, while custom timeline appearances are archive data. Profile, Search, Rediscover, and read-only system collections use the app default. A timeline's mode always remains global.
 
+Original/Warm Cream and Evergreen/Sage Green are available in Free. All other palettes and wallpapers are Relive Pro appearance options. A former Pro subscriber continues to see an already-selected premium appearance, but cannot select a new premium appearance without Pro.
+
 Themes **may** affect:
 
 - color palette
@@ -628,12 +630,15 @@ Persistence design detail lives in [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ---
 
-## 14. Monetization (planned, not implemented now)
+## 14. Monetization
 
-- **RevenueCat** will be integrated later for Pro entitlement.
-- **RevenueCat Funnels + Stripe** may be used later for web subscription conversion.
+Relive launches with exactly two product tiers: **Free** and **Relive Pro**. Monthly, annual, and lifetime are billing choices for the single `relive_pro` entitlement, not feature tiers. `relive_pro_monthly` and `relive_pro_annual` are subscriptions; `relive_pro_lifetime` is a non-consumable one-time purchase. Any annual trial is configured in the relevant store, never in application logic.
 
-The architecture should **allow** these additions later but must **not** implement them now. See [`ROADMAP.md`](ROADMAP.md) and [`RELEASE.md`](RELEASE.md).
+Free includes unlimited Moments; text, photos, video, and audio; Search; Favorites; On This Day; From Your Past; App Lock and privacy controls; manual backup; every restore operation; and permanent access to existing content. Free users may create three custom timelines. Original/Warm Cream and Evergreen/Sage Green appearance are free.
+
+Relive Pro adds scheduled automatic backup and its cadence/network controls, unlimited custom timelines, and all premium palettes and wallpapers. When Pro expires, existing timelines, Moments, and premium appearance selections remain visible and editable. A person cannot create a further custom timeline while above the free limit, and cannot select a new premium appearance until Pro is active. Manual backup and restore are never gated.
+
+Purchases and restores are provided by RevenueCat behind a shared entitlement interface. The only entitlement identifier is `relive_pro`; offerings are configured in RevenueCat and map the three store product identifiers above. Missing platform public API keys leave the app fully functional on Free and show purchasing as unavailable rather than crashing. Public keys and product IDs are build/configuration values so they can change without changing gates or UI logic. RevenueCat Funnels and Stripe web purchases remain deferred.
 
 ---
 

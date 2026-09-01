@@ -72,6 +72,7 @@ kotlin {
             implementation(libs.sqldelight.coroutinesExtensions)
             implementation(libs.sqldelight.primitiveAdapters)
             implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.purchases.core)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -85,6 +86,10 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.sqldelight.sqliteDriver)
         }
+    }
+
+    sourceSets.matching { it.name.startsWith("ios") }.configureEach {
+        languageSettings.optIn("kotlinx.cinterop.ExperimentalForeignApi")
     }
 }
 

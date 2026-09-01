@@ -18,12 +18,16 @@ private class ReliveComposeControllerDelegate : ComposeUIViewControllerDelegate 
 }
 
 @Suppress("DEPRECATION")
-fun MainViewController(): UIViewController {
+fun MainViewController(
+    revenueCatApiKey: String = "",
+    termsOfServiceUrl: String = "",
+    privacyPolicyUrl: String = "",
+): UIViewController {
     val statusDelegate = ReliveComposeControllerDelegate()
     val controller = ComposeUIViewController(
         configure = { delegate = statusDelegate },
     ) {
-        val container = createDefaultReliveAppContainer()
+        val container = createDefaultReliveAppContainer(revenueCatApiKey, termsOfServiceUrl, privacyPolicyUrl)
         App(container)
     }
     IosStatusBarAppearance.update = { darkIcons ->

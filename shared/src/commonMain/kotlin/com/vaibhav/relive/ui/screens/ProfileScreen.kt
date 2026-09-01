@@ -73,6 +73,8 @@ import com.vaibhav.relive.presentation.profile.ExternalActivityGuard
 import com.vaibhav.relive.ui.components.profile.ProfilePageHeader
 import com.vaibhav.relive.ui.icons.ProfileIcons
 import com.vaibhav.relive.presentation.profile.pluralizedStat
+import com.vaibhav.relive.domain.entitlement.EntitlementProvider
+import com.vaibhav.relive.domain.entitlement.EntitlementPolicy
 
 @Composable
 fun ProfileScreen(
@@ -82,6 +84,7 @@ fun ProfileScreen(
     onOpenPreferences: () -> Unit,
     onOpenMediaStorage: () -> Unit,
     onOpenBackupRestore: () -> Unit,
+    onOpenUpgrade: () -> Unit,
     onOpenLocation: () -> Unit,
     onOpenNotifications: () -> Unit,
     onOpenPrivacy: () -> Unit,
@@ -89,9 +92,11 @@ fun ProfileScreen(
     onOpenAbout: () -> Unit,
     mediaStore: MediaStore,
     mediaProcessor: MediaProcessor,
+    entitlementProvider: EntitlementProvider,
 ) {
     val state by viewModel.state.collectAsState()
     val appearance by appearanceViewModel.state.collectAsState()
+    val entitlement by entitlementProvider.state.collectAsState()
     val dims = ReliveTheme.dimensions
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -213,6 +218,8 @@ fun ProfileScreen(
                     theme = appearance.preferences.defaultTheme,
                     onModeChange = appearanceViewModel::setMode,
                     onThemeChange = appearanceViewModel::setDefaultTheme,
+                    isPro = entitlement.isPro,
+                    onRestrictedSelection = onOpenUpgrade,
                     onInteraction = ::finishNameEdit,
                 )
             }
@@ -235,7 +242,7 @@ fun ProfileScreen(
                 )
             }
             item(key = "relive") {
-                ProfileSection("RELIVE", listOf("Help & feedback", "About Relive"), last = true, onHelp = { finishNameEdit(); onOpenHelp() }, onAbout = { finishNameEdit(); onOpenAbout() })
+                ProfileSection("RELIVE", listOf("Relive Pro", "Help & feedback", "About Relive"), last = true, onUpgrade = { finishNameEdit(); onOpenUpgrade() }, onHelp = { finishNameEdit(); onOpenHelp() }, onAbout = { finishNameEdit(); onOpenAbout() })
             }
         }
         SnackbarHost(
@@ -272,6 +279,8 @@ private fun ProfileAppearanceSection(
     theme: ThemeReference,
     onModeChange: (AppearanceMode) -> Unit,
     onThemeChange: (ThemeReference) -> Unit,
+    isPro: Boolean,
+    onRestrictedSelection: () -> Unit,
     onInteraction: () -> Unit,
 ) {
     val dims = ReliveTheme.dimensions
@@ -307,6 +316,8 @@ private fun ProfileAppearanceSection(
                     onInteraction()
                     selected?.let(onThemeChange)
                 },
+                isSelectionAllowed = { selected -> selected == null || EntitlementPolicy(com.vaibhav.relive.domain.entitlement.EntitlementState(isPro = isPro)).maySelectPalette(selected) },
+                onRestrictedSelection = onRestrictedSelection,
             )
         }
     }
@@ -376,6 +387,7 @@ private fun ProfileSection(
     onPreferences: (() -> Unit)? = null,
     onMediaStorage: (() -> Unit)? = null,
     onBackup: (() -> Unit)? = null,
+    onUpgrade: (() -> Unit)? = null,
     onLocation: (() -> Unit)? = null,
     onNotifications: (() -> Unit)? = null,
     onPrivacy: (() -> Unit)? = null,
@@ -402,6 +414,7 @@ private fun ProfileSection(
                     "Preferences" -> onPreferences
                     "Media & storage" -> onMediaStorage
                     "Backup" -> onBackup
+                    "Relive Pro" -> onUpgrade
                     "Location" -> onLocation
                     "Rediscover notifications" -> onNotifications
                     "Privacy & security" -> onPrivacy
@@ -417,6 +430,7 @@ private fun ProfileSection(
 private fun profileIconFor(label: String): ImageVector = when (label.trim()) {
     "Media & storage" -> ProfileIcons.Media
     "Backup" -> ProfileIcons.Backup
+    "Relive Pro" -> ProfileIcons.Info
     "Preferences" -> ProfileIcons.Preferences
     "Location" -> ProfileIcons.Location
     "Rediscover notifications" -> ProfileIcons.Notifications

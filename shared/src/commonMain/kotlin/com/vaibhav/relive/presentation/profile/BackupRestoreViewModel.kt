@@ -9,14 +9,31 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import com.vaibhav.relive.platform.backup.backupAuthLog
+import com.vaibhav.relive.domain.entitlement.EntitlementProvider
+import com.vaibhav.relive.domain.entitlement.EntitlementPolicy
+import com.vaibhav.relive.domain.entitlement.UnavailableEntitlementProvider
 
-data class BackupRestoreUiState(val account: GoogleDriveAccount?, val cadence: BackupCadence, val networkPolicy: BackupNetworkPolicy, val operation: BackupOperationState, val remoteSummary: BackupSummary? = null, val restorePreview: RestorePreview? = null)
+data class BackupRestoreUiState(val account: GoogleDriveAccount?, val cadence: BackupCadence, val networkPolicy: BackupNetworkPolicy, val operation: BackupOperationState, val remoteSummary: BackupSummary? = null, val restorePreview: RestorePreview? = null, val upgradeRequired: Boolean = false)
 
-class BackupRestoreViewModel(private val preferences: BackupPreferencesRepository, private val accountManager: GoogleDriveAccountManager, private val coordinator: BackupCoordinator, private val scope: CoroutineScope) {
+class BackupRestoreViewModel(private val preferences: BackupPreferencesRepository, private val accountManager: GoogleDriveAccountManager, private val coordinator: BackupCoordinator, private val scope: CoroutineScope, private val entitlementProvider: EntitlementProvider = UnavailableEntitlementProvider()) {
     private val restorePreview = MutableStateFlow<RestorePreview?>(null)
-    private val baseState = combine(preferences.account, preferences.cadence, preferences.networkPolicy, preferences.operation, preferences.remoteSummary) { a, c, n, o, s -> BackupRestoreUiState(a, c, n, o, s) }
+    private val upgradeRequired = MutableStateFlow(false)
+    private val baseState = combine(
+        combine(preferences.account, preferences.cadence, preferences.networkPolicy, preferences.operation, preferences.remoteSummary) { a, c, n, o, s ->
+            BackupRestoreUiState(a, c, n, o, s)
+        },
+        upgradeRequired,
+    ) { base, upgrade -> base.copy(upgradeRequired = upgrade) }
     val state: StateFlow<BackupRestoreUiState> = combine(baseState, restorePreview) { base, preview -> base.copy(restorePreview = preview) }.stateIn(scope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000), BackupRestoreUiState(null, BackupCadence.Weekly, BackupNetworkPolicy.WifiOnly, BackupOperationState.Idle))
-    fun setCadence(value: BackupCadence) = scope.launch { preferences.setCadence(value) }
+    fun setCadence(value: BackupCadence) = scope.launch {
+        if (value != BackupCadence.Off && !EntitlementPolicy(entitlementProvider.state.value).mayScheduleBackup()) {
+            upgradeRequired.value = true
+        } else {
+            upgradeRequired.value = false
+            preferences.setCadence(value)
+        }
+    }
+    fun clearUpgradeRequired() { upgradeRequired.value = false }
     fun setNetworkPolicy(value: BackupNetworkPolicy) = scope.launch { preferences.setNetworkPolicy(value) }
     fun connectAccount() = scope.launch { backupAuthLog("viewModel connect event"); connectThen(null) }
     fun disconnectAccount() = scope.launch { accountManager.disconnect(); preferences.setAccount(null); preferences.setOperation(BackupOperationState.Idle) }

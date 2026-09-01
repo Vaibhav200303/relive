@@ -70,6 +70,7 @@ import com.vaibhav.relive.ui.screens.AboutReliveScreen
 import com.vaibhav.relive.ui.screens.LicensesScreen
 import com.vaibhav.relive.presentation.profile.BackupRestoreViewModel
 import com.vaibhav.relive.ui.screens.SearchScreen
+import com.vaibhav.relive.ui.screens.UpgradeToProScreen
 import com.vaibhav.relive.presentation.search.SearchViewModel
 import com.vaibhav.relive.presentation.navigation.QuickCaptureSurface
 import com.vaibhav.relive.presentation.navigation.quickCaptureCommand
@@ -151,6 +152,7 @@ fun App(
                 idGenerator = container.idGenerator,
                 scope = scope,
                 mediaStore = container.mediaStore,
+                entitlementProvider = container.entitlementProvider,
             )
         }
         val homeState by homeViewModel.state.collectAsState()
@@ -225,7 +227,7 @@ fun App(
             MediaStorageViewModel(container.archiveInsightsRepository, scope)
         }
         val backupRestoreViewModel = remember(container, scope) {
-            BackupRestoreViewModel(container.backupPreferencesRepository, container.googleDriveAccountManager, container.backupCoordinator, scope)
+            BackupRestoreViewModel(container.backupPreferencesRepository, container.googleDriveAccountManager, container.backupCoordinator, scope, container.entitlementProvider)
         }
         val canReturnToTimelineHome = profileNavigation.destination == ProfileDestination.Closed &&
             timelinesDestination == TimelinesDestination.TimelineHome &&
@@ -305,6 +307,7 @@ fun App(
                 onOpenPreferences = { profileNavigation = profileNavigation.openPreferences() },
                 onOpenMediaStorage = { profileNavigation = profileNavigation.openMediaStorage() },
                 onOpenBackupRestore = { profileNavigation = profileNavigation.openBackupRestore() },
+                onOpenUpgrade = { profileNavigation = profileNavigation.openUpgrade() },
                 onOpenLocation = { profileNavigation = profileNavigation.openLocation() },
                 onOpenNotifications = { profileNavigation = profileNavigation.openNotifications() },
                 onOpenPrivacy = { profileNavigation = profileNavigation.openPrivacy() },
@@ -312,6 +315,7 @@ fun App(
                 onOpenAbout = { profileNavigation = profileNavigation.openAbout() },
                 mediaStore = container.mediaStore,
                 mediaProcessor = container.mediaProcessor,
+                entitlementProvider = container.entitlementProvider,
             )
             ProfileDestination.Preferences -> PreferencesScreen(
                 viewModel = behaviorPreferencesViewModel,
@@ -323,6 +327,12 @@ fun App(
             )
             ProfileDestination.BackupRestore -> BackupRestoreScreen(
                 viewModel = backupRestoreViewModel,
+                onBack = { profileNavigation = profileNavigation.returnToProfile() },
+                onUpgrade = { profileNavigation = profileNavigation.openUpgrade() },
+            )
+            ProfileDestination.Upgrade -> UpgradeToProScreen(
+                entitlementProvider = container.entitlementProvider,
+                legalLinks = container.legalLinks,
                 onBack = { profileNavigation = profileNavigation.returnToProfile() },
             )
             ProfileDestination.Location -> LocationScreen(behaviorState.preferences.showLocations, behaviorPreferencesViewModel::setShowLocations) { profileNavigation = profileNavigation.returnToProfile() }
@@ -440,6 +450,8 @@ fun App(
                         appearanceRepository = container.appearanceRepository,
                         destination = destination,
                         onBack = { timelinesDestination = active.returnTo },
+                        entitlementProvider = container.entitlementProvider,
+                        onUpgrade = { profileNavigation = profileNavigation.openUpgrade() },
                     )
                 } else {
                     timelinesDestination = active.returnTo
@@ -506,6 +518,7 @@ fun App(
                             navigationToolbarExpanded = navigationToolbarExpanded,
                             onNavigationToolbarExpand = { navigationToolbarExpanded = true },
                             onNavigationToolbarCollapse = { navigationToolbarExpanded = false },
+                            onUpgrade = { profileNavigation = profileNavigation.openUpgrade() },
                         )
                         ReliveTopLevelDestination.Rediscover -> {
                 AnimatedContent(
@@ -704,6 +717,7 @@ private fun profileDestinationDepth(destination: ProfileDestination): Int = when
     ProfileDestination.Preferences,
     ProfileDestination.MediaStorage,
     ProfileDestination.BackupRestore,
+    ProfileDestination.Upgrade,
     ProfileDestination.Location,
     ProfileDestination.RediscoverNotifications,
     ProfileDestination.PrivacySecurity,

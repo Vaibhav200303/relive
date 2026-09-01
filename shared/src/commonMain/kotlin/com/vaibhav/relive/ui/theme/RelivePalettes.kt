@@ -43,7 +43,7 @@ data class RelivePalette(
 // 01 · Ink & Lilac — editorial, premium (the reference palette).
 val InkLilacPalette = RelivePalette(
     theme = ThemeReference.InkLilac,
-    label = "Ink & Lilac",
+    label = "Original",
     light = RelivePaletteRoles(
         canvas = Color(0xFFF0EEE9),
         surface = Color(0xFFFFFFFF),
@@ -69,7 +69,7 @@ val InkLilacPalette = RelivePalette(
 // 02 · Teal & Saffron — oceanic, calm, quietly premium.
 val TealSaffronPalette = RelivePalette(
     theme = ThemeReference.TealSaffron,
-    label = "Teal & Saffron",
+    label = "Evergreen",
     light = RelivePaletteRoles(
         canvas = Color(0xFFF0F5F3),
         surface = Color(0xFFFFFFFF),

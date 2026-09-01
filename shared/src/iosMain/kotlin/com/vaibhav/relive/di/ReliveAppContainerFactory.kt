@@ -17,8 +17,14 @@ import com.vaibhav.relive.platform.media.IosMediaProcessor
 import com.vaibhav.relive.platform.media.IosMediaStore
 import com.vaibhav.relive.presentation.id.UuidGenerator
 import com.vaibhav.relive.presentation.time.SystemClock
+import com.vaibhav.relive.domain.entitlement.entitlementProviderFor
+import com.vaibhav.relive.domain.entitlement.ReliveLegalLinks
 
-fun createDefaultReliveAppContainer(): ReliveAppContainer {
+fun createDefaultReliveAppContainer(
+    revenueCatPublicApiKey: String = "",
+    termsOfServiceUrl: String = "",
+    privacyPolicyUrl: String = "",
+): ReliveAppContainer {
     val driver = DatabaseDriverFactory().create()
     val database = ReliveDatabaseFactory.create(driver)
     val store = IosMediaStore()
@@ -40,5 +46,7 @@ fun createDefaultReliveAppContainer(): ReliveAppContainer {
         mediaProcessor = processor,
         deviceAuthentication = IosDeviceAuthentication(),
         rediscoverReminderService = IosRediscoverReminderService(momentRepository),
+        entitlementProvider = entitlementProviderFor(revenueCatPublicApiKey),
+        legalLinks = ReliveLegalLinks(termsOfServiceUrl, privacyPolicyUrl),
     )
 }

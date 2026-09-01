@@ -108,6 +108,7 @@ fun TimelineHomeScreen(
     navigationToolbarExpanded: Boolean = true,
     onNavigationToolbarExpand: () -> Unit = {},
     onNavigationToolbarCollapse: () -> Unit = {},
+    onUpgrade: () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsState()
     val creation by viewModel.creationState.collectAsState()
@@ -126,6 +127,10 @@ fun TimelineHomeScreen(
                 when (outcome) {
                     TimelineCreationOutcome.Succeeded -> ReliveHapticCue.Confirm
                     TimelineCreationOutcome.Rejected -> ReliveHapticCue.Reject
+                    TimelineCreationOutcome.RequiresPro -> {
+                        onUpgrade()
+                        ReliveHapticCue.Reject
+                    }
                 },
             )
         }

@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 internal class InMemoryBackupPreferencesRepository : BackupPreferencesRepository {
-    private val cadenceState = MutableStateFlow(BackupCadence.Weekly)
+    private val cadenceState = MutableStateFlow(BackupCadence.Off)
     private val networkState = MutableStateFlow(BackupNetworkPolicy.WifiOnly)
     private val accountState = MutableStateFlow<GoogleDriveAccount?>(null)
     private val operationState = MutableStateFlow<BackupOperationState>(BackupOperationState.Idle)

@@ -24,6 +24,9 @@ import com.vaibhav.relive.platform.system.DeviceAuthentication
 import com.vaibhav.relive.platform.system.UnavailableDeviceAuthentication
 import com.vaibhav.relive.platform.share.IncomingShareGateway
 import com.vaibhav.relive.platform.share.UnavailableIncomingShareGateway
+import com.vaibhav.relive.domain.entitlement.EntitlementProvider
+import com.vaibhav.relive.domain.entitlement.UnavailableEntitlementProvider
+import com.vaibhav.relive.domain.entitlement.ReliveLegalLinks
 
 /**
  * Shared app-level dependency container. Platform entry points construct this
@@ -60,4 +63,6 @@ class ReliveAppContainer(
     val deviceAuthentication: DeviceAuthentication = UnavailableDeviceAuthentication,
     val rediscoverReminderService: RediscoverReminderService = UnavailableRediscoverReminderService,
     val incomingShareGateway: IncomingShareGateway = UnavailableIncomingShareGateway,
+    val entitlementProvider: EntitlementProvider = UnavailableEntitlementProvider(),
+    val legalLinks: ReliveLegalLinks = ReliveLegalLinks(),
 )

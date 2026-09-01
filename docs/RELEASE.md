@@ -27,6 +27,7 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 
 - ☐ RevenueCat project + API keys (Android/iOS) provisioned.
 - ☐ Products/entitlements configured in App Store Connect and Google Play; mapped in RevenueCat.
+- ☐ Production Terms of Service and Privacy Policy URLs configured: `RELIVE_TERMS_OF_SERVICE_URL` and `RELIVE_PRIVACY_POLICY_URL`. Purchases remain disabled until both links are present.
 - ☐ RevenueCat SDK integrated behind the existing entitlement interface (Phase 9, [`ROADMAP.md`](ROADMAP.md)).
 - ☐ Purchase, restore, and entitlement-gating flows tested on both platforms.
 
