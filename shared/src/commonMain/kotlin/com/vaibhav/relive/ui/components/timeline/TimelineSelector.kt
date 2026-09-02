@@ -9,7 +9,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
+import com.vaibhav.relive.ui.components.ReliveAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -52,7 +52,7 @@ fun TimelineCreationDialog(
     LaunchedEffect(state.isVisible) {
         if (state.isVisible) focusRequester.requestFocus()
     }
-    AlertDialog(
+    ReliveAlertDialog(
         onDismissRequest = { if (!state.isSaving) onDismiss() },
         shape = RoundedCornerShape(dims.radii.dialog),
         containerColor = colors.surfaceOverlay,
@@ -151,7 +151,7 @@ fun DiscardTimelineDraftDialog(
 ) {
     val colors = ReliveTheme.colors
     val haptics = rememberReliveHaptics()
-    AlertDialog(
+    ReliveAlertDialog(
         onDismissRequest = onKeepEditing,
         shape = RoundedCornerShape(ReliveTheme.dimensions.radii.dialog),
         containerColor = colors.surfaceOverlay,

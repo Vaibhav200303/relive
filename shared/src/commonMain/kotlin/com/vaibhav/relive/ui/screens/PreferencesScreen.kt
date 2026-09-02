@@ -18,7 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
+import com.vaibhav.relive.ui.components.ReliveAlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.RadioButton
@@ -50,6 +50,7 @@ import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.components.profile.ProfilePageHeader
+import com.vaibhav.relive.ui.components.ReliveSnackbarHost
 
 @Composable
 fun PreferencesScreen(
@@ -130,7 +131,7 @@ fun PreferencesScreen(
                 )
             }
         }
-        SnackbarHost(
+        ReliveSnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier.align(Alignment.BottomCenter).padding(dims.spacing.lg),
         ) { data ->
@@ -264,7 +265,7 @@ private fun StartDestinationDialog(
     onSelect: (StartDestination) -> Unit,
 ) {
     val dims = ReliveTheme.dimensions
-    AlertDialog(
+    ReliveAlertDialog(
         onDismissRequest = onDismiss,
         containerColor = ReliveTheme.colors.surfaceOverlay,
         title = {

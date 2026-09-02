@@ -10,12 +10,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
@@ -32,6 +28,7 @@ import com.vaibhav.relive.presentation.composer.PendingMediaAction
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
+import com.vaibhav.relive.ui.components.ReliveBottomSheet
 
 /**
  * Presents the composer's active overlay — camera surface or library
@@ -65,15 +62,15 @@ internal fun ComposerOverlayHost(
                 )
             }
         }
-        ComposerOverlay.LibraryChoice -> {
-            LibraryChoiceSheet(
-                onPickImage = { onPick(MediaType.Image) },
-                onPickVideo = { onPick(MediaType.Video) },
-                onPickAudio = { onPick(MediaType.Audio) },
-                onDismiss = onDismiss,
-            )
-        }
+        ComposerOverlay.LibraryChoice -> Unit
     }
+    LibraryChoiceSheet(
+        visible = overlay == ComposerOverlay.LibraryChoice,
+        onPickImage = { onPick(MediaType.Image) },
+        onPickVideo = { onPick(MediaType.Video) },
+        onPickAudio = { onPick(MediaType.Audio) },
+        onDismiss = onDismiss,
+    )
 }
 
 /**
@@ -101,8 +98,8 @@ internal fun MediaPickerDriver(
 }
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
 private fun LibraryChoiceSheet(
+    visible: Boolean,
     onPickImage: () -> Unit,
     onPickVideo: () -> Unit,
     onPickAudio: () -> Unit,
@@ -111,13 +108,9 @@ private fun LibraryChoiceSheet(
     val colors = ReliveTheme.colors
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(
+    ReliveBottomSheet(
+        visible = visible,
         onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        shape = RoundedCornerShape(topStart = dims.radii.dialog, topEnd = dims.radii.dialog),
-        containerColor = colors.surfaceOverlay,
-        contentColor = colors.textPrimary,
         scrimColor = Color.Black.copy(alpha = 0.6f),
     ) {
         Column(
