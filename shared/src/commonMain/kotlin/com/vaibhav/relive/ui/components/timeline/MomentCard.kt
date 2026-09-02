@@ -1,6 +1,7 @@
 package com.vaibhav.relive.ui.components.timeline
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -63,6 +64,8 @@ import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.theme.TimelineMomentForegroundColors
 import com.vaibhav.relive.ui.theme.timelineMomentForegroundColors
+import com.vaibhav.relive.ui.theme.reliveInContextVerticalEnter
+import com.vaibhav.relive.ui.theme.reliveInContextVerticalExit
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -248,6 +251,13 @@ fun MomentCard(
             shadowElevation = dims.spacing.xs,
             border = BorderStroke(dims.stroke.hairline, colors.borderMuted),
         ) {
+            AnimatedVisibility(
+                visible = actionsOpen,
+                enter = motion.reliveInContextVerticalEnter(ReliveTheme.reduceMotion),
+                exit = motion.reliveInContextVerticalExit(ReliveTheme.reduceMotion),
+                label = "moment action menu",
+            ) {
+                Column {
             DropdownMenuItem(
                 text = { Text("Edit", style = type.action, color = colors.textPrimary) },
                 leadingIcon = { MomentMenuGlyph(forget = false) },
@@ -268,6 +278,8 @@ fun MomentCard(
                     onForget()
                 },
             )
+                }
+            }
         }
     }
 }

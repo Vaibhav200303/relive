@@ -25,7 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.AlertDialog
+import com.vaibhav.relive.ui.components.ReliveAlertDialog
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -71,6 +71,7 @@ import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import kotlinx.coroutines.launch
 import com.vaibhav.relive.presentation.profile.ExternalActivityGuard
 import com.vaibhav.relive.ui.components.profile.ProfilePageHeader
+import com.vaibhav.relive.ui.components.ReliveSnackbarHost
 import com.vaibhav.relive.ui.icons.ProfileIcons
 import com.vaibhav.relive.presentation.profile.pluralizedStat
 import com.vaibhav.relive.domain.entitlement.EntitlementProvider
@@ -245,7 +246,7 @@ fun ProfileScreen(
                 ProfileSection("RELIVE", listOf("Relive Pro", "Help & feedback", "About Relive"), last = true, onUpgrade = { finishNameEdit(); onOpenUpgrade() }, onHelp = { finishNameEdit(); onOpenHelp() }, onAbout = { finishNameEdit(); onOpenAbout() })
             }
         }
-        SnackbarHost(
+        ReliveSnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier.align(Alignment.BottomCenter).padding(dims.spacing.lg),
         ) { data ->
@@ -441,7 +442,7 @@ private fun profileIconFor(label: String): ImageVector = when (label.trim()) {
 }
 
 @Composable
-private fun ProfilePhotoDialog(hasPhoto: Boolean, onDismiss: () -> Unit, onPick: () -> Unit, onRemove: () -> Unit) = AlertDialog(
+private fun ProfilePhotoDialog(hasPhoto: Boolean, onDismiss: () -> Unit, onPick: () -> Unit, onRemove: () -> Unit) = ReliveAlertDialog(
     onDismissRequest = onDismiss,
     title = { Text("Profile photo") },
     text = { Text(if (hasPhoto) "Replace or remove your local profile photo." else "Choose a photo from your device.") },

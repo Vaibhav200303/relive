@@ -70,7 +70,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
@@ -135,6 +134,8 @@ import com.vaibhav.relive.ui.components.composer.CollapsedComposerMarker
 import com.vaibhav.relive.ui.components.composer.ComposerOverlayHost
 import com.vaibhav.relive.ui.components.composer.MediaPickerDriver
 import com.vaibhav.relive.ui.components.composer.MomentComposer
+import com.vaibhav.relive.ui.components.ReliveSnackbarHost
+import com.vaibhav.relive.ui.components.ReliveAlertDialog
 import com.vaibhav.relive.ui.components.timeline.EmptyCustomTimelinePlaceholder
 import com.vaibhav.relive.ui.components.timeline.MomentCard
 import com.vaibhav.relive.ui.components.timeline.TimelineMediaSharedTransition
@@ -693,7 +694,7 @@ fun TimelineScreen(
     }
 
     if (mode.allowsMutations) momentToForget?.let { moment ->
-        AlertDialog(
+        ReliveAlertDialog(
             onDismissRequest = { momentToForget = null },
             shape = RoundedCornerShape(ReliveTheme.dimensions.radii.dialog),
             containerColor = ReliveTheme.colors.surfaceOverlay,
@@ -770,7 +771,7 @@ private fun TimelineAssignmentDialog(
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
     val scrollState = rememberScrollState()
-    AlertDialog(
+    ReliveAlertDialog(
         onDismissRequest = { if (!isAssigning) onDismiss() },
         shape = RoundedCornerShape(dims.radii.dialog),
         containerColor = colors.surfaceOverlay,
@@ -1342,7 +1343,7 @@ private fun TimelineContent(
                         strokeWidth = dims.stroke.iconBold,
                     )
                 }
-                SnackbarHost(
+                ReliveSnackbarHost(
                     hostState = snackbarHostState,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -1377,7 +1378,7 @@ private fun TimelineCoverDialog(
     onChoose: () -> Unit,
     onClear: () -> Unit,
 ) {
-    AlertDialog(
+    ReliveAlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(ReliveTheme.dimensions.radii.dialog),
         containerColor = ReliveTheme.colors.surfaceOverlay,

@@ -7,6 +7,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import com.vaibhav.relive.ui.components.ReliveAlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -97,7 +98,7 @@ fun ProfileSwitchRow(label: String, supporting: String? = null, checked: Boolean
 }
 
 @Composable
-fun ProfileSelectionDialog(title: String, values: List<String>, selected: String, onDismiss: () -> Unit, onSelect: (String) -> Unit) = AlertDialog(
+fun ProfileSelectionDialog(title: String, values: List<String>, selected: String, onDismiss: () -> Unit, onSelect: (String) -> Unit) = ReliveAlertDialog(
     onDismissRequest = onDismiss,
     title = { Text(title) },
     text = { Column { values.forEach { value -> Row(Modifier.fillMaxWidth().clickable { onSelect(value) }.padding(vertical = ReliveTheme.dimensions.spacing.sm), verticalAlignment = Alignment.CenterVertically) { RadioButton(value == selected, { onSelect(value) }); Text(value) } } } },

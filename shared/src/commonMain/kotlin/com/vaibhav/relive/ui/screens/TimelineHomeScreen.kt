@@ -33,7 +33,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.AlertDialog
+import com.vaibhav.relive.ui.components.ReliveAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -269,7 +269,7 @@ private fun RenameTimelineDialog(
     var name by remember(timeline.id) { mutableStateOf(timeline.name) }
     var saveFailed by remember(timeline.id) { mutableStateOf(false) }
     val isNameValid = name.trim().isNotEmpty() && name.trim().length <= Timeline.Custom.MAX_NAME_LENGTH
-    AlertDialog(
+    ReliveAlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(ReliveTheme.dimensions.radii.dialog),
         containerColor = colors.surfaceOverlay,
@@ -314,7 +314,7 @@ private fun DeleteTimelineDialog(
     onDelete: () -> Unit,
 ) {
     val colors = ReliveTheme.colors
-    AlertDialog(
+    ReliveAlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(ReliveTheme.dimensions.radii.dialog),
         containerColor = colors.surfaceOverlay,

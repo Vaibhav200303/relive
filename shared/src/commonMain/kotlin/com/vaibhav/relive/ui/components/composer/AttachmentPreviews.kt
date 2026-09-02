@@ -3,9 +3,6 @@ package com.vaibhav.relive.ui.components.composer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -55,6 +52,7 @@ import com.vaibhav.relive.ui.media.fallbackAdaptivePreviewSize
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.theme.reliveInContextVerticalEnter
 
 /**
  * Vertical stack of composer draft attachments. Each preview shrink-wraps
@@ -75,6 +73,7 @@ internal fun DraftAttachmentColumn(
 ) {
     val dims = ReliveTheme.dimensions
     val motion = ReliveTheme.motion
+    val reduceMotion = ReliveTheme.reduceMotion
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(dims.spacing.md),
@@ -83,8 +82,7 @@ internal fun DraftAttachmentColumn(
             key(att.draftId) {
                 AnimatedVisibility(
                     visible = true,
-                    enter = expandVertically(tween(motion.durations.standardMillis, easing = motion.easings.standard)) +
-                        fadeIn(tween(motion.durations.standardMillis, easing = motion.easings.standard)),
+                    enter = motion.reliveInContextVerticalEnter(reduceMotion),
                     label = "composer attachment ${att.draftId}",
                 ) {
                     DraftAttachmentTile(
