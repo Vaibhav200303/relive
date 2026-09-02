@@ -27,6 +27,7 @@ import com.vaibhav.relive.ui.components.composer.PlusGlyph
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.theme.spec
 
 @Composable
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -49,9 +50,12 @@ fun GlobalNewMomentButton(
     }
     val toolbarWidth by animateDpAsState(
         targetValue = if (expanded) expandedWidth else dims.floatingToolbar.compactWidth,
-        animationSpec = tween(
-            durationMillis = ReliveTheme.motion.durations.standardMillis,
-            easing = ReliveTheme.motion.easings.standard,
+        animationSpec = ReliveTheme.motion.spec(
+            reduceMotion = ReliveTheme.reduceMotion,
+            full = tween(
+                durationMillis = ReliveTheme.motion.durations.medium2,
+                easing = ReliveTheme.motion.easings.standard,
+            ),
         ),
         label = "new toolbar width",
     )
