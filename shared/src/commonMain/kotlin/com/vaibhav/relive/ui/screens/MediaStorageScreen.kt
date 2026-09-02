@@ -159,7 +159,7 @@ private fun ArchiveHero(insights: ArchiveInsights) {
     val dims = ReliveTheme.dimensions
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(dims.radii.lg),
+        shape = RoundedCornerShape(dims.radii.largeIncreased),
         color = ReliveTheme.colors.surfaceCard,
         contentColor = ReliveTheme.colors.textPrimary,
     ) {

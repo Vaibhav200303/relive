@@ -220,7 +220,7 @@ private fun ShareTimelineCard(
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
     val picker = dims.shareTimelinePicker
-    val cardShape = RoundedCornerShape(dims.radii.lg)
+    val cardShape = RoundedCornerShape(dims.radii.largeIncreased)
     val mediaHeight = if (summary.timeline == Timeline.All) picker.allMediaHeight else picker.customMediaHeight
     Column(
             modifier = Modifier

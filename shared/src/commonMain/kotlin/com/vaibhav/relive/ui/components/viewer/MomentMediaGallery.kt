@@ -41,6 +41,7 @@ import com.vaibhav.relive.platform.system.ReliveBackHandler
 import com.vaibhav.relive.presentation.timeline.MomentAttachmentPresentation
 import com.vaibhav.relive.presentation.viewer.MomentMediaGalleryState
 import com.vaibhav.relive.ui.components.timeline.TimelineMediaSharedTransition
+import com.vaibhav.relive.ui.theme.ReliveTheme
 
 /**
  * Dedicated per-Moment media gallery (multi-attachment flow only). Black
@@ -107,6 +108,7 @@ private fun GalleryTile(
     sharedTransition: TimelineMediaSharedTransition?,
     onClick: () -> Unit,
 ) {
+    val dims = ReliveTheme.dimensions
     val desc = when (att.type) {
         MediaType.Image -> "Open image"
         MediaType.Video -> "Open video"
@@ -117,7 +119,7 @@ private fun GalleryTile(
             .then(sharedTransition?.galleryModifier(att) ?: Modifier)
             .fillMaxWidth()
             .aspectRatio(1f)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(dims.radii.medium))
             .background(GalleryTileBase)
             .clickable(onClick = onClick)
             .semantics { contentDescription = desc },

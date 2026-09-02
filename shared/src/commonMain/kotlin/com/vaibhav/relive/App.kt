@@ -39,6 +39,7 @@ import com.vaibhav.relive.ui.screens.RediscoverScreen
 import com.vaibhav.relive.ui.screens.ShareTimelinePickerScreen
 import com.vaibhav.relive.ui.screens.TimelineThemeScreen
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.theme.reliveSequentialSlideFade
 import com.vaibhav.relive.ui.theme.reliveForwardBackward
 import com.vaibhav.relive.ui.theme.spec
 import com.vaibhav.relive.ui.theme.toReliveThemeId
@@ -248,10 +249,11 @@ fun App(
             AnimatedContent(
                 targetState = showIncomingSharePicker,
                 transitionSpec = {
-                    (fadeIn(tween(motion.durations.standardMillis, easing = motion.easings.emphasized)) +
-                        slideInHorizontally(tween(motion.durations.standardMillis, easing = motion.easings.emphasized)) { it / 10 }) togetherWith
-                        (fadeOut(tween(motion.durations.fastMillis, easing = motion.easings.emphasized)) +
-                            slideOutHorizontally(tween(motion.durations.fastMillis, easing = motion.easings.emphasized)) { -it / 12 })
+                    reliveSequentialSlideFade(
+                        motion = motion,
+                        reduceMotion = reduceMotion,
+                        enterFromRight = targetState,
+                    )
                 },
                 label = "incoming share route",
             ) { showingPicker ->

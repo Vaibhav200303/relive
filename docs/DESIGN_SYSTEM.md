@@ -287,14 +287,19 @@ Collection-card visual media and deterministic generated covers meet the opaque 
 
 ## 15. Animation durations
 
-| Token             | Value   | Usage                              |
-| ----------------- | ------- | ---------------------------------- |
-| `motion.fast`     | `120ms` | hover/opacity, small state changes |
-| `motion.timelineReturn` | `100ms` | one viewport of return-to-newest scrolling |
-| `motion.standard` | `240ms` | expand/collapse (more/less), reveals |
-| `motion.slow`     | `360ms` | larger transitions (planned)       |
+`ReliveMotion.durations` exposes the complete M3 duration scale. Components use these
+tokens only; legacy `fastMillis`, `standardMillis`, and `slowMillis` aliases are
+deprecated and must not be used for new work.
 
-Values *(planned)* — confirm against the reference feel during implementation. Motion is subtle and supports the calm, editorial tone.
+| Token | Value |
+| --- | --- |
+| `short1` / `short2` / `short3` / `short4` | 50 / 100 / 150 / 200ms |
+| `medium1` / `medium2` / `medium3` / `medium4` | 250 / 300 / 350 / 400ms |
+| `long1` / `long2` / `long3` / `long4` / `extraLong1` | 450 / 500 / 550 / 600 / 700ms |
+
+Use `short4` with emphasized accelerate for permanent exits, `medium4` with
+emphasized decelerate for entrances, and `long2` with emphasized easing for hero
+container transforms. Reduced motion always uses the shared `short3` standard fade.
 
 The inline composer uses the same tokenized vertical expand/fade transition whether invoked from the timeline rail `+` or global `New`: `motion.slow` for entry and `motion.standard` for collapse with `ease.standard`. Global entry first presents one settled collapsed frame, then begins expansion. It does not request title focus or open the IME; the person taps a field when ready.
 
@@ -306,12 +311,22 @@ The return-to-newest arrow uses Material 3 Expressive scale/fade visibility moti
 
 ## 16. Easing
 
-| Token              | Curve                          | Usage                    |
-| ------------------ | ------------------------------ | ------------------------ |
-| `ease.standard`    | standard decelerate/accelerate | most transitions         |
-| `ease.emphasized`  | emphasized                     | expressive moments (planned) |
+`ReliveMotion.easings` implements the M3 easing set: `standard`
+`cubic(0.2, 0, 0, 1)`, `standardDecelerate` `cubic(0, 0, 0, 1)`,
+`standardAccelerate` `cubic(0.3, 0, 1, 1)`, `emphasizedDecelerate`
+`cubic(0.05, 0.7, 0.1, 1)`, `emphasizedAccelerate` `cubic(0.3, 0, 0.8, 0.15)`,
+and the true two-part M3 `emphasized` path. Navigation uses the emphasized pair;
+small utility motion uses the standard family.
 
-Use Material 3 motion easing as the foundation; keep it restrained.
+### Shape scale and morph availability
+
+`ReliveRadii` provides the M3 scale: `none`, `xs`, `small`, `medium`, `large`,
+`largeIncreased`, `xl`, `xlIncreased`, `xxl`, and `full` (0, 4, 8, 12, 16, 20,
+28, 32, 48, and fully rounded). `ReliveTheme.shapes` supplies semantic card,
+dialog, sheet, chip, button, and pill shapes. Nested padded media uses optical
+roundness (`inner = outer − padding`) when it has a separate clip; media sharing a
+single parent clip is not double-clipped. `MaterialShapes`, `RoundedPolygon`, and
+`Morph` are available from common code; shape morphs are disabled under reduced motion.
 
 ---
 

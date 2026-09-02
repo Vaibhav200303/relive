@@ -94,7 +94,7 @@ private fun StopSquare(onStop: () -> Unit) {
         Box(
             modifier = Modifier
                 .size(16.dp)
-                .clip(RoundedCornerShape(2.dp))
+                .clip(RoundedCornerShape(dims.radii.xs))
                 .background(colors.accent),
         )
     }
