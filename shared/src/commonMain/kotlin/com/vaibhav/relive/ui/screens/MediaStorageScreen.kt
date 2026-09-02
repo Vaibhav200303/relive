@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -40,6 +39,8 @@ import com.vaibhav.relive.presentation.profile.MediaStorageState
 import com.vaibhav.relive.presentation.profile.MediaStorageViewModel
 import com.vaibhav.relive.presentation.profile.formatByteSize
 import com.vaibhav.relive.ui.components.timeline.BackGlyph
+import com.vaibhav.relive.ui.components.MediaStorageSkeleton
+import com.vaibhav.relive.ui.components.ReliveSkeletonContent
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.components.profile.ProfilePageHeader
 
@@ -56,10 +57,19 @@ fun MediaStorageScreen(
         modifier = Modifier.fillMaxSize().background(ReliveTheme.colors.bgCanvas),
     ) {
         MediaStorageHeader(onBack)
-        when (val current = state) {
-            MediaStorageState.Loading -> LoadingArchiveInsights()
-            is MediaStorageState.Loaded -> ArchiveInsightsContent(current.insights)
-            MediaStorageState.Error -> ArchiveInsightsError(onRetry = viewModel::refresh)
+        ReliveSkeletonContent(
+            isLoading = state == MediaStorageState.Loading,
+            skeleton = {
+                MediaStorageSkeleton(
+                    modifier = Modifier.semantics { contentDescription = "Loading archive storage" },
+                )
+            },
+        ) {
+            when (val current = state) {
+                MediaStorageState.Loading -> Unit
+                is MediaStorageState.Loaded -> ArchiveInsightsContent(current.insights)
+                MediaStorageState.Error -> ArchiveInsightsError(onRetry = viewModel::refresh)
+            }
         }
     }
 }
@@ -67,20 +77,6 @@ fun MediaStorageScreen(
 @Composable
 private fun MediaStorageHeader(onBack: () -> Unit) {
     ProfilePageHeader("Media & Storage", onBack)
-}
-
-@Composable
-private fun LoadingArchiveInsights() {
-    val dims = ReliveTheme.dimensions
-    Box(
-        modifier = Modifier.fillMaxSize().semantics { contentDescription = "Loading archive storage" },
-        contentAlignment = Alignment.TopCenter,
-    ) {
-        CircularProgressIndicator(
-            color = ReliveTheme.colors.accent,
-            modifier = Modifier.padding(top = dims.spacing.huge),
-        )
-    }
 }
 
 @Composable

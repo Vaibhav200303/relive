@@ -79,6 +79,8 @@ import com.vaibhav.relive.presentation.timelinehome.TimelineHomeNavigation
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeViewModel
 import com.vaibhav.relive.presentation.timeline.TimelineCreationOutcome
 import com.vaibhav.relive.ui.components.AllTimelineCollage
+import com.vaibhav.relive.ui.components.ReliveSkeletonContent
+import com.vaibhav.relive.ui.components.TimelineHomeSkeleton
 import com.vaibhav.relive.ui.components.composer.PlusGlyph
 import com.vaibhav.relive.ui.components.navigation.ReliveWordmarkAppBar
 import com.vaibhav.relive.ui.components.timeline.TimelineCreationDialog
@@ -177,32 +179,37 @@ fun TimelineHomeScreen(
                 query = state.query,
                 onQueryChange = viewModel::updateSearchQuery,
             )
-            when (val content = state.content) {
-                TimelineHomeContent.Loading -> TimelineHomeLoading()
-                is TimelineHomeContent.Loaded -> TimelineHomeContent(
-                    hasCustomTimelines = state.customSummaries.isNotEmpty(),
-                    summaries = state.visibleCustomSummaries,
-                    query = state.query,
-                    mediaStore = mediaStore,
-                    listState = listState,
-                    onOpenTimeline = { navigation -> viewModel.selectTimeline(navigation.timeline) },
-                    onShowTimelineOptions = { timeline ->
-                        haptics.perform(ReliveHapticCue.Context)
-                        selectedTimelines = setOf(timeline)
-                    },
-                    selectedTimelineIds = selectedTimelines.mapTo(mutableSetOf()) { it.id },
-                    onToggleTimelineSelection = { timeline ->
-                        selectedTimelines = if (timeline in selectedTimelines) {
-                            selectedTimelines - timeline
-                        } else {
-                            selectedTimelines + timeline
-                        }
-                    },
-                    reserveQuickCaptureSpace = onCreateMoment != null,
-                    navigationToolbarExpanded = navigationToolbarExpanded,
-                    onNavigationToolbarExpand = onNavigationToolbarExpand,
-                    onNavigationToolbarCollapse = onNavigationToolbarCollapse,
-                )
+            ReliveSkeletonContent(
+                isLoading = state.content == TimelineHomeContent.Loading,
+                skeleton = { TimelineHomeSkeleton() },
+            ) {
+                when (val content = state.content) {
+                    TimelineHomeContent.Loading -> Unit
+                    is TimelineHomeContent.Loaded -> TimelineHomeContent(
+                        hasCustomTimelines = state.customSummaries.isNotEmpty(),
+                        summaries = state.visibleCustomSummaries,
+                        query = state.query,
+                        mediaStore = mediaStore,
+                        listState = listState,
+                        onOpenTimeline = { navigation -> viewModel.selectTimeline(navigation.timeline) },
+                        onShowTimelineOptions = { timeline ->
+                            haptics.perform(ReliveHapticCue.Context)
+                            selectedTimelines = setOf(timeline)
+                        },
+                        selectedTimelineIds = selectedTimelines.mapTo(mutableSetOf()) { it.id },
+                        onToggleTimelineSelection = { timeline ->
+                            selectedTimelines = if (timeline in selectedTimelines) {
+                                selectedTimelines - timeline
+                            } else {
+                                selectedTimelines + timeline
+                            }
+                        },
+                        reserveQuickCaptureSpace = onCreateMoment != null,
+                        navigationToolbarExpanded = navigationToolbarExpanded,
+                        onNavigationToolbarExpand = onNavigationToolbarExpand,
+                        onNavigationToolbarCollapse = onNavigationToolbarCollapse,
+                    )
+                }
             }
         }
     }
@@ -535,11 +542,6 @@ private fun ProfileAffordanceGlyph(photo: MediaStorageRef?, mediaStore: MediaSto
             Icon(ProfileIcons.Person, contentDescription = null, modifier = Modifier.size(dims.icon.md), tint = colors.textSecondary)
         }
     }
-}
-
-@Composable
-private fun TimelineHomeLoading() {
-    Box(modifier = Modifier.fillMaxWidth().padding(ReliveTheme.dimensions.spacing.xl))
 }
 
 @Composable

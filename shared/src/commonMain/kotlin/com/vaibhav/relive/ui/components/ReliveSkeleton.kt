@@ -216,6 +216,28 @@ fun RediscoverSkeleton(modifier: Modifier = Modifier) {
     }
 }
 
+/** Loading silhouette for the archive-insights hierarchy in Media & Storage. */
+@Composable
+fun MediaStorageSkeleton(modifier: Modifier = Modifier) {
+    val dims = ReliveTheme.dimensions
+    Column(
+        modifier = modifier.padding(horizontal = dims.spacing.xl),
+        verticalArrangement = Arrangement.spacedBy(dims.spacing.xl),
+    ) {
+        SkeletonLine(dims.skeleton.longLineWidthFraction)
+        ReliveSkeletonBox(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(dims.skeleton.timelineDetailMediaHeight),
+            shape = ReliveTheme.shapes.card,
+        )
+        SkeletonLine(dims.skeleton.mediumLineWidthFraction, title = true)
+        SkeletonLine(dims.skeleton.longLineWidthFraction)
+        SkeletonLine(dims.skeleton.longLineWidthFraction)
+        SkeletonLine(dims.skeleton.mediumLineWidthFraction)
+    }
+}
+
 @Composable
 private fun RediscoverShelfSkeletonCard() {
     val dims = ReliveTheme.dimensions
@@ -253,6 +275,7 @@ private fun ReliveSkeletonPreview() {
             TimelineHomeSkeleton()
             TimelineDetailSkeleton()
             RediscoverSkeleton()
+            MediaStorageSkeleton()
         }
     }
 }

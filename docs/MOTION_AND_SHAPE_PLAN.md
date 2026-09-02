@@ -34,7 +34,7 @@ new chat" at the bottom.)
 | [x] | 4.1 | Lateral — verify media pager (no fade/parallax) |
 | [ ] | 5.1 | Enter/exit — sheets, dialogs, snackbars, menus |
 | [ ] | 5.2 | Enter/exit — scroll-driven app bar & floating controls |
-| [ ] | 6.1 | Skeleton loaders wired into loading states |
+| [x] | 6.1 | Skeleton loaders wired into loading states |
 | [ ] | 7.1 | Shape morph — favorite toggle |
 | [ ] | 7.2 | Shape morph — recording/progress |
 | [ ] | 7.3 | Shape morph — floating toolbar / bottom-nav selection |
