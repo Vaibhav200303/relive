@@ -92,6 +92,7 @@ import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.theme.ReliveOpacity
 import com.vaibhav.relive.ui.theme.canvasBrush
 import com.vaibhav.relive.ui.theme.rememberGrainBrush
+import com.vaibhav.relive.ui.theme.reliveSequentialSlideFade
 import com.vaibhav.relive.ui.icons.ProfileIcons
 import com.vaibhav.relive.ui.icons.TimelineActionIcons
 import com.vaibhav.relive.presentation.cardcover.resolveAllTimelineCollage
@@ -360,13 +361,15 @@ private fun TimelineHomeHeader(
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
     val motion = ReliveTheme.motion
+    val reduceMotion = ReliveTheme.reduceMotion
     AnimatedContent(
         targetState = selectedTimelineCount > 0,
         transitionSpec = {
-            (fadeIn(tween(motion.durations.fastMillis, easing = motion.easings.emphasized)) +
-                slideInHorizontally(tween(motion.durations.fastMillis, easing = motion.easings.emphasized)) { it / 8 }) togetherWith
-                (fadeOut(tween(motion.durations.fastMillis, easing = motion.easings.emphasized)) +
-                    slideOutHorizontally(tween(motion.durations.fastMillis, easing = motion.easings.emphasized)) { -it / 8 })
+            reliveSequentialSlideFade(
+                motion = motion,
+                reduceMotion = reduceMotion,
+                enterFromRight = targetState,
+            )
         },
         label = "timeline selection app bar",
     ) { isSelectionMode ->
@@ -670,7 +673,7 @@ private fun TimelineHomeCardContent(
     } else {
         dims.timelineHome.customMediaHeight
     }
-    val cardShape = RoundedCornerShape(20.dp)
+    val cardShape = RoundedCornerShape(dims.radii.largeIncreased)
 
     Column(
         modifier = Modifier

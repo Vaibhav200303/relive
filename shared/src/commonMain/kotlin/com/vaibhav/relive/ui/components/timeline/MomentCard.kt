@@ -305,7 +305,7 @@ private fun PinnedMomentCard(
     val colors = ReliveTheme.colors
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
-    val cardShape = RoundedCornerShape(dims.radii.sm)
+    val cardShape = RoundedCornerShape(dims.radii.small)
     val pinSize = dims.icon.lg
     // The print is always white paper, in every theme. Because the card stays a light surface even
     // in dark mode, its text must resolve against white rather than the dark-theme foreground.

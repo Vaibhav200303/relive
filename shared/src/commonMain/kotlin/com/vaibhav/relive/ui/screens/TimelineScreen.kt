@@ -154,6 +154,7 @@ import com.vaibhav.relive.ui.components.viewer.MomentMediaGallery
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.theme.reliveSequentialSlideFade
 import com.vaibhav.relive.ui.theme.spec
 import com.vaibhav.relive.presentation.cardcover.allTimelineCollageBucket
 import kotlinx.coroutines.delay
@@ -998,10 +999,11 @@ private fun TimelineContent(
         AnimatedContent(
             targetState = isContextualActionMode,
             transitionSpec = {
-                (fadeIn(tween(motion.durations.fastMillis, easing = motion.easings.emphasized)) +
-                    slideInHorizontally(tween(motion.durations.fastMillis, easing = motion.easings.emphasized)) { it / 8 }) togetherWith
-                    (fadeOut(tween(motion.durations.fastMillis, easing = motion.easings.emphasized)) +
-                        slideOutHorizontally(tween(motion.durations.fastMillis, easing = motion.easings.emphasized)) { -it / 8 })
+                reliveSequentialSlideFade(
+                    motion = motion,
+                    reduceMotion = reduceMotion,
+                    enterFromRight = targetState,
+                )
             },
             label = "moment selection app bar",
         ) { inActionMode ->

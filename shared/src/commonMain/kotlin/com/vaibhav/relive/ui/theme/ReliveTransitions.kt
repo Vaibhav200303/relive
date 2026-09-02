@@ -90,6 +90,42 @@ fun <S> AnimatedContentTransitionScope<S>.reliveForwardBackward(
 }
 
 /**
+ * A clean, in-context swap: the old content fully fades away before the replacement appears.
+ * The optional lateral movement keeps compact app-bar changes contextual without exposing two
+ * translucent layers at once.
+ */
+fun <S> AnimatedContentTransitionScope<S>.reliveSequentialSlideFade(
+    motion: ReliveMotion,
+    reduceMotion: Boolean,
+    enterFromRight: Boolean,
+): ContentTransform {
+    val exitDuration = motion.durations.short4
+    val exitFade = fadeOut(animationSpec = motion.spec(
+        reduceMotion = reduceMotion,
+        full = tween(durationMillis = exitDuration, easing = motion.easings.emphasizedAccelerate),
+    ))
+    val enterFade = fadeIn(animationSpec = motion.spec(
+        reduceMotion = reduceMotion,
+        full = tween(durationMillis = motion.durations.medium4, delayMillis = exitDuration, easing = motion.easings.emphasizedDecelerate),
+        reduced = tween(durationMillis = motion.durations.short3, delayMillis = motion.durations.short3, easing = motion.easings.standard),
+    ))
+    if (reduceMotion) return enterFade togetherWith exitFade
+    val enterSlide = slideInHorizontally(
+        animationSpec = motion.spec(
+            reduceMotion = false,
+            full = tween(durationMillis = motion.durations.medium4, delayMillis = exitDuration, easing = motion.easings.emphasizedDecelerate),
+        ),
+    ) { width -> if (enterFromRight) width / 8 else -width / 8 }
+    val exitSlide = slideOutHorizontally(
+        animationSpec = motion.spec(
+            reduceMotion = false,
+            full = tween(durationMillis = exitDuration, easing = motion.easings.emphasizedAccelerate),
+        ),
+    ) { width -> if (enterFromRight) -width / 8 else width / 8 }
+    return (enterFade + enterSlide) togetherWith (exitFade + exitSlide)
+}
+
+/**
  * M3 enter/exit transition for components that remain within the current screen.
  *
  * Full-motion components expand from their contextual edge; this deliberately avoids scale

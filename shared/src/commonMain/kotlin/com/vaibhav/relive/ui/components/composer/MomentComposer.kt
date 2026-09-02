@@ -717,7 +717,7 @@ private fun AddMediaShell(
     val dims = ReliveTheme.dimensions
     val motion = ReliveTheme.motion
     val haptics = rememberReliveHaptics()
-    val shape = RoundedCornerShape(dims.radii.lg)
+    val shape = RoundedCornerShape(dims.radii.largeIncreased)
 
     Column(
         modifier = Modifier

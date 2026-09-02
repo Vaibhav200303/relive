@@ -296,7 +296,7 @@ private fun ProfileAppearanceSection(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(dims.radii.lg))
+                .clip(RoundedCornerShape(dims.radii.largeIncreased))
                 .background(colors.surfaceCard)
                 .padding(dims.spacing.lg),
             verticalArrangement = Arrangement.spacedBy(dims.spacing.lg),
@@ -333,7 +333,9 @@ private fun ProfileHeader(onBack: () -> Unit) {
 private fun ProfileAvatar(photo: com.vaibhav.relive.domain.model.MediaStorageRef?, mediaStore: MediaStore) {
     val dims = ReliveTheme.dimensions
     val colors = ReliveTheme.colors
-    val ringShape = RoundedCornerShape(dims.radii.pill)
+    // The avatar intentionally stays circular: the decorative-shape default is the
+    // restrained option, while the semantic shape token keeps it consistent with the theme.
+    val ringShape = ReliveTheme.shapes.pill
     // Accent ring (matching the primary CTA) with a gap between ring and avatar.
     Box(
         modifier = Modifier

@@ -128,7 +128,7 @@ fun TimelineThemeScreen(
 private fun TimelineThemePreview(wallpaper: TimelineWallpaper) {
     val dims = ReliveTheme.dimensions
     val colors = ReliveTheme.colors
-    val shape = RoundedCornerShape(dims.radii.lg)
+    val shape = RoundedCornerShape(dims.radii.largeIncreased)
     TimelineWallpaperSurface(
         wallpaper = wallpaper,
         modifier = Modifier
