@@ -152,7 +152,6 @@ fun TimelineHomeScreen(
         ) {
             TimelineHomeHeader(
                 selectedTimelineCount = selectedTimelines.size,
-                navigationToolbarExpanded = navigationToolbarExpanded,
                 onExitSelection = { selectedTimelines = emptySet() },
                 onCreateTimeline = {
                     haptics.perform(ReliveHapticCue.Action)
@@ -343,7 +342,6 @@ private fun DeleteTimelineDialog(
 @Composable
 private fun TimelineHomeHeader(
     selectedTimelineCount: Int,
-    navigationToolbarExpanded: Boolean,
     onExitSelection: () -> Unit,
     onCreateTimeline: () -> Unit,
     onOpenProfile: () -> Unit,
@@ -404,7 +402,7 @@ private fun TimelineHomeHeader(
                 }
             }
         } else {
-            ReliveWordmarkAppBar(visible = navigationToolbarExpanded) {
+            ReliveWordmarkAppBar {
                 IconButton(
                     onClick = onOpenProfile,
                     modifier = Modifier

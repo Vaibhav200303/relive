@@ -8,15 +8,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
 import com.vaibhav.relive.ui.theme.ReliveTheme
-import com.vaibhav.relive.ui.theme.reliveScrollAppBarEnter
-import com.vaibhav.relive.ui.theme.reliveScrollAppBarExit
 
 /**
  * Shared top-level identity bar for Relive roots.
@@ -32,34 +29,25 @@ fun ReliveWordmarkAppBar(
     modifier: Modifier = Modifier,
     title: String = "Relive",
     style: TextStyle? = null,
-    visible: Boolean = true,
     action: @Composable BoxScope.() -> Unit = {},
 ) {
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
-    val motion = ReliveTheme.motion
-    AnimatedVisibility(
-        visible = visible,
-        enter = motion.reliveScrollAppBarEnter(ReliveTheme.reduceMotion),
-        exit = motion.reliveScrollAppBarExit(ReliveTheme.reduceMotion),
-        label = "scroll-driven app bar",
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(colors.bgHeader)
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .padding(horizontal = dims.spacing.md, vertical = dims.spacing.sm),
     ) {
-        Box(
-            modifier = modifier
-                .fillMaxWidth()
-                .background(colors.bgHeader)
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .padding(horizontal = dims.spacing.md, vertical = dims.spacing.sm),
-        ) {
-            Text(
-                text = title,
-                style = style ?: ReliveTheme.typography.wordmark,
-                // The wordmark is the app's primary title: it uses ink like every other heading,
-                // never the accent. Hierarchy comes from the serif wordmark style, not colour.
-                color = colors.textPrimary,
-                modifier = Modifier.align(Alignment.Center),
-            )
-            action()
-        }
+        Text(
+            text = title,
+            style = style ?: ReliveTheme.typography.wordmark,
+            // The wordmark is the app's primary title: it uses ink like every other heading,
+            // never the accent. Hierarchy comes from the serif wordmark style, not colour.
+            color = colors.textPrimary,
+            modifier = Modifier.align(Alignment.Center),
+        )
+        action()
     }
 }
