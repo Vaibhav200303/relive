@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -35,7 +35,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.material3.IconButton
 import com.vaibhav.relive.ui.theme.ReliveTheme
@@ -43,6 +42,9 @@ import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveOpacity
 import com.vaibhav.relive.ui.theme.ReliveDimensions
+import com.vaibhav.relive.ui.theme.reliveScrollFloatingControlsEnter
+import com.vaibhav.relive.ui.theme.reliveScrollFloatingControlsExit
+import com.vaibhav.relive.ui.theme.spec
 
 enum class ReliveTopLevelDestination { Timelines, Rediscover, Search }
 
@@ -99,33 +101,43 @@ fun ReliveFloatingBottomControls(
     newMomentModifier: Modifier = Modifier,
 ) {
     val dims = ReliveTheme.dimensions
-    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val layout = floatingToolbarLayout(maxWidth, dims)
-        Row(
-            modifier = Modifier
-                .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime))
-                .padding(
-                    start = dims.spacing.lg,
-                    end = dims.spacing.lg,
-                    bottom = dims.spacing.lg,
+    val motion = ReliveTheme.motion
+    val reduceMotion = ReliveTheme.reduceMotion
+    AnimatedVisibility(
+        visible = expanded,
+        enter = motion.reliveScrollFloatingControlsEnter(reduceMotion),
+        exit = motion.reliveScrollFloatingControlsExit(reduceMotion),
+        modifier = modifier.fillMaxWidth(),
+        label = "scroll-driven floating controls",
+    ) {
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val layout = floatingToolbarLayout(maxWidth, dims)
+            Row(
+                modifier = Modifier
+                    .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime))
+                    .padding(
+                        start = dims.spacing.lg,
+                        end = dims.spacing.lg,
+                        bottom = dims.spacing.lg,
+                    )
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ReliveFloatingNavigationToolbar(
+                    selected = selected,
+                    expanded = expanded,
+                    onSelect = onSelect,
+                    expandedWidth = layout.navigationExpandedWidth,
                 )
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            ReliveFloatingNavigationToolbar(
-                selected = selected,
-                expanded = expanded,
-                onSelect = onSelect,
-                expandedWidth = layout.navigationExpandedWidth,
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            Spacer(modifier = Modifier.width(dims.floatingToolbar.controlGap))
-            GlobalNewMomentButton(
-                onClick = onCreateMoment,
-                expanded = expanded,
-                expandedWidth = layout.newExpandedWidth,
-                modifier = newMomentModifier,
-            )
+                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.width(dims.floatingToolbar.controlGap))
+                GlobalNewMomentButton(
+                    onClick = onCreateMoment,
+                    expanded = expanded,
+                    expandedWidth = layout.newExpandedWidth,
+                    modifier = newMomentModifier,
+                )
+            }
         }
     }
 }
@@ -140,11 +152,15 @@ private fun ReliveFloatingNavigationToolbar(
 ) {
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
+    val motion = ReliveTheme.motion
     val toolbarWidth by animateDpAsState(
         targetValue = if (expanded) expandedWidth else dims.floatingToolbar.compactWidth,
-        animationSpec = tween(
-            durationMillis = ReliveTheme.motion.durations.standardMillis,
-            easing = ReliveTheme.motion.easings.standard,
+        animationSpec = motion.spec(
+            reduceMotion = ReliveTheme.reduceMotion,
+            full = tween(
+                durationMillis = motion.durations.medium2,
+                easing = motion.easings.standard,
+            ),
         ),
         label = "navigation toolbar width",
     )
@@ -158,7 +174,7 @@ private fun ReliveFloatingNavigationToolbar(
             toolbarContentColor = colors.accent,
         ),
         contentPadding = PaddingValues(dims.spacing.xs),
-        shape = RoundedCornerShape(dims.radii.pill),
+        shape = ReliveTheme.shapes.pill,
     ) {
         FloatingNavigationContent(
             selected = selected,
@@ -183,10 +199,13 @@ private fun FloatingNavigationContent(
     ) {
         val actionWidth = if (expanded) maxWidth / ReliveTopLevelDestination.entries.size else maxWidth
         val indicatorOffset by animateDpAsState(
-            targetValue = if (expanded) actionWidth * selectedIndex else 0.dp,
-            animationSpec = tween(
-                durationMillis = ReliveTheme.motion.durations.standardMillis,
-                easing = ReliveTheme.motion.easings.standard,
+            targetValue = if (expanded) actionWidth * selectedIndex else dims.spacing.none,
+            animationSpec = ReliveTheme.motion.spec(
+                reduceMotion = ReliveTheme.reduceMotion,
+                full = tween(
+                    durationMillis = ReliveTheme.motion.durations.medium2,
+                    easing = ReliveTheme.motion.easings.standard,
+                ),
             ),
             label = "selected destination indicator",
         )
@@ -196,7 +215,7 @@ private fun FloatingNavigationContent(
                 .offset(x = indicatorOffset)
                 .width(actionWidth)
                 .height(dims.floatingToolbar.indicatorHeight)
-                .clip(RoundedCornerShape(dims.radii.pill))
+                .clip(ReliveTheme.shapes.pill)
                 .background(ReliveTheme.colors.accent.copy(alpha = ReliveOpacity.Low)),
         )
         if (expanded) {

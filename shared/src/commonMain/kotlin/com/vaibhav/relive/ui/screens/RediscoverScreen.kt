@@ -137,7 +137,11 @@ fun RediscoverScreen(
             contentPadding = PaddingValues(bottom = bottomPadding),
         ) {
         item(key = "relive-app-bar") {
-            ReliveWordmarkAppBar(title = "Rediscover", style = ReliveTheme.typography.title)
+            ReliveWordmarkAppBar(
+                title = "Rediscover",
+                style = ReliveTheme.typography.title,
+                visible = navigationToolbarExpanded,
+            )
         }
         allSummary?.let { summary ->
             item(key = "all") {
