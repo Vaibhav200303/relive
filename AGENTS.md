@@ -34,6 +34,8 @@ For any timeline UI work, these files are authoritative:
 
 Do **not** redesign, reinterpret, or replace the approved layout unless explicitly instructed to. The reference defines the intended spacing, typography, rail, dots, media presentation, and composer layout. Match it.
 
+The reference predates the Home surface and shows an oldest-first timeline with the composer at the bottom, so it is authoritative for the **presentation** of the Moment card, rail, dots, and composer — not for where they sit on the surface. Home surface composition and feed order are governed by [`docs/PRODUCT_SPEC.md`](docs/PRODUCT_SPEC.md) and ADR-0061 in [`docs/DECISIONS.md`](docs/DECISIONS.md).
+
 **When written design tokens in [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) conflict with the approved UI reference, stop and report the conflict.** Do not improvise a resolution.
 
 ---

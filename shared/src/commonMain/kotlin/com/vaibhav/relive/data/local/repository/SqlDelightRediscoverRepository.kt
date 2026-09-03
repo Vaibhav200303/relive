@@ -5,6 +5,7 @@ import app.cash.sqldelight.coroutines.mapToList
 import com.vaibhav.relive.data.PersistenceMappingException
 import com.vaibhav.relive.data.local.db.ReliveDatabase
 import com.vaibhav.relive.data.local.mapper.toDomain
+import com.vaibhav.relive.domain.model.AllPhotosCollectionSummary
 import com.vaibhav.relive.domain.model.FavoritesCollectionSummary
 import com.vaibhav.relive.domain.model.FavoriteMomentPreview
 import com.vaibhav.relive.domain.model.FromYourPastMomentPreview
@@ -46,6 +47,21 @@ class SqlDelightRediscoverRepository(
         ).asFlow().mapToList(dispatcher).map { rows -> rows.map { it.toDomain() } }
         return combine(count, previews, ::FavoritesCollectionSummary)
     }
+
+    override fun observeAllPhotosSummary(): Flow<AllPhotosCollectionSummary> {
+        val count = database.rediscoverQueries.allPhotosMomentCount()
+            .asFlow().mapToList(dispatcher).map { it.single() }
+        val previews = database.rediscoverQueries.selectAllPhotosVisualAttachments(
+            AllPhotosCollectionSummary.MAX_PREVIEW_ATTACHMENTS.toLong(),
+        ).asFlow().mapToList(dispatcher).map { rows -> rows.map { it.toDomain() } }
+        return combine(count, previews, ::AllPhotosCollectionSummary)
+    }
+
+    override fun observeAllPhotosMoments(): Flow<List<Moment>> =
+        database.rediscoverQueries.selectAllPhotosMoments()
+            .asFlow()
+            .mapToList(dispatcher)
+            .map { rows -> withContext(dispatcher) { rows.map(::hydrateMoment) } }
 
     override fun observeFavoriteMoments(): Flow<List<Moment>> =
         database.rediscoverQueries.selectFavoriteMoments()

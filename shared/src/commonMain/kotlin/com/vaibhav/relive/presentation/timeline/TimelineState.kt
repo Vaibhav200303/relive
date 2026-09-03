@@ -18,6 +18,9 @@ sealed interface CurrentTimeline {
     /** A derived scope, never stored as a custom timeline or membership. */
     data object Favorites : CurrentTimeline
 
+    /** Read-only collection of every Moment carrying at least one image or video (ADR-0061). */
+    data object AllPhotos : CurrentTimeline
+
     /** A derived, local-calendar collection; never stored as membership. */
     data class OnThisDay(val date: LocalCalendarDate) : CurrentTimeline
 
@@ -47,7 +50,18 @@ data class TimelineScreenState(
     val moments: TimelineMomentsState = TimelineMomentsState.Loading,
     val dateNavigation: DateNavigationState? = null,
     val momentActions: MomentContextualActionState = MomentContextualActionState(),
+    /**
+     * True when the Home feed's bounded window may still be grown — there are older moments in the
+     * archive that have not been loaded. Always false for surfaces that are not windowed.
+     */
+    val hasOlderMoments: Boolean = false,
 )
+
+/** How many moments the Home feed loads at a time (ADR-0061). */
+const val HOME_FEED_PAGE_SIZE: Int = 30
+
+/** How close to the oldest loaded moment the feed grows its window, so paging stays invisible. */
+const val HOME_FEED_PREFETCH: Int = 8
 
 /** UI state for the single selected Moment in All's contextual action app bar. */
 data class MomentContextualActionState(

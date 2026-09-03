@@ -117,6 +117,16 @@ fun MomentComposer(
     onOpenAppSettings: () -> Unit,
     requestInitialFocus: Boolean = false,
     onInitialFocusHandled: () -> Unit = {},
+    /**
+     * Which way the timeline rail leaves the composer's plus marker.
+     *
+     * The composer always sits at the chronological end of its feed, so the rail approaches it from
+     * the direction the older moments lie and stops at the marker's centre. On an oldest-first
+     * timeline that end is the tail, so the rail arrives from above (the default). On the Home
+     * surface the feed is newest-first, so the same chronological end renders at the head and the
+     * rail instead leaves the marker downward toward the first moment's dot (ADR-0061).
+     */
+    railContinuesBelow: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     // Bridge composer state → platform mic-permission prompt.
@@ -144,7 +154,7 @@ fun MomentComposer(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .drawBehind { drawComposerRail(colors.borderMuted, dims, dims.minTouchTarget) }
+            .drawBehind { drawComposerRail(colors.borderMuted, dims, dims.minTouchTarget, railContinuesBelow) }
             .padding(vertical = dims.spacing.xl),
         verticalAlignment = Alignment.Top,
     ) {
@@ -355,6 +365,8 @@ private fun ComposerTimelineAssignments(
 @Composable
 fun CollapsedComposerMarker(
     onExpand: () -> Unit,
+    /** See `MomentComposer`'s `railContinuesBelow`. */
+    railContinuesBelow: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val colors = ReliveTheme.colors
@@ -364,7 +376,7 @@ fun CollapsedComposerMarker(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .drawBehind { drawComposerRail(colors.borderMuted, dims, dims.minTouchTarget) }
+            .drawBehind { drawComposerRail(colors.borderMuted, dims, dims.minTouchTarget, railContinuesBelow) }
             .padding(vertical = dims.spacing.xl),
         verticalAlignment = Alignment.Top,
     ) {
@@ -416,13 +428,18 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawComposerRail(
     color: androidx.compose.ui.graphics.Color,
     dims: com.vaibhav.relive.ui.theme.ReliveDimensions,
     markerSize: androidx.compose.ui.unit.Dp,
+    continuesBelow: Boolean,
 ) {
     val axis = dims.timeline.contentInset.toPx() / 2f
-    val markerCenter = dims.spacing.xl.toPx() + markerSize.toPx() / 2f
+    val markerCenter = (dims.spacing.xl.toPx() + markerSize.toPx() / 2f)
+        .coerceAtMost(size.height)
+    // The rail always terminates at the marker's centre; only the side it arrives from changes.
+    val start = if (continuesBelow) markerCenter else 0f
+    val end = if (continuesBelow) size.height else markerCenter
     drawLine(
         color = color,
-        start = androidx.compose.ui.geometry.Offset(axis, 0f),
-        end = androidx.compose.ui.geometry.Offset(axis, markerCenter.coerceAtMost(size.height)),
+        start = androidx.compose.ui.geometry.Offset(axis, start),
+        end = androidx.compose.ui.geometry.Offset(axis, end),
         strokeWidth = dims.timeline.railWidth.toPx(),
     )
 }

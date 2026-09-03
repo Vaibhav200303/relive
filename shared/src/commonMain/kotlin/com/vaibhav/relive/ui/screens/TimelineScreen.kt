@@ -38,11 +38,14 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
@@ -83,6 +86,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.animateFloatingActionButton
+import kotlinx.coroutines.flow.distinctUntilChanged
 import com.vaibhav.relive.domain.id.IdGenerator
 import com.vaibhav.relive.domain.policy.EditWindow
 import com.vaibhav.relive.domain.model.MomentId
@@ -114,6 +118,7 @@ import com.vaibhav.relive.presentation.composer.SaveState
 import com.vaibhav.relive.presentation.timeline.CurrentTimeline
 import com.vaibhav.relive.presentation.timeline.MomentAttachmentPresentation
 import com.vaibhav.relive.presentation.timeline.MomentPresentation
+import com.vaibhav.relive.presentation.timeline.HOME_FEED_PREFETCH
 import com.vaibhav.relive.presentation.timeline.TimelineMomentsState
 import com.vaibhav.relive.presentation.timeline.TimelineMode
 import com.vaibhav.relive.presentation.timeline.TimelineMomentVisibility
@@ -148,6 +153,7 @@ import com.vaibhav.relive.ui.components.timeline.TimelineMomentActionHeader
 import com.vaibhav.relive.ui.components.timeline.DateNavigationPicker
 import com.vaibhav.relive.ui.components.timeline.DiscardTimelineDraftDialog
 import com.vaibhav.relive.ui.components.timeline.DownGlyph
+import com.vaibhav.relive.ui.components.timeline.UpGlyph
 import com.vaibhav.relive.ui.components.timeline.SystemCollectionHeader
 import com.vaibhav.relive.ui.components.viewer.MediaViewer
 import com.vaibhav.relive.ui.components.viewer.MomentMediaGallery
@@ -159,6 +165,7 @@ import com.vaibhav.relive.ui.theme.spec
 import com.vaibhav.relive.presentation.cardcover.allTimelineCollageBucket
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.max
 import kotlin.math.min
 
 private fun timelineViewModelCanEdit(moment: MomentPresentation, clock: Clock): Boolean =
@@ -255,6 +262,44 @@ fun TimelineScreen(
     onOpenTimelineTheme: (() -> Unit)? = null,
     behaviorPreferences: BehaviorPreferences = BehaviorPreferences(),
     onComposerExpandedChanged: ((Boolean) -> Unit)? = null,
+    /**
+     * Renders this timeline as the All moments region of the unified Home surface (ADR-0061).
+     *
+     * Every Home-specific behaviour hangs off this flag and every one of them is off by default, so
+     * custom timeline detail and the read-only system collections keep their existing ordering,
+     * entry scroll, composer placement and chrome untouched. On Home the feed is newest-first, the
+     * composer sits at the head of the feed, [homeHeader] items are emitted above it, and the
+     * surface never scrolls itself on entry or after a save.
+     */
+    isHomeSurface: Boolean = false,
+    /**
+     * Incremented by Home's `+ New`. Each new value expands the existing inline composer in place;
+     * a counter rather than a flag because Home is a persistent surface, so a latched boolean would
+     * make every tap after the first a silent no-op.
+     */
+    expandComposerRequest: Int = 0,
+    /** Items emitted above the composer on Home: the backdrop spacer and the section heading. */
+    homeHeader: (LazyListScope.() -> Unit)? = null,
+    /**
+     * Drawn behind the scrolling list on Home: the welcome block and Rediscover row, plus the
+     * opaque surface the All moments sheet rides on. Living outside the list is what lets the
+     * timeline genuinely slide *over* the welcome area rather than scrolling in lockstep with it.
+     */
+    homeBackdrop: (@Composable () -> Unit)? = null,
+    /** Supplied by Home, which owns the backdrop geometry that defines the two states. */
+    isFocusedAllMoments: Boolean = false,
+    /** How many items [homeHeader] emits. Every index computation offsets by this. */
+    homeHeaderCount: Int = 0,
+    /** Hoisted so Home's scroll position outlives the screen's own composition. */
+    listState: LazyListState? = null,
+    /** True while the welcome block and Rediscover row have scrolled above the viewport. */
+    onFocusedAllMomentsChanged: ((Boolean) -> Unit)? = null,
+    /** Leading app-bar slot for Home, which is a root and so carries no back action. */
+    homeAppBarLeading: (@Composable () -> Unit)? = null,
+    /** Applied to the feed itself, so Home can hang the floating-controls collapse off its scroll. */
+    listModifier: Modifier = Modifier,
+    /** Run before the head composer is seated, so Home can bring its feed back on screen first. */
+    onExpandingComposer: (suspend () -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
     val timelineViewModel = remember(
@@ -322,6 +367,24 @@ fun TimelineScreen(
     LaunchedEffect(isComposerExpanded) {
         onComposerExpandedChanged?.invoke(isComposerExpanded)
     }
+
+    // Back on the Home surface (ADR-0061, PRODUCT_SPEC §2 "Back on Home"): clear a contextual
+    // selection first, then collapse an expanded composer in place, and only then fall through to
+    // the platform default. Home is a root, so it takes no back handler of its own beyond those
+    // two — without this the composer stayed open and Back left the app. Collapsing preserves the
+    // draft and shows no discard dialog; `×` remains the explicit discard path (§6.1). Neither
+    // step scrolls: the surface stays exactly where it was in focused All moments.
+    ReliveBackHandler(
+        enabled = isHomeSurface &&
+            (timelineState.momentActions.selectedMomentId != null || isComposerExpanded),
+    ) {
+        if (timelineState.momentActions.selectedMomentId != null) {
+            timelineViewModel.clearMomentActionSelection()
+        } else {
+            composerViewModel.preserveDraft()
+            isComposerExpanded = false
+        }
+    }
     var composerOpenIntentConsumed by remember(initialTimeline, openComposerOnEnter) {
         mutableStateOf(false)
     }
@@ -365,6 +428,40 @@ fun TimelineScreen(
             }
             isComposerExpanded = true
             composerOpenIntentConsumed = true
+        }
+    }
+
+    // Home has two ways to open the head composer — the `+ New` control and the inline `+` marker
+    // on the rail — and they are the same action: expand the existing composer where it already
+    // sits, with no navigation and no settled-frame handoff, since the composer is already composed
+    // and collapsed in place so AnimatedContent still sees a real false -> true transition
+    // (ADR-0061). Per ADR-0059 no focus is requested and no IME is opened. A preserved draft is
+    // reopened as it stands rather than being prepared over.
+    val openHomeComposer: () -> Unit = {
+        if (!composerState.hasUserDraft) {
+            composerViewModel.prepareForTimeline(timelineState.currentTimeline)
+        }
+        isComposerExpanded = true
+        scope.launch {
+            onExpandingComposer?.invoke()
+            // Seat the composer in view with the minimum movement: only when it is not already
+            // the first item on screen, and never past it, so the welcome block and Rediscover
+            // row are not dragged back into view.
+            listState?.let { state ->
+                if (state.firstVisibleItemIndex != homeHeaderCount) {
+                    state.animateScrollToItem(homeHeaderCount)
+                }
+            }
+        }
+    }
+    LaunchedEffect(expandComposerRequest, composerDestinationSettled) {
+        if (expandComposerRequest > 0 &&
+            isHomeSurface &&
+            mode.allowsMutations &&
+            composerDestinationSettled &&
+            !isComposerExpanded
+        ) {
+            openHomeComposer()
         }
     }
 
@@ -540,11 +637,13 @@ fun TimelineScreen(
             },
             onKeepMoment = composerViewModel::keepMoment,
             isComposerExpanded = isComposerExpanded,
-            onExpandComposer = {
-                if (!composerState.hasUserDraft) {
-                    composerViewModel.prepareForTimeline(timelineState.currentTimeline)
+            onExpandComposer = if (isHomeSurface) openHomeComposer else {
+                {
+                    if (!composerState.hasUserDraft) {
+                        composerViewModel.prepareForTimeline(timelineState.currentTimeline)
+                    }
+                    isComposerExpanded = true
                 }
-                isComposerExpanded = true
             },
             onMicPermissionResult = composerViewModel::onMicPermissionResult,
             onDismissMicPermissionMessage = composerViewModel::dismissMicPermissionMessage,
@@ -558,6 +657,19 @@ fun TimelineScreen(
             snackbarHostState = snackbarHostState,
             momentVisibility = resolveTimelineMomentVisibility(mode, behaviorPreferences),
             sharedTransition = mediaSharedTransition,
+            isHomeSurface = isHomeSurface,
+            homeHeader = homeHeader,
+            homeBackdrop = homeBackdrop,
+            isFocusedAllMoments = isFocusedAllMoments,
+            homeHeaderCount = homeHeaderCount,
+            listState = listState,
+            // The window this pages belongs to the view model created here, so Home's paging is
+            // wired from it rather than asked of every caller.
+            onLoadOlderMoments = timelineViewModel::loadOlderMoments,
+            hasOlderMoments = timelineState.hasOlderMoments,
+            onFocusedAllMomentsChanged = onFocusedAllMomentsChanged,
+            homeAppBarLeading = homeAppBarLeading,
+            listModifier = listModifier,
         )
 
         if (showDatePicker) {
@@ -910,6 +1022,17 @@ private fun TimelineContent(
     onDateNavigationHandled: () -> Unit,
     snackbarHostState: SnackbarHostState,
     momentVisibility: TimelineMomentVisibility,
+    isHomeSurface: Boolean = false,
+    homeHeader: (LazyListScope.() -> Unit)? = null,
+    homeBackdrop: (@Composable () -> Unit)? = null,
+    isFocusedAllMoments: Boolean = false,
+    homeHeaderCount: Int = 0,
+    listState: LazyListState? = null,
+    onLoadOlderMoments: (() -> Unit)? = null,
+    hasOlderMoments: Boolean = false,
+    onFocusedAllMomentsChanged: ((Boolean) -> Unit)? = null,
+    homeAppBarLeading: (@Composable () -> Unit)? = null,
+    listModifier: Modifier = Modifier,
 ) {
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
@@ -918,6 +1041,11 @@ private fun TimelineContent(
     val moments: List<MomentPresentation> = when (val state = timelineState.moments) {
         TimelineMomentsState.Loading, TimelineMomentsState.Empty -> emptyList()
         is TimelineMomentsState.Loaded -> state.moments
+    }
+    // Home's two states are a pure function of scroll offset: once the welcome block and the
+    // Rediscover row have passed above the viewport, the timeline dominates (ADR-0061).
+    if (isHomeSurface) {
+        LaunchedEffect(isFocusedAllMoments) { onFocusedAllMomentsChanged?.invoke(isFocusedAllMoments) }
     }
     val selectedActionMoment = timelineState.momentActions.selectedMomentId?.let { selectedId ->
         moments.firstOrNull { it.id == selectedId }
@@ -931,8 +1059,12 @@ private fun TimelineContent(
         )
     }
     val isContextualActionMode = actionAvailability?.canEnter == true
-    val hasTimelineCoverHero = timelineState.currentTimeline is CurrentTimeline.Custom ||
-        timelineState.currentTimeline == CurrentTimeline.All
+    // Home is scoped to the All timeline but renders no cover hero, and its own overscroll belongs
+    // to the welcome block expanding (ADR-0061). Without this exclusion the elastic cover would eat
+    // the pull that Home needs.
+    val hasTimelineCoverHero = !isHomeSurface &&
+        (timelineState.currentTimeline is CurrentTimeline.Custom ||
+            timelineState.currentTimeline == CurrentTimeline.All)
     var coverStretchPx by remember { mutableFloatStateOf(0f) }
     val maxCoverStretchPx = with(LocalDensity.current) { (dims.spacing.huge * 3).toPx() }
     val maxCoverPullDeltaPx = with(LocalDensity.current) { dims.spacing.xl.toPx() }
@@ -1021,6 +1153,18 @@ private fun TimelineContent(
                 )
             } else if (mode is TimelineMode.ReadOnlySystemCollection) {
                 SystemCollectionHeader(title = mode.title, onBack = onBack ?: {})
+            } else if (isHomeSurface) {
+                // Home carries no cover hero: the welcome block is the first thing on the surface,
+                // and the hero flat-mapped every loaded moment's attachments on each recomposition,
+                // which is the archive hydration ADR-0061 removes. Calendar and the timeline theme
+                // entry belong to the timeline, so they are present and active only once the
+                // timeline dominates the screen.
+                TimelineHeader(
+                    onBack = null,
+                    onJumpToDate = onJumpToDate.takeIf { isFocusedAllMoments },
+                    onChangeTheme = onChangeTheme?.takeIf { isFocusedAllMoments },
+                    leading = homeAppBarLeading,
+                )
             } else if (timelineState.currentTimeline == CurrentTimeline.All) {
                 val collageBucket = allTimelineCollageBucket(clock.now())
                 AllTimelineCoverHero(
@@ -1059,18 +1203,109 @@ private fun TimelineContent(
                 .padding(horizontal = dims.timeline.horizontalPadding)
                 .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime)),
         ) {
+            // Behind the list, so the timeline sheet slides over it rather than with it.
+            if (isHomeSurface) homeBackdrop?.invoke()
+
             val customName = (timelineState.currentTimeline as? CurrentTimeline.Custom)?.let { current ->
                 timelineState.customTimelines.firstOrNull { it.id == current.id }?.name
             }
 
             key(timelineState.currentTimeline) {
-                val listState = rememberLazyListState()
+                val listState = listState ?: rememberLazyListState()
+                // Index of the first moment. On Home the header items and the head composer sit
+                // above the feed; everywhere else the feed still starts at zero.
+                val feedOffset = if (isHomeSurface) homeHeaderCount + 1 else 0
+                // The composer is one item emitted at whichever end of the feed is the
+                // chronological end: the head on Home (newest-first), the tail everywhere else.
+                val composerItem: LazyListScope.() -> Unit = {
+                    if (mode.allowsMutations) item(key = "composer") {
+                        AnimatedContent(
+                            targetState = isComposerExpanded,
+                            transitionSpec = {
+                                val expandMs = motion.durations.slowMillis
+                                val collapseMs = motion.durations.standardMillis
+                                val enter = expandVertically(
+                                    animationSpec = tween(expandMs, easing = motion.easings.standard),
+                                    expandFrom = Alignment.Top,
+                                ) + fadeIn(animationSpec = tween(expandMs, easing = motion.easings.standard))
+                                val exit = shrinkVertically(
+                                    animationSpec = tween(collapseMs, easing = motion.easings.standard),
+                                    shrinkTowards = Alignment.Top,
+                                ) + fadeOut(animationSpec = tween(collapseMs, easing = motion.easings.standard))
+                                (enter togetherWith exit).using(
+                                    SizeTransform(
+                                        clip = false,
+                                        sizeAnimationSpec = { _, _ ->
+                                            tween(
+                                                durationMillis = if (targetState) expandMs else collapseMs,
+                                                easing = motion.easings.standard,
+                                            )
+                                        },
+                                    ),
+                                )
+                            },
+                            label = "composer-expand",
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { expanded ->
+                            if (expanded) {
+                                MomentComposer(
+                                    state = composerState,
+                                    customTimelines = timelineState.customTimelines,
+                                    clock = clock,
+                                    mediaStore = mediaStore,
+                                    onTitleChange = onTitleChange,
+                                    onContentChange = onContentChange,
+                                    onLocationChange = onLocationChange,
+                                    onPendingTagChange = onPendingTagChange,
+                                    onCommitPendingTag = onCommitPendingTag,
+                                    onRemoveTag = onRemoveTag,
+                                    onToggleTimelineAssignment = onToggleTimelineAssignment,
+                                    onToggleAddMedia = onToggleAddMedia,
+                                    onMicTap = onMicTap,
+                                    onCameraTap = onCameraTap,
+                                    onLibraryTap = onLibraryTap,
+                                    onStopRecording = onStopRecording,
+                                    onCancelRecording = onCancelRecording,
+                                    onRemoveAttachment = onRemoveAttachment,
+                                    onRetryAttachment = onRetryAttachment,
+                                    onReset = onReset,
+                                    onKeepMoment = onKeepMoment,
+                                    onMicPermissionResult = onMicPermissionResult,
+                                    onDismissMicPermissionMessage = onDismissMicPermissionMessage,
+                                    onOpenAppSettings = onOpenAppSettings,
+                                    // On Home the composer is the head of a newest-first feed, so
+                                    // the rail leaves its marker downward toward the first moment.
+                                    railContinuesBelow = isHomeSurface,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            } else {
+                                CollapsedComposerMarker(
+                                    onExpand = onExpandComposer,
+                                    railContinuesBelow = isHomeSurface,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                        }
+                    }
+                }
                 var lastSeenCount by remember { mutableIntStateOf(-1) }
                 var isProgrammaticScroll by remember { mutableStateOf(false) }
                 var lastListPosition by remember { mutableStateOf<TimelineListPosition?>(null) }
                 var returnToBottomState by remember { mutableStateOf(TimelineReturnToBottomState()) }
+                var returnToTopState by remember { mutableStateOf(TimelineReturnToTopState()) }
                 val autoScrollController = remember { TimelineAutoScrollController() }
                 val listScope = rememberCoroutineScope()
+                // The top of All moments is its section heading — the last header item above the
+                // composer. Returning there leaves the surface in its focused state rather than
+                // pulling the welcome block back into view.
+                val allMomentsTopIndex = (homeHeaderCount - 1).coerceAtLeast(0)
+                val canReturnToFeedTop by remember(listState, allMomentsTopIndex) {
+                    derivedStateOf {
+                        listState.firstVisibleItemIndex > allMomentsTopIndex ||
+                            (listState.firstVisibleItemIndex == allMomentsTopIndex &&
+                                listState.firstVisibleItemScrollOffset > 0)
+                    }
+                }
 
                 LaunchedEffect(listState.isScrollInProgress) {
                     if (!listState.isScrollInProgress && coverStretchPx > 0f) {
@@ -1079,6 +1314,20 @@ private fun TimelineContent(
                             targetValue = 0f,
                             animationSpec = tween(motion.durations.slowMillis, easing = motion.easings.standard),
                         ) { value, _ -> coverStretchPx = value }
+                    }
+                }
+
+                if (isHomeSurface && onLoadOlderMoments != null) {
+                    // Grow the bounded window before the person reaches its oldest loaded moment,
+                    // so paging is invisible. snapshotFlow + distinctUntilChanged means one request
+                    // per threshold crossing rather than one per scroll frame.
+                    LaunchedEffect(listState, moments.size, hasOlderMoments) {
+                        snapshotFlow {
+                            val last = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                            hasOlderMoments && last >= feedOffset + moments.size - HOME_FEED_PREFETCH
+                        }
+                            .distinctUntilChanged()
+                            .collect { shouldLoad -> if (shouldLoad) onLoadOlderMoments() }
                     }
                 }
 
@@ -1096,6 +1345,12 @@ private fun TimelineContent(
                                 movedTowardOlderMoments = position.movedTowardOlderThan(previous),
                                 canScrollForward = canScrollForward,
                             )
+                            returnToTopState = returnToTopState.onPositionChanged(
+                                isProgrammaticScroll = isProgrammaticScroll,
+                                movedTowardTop = position.movedTowardTopOf(previous),
+                                canReturnToTop = position.index > allMomentsTopIndex ||
+                                    (position.index == allMomentsTopIndex && position.scrollOffset > 0),
+                            )
                         }
                         lastListPosition = position
                     }
@@ -1105,15 +1360,24 @@ private fun TimelineContent(
                     val selectedIndex = targetId?.let { selected ->
                         moments.indexOfFirst { it.id == selected }.takeIf { it >= 0 }
                     }
-                    val target = selectedIndex ?: when {
-                        customName != null && moments.isEmpty() -> 0
-                        mode.allowsMutations -> moments.size
-                        else -> moments.lastIndex.coerceAtLeast(0)
-                    }
+                    val target = feedOffset + (
+                        selectedIndex ?: when {
+                            customName != null && moments.isEmpty() -> 0
+                            mode.allowsMutations && !isHomeSurface -> moments.size
+                            isHomeSurface -> 0
+                            else -> moments.lastIndex.coerceAtLeast(0)
+                        }
+                        )
                     isProgrammaticScroll = true
                     try {
                         if (dateNavigationTargetId != null) {
+                            // Calendar navigation is the one app-initiated scroll Home allows.
                             listState.animateScrollToItem(target)
+                        } else if (isHomeSurface) {
+                            // Home opens at the top of the surface and never scrolls itself: not on
+                            // entry, and not when a moment is saved (ADR-0061). Keeping the offset
+                            // is what makes the kept moment appear where the composer stood.
+                            Unit
                         } else if (lastSeenCount == -1) {
                             listState.scrollToItem(target)
                         } else if (moments.size > lastSeenCount) {
@@ -1129,7 +1393,7 @@ private fun TimelineContent(
                 }
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier
+                    modifier = listModifier
                         .fillMaxSize()
                         .pointerInput(returnToBottomState.isAutoScrolling) {
                             awaitEachGesture {
@@ -1153,6 +1417,12 @@ private fun TimelineContent(
                         },
                     contentPadding = PaddingValues(bottom = dims.spacing.huge),
                 ) {
+                    if (isHomeSurface) {
+                        homeHeader?.invoke(this)
+                        // On a newest-first feed the chronological end of the timeline is its head,
+                        // so the composer is emitted before the moments rather than after them.
+                        composerItem()
+                    }
                     itemsIndexed(items = moments, key = { _, moment -> moment.id.value }) { index, moment ->
                         if (composerState.editingMoment?.id == moment.id) {
                             MomentComposer(
@@ -1211,7 +1481,10 @@ private fun TimelineContent(
                                     null
                                 },
                                 isContextuallySelected = selectedActionMoment?.id == moment.id,
-                                hasPreviousMoment = index > 0,
+                                // On Home the composer sits above the newest moment, so the very
+                                // first card still needs rail above its dot for the composer's
+                                // rail to meet it. Elsewhere the first card starts the rail.
+                                hasPreviousMoment = index > 0 || isHomeSurface,
                                 showLocation = momentVisibility.showLocations,
                                 showTags = momentVisibility.showTags,
                                 modifier = Modifier.fillMaxWidth(),
@@ -1227,74 +1500,54 @@ private fun TimelineContent(
                             EmptyCustomTimelinePlaceholder(timelineName = customName)
                         }
                     }
-                    if (mode.allowsMutations) item(key = "composer") {
-                        AnimatedContent(
-                            targetState = isComposerExpanded,
-                            transitionSpec = {
-                                val expandMs = motion.durations.slowMillis
-                                val collapseMs = motion.durations.standardMillis
-                                val enter = expandVertically(
-                                    animationSpec = tween(expandMs, easing = motion.easings.standard),
-                                    expandFrom = Alignment.Top,
-                                ) + fadeIn(animationSpec = tween(expandMs, easing = motion.easings.standard))
-                                val exit = shrinkVertically(
-                                    animationSpec = tween(collapseMs, easing = motion.easings.standard),
-                                    shrinkTowards = Alignment.Top,
-                                ) + fadeOut(animationSpec = tween(collapseMs, easing = motion.easings.standard))
-                                (enter togetherWith exit).using(
-                                    SizeTransform(
-                                        clip = false,
-                                        sizeAnimationSpec = { _, _ ->
-                                            tween(
-                                                durationMillis = if (targetState) expandMs else collapseMs,
-                                                easing = motion.easings.standard,
-                                            )
-                                        },
-                                    ),
-                                )
-                            },
-                            label = "composer-expand",
-                            modifier = Modifier.fillMaxWidth(),
-                        ) { expanded ->
-                            if (expanded) {
-                                MomentComposer(
-                                    state = composerState,
-                                    customTimelines = timelineState.customTimelines,
-                                    clock = clock,
-                                    mediaStore = mediaStore,
-                                    onTitleChange = onTitleChange,
-                                    onContentChange = onContentChange,
-                                    onLocationChange = onLocationChange,
-                                    onPendingTagChange = onPendingTagChange,
-                                    onCommitPendingTag = onCommitPendingTag,
-                                    onRemoveTag = onRemoveTag,
-                                    onToggleTimelineAssignment = onToggleTimelineAssignment,
-                                    onToggleAddMedia = onToggleAddMedia,
-                                    onMicTap = onMicTap,
-                                    onCameraTap = onCameraTap,
-                                    onLibraryTap = onLibraryTap,
-                                    onStopRecording = onStopRecording,
-                                    onCancelRecording = onCancelRecording,
-                                    onRemoveAttachment = onRemoveAttachment,
-                                    onRetryAttachment = onRetryAttachment,
-                                    onReset = onReset,
-                                    onKeepMoment = onKeepMoment,
-                                    onMicPermissionResult = onMicPermissionResult,
-                                    onDismissMicPermissionMessage = onDismissMicPermissionMessage,
-                                    onOpenAppSettings = onOpenAppSettings,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                            } else {
-                                CollapsedComposerMarker(
-                                    onExpand = onExpandComposer,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
+                    if (!isHomeSurface) composerItem()
+                }
+                // Home's feed runs newest-first, so the end people scroll back to is the top of
+                // All moments and the affordance points up. Every other timeline runs oldest-first
+                // and keeps its return-to-newest control pointing down.
+                val showReturnToBottom = !isHomeSurface &&
+                    returnToBottomState.isVisible(listState.canScrollForward)
+                val showReturnToTop = isHomeSurface && returnToTopState.isVisible(canReturnToFeedTop)
+                if (isHomeSurface) SmallFloatingActionButton(
+                    onClick = {
+                        if (canReturnToFeedTop) {
+                            listScope.launch {
+                                isProgrammaticScroll = true
+                                try {
+                                    listState.scrollUpToItem(
+                                        targetIndex = allMomentsTopIndex,
+                                        millisPerViewport = motion.durations.short4,
+                                    )
+                                } finally {
+                                    isProgrammaticScroll = false
+                                }
                             }
                         }
-                    }
-                }
-                val showReturnToBottom = returnToBottomState.isVisible(listState.canScrollForward)
-                SmallFloatingActionButton(
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        // Clear of the floating navigation bar and `+ New`, which Home carries at
+                        // the bottom of this same surface.
+                        .padding(
+                            bottom = dims.floatingToolbar.height + dims.spacing.lg + dims.spacing.md,
+                        )
+                        .size(dims.minTouchTarget)
+                        .animateFloatingActionButton(
+                            visible = showReturnToTop,
+                            alignment = Alignment.BottomCenter,
+                        )
+                        .semantics { contentDescription = "Scroll to the top of All moments" },
+                    shape = RoundedCornerShape(dims.radii.pill),
+                    containerColor = colors.surfaceFloating,
+                    contentColor = colors.accent,
+                    elevation = FloatingActionButtonDefaults.elevation(),
+                ) {
+                    UpGlyph(
+                        size = dims.icon.lg,
+                        color = colors.accent,
+                        strokeWidth = dims.stroke.iconBold,
+                    )
+                } else SmallFloatingActionButton(
                     onClick = {
                         if (!autoScrollController.isRunning && listState.canScrollForward) {
                             returnToBottomState = returnToBottomState.onAutoScrollStarted()
@@ -1370,6 +1623,42 @@ private fun TimelineContent(
             }
         }
     }
+    }
+}
+
+/**
+ * Travels back up to [targetIndex] at a steady, readable pace of one viewport per
+ * [millisPerViewport].
+ *
+ * `animateScrollToItem` runs for a fixed duration however far it has to go, so from deep in the
+ * archive it arrives before anything has been drawn in between and reads as a teleport rather than
+ * a scroll. Moving a measured amount each frame keeps the speed the same whatever the distance, and
+ * lets the last frame be clamped to what is actually left — so the feed lands exactly on the target
+ * instead of overshooting into the welcome block above it and springing back.
+ *
+ * A user drag takes the scroll mutex at a higher priority, so touching the screen cancels this.
+ */
+private suspend fun LazyListState.scrollUpToItem(targetIndex: Int, millisPerViewport: Int) {
+    scroll {
+        var lastFrameNanos = withFrameNanos { it }
+        while (true) {
+            val viewport = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset
+            if (viewport <= 0 || millisPerViewport <= 0) break
+            // Known exactly once the target is the first visible item, and unknown while it is
+            // still somewhere above — which is why the pace, not the distance, drives each step.
+            val remaining = when {
+                firstVisibleItemIndex > targetIndex -> null
+                firstVisibleItemIndex == targetIndex -> -firstVisibleItemScrollOffset.toFloat()
+                else -> 0f
+            }
+            if (remaining != null && remaining >= 0f) break
+            val frameNanos = withFrameNanos { it }
+            val seconds = (frameNanos - lastFrameNanos) / 1_000_000_000f
+            lastFrameNanos = frameNanos
+            val pace = viewport * 1000f / millisPerViewport
+            val step = max(remaining ?: -Float.MAX_VALUE, -pace * seconds)
+            if (scrollBy(step) == 0f) break
+        }
     }
 }
 

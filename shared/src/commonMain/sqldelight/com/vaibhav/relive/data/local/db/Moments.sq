@@ -30,6 +30,31 @@ SELECT * FROM moments WHERE id = :id;
 selectAllMoments:
 SELECT * FROM moments ORDER BY created_at DESC, id DESC;
 
+-- Bounded head window for the Home surface's All moments feed (ADR-0061). The root must never
+-- observe or hydrate the complete archive, so Home reads this instead of selectAllMoments and
+-- grows :limit by one page as the person scrolls toward older Moments.
+selectAllMomentsWindow:
+SELECT * FROM moments ORDER BY created_at DESC, id DESC LIMIT :limit;
+
+-- Total archive size, so a loaded window knows whether older Moments remain.
+countAllMoments:
+SELECT COUNT(*) FROM moments;
+
+-- Cheap change-detector for the archive: enough to notice an insert or a delete without reading a
+-- single row. `created_at` is immutable, so the archive's shape is fully described by its size and
+-- its extremes. Used for Rediscover reminder scheduling, which previously hydrated every Moment.
+selectAllMomentsFingerprint:
+SELECT COUNT(*) AS moment_count,
+       COALESCE(MAX(created_at), 0) AS newest_created_at,
+       COALESCE(MIN(created_at), 0) AS oldest_created_at
+FROM moments;
+
+-- Zero-based position of a Moment in the newest-first ordering, used to size the window when the
+-- surface is re-anchored at a Moment resolved by Calendar navigation or Search.
+countMomentsNewerThan:
+SELECT COUNT(*) FROM moments
+WHERE created_at > :createdAt OR (created_at = :createdAt AND id > :id);
+
 selectMomentsMatchingQuery:
 SELECT * FROM moments
 WHERE title LIKE '%' || :query || '%' COLLATE NOCASE

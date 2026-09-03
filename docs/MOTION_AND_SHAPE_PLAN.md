@@ -24,20 +24,20 @@ new chat" at the bottom.)
 | [x] | 0.2 | Reduced-motion capability (accessibility gate) |
 | [x] | 0.3 | 10-step shape scale + shape-library availability decision |
 | [ ] | 0.4 | Skeleton loader primitive |
-| [ ] | 1.1 | Top-level fade-through (bottom nav) |
+| [ ] | 1.1 | Home ↔ Search fade-through + Home's scroll-only state change |
 | [ ] | 2.1 | Forward/backward — profile settings tree |
 | [ ] | 2.2 | Forward/backward — theme + home→profile (shared helper) |
 | [ ] | 3.1 | Container transform — photo → MediaViewer (flagship hero) |
 | [ ] | 3.2 | Container transform — MomentCard → MomentMediaGallery |
-| [ ] | 3.3 | Container transform — New-Moment FAB → composer |
-| [ ] | 3.4 | Container transform — Rediscover card → collection screen |
+| [ ] | 3.3 | `+ New` → inline composer expansion (not a container transform) |
+| [ ] | 3.4 | Container transform — Home Rediscover row card → read-only collection |
 | [x] | 4.1 | Lateral — verify media pager (no fade/parallax) |
 | [ ] | 5.1 | Enter/exit — sheets, dialogs, snackbars, menus |
-| [ ] | 5.2 | Enter/exit — scroll-driven app bar & floating controls |
+| [ ] | 5.2 | Enter/exit — Home app bar condense & floating controls |
 | [x] | 6.1 | Skeleton loaders wired into loading states |
 | [ ] | 7.1 | Shape morph — favorite toggle |
 | [ ] | 7.2 | Shape morph — recording/progress |
-| [ ] | 7.3 | Shape morph — floating toolbar / bottom-nav selection |
+| [ ] | 7.3 | Shape morph — floating toolbar destination & create control |
 | [ ] | 8.1 | Optical roundness audit + fix (nested cards) |
 | [ ] | 8.2 | Decorative shape — avatar mask & photo crop (sparing) |
 | [ ] | 9.1 | Fix overlapping crossfades |
@@ -54,10 +54,13 @@ Derived from the M3 motion & shape guidance, filtered through Relive's aesthetic
    `ReliveShapes`). This matches the existing strict-token rule in
    [`docs/DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md).
 2. **One pattern per navigation type.** Same transition for the same kind of move,
-   app-wide. Hierarchy = forward/backward. Peers = lateral. Top-level = fade-through.
-   Expand-to-detail hero = container transform. Components in context = enter/exit.
+   app-wide. Hierarchy = forward/backward. Peers = lateral. Top-level (Home ↔ Search) =
+   fade-through. Expand-to-detail hero = container transform. Components in context =
+   enter/exit. Reversible in-surface state change = **no transition pattern at all**
+   (principle 10) — the sixth entry in the taxonomy, and the one that animates nothing.
 3. **No jump cuts.** Instant screen swaps are disorienting; every navigation gets a
-   transition. (Exception: pure-efficiency menus.)
+   transition. (Exceptions: pure-efficiency menus, and the Home surface's scroll-state
+   change, which is not a navigation — see principle 10.)
 4. **Clean fades.** Fade content fully out before fading new content in. Never leave
    two partially-transparent layers overlapping. Existing crossfades that run in
    parallel are a defect to fix.
@@ -69,9 +72,24 @@ Derived from the M3 motion & shape guidance, filtered through Relive's aesthetic
 7. **Restraint on shape tension.** Relive is warm and rounded (photo-print, cream).
    Use shape morph for **interaction and progress feedback**; use decorative shapes
    only for avatar masking and photo cropping. Do not scatter abstract/square shapes.
-8. **Stable layouts.** Content must not pop in or shift. Use skeleton loaders.
+8. **Stable layouts.** Content must not pop in or shift. Use skeleton loaders. The All
+   moments feed on Home is bounded, windowed and paged, so each further window must land
+   behind a trailing page-boundary skeleton of the right height rather than appearing
+   unannounced.
 9. **Optical roundness.** Nested rounded objects use different radii:
    `inner = outer − padding`.
+10. **Reversible in-surface state changes are scroll, not motion.** Relive has one root:
+    the **Home surface**, a single scroll container holding the welcome block, the
+    Rediscover collection row, the `All moments` heading, the inline composer and the
+    All moments feed. Its two states — the **Home top state** and **focused All
+    moments** — are scroll offsets on that one container, never separate screens, so
+    moving between them raises no navigation event, no route change and no back-stack
+    entry. It therefore uses **no fade-through, no container transform and no
+    shared-axis pattern**: the motion *is* the user's scroll. Nothing may animate the
+    surface between the two states, and nothing may scroll it programmatically — the app
+    opens at offset zero, and the welcome + Rediscover sections return only when the user
+    scrolls back up. The single exception is the minimum seat-in-view scroll `+ New`
+    performs (Step 3.3). See ADR-0061 in [`docs/DECISIONS.md`](DECISIONS.md).
 
 ### Motion token reference (M3 legacy easing/duration system)
 
@@ -92,7 +110,8 @@ Easing sets:
 Suggested pairings: begin+end on screen → Emphasized 500ms · enter → Emphasized
 decelerate 400ms · exit permanently → Emphasized accelerate 200ms. Small/utility →
 Standard set. Container transform (card→fullscreen) → Emphasized ~500ms. FAB→sheet →
-Emphasized 400ms. Enter longer than exit, always.
+Emphasized 400ms (Relive has no sheet composer — that same 400ms drives the inline
+composer's in-place expand, Step 3.3). Enter longer than exit, always.
 
 ### Corner radius scale (M3 10-step)
 
@@ -200,46 +219,70 @@ decision on whether `MaterialShapes`/`Morph` is usable in common code.
 > - Respect `ReliveTheme.reduceMotion`: when reduced, show a static placeholder (no
 >   pulse).
 > - Provide skeleton layouts that mirror real content silhouettes:
->   `TimelineHomeSkeleton`, `TimelineDetailSkeleton`, `RediscoverSkeleton` — matching
->   the card/list geometry so nothing shifts when real content fades in.
+>   `HomeSurfaceSkeleton` (welcome block, `Relive your memories` heading, the Rediscover
+>   collection row, the `All moments` heading and the first page of feed cards — the
+>   Rediscover row's skeleton is a region inside it, not a screen of its own) and
+>   `TimelineDetailSkeleton` — matching the card/list geometry so nothing shifts when
+>   real content fades in. Add a short `AllMomentsPageSkeleton` strip for the next
+>   window of the bounded All moments feed, sized so an appended page never shifts what
+>   is already on screen.
 > - When content loads, cross-fade real content in over the skeleton with a short
 >   `medium1` fade (clean fade: skeleton out, content in).
 >
 > Do not wire into screens yet (Phase 6 does that); just build the primitives with a
 > `@Preview`.
 
-**Acceptance:** skeleton primitive + three silhouette variants render in preview;
-pulse animates; reduced-motion shows static.
+**Acceptance:** skeleton primitive + the silhouette variants (Home surface, timeline
+detail, feed page) render in preview; pulse animates; reduced-motion shows static.
 
 ---
 
-## Phase 1 — Top-level transition (bottom navigation)
+## Phase 1 — Top-level transition (Home ↔ Search) and the Home surface's scroll state
 
-### Step 1.1 — Fade-through between Timelines / Rediscover / Search
+### Step 1.1 — Fade-through between Home, Timelines and Search; scroll (never a transition) inside Home
 
 **Prompt:**
-> Wrap the top-level destination swap in `shared/src/commonMain/kotlin/com/vaibhav/relive/App.kt`
-> (the `when (topLevel)` block that currently renders `TimelineHomeScreen` /
-> `RediscoverScreen` / `SearchScreen` instantly, around lines 423–487) in an
-> `AnimatedContent` implementing the **M3 top-level / fade-through** pattern.
+> Relive has a single root: the **Home surface**, one vertically scrollable container
+> rendering the welcome block, the `Relive your memories` heading with the horizontally
+> scrollable Rediscover collection row (`Favourites`, `On This Day`, `From Your Past`,
+> `All Photos`), the `All moments` heading, the inline composer at the head of the feed,
+> and the newest-first All moments feed. Rediscover is a row inside Home, not a
+> destination. This step has two jobs.
+>
+> **1. The top-level swap (Home ↔ Search).** In
+> `shared/src/commonMain/kotlin/com/vaibhav/relive/App.kt`, wrap the remaining
+> destination swap (around lines 423–487) in an `AnimatedContent` implementing the
+> **M3 top-level / fade-through** pattern.
 >
 > - Motion: outgoing content **fades out first** (`emphasizedAccelerate`, `short4`
 >   ≈200ms) with a slight scale-down to 92%; then incoming content **fades in**
 >   (`emphasizedDecelerate`, `medium2` ≈300ms) scaling up from 92% to 100%. Use
 >   `AnimatedContent`'s sequential timing so the fades do NOT overlap (clean fade).
-> - No horizontal slide — top-level destinations are unrelated; a slide would imply
->   swipeable peers and conflict with carousels/list swipes. Do **not** enable
->   swipe-to-switch between top-level tabs.
+> - No horizontal slide — Home, Timelines and Search are unrelated; a slide would imply swipeable
+>   peers and conflict with carousels/list swipes. Do **not** enable swipe-to-switch
+>   between destinations, and do not add horizontal paging at the Home root — the only
+>   root-level gesture is vertical scroll.
 > - Route the spec through `ReliveMotion.spec(reduceMotion, …)` so reduced motion
 >   becomes a plain fade.
-> - Key the `AnimatedContent` on `topLevel` only. Keep list state (`homeListState`,
->   etc.) hoisted as it already is so scroll positions survive.
+> - Keep the hoisted list state (`homeListState`, etc.) as it already is, so Home's
+>   scroll offset survives a trip to Search, Profile or a collection and back —
+>   returning must never snap Home to the top.
 >
-> Verify the bottom bar itself stays put (it should remain outside the animated
-> content).
+> **2. Inside Home: no transition at all.** The Home top state and focused All moments
+> are scroll offsets on ONE scroll container, not two screens. Do **not** wrap them in
+> `AnimatedContent`; do not fade, container-transform or shared-axis between them. Hoist
+> a single `homeListState` for the whole surface and never scroll it programmatically —
+> the app opens at offset zero, and welcome + Rediscover come back only when the user
+> scrolls back up. (`+ New`'s minimum seat-in-view scroll in Step 3.3 is the one
+> exception.)
+>
+> Verify the floating navigation toolbar itself stays put (it should remain outside the
+> animated content).
 
-**Acceptance:** switching tabs fades cleanly with no slide, no overlap; scroll
-positions preserved; reduced motion = simple fade.
+**Acceptance:** Home ↔ Search fades cleanly with no slide, no overlap; scroll positions
+preserved in both directions; scrolling down from the Home top state carries welcome +
+Rediscover offscreen into focused All moments with no screen change, no route change and
+no animation of its own, and scrolling up brings them back; reduced motion = simple fade.
 
 ---
 
@@ -268,7 +311,7 @@ positions preserved; reduced motion = simple fade.
 **Acceptance:** drilling into a settings page slides forward; back slides backward;
 depth-based direction correct; reduced motion = fade.
 
-### Step 2.2 — Timeline detail → Timeline theme, and Home → Profile
+### Step 2.2 — Timeline detail → Timeline theme, and the Home surface → Profile
 
 **Prompt:**
 > Apply the same forward/backward pattern (from Step 2.1, ideally via a shared
@@ -276,8 +319,9 @@ depth-based direction correct; reduced motion = fade.
 > `ui/theme/ReliveTransitions.kt`) to:
 > - `TimelinesDestination.TimelineDetail` ↔ `TimelinesDestination.TimelineTheme`
 >   (App.kt ~line 350).
-> - Opening Profile from Timeline Home (`profileNavigation.openProfile()`), and
->   returning.
+> - Opening Profile from the Home surface (`profileNavigation.openProfile()`), and
+>   returning — which must restore Home at the scroll offset it was left at (focused All
+>   moments stays focused); never scroll back to the welcome/Rediscover top state.
 >
 > Extract the forward/backward enter/exit builders into `ReliveTransitions.kt` so all
 > hierarchical navigations share one implementation and stay consistent.
@@ -333,36 +377,61 @@ collapses back to the same thumbnail; 500ms emphasized; reduced motion = fade.
 
 **Acceptance:** opening a moment's gallery grows from its card and collapses back.
 
-### Step 3.3 — New-Moment FAB → composer
+### Step 3.3 — `+ New` → inline composer expansion (not a container transform)
 
 **Prompt:**
-> Apply a container transform from the New-Moment control
+> `+ New` is **not** a navigation and gets **no** container transform — it is listed
+> here only to keep the step numbering. Tapping the New-Moment control
 > (`ui/components/navigation/GlobalNewMomentButton.kt` / the floating toolbar's create
-> action) into the `MomentComposer` surface (TimelineScreen.kt ~line 1063 / 1135).
+> action) puts the Home surface into focused All moments and expands the **existing**
+> inline composer in place, from the timeline rail at the head of the All moments feed
+> (TimelineScreen.kt ~line 1063 / 1135).
 >
-> - The FAB is the persistent container: its shape and (optionally) its plus icon
->   morph into the composer sheet. This is the guidance's explicit "FAB with persistent
->   container and icon" case.
-> - Emphasized easing at `medium4` (400ms) — the FAB→sheet canonical duration.
-> - On dismiss, collapse the composer back into the FAB.
+> - The only animated element in the whole flow is the composer's own in-place
+>   expand/collapse: the rail's collapsed `+` marker grows along y into the composer row,
+>   inside the feed. No modal, no dialog, no bottom sheet, no separate composer screen,
+>   no second composer instance, and no morph of the create control into a surface.
+> - Any movement of the surface is the minimum scroll needed to seat the composer and
+>   its Keep Moment button in view — never a scroll to the top, to the newest Moment, or
+>   across the archive.
+> - Emphasized easing at `medium4` (400ms) for the inline expand along y; exit
+>   `emphasizedAccelerate` at `short4` (200ms) for the collapse.
+> - Per ADR-0059 the flow requests no field focus and opens no IME, so there is no
+>   focus-handoff frame to animate around and no settled-frame sequence to stage.
+> - `+ New` is hidden while the composer is expanded (Keep Moment is then the primary
+>   action) — fade it out cleanly rather than cutting.
+> - On **Keep Moment** or **Back**, the composer resets and collapses back to its rail
+>   `+` marker while the user **stays in focused All moments at the same scroll offset**,
+>   with the saved Moment rendering in place in the timeline. There is no app-initiated
+>   scroll of any kind, and the welcome + Rediscover sections are never restored — they
+>   return only when the user scrolls back up.
 > - Coordinate with the existing composer `AnimatedContent` (there is already an
 >   `AnimatedContent` around the composer at TimelineScreen.kt ~905/1135 — reconcile so
 >   there is one coherent transition, not two competing ones).
-> - Reduced motion = fade + no shape morph.
+> - Reduced motion = short fade between collapsed and expanded, no growth.
 
-**Acceptance:** tapping create grows the composer out of the FAB and collapses back;
-one coherent transition (no double-animation).
+**Acceptance:** tapping `+ New` lands in focused All moments with the inline composer
+expanded from the timeline rail (no sheet, no navigation, no IME); Keep Moment and Back
+both collapse it in place and leave the user exactly where they were with the new Moment
+visible; one coherent transition (no double-animation).
 
-### Step 3.4 — Rediscover collection card → collection screen
+### Step 3.4 — Home Rediscover row card → read-only collection
 
 **Prompt:**
-> Apply container transform from a Rediscover collection card (Favorites / On This Day
-> / From Your Past cards) into its full collection screen. These open via
-> `rediscoverDestination` changes in `App.kt` (~lines 455–463) that route into a
-> `TimelineScreen` in read-only mode. Share the collection's cover image as the hero.
-> Emphasized, `long1` (450ms). Reduced motion = fade.
+> Apply container transform from a card in the Home surface's Rediscover row
+> (`Favourites` / `On This Day` / `From Your Past` / `All Photos`) into its full
+> read-only collection screen. These open from collection-open events raised by the row
+> itself — Rediscover is a section inside Home, not a root with its own
+> `rediscoverDestination` state — routing into a `TimelineScreen` in read-only mode.
+> Share the collection's cover image as the hero. Emphasized, `long1` (450ms). Reduced
+> motion = fade.
+>
+> `All Photos` is one of these bounded, read-only collections. It is **not** an entry
+> point to the editable All moments feed, which already lives on the Home surface
+> directly beneath the row — nothing in this step may open that feed.
 
-**Acceptance:** each Rediscover collection expands from its card and collapses back.
+**Acceptance:** each Rediscover collection expands from its card and collapses back to
+the Home surface at the scroll offset it was opened from.
 
 ---
 
@@ -372,7 +441,9 @@ one coherent transition (no double-animation).
 
 **Prompt:**
 > Audit the `HorizontalPager` in `ui/components/viewer/MediaViewer.kt` (and any pager
-> in Rediscover carousels). Confirm swiping between a Moment's attachments uses a
+> in the Home surface's horizontally scrollable Rediscover collection row, whose
+> horizontal scroll must not fight the surface's own vertical scroll). Confirm swiping
+> between a Moment's attachments uses a
 > **lateral** transition: content slides horizontally in unison with **no fade and no
 > parallax** (fade would weaken the swipe affordance and mimic forward/backward). Use
 > the Standard easing set for the settle animation. Ensure zoomed-image state still
@@ -397,7 +468,8 @@ lock intact.
 >   Enter `emphasizedDecelerate` `medium4` (400ms); exit `emphasizedAccelerate`
 >   `short4` (200ms). A menu expands from the edge nearest its anchor; a bottom
 >   snackbar expands upward.
-> - **Beyond screen bounds** (composer sheet, pickers in `ComposerOverlays.kt`): slide
+> - **Beyond screen bounds** (pickers in `ComposerOverlays.kt`; the inline composer is
+>   **not** a sheet — it expands within the feed, see Step 3.3): slide
 >   on from the bottom (sheets enter from bottom — sensible spatial model), slide off
 >   on dismiss. Enter decelerate 400ms, exit accelerate 200ms. **Do not fade the sheet
 >   as it slides** (fading a sliding sheet creates messy crossfade frames — guidance
@@ -407,26 +479,42 @@ lock intact.
 >
 > Note: this pattern is for components in context, NOT for screen-to-screen navigation.
 
-**Acceptance:** sheets slide (no fade), dialogs expand along an axis (no scale/z),
-exits are faster than enters, reduced motion degrades to fades.
+**Acceptance:** picker sheets slide (no fade), the inline composer expands/collapses
+along y inside the feed (no sheet), dialogs expand along an axis (no scale/z), exits are
+faster than enters, reduced motion degrades to fades.
 
-### Step 5.2 — Scroll-driven app bar & floating controls
+### Step 5.2 — Home app bar condense & floating controls
 
 **Prompt:**
-> Make the top app bar (`ReliveWordmarkAppBar`) and the floating bottom controls
-> (`ReliveFloatingBottomControls` / `ReliveBottomBar.kt`) slide off-screen on scroll
-> down and back on scroll up, using the enter/exit "beyond screen bounds" motion. The
-> app already tracks `navigationToolbarExpanded` in `App.kt` and passes
-> `onNavigationToolbarExpand/Collapse` into each screen — drive the slide from that
-> state instead of instantly toggling.
+> The Relive app bar (`ReliveWordmarkAppBar`) stays **pinned across both Home states**
+> and never leaves the screen: as the surface scrolls it condenses to a compact form,
+> and in focused All moments the `All moments` section heading pins directly beneath it
+> (both painted with `color.bg.header`). Animate the condense, and the heading's pinning,
+> from the Home surface's own scroll offset, so the surface has exactly one scroll-driven
+> system — chrome must never re-reveal or restore anything on an upward flick; welcome +
+> Rediscover come back only when the user actually reaches the top.
 >
-> - Bar slides up/off the top; bottom controls slide down/off the bottom, emphasizing
->   their shape as they leave (expand/collapse along y).
+> The floating bottom controls (`ReliveFloatingBottomControls` / `ReliveBottomBar.kt`)
+> keep their scroll behaviour: the navigation toolbar collapses to the active
+> destination icon on scroll and expands again on reverse scroll, using the enter/exit
+> "within screen bounds" expand/collapse — nothing slides off-screen. The app already
+> tracks `navigationToolbarExpanded` in `App.kt` and passes
+> `onNavigationToolbarExpand/Collapse` into the scrolling surfaces — drive the animation
+> from that state instead of instantly toggling.
+>
+> - App bar: condense/expand along y, no translation off the top.
+> - Toolbar: expand/collapse along x around the active destination icon.
+> - `+ New` presentation is a function of **Home state**, not raw scroll direction: it
+>   does not collapse to a bare Add icon merely because the user scrolled down into
+>   focused All moments, and it fades out entirely while the inline composer is expanded.
 > - Enter decelerate `medium2`, exit accelerate `short4`.
-> - Reduced motion: fade instead of slide.
+> - Reduced motion: fade or an instant state change instead of slide/condense.
 
-**Acceptance:** scrolling hides/reveals bars with a slide tied to existing expand
-state; reduced motion = fade.
+**Acceptance:** the app bar stays pinned and condenses rather than leaving the screen,
+with the `All moments` heading pinned beneath it in focused All moments; the floating
+toolbar collapses/expands on scroll without disturbing the surface's own scroll or
+restoring the welcome + Rediscover state; `+ New` follows Home state, not scroll
+direction; reduced motion = fade.
 
 ---
 
@@ -438,11 +526,16 @@ state; reduced motion = fade.
 > Replace empty/loading placeholders with the skeleton primitives from Step 0.4.
 >
 > - `ui/screens/TimelineHomeScreen.kt`: `TimelineHomeLoading()` is currently an empty
->   `Box` (~line 536). Replace it with `TimelineHomeSkeleton` mirroring the timeline
->   card layout. Cross-fade real content in (`medium1`) when `TimelineHomeContent.Loaded`
->   arrives.
-> - Do the same for Rediscover, Search, and MediaStorage loading states (audit each
->   `Loading` branch found in those screens).
+>   `Box` (~line 536). Replace it with `HomeSurfaceSkeleton` mirroring the whole Home
+>   surface — welcome block, `Relive your memories` heading, Rediscover collection row,
+>   `All moments` heading and the first page of timeline cards. Cross-fade real content
+>   in (`medium1`) when `TimelineHomeContent.Loaded` arrives.
+> - The All moments feed is bounded, windowed and paged, and the root never hydrates the
+>   complete archive on launch: show the first-page skeleton on launch and the short
+>   `AllMomentsPageSkeleton` at each page boundary as further windows load, so appended
+>   pages never pop in or shift what is already on screen.
+> - Do the same for the Rediscover collection row (an in-surface region, not a screen),
+>   Search, and MediaStorage loading states (audit each `Loading` branch found there).
 > - Ensure the skeleton silhouette matches final geometry so nothing shifts on load
 >   (no pop-in).
 > - Reduced motion: static placeholders (no pulse), still cross-fade content in.
@@ -485,18 +578,19 @@ fade.
 **Acceptance:** recording state is communicated by a morphing shape; reduced motion
 falls back.
 
-### Step 7.3 — Floating toolbar / bottom-nav selection morph
+### Step 7.3 — Floating toolbar destination & create-control morph
 
 **Prompt:**
 > In `ui/components/navigation/ReliveBottomBar.kt` and the floating toolbar, morph the
-> selection indicator shape as the user changes top-level destination or presses the
-> create control (the M3 "standard button group uses shape morph to show interaction"
-> case). The New-Moment control's compact→expanded change already animates width; add a
-> shape morph so the container feels tactile on press. Keep motion quick and subtle.
-> Reduced motion: no morph.
+> selection indicator shape as the user moves between the toolbar's two destinations
+> (Home / Timelines / Search) or presses the create control (the M3 "standard button group uses
+> shape morph to show interaction" case). There is no Rediscover destination to select —
+> Rediscover is a row inside Home. The New-Moment control's compact→expanded change
+> already animates width; add a shape morph so the container feels tactile on press.
+> Keep motion quick and subtle. Reduced motion: no morph.
 
-**Acceptance:** selecting a destination / pressing create morphs the indicator/
-container; reduced motion static.
+**Acceptance:** moving between Home, Timelines and Search, or pressing create, morphs the
+indicator/container; reduced motion static.
 
 ---
 
@@ -565,8 +659,15 @@ transitions; durations/easings come from tokens.
 > - Grep for any remaining hardcoded `tween(...)`, raw millisecond literals, or
 >   `RoundedCornerShape(<dp literal>)` in `ui/` and route them through tokens.
 > - Verify every navigation type uses exactly one pattern app-wide (hierarchy =
->   forward/backward, peers = lateral, top-level = fade-through, hero expand = container
->   transform, in-context = enter/exit). Fix any mismatch.
+>   forward/backward, peers = lateral, top-level Home ↔ Search = fade-through, hero
+>   expand = container transform, in-context = enter/exit) — and that the Home surface's
+>   own state change uses none of them: it is scroll only, with no fade-through, no
+>   container transform and no shared axis. Fix any mismatch.
+> - Walk the Home invariants: the app opens at the top of Home at scroll offset zero with
+>   no programmatic scroll; `+ New` expands the inline composer in place with only a
+>   seat-in-view scroll; Keep Moment and Back collapse it and leave the user in focused
+>   All moments at the same offset; welcome + Rediscover return only on a manual scroll
+>   back to the top; Home's offset survives Search, Profile and collection round trips.
 > - Enable OS reduced motion and walk every flow: confirm all transitions degrade to
 >   subtle fades and all shape morphs/parallax are disabled.
 > - Confirm no jump cuts remain (every screen change animates).
@@ -581,7 +682,8 @@ throughout; design system doc updated.
 ## Suggested order & grouping
 
 1. **Phase 0** (all four steps) — nothing else works without it.
-2. **Phase 1** + **Phase 2** — cheap, high perceived-quality lift across the whole app.
+2. **Phase 1** (Home ↔ Search fade-through, plus establishing Home as one scroll
+   container) + **Phase 2** — cheap, high perceived-quality lift across the whole app.
 3. **Phase 3.1** — flagship hero (photo→viewer). Ship and feel it before the rest.
 4. **Phase 6** (skeletons) — removes the "empty box" jank.
 5. **Phase 3.2–3.4**, **Phase 5** — remaining transforms + component motion.
@@ -625,6 +727,9 @@ step in the Progress status table, and suggest a commit message.
 
 - Every navigation and component transition uses a tokenized M3 pattern; no jump cuts,
   no overlapping crossfades.
+- The Home surface's two states are reached by the user's scroll alone — no transition,
+  no route change, no programmatic scroll — and nothing but that scroll restores the
+  welcome + Rediscover top state.
 - Reduced-motion users get clean fades everywhere; no motion sickness triggers.
 - Loading states show matching skeletons; no layout shift.
 - Shape morph rewards interaction (favorite, record, select) and progress.

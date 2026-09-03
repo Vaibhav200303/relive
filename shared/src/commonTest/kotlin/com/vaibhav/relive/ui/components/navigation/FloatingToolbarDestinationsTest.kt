@@ -23,23 +23,23 @@ class FloatingToolbarDestinationsTest {
     }
 
     @Test
-    fun timelineKeepsLaterDestinationsInTrailingOrder() {
-        val destinations = floatingToolbarDestinations(ReliveTopLevelDestination.Timelines)
+    fun homeKeepsLaterDestinationsInTrailingOrder() {
+        val destinations = floatingToolbarDestinations(ReliveTopLevelDestination.Home)
 
         assertEquals(emptyList(), destinations.leading)
-        assertEquals(ReliveTopLevelDestination.Timelines, destinations.active)
+        assertEquals(ReliveTopLevelDestination.Home, destinations.active)
         assertEquals(
-            listOf(ReliveTopLevelDestination.Rediscover, ReliveTopLevelDestination.Search),
+            listOf(ReliveTopLevelDestination.Timelines, ReliveTopLevelDestination.Search),
             destinations.trailing,
         )
     }
 
     @Test
-    fun rediscoverKeepsTheExpandedStripInDestinationOrder() {
-        val destinations = floatingToolbarDestinations(ReliveTopLevelDestination.Rediscover)
+    fun timelinesKeepsTheExpandedStripInDestinationOrder() {
+        val destinations = floatingToolbarDestinations(ReliveTopLevelDestination.Timelines)
 
-        assertEquals(listOf(ReliveTopLevelDestination.Timelines), destinations.leading)
-        assertEquals(ReliveTopLevelDestination.Rediscover, destinations.active)
+        assertEquals(listOf(ReliveTopLevelDestination.Home), destinations.leading)
+        assertEquals(ReliveTopLevelDestination.Timelines, destinations.active)
         assertEquals(listOf(ReliveTopLevelDestination.Search), destinations.trailing)
     }
 
@@ -48,7 +48,7 @@ class FloatingToolbarDestinationsTest {
         val destinations = floatingToolbarDestinations(ReliveTopLevelDestination.Search)
 
         assertEquals(
-            listOf(ReliveTopLevelDestination.Timelines, ReliveTopLevelDestination.Rediscover),
+            listOf(ReliveTopLevelDestination.Home, ReliveTopLevelDestination.Timelines),
             destinations.leading,
         )
         assertEquals(ReliveTopLevelDestination.Search, destinations.active)

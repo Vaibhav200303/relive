@@ -2,7 +2,6 @@ package com.vaibhav.relive.data.settings
 
 import android.content.Context
 import com.vaibhav.relive.domain.model.BehaviorPreferences
-import com.vaibhav.relive.domain.model.StartDestination
 import com.vaibhav.relive.domain.repository.BehaviorPreferencesRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,12 +15,6 @@ class AndroidBehaviorPreferencesRepository(context: Context) : BehaviorPreferenc
     private val mutablePreferences = MutableStateFlow(readPreferences())
 
     override val preferences: StateFlow<BehaviorPreferences> = mutablePreferences.asStateFlow()
-
-    override suspend fun setStartDestination(destination: StartDestination): Result<Unit> = persist(
-        key = START_DESTINATION_KEY,
-        value = destination.encodePreference(),
-        update = { it.copy(startDestination = destination) },
-    )
 
     override suspend fun setConfirmBeforeDiscarding(enabled: Boolean): Result<Unit> = persistBoolean(
         key = CONFIRM_BEFORE_DISCARDING_KEY,
@@ -71,7 +64,6 @@ class AndroidBehaviorPreferencesRepository(context: Context) : BehaviorPreferenc
     }
 
     private fun readPreferences(): BehaviorPreferences = decodeBehaviorPreferences(
-        startDestination = storage.getString(START_DESTINATION_KEY, null),
         confirmBeforeDiscarding = storage.getString(CONFIRM_BEFORE_DISCARDING_KEY, null),
         showLocations = storage.getString(SHOW_LOCATIONS_KEY, null),
         showTags = storage.getString(SHOW_TAGS_KEY, null),

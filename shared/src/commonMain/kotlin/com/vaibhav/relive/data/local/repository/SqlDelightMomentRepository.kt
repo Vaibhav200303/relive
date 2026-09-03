@@ -2,6 +2,7 @@ package com.vaibhav.relive.data.local.repository
 
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
+import app.cash.sqldelight.coroutines.mapToOne
 import com.vaibhav.relive.data.local.db.Moments
 import com.vaibhav.relive.data.local.db.ReliveDatabase
 import com.vaibhav.relive.data.local.mapper.decodeTag
@@ -108,6 +109,38 @@ class SqlDelightMomentRepository(
             .mapToList(dispatcher)
             .map { rows -> withContext(dispatcher) { rows.map { hydrate(it) } } }
 
+    override fun observeAllWindow(limit: Int): Flow<List<Moment>> =
+        database.momentsQueries.selectAllMomentsWindow(limit.toLong())
+            .asFlow()
+            .mapToList(dispatcher)
+            .map { rows -> withContext(dispatcher) { hydrateAll(rows) } }
+
+    override fun observeAllCount(): Flow<Long> =
+        database.momentsQueries.countAllMoments()
+            .asFlow()
+            .mapToOne(dispatcher)
+
+    override fun observeArchiveFingerprint(): Flow<Long> =
+        database.momentsQueries.selectAllMomentsFingerprint()
+            .asFlow()
+            .mapToOne(dispatcher)
+            .map { row ->
+                var value = 1L
+                value = 31 * value + row.moment_count
+                value = 31 * value + row.newest_created_at
+                value = 31 * value + row.oldest_created_at
+                value
+            }
+
+    override suspend fun positionInAll(id: MomentId, createdAt: Instant): Long? =
+        withContext(dispatcher) {
+            database.momentsQueries.selectMomentById(id.value).executeAsOneOrNull()
+                ?: return@withContext null
+            database.momentsQueries
+                .countMomentsNewerThan(createdAt.epochMilliseconds, id.value)
+                .executeAsOne()
+        }
+
     override fun observeSearch(query: String): Flow<List<Moment>> =
         database.momentsQueries.selectMomentsMatchingQuery(query)
             .asFlow()
@@ -157,6 +190,29 @@ class SqlDelightMomentRepository(
             .asFlow()
             .mapToList(dispatcher)
             .map { rows -> withContext(dispatcher) { rows.map { hydrate(it) } } }
+
+    /**
+     * Hydrates a whole loaded window in three queries rather than `1 + 2N`: the rows are already
+     * in hand, and their tags and attachments are batch-loaded by id and grouped in memory. This
+     * is the shared read-model contract the Rediscover shelves already follow (ARCHITECTURE.md 14).
+     */
+    private fun hydrateAll(rows: List<Moments>): List<Moment> {
+        if (rows.isEmpty()) return emptyList()
+        val ids = rows.map { it.id }
+        val tagsByMoment = database.momentTagsQueries.selectTagsForMomentIds(ids)
+            .executeAsList()
+            .groupBy({ it.moment_id }) { decodeTag(it.canonical, it.label) }
+        val attachmentsByMoment = database.mediaAttachmentsQueries
+            .selectAttachmentsForMomentIds(ids)
+            .executeAsList()
+            .groupBy { it.moment_id }
+        return rows.map { row ->
+            row.toDomain(
+                tags = tagsByMoment[row.id].orEmpty(),
+                attachments = attachmentsByMoment[row.id].orEmpty().map { it.toDomain() },
+            )
+        }
+    }
 
     private fun hydrate(row: Moments): Moment {
         val tags = database.momentTagsQueries.selectTagsForMoment(row.id).executeAsList()

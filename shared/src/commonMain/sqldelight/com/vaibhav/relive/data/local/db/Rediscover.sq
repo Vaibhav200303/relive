@@ -23,6 +23,30 @@ WHERE m.is_favorite = 1
 ORDER BY m.created_at DESC, m.id DESC, a.sort_index ASC
 LIMIT :limit;
 
+-- All Photos: the bounded read-only collection of Moments carrying at least one image or video
+-- attachment (ADR-0061). Audio-only and text-only Moments are excluded.
+allPhotosMomentCount:
+SELECT COUNT(*) FROM moments m
+WHERE EXISTS (
+    SELECT 1 FROM media_attachments a
+    WHERE a.moment_id = m.id AND a.media_type IN ('Image', 'Video')
+);
+
+selectAllPhotosMoments:
+SELECT m.* FROM moments m
+WHERE EXISTS (
+    SELECT 1 FROM media_attachments a
+    WHERE a.moment_id = m.id AND a.media_type IN ('Image', 'Video')
+)
+ORDER BY m.created_at DESC, m.id DESC;
+
+selectAllPhotosVisualAttachments:
+SELECT a.* FROM media_attachments a
+JOIN moments m ON m.id = a.moment_id
+WHERE a.media_type IN ('Image', 'Video')
+ORDER BY m.created_at DESC, m.id DESC, a.sort_index ASC
+LIMIT :limit;
+
 -- SQLite's localtime conversion intentionally follows the device's current local
 -- calendar, matching Relive's existing editorial date formatters.
 selectOnThisDayCore:

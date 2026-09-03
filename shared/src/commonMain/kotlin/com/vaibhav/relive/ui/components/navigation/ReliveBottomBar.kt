@@ -44,7 +44,7 @@ import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveOpacity
 import com.vaibhav.relive.ui.theme.ReliveDimensions
 
-enum class ReliveTopLevelDestination { Timelines, Rediscover, Search }
+enum class ReliveTopLevelDestination { Home, Timelines, Search }
 
 internal data class FloatingToolbarDestinations(
     val leading: List<ReliveTopLevelDestination>,
@@ -248,8 +248,8 @@ private fun DestinationAction(
 
 private val ReliveTopLevelDestination.label: String
     get() = when (this) {
+        ReliveTopLevelDestination.Home -> "Home"
         ReliveTopLevelDestination.Timelines -> "Timelines"
-        ReliveTopLevelDestination.Rediscover -> "Rediscover"
         ReliveTopLevelDestination.Search -> "Search"
     }
 
@@ -266,10 +266,14 @@ private fun DestinationGlyph(destination: ReliveTopLevelDestination, tint: Color
                     drawRect(tint, topLeft = androidx.compose.ui.geometry.Offset(inset + x * (cell + inset), inset + y * (cell + inset)), size = androidx.compose.ui.geometry.Size(cell, cell), style = stroke)
                 }
             }
-        } else if (destination == ReliveTopLevelDestination.Rediscover) {
-            drawCircle(tint, radius = size.width * 0.34f, style = stroke)
-            drawLine(tint, androidx.compose.ui.geometry.Offset(size.width * 0.5f, size.height * 0.5f), androidx.compose.ui.geometry.Offset(size.width * 0.5f, size.height * 0.27f), strokeWidth = stroke.width)
-            drawLine(tint, androidx.compose.ui.geometry.Offset(size.width * 0.5f, size.height * 0.5f), androidx.compose.ui.geometry.Offset(size.width * 0.68f, size.height * 0.62f), strokeWidth = stroke.width)
+        } else if (destination == ReliveTopLevelDestination.Home) {
+            // A rail with two dots: the Home surface is the archive's own timeline.
+            val railX = size.width * 0.3f
+            drawLine(tint, androidx.compose.ui.geometry.Offset(railX, inset), androidx.compose.ui.geometry.Offset(railX, size.height - inset), strokeWidth = stroke.width)
+            listOf(0.33f, 0.7f).forEach { y ->
+                drawCircle(tint, radius = size.width * 0.09f, center = androidx.compose.ui.geometry.Offset(railX, size.height * y))
+                drawLine(tint, androidx.compose.ui.geometry.Offset(size.width * 0.5f, size.height * y), androidx.compose.ui.geometry.Offset(size.width - inset, size.height * y), strokeWidth = stroke.width)
+            }
         } else {
             val radius = size.width * 0.25f
             val center = androidx.compose.ui.geometry.Offset(size.width * 0.42f, size.height * 0.42f)

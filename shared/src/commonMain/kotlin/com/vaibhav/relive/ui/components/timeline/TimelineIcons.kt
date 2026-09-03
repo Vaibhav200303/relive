@@ -149,6 +149,18 @@ internal fun ForwardGlyph(size: Dp, color: Color, strokeWidth: Dp, modifier: Mod
 }
 
 @Composable
+internal fun UpGlyph(size: Dp, color: Color, strokeWidth: Dp) {
+    Canvas(modifier = Modifier.size(size)) {
+        val px = size.toPx()
+        val center = px / 2f
+        val stroke = strokeWidth.toPx()
+        drawLine(color, Offset(center, px * 0.80f), Offset(center, px * 0.18f), stroke)
+        drawLine(color, Offset(center, px * 0.18f), Offset(px * 0.24f, px * 0.44f), stroke)
+        drawLine(color, Offset(center, px * 0.18f), Offset(px * 0.76f, px * 0.44f), stroke)
+    }
+}
+
+@Composable
 internal fun DownGlyph(size: Dp, color: Color, strokeWidth: Dp) {
     Canvas(modifier = Modifier.size(size)) {
         val px = size.toPx()

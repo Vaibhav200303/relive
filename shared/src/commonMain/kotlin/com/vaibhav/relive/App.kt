@@ -35,6 +35,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.vaibhav.relive.di.ReliveAppContainer
 import com.vaibhav.relive.ui.screens.TimelineScreen
 import com.vaibhav.relive.ui.screens.TimelineHomeScreen
+import com.vaibhav.relive.ui.screens.HomeScreen
+import com.vaibhav.relive.ui.screens.rememberHomeSurfaceState
 import com.vaibhav.relive.ui.screens.RediscoverScreen
 import com.vaibhav.relive.ui.screens.ShareTimelinePickerScreen
 import com.vaibhav.relive.ui.screens.TimelineThemeScreen
@@ -46,9 +48,9 @@ import com.vaibhav.relive.ui.theme.toReliveThemeId
 import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.RediscoverQuery
-import com.vaibhav.relive.domain.model.StartDestination
 import com.vaibhav.relive.presentation.timeline.CurrentTimeline
 import com.vaibhav.relive.presentation.timeline.TimelineMode
+import com.vaibhav.relive.presentation.timeline.TimelineThemeDestination
 import com.vaibhav.relive.presentation.timeline.timelineThemeDestinationOrNull
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeViewModel
 import com.vaibhav.relive.presentation.profile.ProfileViewModel
@@ -75,7 +77,6 @@ import com.vaibhav.relive.ui.screens.UpgradeToProScreen
 import com.vaibhav.relive.presentation.search.SearchViewModel
 import com.vaibhav.relive.presentation.navigation.QuickCaptureSurface
 import com.vaibhav.relive.presentation.navigation.quickCaptureCommand
-import com.vaibhav.relive.presentation.navigation.resolveStartupDestination
 import com.vaibhav.relive.presentation.composer.TimelineComposerDraftStore
 import com.vaibhav.relive.presentation.settings.AppearanceViewModel
 import com.vaibhav.relive.presentation.settings.BehaviorPreferencesViewModel
@@ -106,6 +107,13 @@ private sealed interface TimelinesDestination {
 
 private sealed interface RediscoverDestination {
     data object Root : RediscoverDestination
+    data object AllPhotos : RediscoverDestination
+
+    /**
+     * The All timeline's appearance, reached from Home's app bar. Home is the surface that band
+     * belongs to, so it returns to Home rather than to a timeline detail screen.
+     */
+    data object AllTheme : RediscoverDestination
     data class Favorites(val selectedMomentId: MomentId?) : RediscoverDestination
     data class OnThisDay(
         val selectedMomentId: MomentId,
@@ -158,6 +166,11 @@ fun App(
         }
         val homeState by homeViewModel.state.collectAsState()
         val homeListState = rememberLazyListState()
+        // Home keeps its own list state: it and the Timelines list are different surfaces with
+        // different content, and sharing one scroll position let each destroy the other's.
+        val homeFeedListState = rememberLazyListState()
+        // Survives Home being swapped out for Profile, a collection or another destination.
+        val homeSurfaceState = rememberHomeSurfaceState()
         val incomingShareState by container.incomingShareGateway.state.collectAsState()
         val rediscoverListState = rememberLazyListState()
         val searchListState = rememberLazyListState()
@@ -167,9 +180,13 @@ fun App(
         val lockController = remember(container) { AppLockController(container.profileSettingsRepository, container.deviceAuthentication) { container.clock.now().epochMilliseconds } }
         val locked by lockController.locked.collectAsState()
         val reminderController = remember(container) { RediscoverReminderController(container.profileSettingsRepository, container.rediscoverReminderService) }
+        // Reminder scheduling only needs to know THAT the archive changed. Folding over
+        // observeAll() hydrated every Moment (and its tags and attachments) on launch and again on
+        // every write; ADR-0061 forbids the root hydrating the archive, so this reads a SQL
+        // aggregate instead.
         val reminderArchiveFingerprint by remember(container) {
-            container.momentRepository.observeAll().map { moments -> moments.fold(1) { value, moment -> 31 * value + moment.createdAt.epochMilliseconds.hashCode() } }
-        }.collectAsState(0)
+            container.momentRepository.observeArchiveFingerprint()
+        }.collectAsState(0L)
         LaunchedEffect(profileSettings.rediscoverRemindersEnabled, reminderArchiveFingerprint) {
             if (profileSettings.rediscoverRemindersEnabled) container.rediscoverReminderService.synchronize(true)
         }
@@ -187,16 +204,16 @@ fun App(
             lifecycleOwner.lifecycle.addObserver(observer)
             onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
         }
-        var topLevel by remember(container.behaviorPreferencesRepository) {
-            mutableStateOf(
-                resolveStartupDestination(behaviorState.preferences.startDestination).toTopLevelDestination(),
-            )
-        }
+        // One root: the app always opens on the Home surface (ADR-0061). An authoritative
+        // restoration or deep-link destination still takes precedence over this initial value.
+        var topLevel by remember { mutableStateOf(ReliveTopLevelDestination.Home) }
         var timelinesDestination by remember { mutableStateOf<TimelinesDestination>(TimelinesDestination.TimelineHome) }
         var rediscoverDestination by remember { mutableStateOf<RediscoverDestination>(RediscoverDestination.Root) }
         var profileNavigation by remember { mutableStateOf(ProfileNavigationState()) }
         var navigationToolbarExpanded by remember { mutableStateOf(true) }
         var quickCaptureTransformActive by remember { mutableStateOf(false) }
+        /** Bumped by `+ New` while on Home; the Home surface expands its composer in place. */
+        var homeComposerRequest by remember { mutableIntStateOf(0) }
         var quickCaptureTransformEpoch by remember { mutableIntStateOf(0) }
         val quickCaptureTransformDuration = ReliveTheme.motion.durations.long2
         var selectedIncomingShareId by remember { mutableStateOf<String?>(null) }
@@ -209,13 +226,24 @@ fun App(
         val openQuickCapture: (QuickCaptureSurface) -> Unit = { surface ->
             quickCaptureCommand(surface)?.let { command ->
                 ActivePlayback.stopActive()
-                quickCaptureTransformActive = true
-                quickCaptureTransformEpoch += 1
-                timelinesDestination = TimelinesDestination.TimelineDetail(
-                    scope = command.timeline,
-                    openComposerOnEnter = command.openComposer,
-                    cameFromQuickCapture = true,
-                )
+                val onHomeSurface = topLevel == ReliveTopLevelDestination.Home &&
+                    rediscoverDestination == RediscoverDestination.Root
+                if (onHomeSurface && command.timeline == CurrentTimeline.All) {
+                    // All moments is already part of this surface, so `+ New` expands the existing
+                    // inline composer in place. It must never navigate to a separate All screen
+                    // (ADR-0061). A monotonic counter rather than a boolean, because Home is a
+                    // persistent surface: a latched flag would make the second tap a silent no-op.
+                    homeComposerRequest += 1
+                } else {
+                    quickCaptureTransformActive = true
+                    quickCaptureTransformEpoch += 1
+                    topLevel = ReliveTopLevelDestination.Timelines
+                    timelinesDestination = TimelinesDestination.TimelineDetail(
+                        scope = command.timeline,
+                        openComposerOnEnter = command.openComposer,
+                        cameFromQuickCapture = true,
+                    )
+                }
             }
         }
         LaunchedEffect(quickCaptureTransformEpoch) {
@@ -230,13 +258,21 @@ fun App(
         val backupRestoreViewModel = remember(container, scope) {
             BackupRestoreViewModel(container.backupPreferencesRepository, container.googleDriveAccountManager, container.backupCoordinator, scope, container.entitlementProvider)
         }
+        // Home's own sub-destination: Back closes the appearance screen onto the Home surface,
+        // which keeps its scroll position because the list state is hoisted here.
+        ReliveBackHandler(
+            enabled = !locked &&
+                topLevel == ReliveTopLevelDestination.Home &&
+                rediscoverDestination == RediscoverDestination.AllTheme &&
+                profileNavigation.destination == ProfileDestination.Closed,
+        ) { rediscoverDestination = RediscoverDestination.Root }
         val canReturnToTimelineHome = profileNavigation.destination == ProfileDestination.Closed &&
             timelinesDestination == TimelinesDestination.TimelineHome &&
             rediscoverDestination == RediscoverDestination.Root &&
-            topLevel != ReliveTopLevelDestination.Timelines
+            topLevel != ReliveTopLevelDestination.Home
         val returnToTimelineHome = {
             ActivePlayback.stopActive()
-            topLevel = ReliveTopLevelDestination.Timelines
+            topLevel = ReliveTopLevelDestination.Home
             navigationToolbarExpanded = true
         }
         ReliveBackHandler(enabled = !locked && canReturnToTimelineHome, onBack = returnToTimelineHome)
@@ -522,7 +558,7 @@ fun App(
                             onNavigationToolbarCollapse = { navigationToolbarExpanded = false },
                             onUpgrade = { profileNavigation = profileNavigation.openUpgrade() },
                         )
-                        ReliveTopLevelDestination.Rediscover -> {
+                        ReliveTopLevelDestination.Home -> {
                 AnimatedContent(
                     targetState = rediscoverDestination,
                     transitionSpec = {
@@ -550,15 +586,19 @@ fun App(
                     label = "rediscover collection fade through",
                 ) { destination ->
                     when (destination) {
-                        RediscoverDestination.Root -> RediscoverScreen(
-                            repository = container.rediscoverRepository,
-                            timelineHomeRepository = container.timelineHomeRepository,
+                        RediscoverDestination.Root -> HomeScreen(
+                            momentRepository = container.momentRepository,
+                            timelineRepository = container.timelineRepository,
+                            appearanceRepository = container.appearanceRepository,
+                            rediscoverRepository = container.rediscoverRepository,
+                            profileSettingsRepository = container.profileSettingsRepository,
                             clock = container.clock,
+                            idGenerator = container.idGenerator,
                             mediaStore = container.mediaStore,
-                            listState = rediscoverListState,
-                            onOpenAll = {
-                                timelinesDestination = TimelinesDestination.TimelineDetail(CurrentTimeline.All)
-                            },
+                            mediaProcessor = container.mediaProcessor,
+                            listState = homeFeedListState,
+                            surfaceState = homeSurfaceState,
+                            draftStore = composerDraftStore,
                             onOpenFavorites = { selectedMomentId ->
                                 rediscoverDestination = RediscoverDestination.Favorites(selectedMomentId)
                             },
@@ -568,12 +608,27 @@ fun App(
                             onOpenFromYourPast = { selectedMomentId, query ->
                                 rediscoverDestination = RediscoverDestination.FromYourPast(selectedMomentId, query)
                             },
-                            behaviorPreferences = behaviorState.preferences,
-                            debugControls = rediscoverDebugControls,
-                            onCreateMoment = { openQuickCapture(QuickCaptureSurface.Rediscover) },
+                            onOpenAllPhotos = {
+                                rediscoverDestination = RediscoverDestination.AllPhotos
+                            },
+                            expandComposerRequest = homeComposerRequest,
+                            onOpenTimelineTheme = {
+                                rediscoverDestination = RediscoverDestination.AllTheme
+                            },
+                            onOpenProfile = { profileNavigation = profileNavigation.openProfile() },
                             navigationToolbarExpanded = navigationToolbarExpanded,
                             onNavigationToolbarExpand = { navigationToolbarExpanded = true },
                             onNavigationToolbarCollapse = { navigationToolbarExpanded = false },
+                            behaviorPreferences = behaviorState.preferences,
+                            wallpaper = appearanceState.preferences.allTimelineAppearance.wallpaper,
+                        )
+                        RediscoverDestination.AllTheme -> TimelineThemeScreen(
+                            timelineRepository = container.timelineRepository,
+                            appearanceRepository = container.appearanceRepository,
+                            destination = TimelineThemeDestination.All,
+                            onBack = { rediscoverDestination = RediscoverDestination.Root },
+                            entitlementProvider = container.entitlementProvider,
+                            onUpgrade = { profileNavigation = profileNavigation.openUpgrade() },
                         )
                         is RediscoverDestination.Favorites -> {
                             val favorites = destination
@@ -609,6 +664,23 @@ fun App(
                                     initialTimeline = CurrentTimeline.OnThisDay(onThisDay.date),
                                     mode = TimelineMode.ReadOnlySystemCollection(title = "On This Day"),
                                     selectedMomentId = onThisDay.selectedMomentId,
+                                    onBackToTimelineHome = { rediscoverDestination = RediscoverDestination.Root },
+                                    behaviorPreferences = behaviorState.preferences,
+                            )
+                        }
+                        RediscoverDestination.AllPhotos -> {
+                            TimelineScreen(
+                                    momentRepository = container.momentRepository,
+                                    timelineRepository = container.timelineRepository,
+                                    appearanceRepository = container.appearanceRepository,
+                                    rediscoverRepository = container.rediscoverRepository,
+                                    clock = container.clock,
+                                    idGenerator = container.idGenerator,
+                                    mediaStore = container.mediaStore,
+                                    mediaProcessor = container.mediaProcessor,
+                                    draftStore = composerDraftStore,
+                                    initialTimeline = CurrentTimeline.AllPhotos,
+                                    mode = TimelineMode.ReadOnlySystemCollection(title = "All Photos"),
                                     onBackToTimelineHome = { rediscoverDestination = RediscoverDestination.Root },
                                     behaviorPreferences = behaviorState.preferences,
                             )
@@ -654,7 +726,7 @@ fun App(
                     }
                 }
                 if (
-                    topLevel != ReliveTopLevelDestination.Rediscover ||
+                    topLevel != ReliveTopLevelDestination.Home ||
                         rediscoverDestination is RediscoverDestination.Root
                 ) ReliveFloatingBottomControls(
                     selected = topLevel,
@@ -668,8 +740,8 @@ fun App(
                     onCreateMoment = {
                         openQuickCapture(
                             when (topLevel) {
+                                ReliveTopLevelDestination.Home -> QuickCaptureSurface.Rediscover
                                 ReliveTopLevelDestination.Timelines -> QuickCaptureSurface.TimelineHome
-                                ReliveTopLevelDestination.Rediscover -> QuickCaptureSurface.Rediscover
                                 ReliveTopLevelDestination.Search -> QuickCaptureSurface.Search
                             },
                         )
@@ -705,11 +777,6 @@ private fun ReliveLockSurface(onUnlock: () -> Unit) {
             androidx.compose.material3.Text("Tap to unlock", style = ReliveTheme.typography.body, color = ReliveTheme.colors.textSecondary)
         }
     }
-}
-
-private fun StartDestination.toTopLevelDestination(): ReliveTopLevelDestination = when (this) {
-    StartDestination.Timelines -> ReliveTopLevelDestination.Timelines
-    StartDestination.Rediscover -> ReliveTopLevelDestination.Rediscover
 }
 
 private fun profileDestinationDepth(destination: ProfileDestination): Int = when (destination) {

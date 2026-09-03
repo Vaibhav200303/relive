@@ -46,10 +46,10 @@ Verify the local storage layer against its contract:
 Search v1 is global and local ([`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) §9).
 
 - Empty query and no-match states remain empty; the archive is never loaded into Compose for filtering.
-- SQL search matches title/content case-insensitively and preserves chronological All Timeline ordering in presentation.
+- SQL search matches title/content case-insensitively and preserves a stable chronological ordering in presentation.
 - The first result is active; Next/Previous do not pass their bounds; query changes and clear reset active state; the active result targets the correct Moment ID for scroll.
 - Search is read-only: no composer, edit, Forget, membership, or favorite mutation; media viewer/playback remains available.
-- Query, active result, and scroll position survive a same-session top-level tab switch.
+- Query, active result, and scroll position survive a same-session move from Search back to Home and into Search again, including when Home is left in focused All moments.
 
 ## 4. 4-day rule tests
 
@@ -69,11 +69,11 @@ Central, high-value behavior. Use a deterministic `Clock`.
 - Create-in-custom-timeline → moment belongs to **All** and that timeline.
 - Create-in-All → optional assignment to zero or more custom timelines.
 - A moment in multiple timelines exists once; appears in each referencing timeline.
-- All and custom timeline presentation remain chronological (oldest at top, newest above the composer).
+- Custom timeline presentation remains chronological (oldest at top, newest above the composer). The All moments feed on the Home surface is newest-first, with the inline composer at the head of the feed directly beneath the `All moments` heading; Home always opens at the top (welcome + Rediscover) rather than at the composer/newest end, and pages further Moments as the user scrolls toward older ones.
 - Switching timelines changes the observed Moment set without changing Moment identity, favorite state, tags, location, or media.
 - Failed Moment + membership insertion leaves no partial Moment or membership rows and preserves the composer draft.
 - Removing a moment from a custom timeline does not delete the moment or affect All.
-- All always reflects every saved moment.
+- All is logically complete — every saved moment is a member — while the All moments feed on Home renders it through a bounded, paged window; assert membership at the repository level, never full hydration in presentation.
 
 ## 6. Location tests
 
@@ -96,8 +96,8 @@ Using Compose Multiplatform UI testing:
 
 - Timeline renders rail, dots, and moment hierarchy; text-only moments show no media area.
 - Content expansion: `... more` reveals full content; `less` collapses.
-- Composer: plus-circle marker, Add Media reveal order (attachment above, Add Media moves below), per-attachment remove, reset `×`, Keep Moment → dot.
-- Composer draft: Back preserves a dirty draft only for its originating timeline; reopening restores it, while successful Keep and confirmed `×` discard clear it.
+- Composer: plus-circle marker, Add Media reveal order (attachment above, Add Media moves below), per-attachment remove, reset `×`, Keep Moment → dot; after Keep the surface stays in focused All moments with the saved Moment rendered in the timeline, and the welcome/Rediscover top state is neither restored nor scrolled toward.
+- Composer draft: Back collapses the inline composer and leaves the surface in focused All moments at the same scroll offset; it preserves a dirty draft only for its originating timeline; reopening restores it, while successful Keep and confirmed `×` discard clear it.
 - Media collage: multiple attachments render as an adaptive visual collage (see [`DECISIONS.md`](DECISIONS.md) ADR-0019); `+N` overlay for 5+ attachments; tapping a tile opens the full-screen media viewer.
 - Favorite action is present but visually subtle.
 - Search app-bar transform keeps the timeline visible; highlighting and match navigation behave.
@@ -123,12 +123,12 @@ Using Compose Multiplatform UI testing:
 
 ### Behavior preferences
 
-- Missing/invalid native values use documented defaults; stable destination/boolean values round-trip.
+- Missing/invalid native values use documented defaults; stable boolean preference values round-trip. No startup-destination value is persisted — the app always opens at the top of the Home surface.
 - Every setter updates observable state, and reconstructing presentation over the same repository restores the saved values.
-- Startup defaults to Timelines, honors Rediscover, and leaves any future authoritative restoration/deep-link override higher priority.
+- Startup always opens the Home surface scrolled to the top (welcome + Rediscover above All moments), and leaves any future authoritative restoration/deep-link override higher priority.
 - Dirty explicit `×` requests confirmation when enabled and resets/collapses immediately when disabled; empty-draft and Back behavior do not change.
 - Editable Timeline location/tag visibility follows preferences without removing data; Search and read-only collection presentation remain unchanged.
-- On This Day/Favorites preference-off state removes the complete root section and collapses dependent spacing without mutating the read model.
+- On This Day/Favourites preference-off state removes that collection from the Home Rediscover row and collapses dependent spacing without mutating the read model or disturbing the All moments timeline below.
 - Profile → Preferences → Back returns to Profile.
 
 ---
@@ -140,17 +140,17 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 ### Inline composer expansion
 - [ ] Collapsed state shows only `+` timeline marker.
 - [ ] Tapping `+` smoothly expands the composer in place (no modal/sheet).
-- [ ] Global `New` shows All settled/collapsed before the same smooth in-place expansion; no navigation flash, archive-wide scroll, or upward content jump.
-- [ ] Global-entry title focus follows composer entry and does not cause an abrupt simultaneous navigation/layout/IME change.
-- [ ] Android share of text, URL, image, video, audio, and a supported mixed batch opens Relive's timeline picker; All appears first, custom timelines retain order, selection animates into the settled Timeline, then the normal composer expands with ordered processing placeholders.
+- [ ] `+ New` moves the Home surface into focused All moments (welcome + Rediscover scroll offscreen) and expands the existing inline composer from the timeline rail in one continuous motion — no navigation, no modal, dialog, or sheet, no second composer, no archive-wide scroll, and no upward content jump. It scrolls only enough to seat the composer and its Keep Moment button.
+- [ ] `+ New` requests no field focus and opens no IME ([`DECISIONS.md`](DECISIONS.md) ADR-0059); the composer settles collapsed-to-expanded in place and the person taps a field when ready.
+- [ ] Android share of text, URL, image, video, audio, and a supported mixed batch opens Relive's timeline picker; All appears first, custom timelines retain order; selecting All settles Home into focused All moments (custom timelines open their own detail), then the existing inline composer expands with ordered processing placeholders.
 - [ ] Canceling the share picker removes temporary files and returns to the source app. Unsupported, unreadable, oversized-text, empty, and over-50-item shares show no partial draft; a claimed share is saved only after Keep Moment.
 - [ ] `×` resets fields and smoothly collapses.
-- [ ] Keep Moment resets fields and collapses.
+- [ ] Keep Moment resets fields, collapses the inline composer to its rail `+` marker, keeps the surface in focused All moments at the same scroll offset with no app-initiated scroll of any kind, and renders the saved Moment in the timeline beside the collapsed composer; the welcome/Rediscover top state is never automatically restored.
 - [ ] Keep Moment reads as the primary Material 3 action and has enabled, disabled, and pressed feedback.
 - [ ] Keyboard opens without obscuring the active field (IME insets).
-- [ ] Timeline rail reaches the final plus center but never renders below it; date/time, dots, and plus share the rail axis at normal and enlarged font scales.
-- [ ] Manually moving toward older Moments reveals the bottom-centered return-to-newest arrow; it stays visible until the newest end, works in editable and read-only timeline details, and is absent when no forward scroll is possible.
-- [ ] Selecting the arrow visibly returns to the terminal item without a snap. The first touch during that motion stops at the current position and does not activate the touched Moment content; Snackbar feedback remains above the arrow.
+- [ ] Timeline rail reaches the plus center but never renders above it; date/time, dots, and plus share the rail axis at normal and enlarged font scales.
+- [ ] Within focused All moments, manually scrolling toward older Moments reveals the bottom-centered return-to-newest arrow; it is hidden whenever the Rediscover row is visible, so it never competes with the upward scroll that restores the top state. It stays visible until the newest end at the head of the feed, works in custom timeline and read-only collection details, and is absent when no scroll toward older Moments is possible.
+- [ ] Selecting the arrow returns to the newest end of the feed and never restores the welcome/Rediscover top state; because the feed is windowed it is not required to animate through the whole archive. The first touch during that motion stops at the current position and does not activate the touched Moment content; Snackbar feedback remains above the arrow.
 
 ### Persistent debug data
 - [ ] Create a moment in a debug build, kill the process, reopen — moment persists.
@@ -158,7 +158,8 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 - [ ] No in-memory fallback silently replaces SQLDelight storage.
 
 ### Custom timelines
-- [ ] Custom timelines appear newest-created-first on Timeline Home; timestamp ties use deterministic ordering.
+- [ ] Custom timelines appear newest-created-first wherever the custom-timeline list is surfaced; timestamp ties use deterministic ordering.
+- [ ] Each custom timeline card shows its scoped Moment count and persisted creation date; card previews contain at most four image/video attachments, ordered by latest Moment then attachment order, and audio/text-only scopes show the neutral preview.
 - [ ] Blank timeline names are rejected; surrounding whitespace is trimmed.
 - [ ] Entering a custom timeline with no Moments smoothly expands its existing inline composer every time; after its first Moment is saved, normal entry remains collapsed.
 - [ ] Creating inside a custom timeline shows the same Moment once there and once in All.
@@ -168,12 +169,13 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 - [ ] Custom timelines and memberships survive process death, Recents removal, and a normal APK update.
 - [ ] Tags, location, favorite state, images, video, audio, gallery, and viewer behavior are unchanged in custom timelines.
 
-### Timeline Home
-- [ ] Timeline Home opens first and retains its scroll position after returning from a custom timeline.
-- [ ] Timeline Home contains custom cards only; each card shows its scoped Moment count and persisted creation date.
-- [ ] Card previews contain at most four image/video attachments, ordered by latest Moment then attachment order; audio/text-only scopes show the neutral preview.
-- [ ] The Home + opens the existing Create Timeline flow; the new timeline appears first and opens immediately.
-- [ ] Detail Back returns to Timeline Home on Android and iOS; no profile, menu, or bottom navigation controls appear.
+### Home surface
+- [ ] The Home surface opens first, scrolled to its top at offset zero: the welcome block, the `Relive your memories` heading with the Rediscover row, then the `All moments` heading, the collapsed inline composer, and the All moments feed.
+- [ ] Home is one scroll container with one scroll position — the Rediscover row and the All moments feed scroll together — and moving between the Home top state and focused All moments is scrolling only: no navigation event, route change, back-stack entry, or screen transition.
+- [ ] The Relive app bar stays pinned across both states and condenses as the surface scrolls; in focused All moments the `All moments` heading pins directly beneath it.
+- [ ] Home retains its exact scroll offset after returning from a custom timeline, a read-only collection, Search, or Profile — if it was left in focused All moments it returns there, never to the welcome/Rediscover top state, which only manual upward scroll restores.
+- [ ] The Create Timeline entry point still persists a new timeline, lists it first, and opens it immediately; `+ New` on Home never opens that flow — it expands the inline composer (see Inline composer expansion above).
+- [ ] Detail Back returns to the Home surface at its preserved scroll offset (including focused All moments) on Android and iOS; no profile, menu, or bottom navigation controls appear in detail.
 
 ### Adaptive single media
 - [ ] Small image renders at natural size, not stretched.
@@ -236,7 +238,7 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 - [ ] Waveform shows real live amplitude.
 
 ### Phase 6 — Edit / forget (physical-device checklist complete)
-- [ ] In All, long-press and accessibility actions smoothly enter the contextual app bar; Back exits selection before timeline navigation.
+- [ ] In focused All moments, long-press and accessibility actions smoothly enter the contextual app bar over Home's own app bar; Back exits selection first and leaves the surface in focused All moments at the same scroll offset, without popping or scrolling toward the welcome/Rediscover top state.
 - [ ] Edit / Forget appear only before `createdAt + 4 days`; verify the exact boundary is ineligible while Add to timeline remains available when custom timelines exist.
 - [ ] Add to timeline lists current assignments as disabled, adds one selected unassigned custom timeline without duplicating the Moment, and retains the picker for retry after failure.
 - [x] Edit saves inline without changing Moment identity, creation time, favorite state, or custom-timeline memberships; an edit already open may save after expiry.
@@ -245,17 +247,18 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 - [x] Forget requires confirmation, removes the Moment from All and every custom timeline, and only then attempts attachment-file cleanup; playback stops before edit, Forget, and media deletion.
 - [x] Attempting a timeline switch, composer opening, or a second edit while an edit is dirty does not silently discard it.
 
-### Rediscover
-- [ ] The active root renders the Relive app bar, editable All card, `FAVOURITES` heading, bounded horizontal individual-Moment shelf (at most ten), optional `Show all`, and the floating top-level navigation toolbar.
-- [ ] Rediscover order is All, Favourites, On This Day, From Your Past; All opens the editable aggregate timeline.
-- [ ] Favorites reflects persisted favorite state in the same chronological ordering as the full Favorites timeline; the bounded shelf batch-loads attachments and does not hydrate the complete collection.
+### Home — Rediscover row
+- [ ] The Rediscover row is horizontally scrollable, sits between the `Relive your memories` and `All moments` headings on the same vertically scrolling surface, and its horizontal position is independent of Home's vertical offset.
+- [ ] The Rediscover row order is Favourites, On This Day, From Your Past, All Photos. Cards open their read-only collections; no card opens the editable All moments feed, which is reached only by scrolling Home down into focused All moments or via `+ New`.
+- [ ] `All Photos` is a bounded, read-only collection of Moments with at least one image or video attachment, read through the same bounded projection as Favourites and From Your Past, and introduces no new table, membership, or duplicate persistence.
+- [ ] Favourites reflects persisted favorite state in the same chronological ordering as the full Favourites collection; its bounded preview batch-loads attachments and does not hydrate the complete collection. The All moments feed on the same surface is likewise bounded, windowed, and paged, and the root never hydrates the complete archive on launch.
 - [ ] Media, text-only, and audio cards use their appropriate compact presentation; media uses the first ordered attachment with a quiet additional-count indicator and audio never autoplays.
-- [ ] Zero favorites shows the approved two-line empty state with no shelf or `Show all`.
-- [ ] Tapping a card opens the read-only Favorites timeline at that Moment; `Show all` opens it without a selected Moment. Opening Favorites hides top-level navigation and exposes only Back, read-only timeline browsing, media viewing, and playback; Back returns to the preserved Rediscover root state.
-- [ ] On This Day matches only exact previous local calendar years, excludes the current year, preserves February 29 behavior, uses exact calendar-year labels, and loads only a bounded attachment-batched shelf preview.
+- [ ] Zero favourites shows the approved two-line empty state with no preview or `Show all`.
+- [ ] Opening a Rediscover collection opens its read-only detail — from a Moment-level preview at that Moment, and from `Show all` without a selected Moment. The detail hides the floating Home controls and exposes only Back, read-only timeline browsing, media viewing, and playback; Back returns to the Home surface at its preserved vertical scroll offset with the Rediscover row's horizontal position intact.
+- [ ] On This Day matches only exact previous local calendar years, excludes the current year, preserves February 29 behavior, uses exact calendar-year labels, and loads only a bounded attachment-batched preview.
 - [ ] An empty On This Day remains compact; media, text-only, and audio-only entries retain featured-card geometry; tapping routes to the selected read-only collection.
-- [ ] The active floating toolbar collapses to the selected destination icon on downward scroll and expands in Timeline / Rediscover / Search order on upward scroll; its accent-derived selected pill moves smoothly between icons without an intermediate artifact. Timeline detail hides it and preserves Back behavior.
-- [ ] Floating navigation and `+ New` share height, bottom alignment, warm-stone surface, safe insets, and an 8dp gap; narrow screens retain three equal navigation touch targets, and the IME does not cover either control.
+- [ ] The floating navigation toolbar collapses to the active destination icon on downward scroll and expands in Home / Timelines / Search order on upward scroll; its accent-derived selected pill moves smoothly between icons without an intermediate artifact, and the scroll-driven collapse never interferes with scrolling welcome + Rediscover back into view. `+ New` presentation follows the Home state rather than raw scroll direction, so it does not collapse to a bare Add icon merely because the surface scrolled into focused All moments, and it is hidden while the inline composer is expanded. Custom timeline and read-only collection details hide the floating controls and preserve Back to Home; focused All moments is not a detail screen and keeps the controls available.
+- [ ] Floating navigation and `+ New` share height, bottom alignment, warm-stone surface, safe insets, and an 8dp gap; narrow screens retain three equal navigation touch targets (Home, Timelines and Search), and the IME does not cover either control.
 - Deferred, retain coverage for future reactivation: deterministic From Your Past selection, Places/Tags ranking, empty/partial archive states, and passive media behavior.
 
 ### Appearance and themes
@@ -263,11 +266,11 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 - [ ] Original and all five nostalgic palettes restore after relaunch and expose distinct light/dark tokens with accessible text/action contrast.
 - [ ] Profile controls retain 48dp targets, selected/radio semantics, readable two-line labels, and horizontal scrolling at narrow widths and large text sizes.
 - [ ] Theme transitions preserve navigation, list position, composer drafts, active selection, and media state.
-- [ ] A custom timeline palette affects its Home card and detail only; “Use app theme” clears the override; All and system collections remain global.
+- [ ] A custom timeline palette affects that timeline's card wherever it is listed and its detail only; “Use app theme” clears the override; the Home surface, All moments, and system collections remain global.
 - [ ] Android and iOS status-bar content follows the resolved mode; stored media pixels and Timeline layout remain unchanged.
 
 ### Media & Storage archive insights
-- [ ] Profile → Media & Storage → Back returns to the preserved Profile screen; Profile Back returns to Timeline Home.
+- [ ] Profile → Media & Storage → Back returns to the preserved Profile screen; Profile Back returns to the Home surface at its preserved scroll offset, including focused All moments when that is where Profile was opened from.
 - [ ] Empty and text-only archives show `0 B` without a chart while retaining the actual Moment count.
 - [ ] Photo, video, audio, and defensive Other values match only Relive-managed attachment references; missing files do not crash or contribute bytes.
 - [ ] The hero, breakdown, and archive rows remain readable at large font scales and expose category/value semantics across every palette and appearance mode.
@@ -275,13 +278,49 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 ### Behavior preferences
 
 - [ ] Profile → Preferences opens the calm open-page layout; Back returns to the retained Profile destination.
-- [ ] Fresh/default startup opens Timelines; selecting Rediscover, force-stopping, and relaunching opens Rediscover without briefly flashing Timelines.
+- [ ] Fresh startup, force-stop, and relaunch all open the Home surface scrolled to the top (welcome + Rediscover above All moments), with no destination flash; Preferences offers no start-destination choice.
 - [ ] Dirty composer `×` confirms when enabled and immediately resets/collapses when disabled; empty composer `×` remains immediate and Back still preserves the draft.
-- [ ] Show locations/tags updates editable All and custom Timeline cards without deleting data or hiding composer/edit fields; Search and read-only Rediscover detail still show their normal metadata.
-- [ ] On This Day/Favorites switches remove their complete Rediscover root sections with no empty gap; re-enabling restores current repository data immediately.
-- [ ] Every row remains readable and operable at large font scale with TalkBack/VoiceOver; switches announce state and startup row announces its current value.
-- [ ] Toggle and startup-selection haptics fire once from direct interaction and never during restoration/recomposition.
+- [ ] Show locations/tags updates the All moments feed and custom timeline cards without deleting data or hiding composer/edit fields; Search and read-only collection detail still show their normal metadata.
+- [ ] On This Day/Favourites switches remove their cards from the Home Rediscover row with no empty gap and without shifting the `All moments` heading or the timeline below it; re-enabling restores current repository data immediately.
+- [ ] Every row remains readable and operable at large font scale with TalkBack/VoiceOver, and switches announce state.
+- [ ] Toggle haptics fire once from direct interaction and never during restoration/recomposition.
 - [ ] All six palettes render Preferences correctly in Light, Dark, and System modes with no hardcoded-color artifacts.
+
+---
+
+## 12. Coverage to add — unified Home surface
+
+Behavior introduced by the unified Home surface ([`DECISIONS.md`](DECISIONS.md) ADR-0061). These are the expectations tests must assert when the surface is built, in the phase that introduces it ([`ROADMAP.md`](ROADMAP.md)) — they are not coverage that exists today.
+
+### Greeting
+
+- A real profile display name renders `Welcome back, {name}`.
+- No real profile display name renders exactly `Welcome back` — no trailing punctuation, no placeholder.
+- The `Your Relive` fallback label never leaks into the greeting in either case.
+- The subtitle is always `Your memories are waiting for you.`
+
+### Initial position and scroll container
+
+- The app opens at the top of Home, in the top state, at scroll offset zero, with no programmatic scroll on entry.
+- The Rediscover collection row and the All moments timeline live in **one** scroll container with one scroll position: assert a single scrollable, not two.
+- Focused All moments is entered both ways — by scrolling the surface down, and by tapping `+ New`.
+- Keep Moment and Back never auto-restore the welcome/Rediscover top state and never change the scroll offset.
+- Manual upward scroll is the only thing that restores the top state, including after returning from a custom timeline, a read-only collection, Search, or Profile.
+
+### Inline composer
+
+- `+ New` expands the existing composer in place from the timeline rail: no modal, dialog, bottom sheet, or second composer instance is created.
+- `+ New` requests no field focus and opens no IME (ADR-0059).
+
+### Bounded, paged loading
+
+- The root never observes or hydrates the complete archive on launch.
+- Paging loads incrementally toward older Moments as the user scrolls.
+
+### Header indices and scroll anchors
+
+- The welcome block, the collection row, and the section headings occupy leading items in the same list as the Moments, so every index computation — scroll targets, selected-Moment lookup, first-visible-item position — accounts for the header offset.
+- These index computations stay correct as header items are added or removed.
 
 ---
 

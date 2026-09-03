@@ -77,6 +77,56 @@ class TimelineReturnToBottomTest {
     }
 
     @Test
+    fun returnToTopIsHiddenUntilManualUpwardMovement() {
+        val state = TimelineReturnToTopState()
+
+        assertFalse(state.isVisible(canReturnToTop = true))
+        assertTrue(
+            state.onManualPositionChanged(
+                movedTowardTop = true,
+                canReturnToTop = true,
+            ).isVisible(canReturnToTop = true),
+        )
+    }
+
+    @Test
+    fun returnToTopWithdrawsOnTheFirstDownwardMovement() {
+        val revealed = TimelineReturnToTopState().onManualPositionChanged(
+            movedTowardTop = true,
+            canReturnToTop = true,
+        )
+
+        assertFalse(
+            revealed.onManualPositionChanged(
+                movedTowardTop = false,
+                canReturnToTop = true,
+            ).isVisible(canReturnToTop = true),
+        )
+    }
+
+    @Test
+    fun returnToTopIsHiddenAtTheTopAndIgnoresProgrammaticScrolls() {
+        val revealed = TimelineReturnToTopState().onManualPositionChanged(
+            movedTowardTop = true,
+            canReturnToTop = true,
+        )
+
+        assertFalse(
+            revealed.onManualPositionChanged(
+                movedTowardTop = true,
+                canReturnToTop = false,
+            ).isVisible(canReturnToTop = false),
+        )
+        assertFalse(
+            TimelineReturnToTopState().onPositionChanged(
+                isProgrammaticScroll = true,
+                movedTowardTop = true,
+                canReturnToTop = true,
+            ).isVisible(canReturnToTop = true),
+        )
+    }
+
+    @Test
     fun controllerRejectsDuplicateStartsAndCancelsTheActiveScroll() = runTest(
         StandardTestDispatcher(),
     ) {

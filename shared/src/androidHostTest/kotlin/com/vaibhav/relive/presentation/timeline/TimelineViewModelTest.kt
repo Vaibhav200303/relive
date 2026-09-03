@@ -27,6 +27,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -74,8 +75,9 @@ class TimelineViewModelTest {
         )
         val vm = newViewModel(momentRepository = moments)
 
+        // All feeds the Home surface and is newest-first (ADR-0061); `all` has the later createdAt.
         assertEquals(
-            listOf("family-moment", "all"),
+            listOf("all", "family-moment"),
             loadedMoments(vm).map { it.id.value },
         )
 
@@ -459,6 +461,97 @@ class TimelineViewModelTest {
     private fun loadedMoments(vm: TimelineViewModel): List<MomentPresentation> =
         assertIs<TimelineMomentsState.Loaded>(vm.state.value.moments).moments
 
+    @Test
+    fun allMomentsFeedIsNewestFirst() = runTest {
+        val moments = FakeMomentRepository(
+            initialAll = listOf(moment("newest", 3L), moment("middle", 2L), moment("oldest", 1L)),
+        )
+        val vm = newViewModel(momentRepository = moments)
+
+        assertEquals(
+            listOf("newest", "middle", "oldest"),
+            loadedMoments(vm).map { it.id.value },
+            "the Home feed reads newest-first and is not reversed in presentation",
+        )
+    }
+
+    @Test
+    fun customTimelineStaysOldestFirst() = runTest {
+        val familyId = TimelineId("family")
+        val moments = FakeMomentRepository(
+            initialByTimeline = mapOf(
+                familyId to listOf(moment("newer", 2L), moment("older", 1L)),
+            ),
+        )
+        val vm = newViewModel(momentRepository = moments)
+        vm.selectTimeline(CurrentTimeline.Custom(familyId))
+
+        assertEquals(
+            listOf("older", "newer"),
+            loadedMoments(vm).map { it.id.value },
+            "custom timeline detail keeps its existing oldest-first presentation",
+        )
+    }
+
+    @Test
+    fun allMomentsFeedIsBoundedToOnePage() = runTest {
+        val moments = FakeMomentRepository(
+            initialAll = (0 until HOME_FEED_PAGE_SIZE * 3).map { moment("m$it", (1000 - it).toLong()) },
+        )
+        val vm = newViewModel(momentRepository = moments)
+
+        assertEquals(
+            HOME_FEED_PAGE_SIZE,
+            loadedMoments(vm).size,
+            "the root loads one bounded page, never the whole archive",
+        )
+        assertTrue(vm.state.value.hasOlderMoments, "older moments remain to load")
+    }
+
+    @Test
+    fun loadOlderMomentsGrowsTheWindowByOnePage() = runTest {
+        val moments = FakeMomentRepository(
+            initialAll = (0 until HOME_FEED_PAGE_SIZE * 3).map { moment("m$it", (1000 - it).toLong()) },
+        )
+        val vm = newViewModel(momentRepository = moments)
+        val firstPage = loadedMoments(vm).map { it.id.value }
+
+        vm.loadOlderMoments()
+
+        val grown = loadedMoments(vm).map { it.id.value }
+        assertEquals(HOME_FEED_PAGE_SIZE * 2, grown.size)
+        assertEquals(firstPage, grown.take(HOME_FEED_PAGE_SIZE), "already-loaded moments keep their place")
+    }
+
+    @Test
+    fun loadOlderMomentsStopsAtTheEndOfTheArchive() = runTest {
+        val moments = FakeMomentRepository(
+            initialAll = (0 until 5).map { moment("m$it", (1000 - it).toLong()) },
+        )
+        val vm = newViewModel(momentRepository = moments)
+
+        assertEquals(5, loadedMoments(vm).size)
+        assertFalse(vm.state.value.hasOlderMoments, "a partial window means the archive is fully loaded")
+
+        vm.loadOlderMoments()
+        assertEquals(5, loadedMoments(vm).size, "growing past the archive changes nothing")
+    }
+
+    @Test
+    fun loadOlderMomentsIsIgnoredOnACustomTimeline() = runTest {
+        val familyId = TimelineId("family")
+        val moments = FakeMomentRepository(
+            initialByTimeline = mapOf(familyId to listOf(moment("only", 1L))),
+        )
+        val vm = newViewModel(momentRepository = moments)
+        vm.selectTimeline(CurrentTimeline.Custom(familyId))
+
+        vm.loadOlderMoments()
+
+        assertEquals(listOf("only"), loadedMoments(vm).map { it.id.value })
+        assertFalse(vm.state.value.hasOlderMoments, "custom timelines are not windowed")
+    }
+
     private fun moment(id: String, createdAt: Long): Moment = Moment(
         id = MomentId(id),
         createdAt = Instant(createdAt),
@@ -495,6 +588,9 @@ private class FakeMomentRepository(
 
     val favoriteChanges = mutableListOf<Pair<MomentId, Boolean>>()
     val deleted = mutableListOf<MomentId>()
+
+    /** Honours the bound so the Home feed's windowing can be exercised (ADR-0061). */
+    override fun observeAllWindow(limit: Int): Flow<List<Moment>> = all.map { it.take(limit) }
 
     override suspend fun insert(moment: Moment, timelineIds: Set<TimelineId>) {
         all.value = newestFirst(all.value + moment)

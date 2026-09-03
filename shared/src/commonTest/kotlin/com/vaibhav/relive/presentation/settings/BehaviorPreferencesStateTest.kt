@@ -1,7 +1,6 @@
 package com.vaibhav.relive.presentation.settings
 
 import com.vaibhav.relive.domain.model.BehaviorPreferences
-import com.vaibhav.relive.domain.model.StartDestination
 import com.vaibhav.relive.domain.repository.BehaviorPreferencesRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,7 +22,6 @@ class BehaviorPreferencesStateTest {
             viewModel.state.collect { }
         }
 
-        viewModel.setStartDestination(StartDestination.Rediscover)
         viewModel.setConfirmBeforeDiscarding(false)
         viewModel.setShowLocations(false)
         viewModel.setShowTags(false)
@@ -33,7 +31,6 @@ class BehaviorPreferencesStateTest {
 
         assertEquals(
             BehaviorPreferences(
-                startDestination = StartDestination.Rediscover,
                 confirmBeforeDiscarding = false,
                 showLocations = false,
                 showTags = false,
@@ -68,10 +65,6 @@ class BehaviorPreferencesStateTest {
 private class FakeBehaviorPreferencesRepository : BehaviorPreferencesRepository {
     override val preferences = MutableStateFlow(BehaviorPreferences())
     var failWrites: Boolean = false
-
-    override suspend fun setStartDestination(destination: StartDestination): Result<Unit> = write {
-        preferences.value = preferences.value.copy(startDestination = destination)
-    }
 
     override suspend fun setConfirmBeforeDiscarding(enabled: Boolean): Result<Unit> = write {
         preferences.value = preferences.value.copy(confirmBeforeDiscarding = enabled)

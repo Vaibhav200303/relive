@@ -26,11 +26,11 @@ The product must feel like a **beautiful personal life archive**, never a notes/
 
 ## 2. Navigation model
 
-The home screen contains **multiple timelines**.
+The app opens at the top of a single unified **Home surface**. Home is the app's only root: one continuous vertical scroll that runs welcome greeting → Rediscover collection row → All moments timeline. Custom timelines are not part of Home: they keep their own **Timelines** destination, where Timeline Home lists them and opens the existing scoped timeline detail unchanged.
 
 There is always a built-in timeline:
 
-- **All** — contains every saved moment in chronological order.
+- **All** — contains every saved moment. Logically it is the whole archive; the All moments feed rendered on Home is always **bounded** — newest-first, paged/windowed, with incremental loading as the user scrolls toward older Moments. The root surface must never observe or hydrate the complete archive on launch, so Home reads the feed through a bounded, anchored, SQL-backed paged projection, consistent with how the Rediscover collections are already read.
 
 Users may create **custom timelines** representing chapters of their life, such as:
 
@@ -41,21 +41,54 @@ Users may create **custom timelines** representing chapters of their life, such 
 - Travel
 - Relationship
 
-All timelines — built-in and custom — use the **same timeline UI and interaction model**. A timeline may have its own visual theme, but its information architecture and interactions must remain consistent across all timelines.
+All timelines — built-in and custom — share the **same Moment presentation and interaction model**: rail, dots, Moment cards, media treatment, and the inline composer are identical everywhere, and the information hierarchy inside a Moment never varies. A timeline may have its own visual theme. Navigation and chrome are what differ by surface: All moments is a section of the Home surface, reached by scrolling and carrying no header or Back of its own, while a custom timeline opens as a scoped detail screen with its own header, Back, and timeline actions.
 
-Timeline Home is the navigation root for custom timelines. Selecting a custom timeline opens the shared timeline detail experience scoped to that selection; returning goes back to Timeline Home. The logical All timeline is entered from the first Rediscover collection card.
+Selecting a custom timeline opens the shared timeline detail experience scoped to that selection; returning goes back to the Home surface with its scroll offset preserved exactly as the user left it — focused All moments stays focused and never jumps back to the top state. The logical All timeline is not a separate destination: it renders on Home under the `All moments` heading and is reached by scrolling, never by tapping a Rediscover card.
 
-### Rediscover navigation
+### The Home surface
 
-Timelines, Rediscover, and Search are the three top-level destinations. They live in a floating bottom-left navigation toolbar: it shows the active destination icon while collapsed and expands horizontally to reveal all three icon actions in Timeline / Rediscover / Search order. Timeline Home remains the root within Timelines; Timeline detail is not a top-level destination.
+Home renders, in one scroll container with one scroll position:
+
+1. the **welcome block** — greeting and subtitle;
+2. the section heading `Relive your memories`, followed by the horizontally scrollable **Rediscover collection row** (§2A);
+3. the section heading `All moments`;
+4. the **inline composer**, collapsed to its rail `+` marker, at the chronological end of the feed — which, because the feed is newest-first, renders at the **head** of the feed directly beneath the `All moments` heading;
+5. the **All moments feed** itself.
+
+Home opens with `Welcome back, {name}` when a real profile display name exists, and with exactly `Welcome back` — no trailing punctuation, no placeholder — when it does not. The `Your Relive` fallback label never appears in the greeting, and no device- or account-derived name is ever substituted. The subtitle is always `Your memories are waiting for you.`
+
+Rediscover content and the All moments timeline are parts of **one** surface. Neither is a separate page, route, destination, tab, or screen.
+
+Home has exactly two named states, and both are purely a function of scroll offset:
+
+- **Home top state** — the welcome block and the Rediscover row are in view.
+- **Focused All moments** — welcome and Rediscover have scrolled above the viewport, the `All moments` heading is pinned, and the timeline fills the screen.
+
+Moving between them is scrolling. It produces **no navigation event, no route change, no back-stack entry, and no screen transition**, and it uses no fade-through, container transform, or shared-axis motion — the motion is the scroll itself. The app always opens in the Home top state at scroll offset zero, with no programmatic scroll on entry. The welcome and Rediscover sections leave by scrolling and return **only** when the user manually scrolls back up; nothing else restores them — not Keep Moment, not Back, not `×`, and not returning from a custom timeline, a read-only collection, Search, or Profile.
+
+The Relive app bar stays pinned across both states and condenses to a compact form as the surface scrolls; in focused All moments the `All moments` section heading pins directly beneath it.
+
+The Android notification shade is an **interaction reference only**, for the single idea of one continuous, reversibly scrollable surface whose top region and list region trade dominance as you scroll. It is never a visual reference, and no shade visual language is adopted.
+
+### Destinations
+
+There are three top-level destinations: **Home**, **Timelines**, and **Search**. Home is the primary landing destination and the app's default. Timelines is unchanged from before this redesign — Timeline Home remains its root, listing custom timelines and opening their existing scoped detail screens. Search is unchanged. They live in a floating bottom-left navigation toolbar: it shows the active destination icon while collapsed and expands horizontally to reveal its icon actions in Home / Timelines / Search order, collapsing to the active destination icon on scroll and expanding again on reverse scroll. There is **no Rediscover destination icon**, because Rediscover is a row inside Home. Custom timeline detail, the read-only Rediscover collections, and Profile are auxiliary surfaces layered above their destination, never roots.
 
 ### Global quick capture
 
-Timeline Home, Rediscover, and Search expose one theme-aware expressive **`+ New`** floating toolbar at bottom-right, separate from the navigation toolbar. It collapses with navigation to its Add icon and expands to show a centered `+ New`; both controls remain vertically aligned with a small fixed gap. Navigation uses an accent-derived moving selected indicator while expanded. It is absent from Profile, timeline detail, media viewer, camera, recorder, and modal/detail surfaces. Tapping either visible part always opens the editable logical **All** timeline, lets the normal collapsed timeline render and settle, then expands the existing inline composer with the same restrained in-place motion as its rail `+` and focuses its first text field. It never opens a chooser or custom timeline and never creates a second composer. Timeline detail keeps its integrated rail `+` as the creation affordance instead of showing another floating action.
+All three destinations — the Home surface in **both** its top state and focused All moments, Timeline Home, and Search — expose one theme-aware expressive **`+ New`** floating toolbar at bottom-right, separate from the navigation toolbar. Wherever it is tapped it always lands on Home in focused All moments with the existing inline composer expanded; it never creates a Moment in a custom timeline. It has two presentations — collapsed to its Add icon, and expanded to show a centered `+ New` — and both controls remain vertically aligned with a small fixed gap. Navigation uses an accent-derived moving selected indicator while expanded. `+ New` presentation is defined **per Home state, not per raw scroll direction**: it does not collapse to a bare Add icon merely because the user scrolled down into focused All moments. It is **hidden while the inline composer is expanded** — Keep Moment is then the primary action — and it is absent from Profile, custom timeline detail, read-only Rediscover collections, media viewer, camera, recorder, and modal/detail surfaces.
+
+Tapping either visible part brings Home into focused All moments and expands the **existing** inline composer in place, from the timeline rail, at the head of the All moments feed, performing only the minimum scroll needed to seat the composer and its Keep Moment button in view. It never navigates, never opens a chooser or a custom timeline, never creates a second composer, and never opens a modal, dialog, bottom sheet, or separate composer screen. Per ADR-0059 it requests no field focus and does not open the IME; the person taps a field when ready. The composer's own in-place expansion is the only animated element in the flow.
+
+On Home the floating `+ New` and the rail `+` are the same creation affordance in two positions, and both remain visible in focused All moments. Custom timeline detail keeps its integrated rail `+` as its only creation affordance instead of showing a floating action.
+
+### Back on Home
+
+Back precedence on the Home surface, in order: (1) an open contextual selection bar, (2) an expanded inline composer, (3) the platform default. Exiting selection or collapsing the composer keeps the user in focused All moments at the same scroll offset and never restores the Home top state.
 
 ### Android external share capture
 
-Android accepts a user-initiated system share of plain text/URLs, images, videos, audio, or a supported mixed batch. Relive first asks which timeline should receive one new Moment: All is first, followed by custom timelines. Selecting a custom timeline creates the normal All + custom membership; selecting All retains the normal optional assignment controls. Shared content only pre-fills the existing inline composer and is never saved without the user choosing Keep Moment. Unsupported, unreadable, or mixed batches containing unsupported files are rejected as one request; arbitrary documents are not attachments in v1. This capability is Android-only for now.
+Android accepts a user-initiated system share of plain text/URLs, images, videos, audio, or a supported mixed batch. Relive first asks which timeline should receive one new Moment: All is first, followed by custom timelines. Selecting a custom timeline creates the normal All + custom membership; selecting All retains the normal optional assignment controls and brings Home into focused All moments rather than opening a separate All screen. Shared content only pre-fills the existing inline composer and is never saved without the user choosing Keep Moment. Unsupported, unreadable, or mixed batches containing unsupported files are rejected as one request; arbitrary documents are not attachments in v1. This capability is Android-only for now.
 
 ### Moment / timeline relationship
 
@@ -74,28 +107,28 @@ Membership rules:
 
 ## 2A. Rediscover
 
-Rediscover currently begins as a system-collection root with All, Favorites, On This Day, and From Your Past. It is not a chronological timeline or recommendation feed.
+Rediscover is a horizontally scrollable **collection row inside the Home surface**, rendered under the `Relive your memories` heading and above the `All moments` heading. It is not a root, a destination, a screen, a chronological timeline, or a recommendation feed.
 
-- The root renders the Relive app bar, the editable All timeline card, a `FAVOURITES` editorial section, and the floating top-level navigation toolbar. All opens the normal editable All timeline with the same automatic cover as its card: up to nine distinct image/video previews selected deterministically from a three-hour epoch-time bucket. Selection count and curated 1–9 arrangement may change between buckets but remain stable through recomposition, scrolling, navigation, and configuration change within one bucket. Audio and text-only Moments never become collage cells. With no visual media, All uses the neutral no-cover placeholder. Users cannot choose an All cover.
-- Favorites is derived reactively from each Moment's persisted favorite state. It is not a custom timeline, membership, or duplicate persistence record.
-- The section shows at most ten individual favorited-Moment cards in the same chronological ordering as the full Favorites timeline. Every compact shelf card shares one fixed visual-region height: image/video cards use their first ordered visual attachment as the lead visual and quietly show an additional-attachment count; text-only and audio-only cards use the theme-aware deterministic generated cover with no fake media, icon, or illustration. This compact-shelf exception does not change normal Timeline presentation.
-- Tapping a card opens the read-only Favorites timeline positioned at that Moment. `Show all` opens the complete read-only Favorites timeline. With zero favorites, the section shows `No favorite moments yet.` and `Moments you favorite will appear here.` without a row or `Show all` action.
-- The Favorites detail is strictly read-only: it has Back and a centered Favorites title, but no composer, creation, edit, forget, membership, or favorite-mutation controls. Media viewing and playback remain available.
-- The root uses a dedicated bounded read projection with batched attachment loading; it does not hydrate the full Favorites collection to render the shelf.
-- On This Day renders directly below Favorites only when at least one eligible Moment exists. Its editorial date is the current device-local day/month and its bounded, horizontally swipeable featured cards represent only matching dates in previous local calendar years. The current year is excluded; February 29 matches only previous February 29 Moments. A card's secondary label is the exact calendar-year anniversary, e.g. `2 YEARS AGO`. It opens a read-only system collection positioned at the selected Moment. With no eligible Moments, the heading, date, placeholder, and reserved section spacing are all absent; From Your Past follows Favorites with normal section spacing.
-- From Your Past renders after On This Day when that section is present, or directly after Favorites when it is absent, as a horizontally swipeable shelf of at most ten distinct Moments. It selects only Moments at least 90 days old, excludes future timestamps and active On This Day matches, and does not exclude favorites. Selection and order are deterministic for a device-local calendar day, change with the next local day, and are read from a bounded SQL-backed projection with batched attachments. Cards use the same compact dimensions and visual framing as Favorites but show no heart. Tapping opens that day's read-only From Your Past system collection positioned at the selected Moment; the detail retains the shelf order. If no Moment is eligible, the root shows `Your archive is still taking shape.` without cards.
-- **Deferred capability:** Places and Tags retain their local read-model implementation for a later Rediscover presentation phase, but are not collected or rendered by the current root.
+- The row holds four collection cards, in this fixed order: **Favourites**, **On This Day**, **From Your Past**, **All Photos**. It has no app bar, no editable All timeline card, and no vertically stacked editorial sections of its own; the app bar and the floating toolbars belong to the Home surface (§2).
+- **All Photos** is a bounded, read-only system collection of Moments that have at least one image or video attachment, read through the same bounded projection pattern as Favourites and From Your Past. It introduces no new table, no membership, and no duplicate persistence. It is **never** an entry point into the editable All moments feed, which is always present on Home beneath the `All moments` heading. Its card cover is generated automatically: up to nine distinct image/video previews selected deterministically from a three-hour epoch-time bucket. Selection count and curated 1–9 arrangement may change between buckets but remain stable through recomposition, scrolling, navigation, and configuration change within one bucket. Audio and text-only Moments never become collage cells. With no visual media, the card uses the neutral no-cover placeholder. Users cannot choose an All Photos cover.
+- **Favourites** is derived reactively from each Moment's persisted favorite state. It is not a custom timeline, membership, or duplicate persistence record.
+- Tapping the Favourites card opens the complete read-only Favourites timeline; the card is its single entry point. Individual favorited-Moment cards live inside that collection, not on Home, and positioning at an individual Moment applies only inside it. Every compact card there shares one fixed visual-region height: image/video cards use their first ordered visual attachment as the lead visual and quietly show an additional-attachment count; text-only and audio-only cards use the theme-aware deterministic generated cover with no fake media, icon, or illustration. This compact-card exception does not change normal Timeline presentation. With zero favorites, the collection shows `No favorite moments yet.` and `Moments you favorite will appear here.`
+- The Favourites detail is strictly read-only: it has Back and a centered Favourites title, but no composer, creation, edit, forget, membership, or favorite-mutation controls. Media viewing and playback remain available.
+- The Home surface uses bounded read projections with batched attachment loading throughout — for the Rediscover row and for the All moments feed alike. It never hydrates the full Favourites collection, the full All Photos collection, or the complete archive to render.
+- **On This Day** is the second card in the row. Its editorial date is the current device-local day/month, and the bounded collection it opens represents only matching dates in previous local calendar years. The current year is excluded; February 29 matches only previous February 29 Moments. A Moment's secondary label is the exact calendar-year anniversary, e.g. `2 YEARS AGO`. It opens a read-only system collection positioned at the selected Moment. When no Moment is eligible the card is omitted and the row closes up without leaving a gap or reserved spacing.
+- **From Your Past** is the third card in the row. Its bounded, deterministic selection of at most ten distinct Moments defines the contents of the read-only collection the card opens, not a shelf on Home. It selects only Moments at least 90 days old, excludes future timestamps and active On This Day matches, and does not exclude favorites. Selection and order are deterministic for a device-local calendar day, change with the next local day, and are read from a bounded SQL-backed projection with batched attachments. Cards inside the collection use the same compact dimensions and visual framing as Favourites but show no heart, and the detail retains that order. If no Moment is eligible, the From Your Past card is omitted from the row; Home never substitutes sample memories.
+- **Deferred capability:** Places and Tags retain their local read-model implementation for a later Rediscover presentation phase, but are not collected or rendered by the current Rediscover row.
 
 - **Future Places** groups readable saved location labels only; raw coordinates, maps, and geocoding are not introduced.
 - **Future Tags** reuse the existing canonical tag system and rank tags by Moment usage.
 - No Moment content leaves the device, and no analytics, cloud, AI, or recommendation backend is used.
-- Empty sections remain quiet and editorial; Relive never substitutes sample memories.
+- Empty collections remain quiet and editorial; Relive never substitutes sample memories.
 
 ---
 
 ## 3. Timeline UI
 
-**The approved reference design is authoritative:** `docs/ui-reference/timeline-reference.png` and `docs/ui-reference/timeline-reference.html`.
+**The approved reference design is authoritative for Relive's warm editorial visual identity — typography, color, rail, card, and media treatment — only:** `docs/ui-reference/timeline-reference.png` and `docs/ui-reference/timeline-reference.html`. It is not authoritative for the Home surface's composition, ordering, or scroll model, which are defined in §2.
 
 Visual direction:
 
@@ -117,13 +150,13 @@ Visual direction:
 
 The interface must **encourage continuous scrolling**. It must **not** feel like a database or a list of records.
 
-When a user manually moves toward older Moments in any timeline detail, a bottom-centered return-to-newest arrow appears. It remains available until the newest end is reached. Selecting it visibly and rapidly scrolls to the terminal timeline item; touching the scrolling timeline cancels the motion at the current Moment without activating content beneath that touch. The control is absent on empty and non-scrollable timelines.
+When a user manually moves toward older Moments, a bottom-centered return-to-newest arrow appears. On Home it is scoped to **focused All moments only**: because that feed is newest-first, movement toward older Moments is downward scroll, and the control returns to the newest end at the head of the feed. It is hidden whenever the Rediscover row is visible, so it never competes with the upward scroll that restores the Home top state, and it never restores that state itself. In custom timeline detail it behaves as before. It remains available until the newest end is reached. Selecting it visibly and rapidly scrolls to that newest end; touching the scrolling timeline cancels the motion at the current Moment without activating content beneath that touch. The control is absent on empty and non-scrollable timelines.
 
 ### 3.1 Date navigation
 
-Every editable All or custom Timeline has a Calendar action for navigation, never filtering. The selected date uses the current device-local calendar day: an exact date opens that day's first Moment in the existing chronological order; a missing date opens the next available Moment, or the closest previous Moment when no later Moment exists. The empty global Search capsule has the same Calendar action, which leaves Search and opens All at the resolved Moment. Entering a non-blank search query replaces that action with the result counter and previous/next controls.
+All moments and every custom Timeline have a Calendar action for navigation, never filtering; on Home it stays reachable in focused All moments. The selected date uses the current device-local calendar day: an exact date moves to that day's first Moment in the feed's existing order; a missing date moves to the next available Moment, or the closest previous Moment when no later Moment exists. On Home this is explicit Calendar navigation only, never an entry position: it resolves a Moment and the bounded feed re-anchors its window there rather than paging through history, and the app always opens at the top of Home with the All moments feed never auto-positioned on launch. The empty global Search capsule has the same Calendar action, which leaves Search and returns to Home in focused All moments at the resolved Moment. Entering a non-blank search query replaces that action with the result counter and previous/next controls.
 
-Timeline Home has a separate capsule for filtering the already-observed custom timeline summaries by timeline name. It uses live, case-insensitive partial matching and preserves the repository's newest-first order. The logical All timeline and Moment fields never participate. This capsule has a search glyph and the `Search timelines...` field only: it has no Back, Calendar, result counter, or previous/next controls. A non-blank query with no matches shows `No timelines found.`
+Timeline Home, the root of the Timelines destination, has a separate capsule for filtering the already-observed custom timeline summaries by timeline name. It uses live, case-insensitive partial matching and preserves the repository's newest-first order. The logical All timeline and Moment fields never participate. This capsule has a search glyph and the `Search timelines...` field only: it has no Back, Calendar, result counter, or previous/next controls. A non-blank query with no matches shows `No timelines found.` It belongs to the Timelines destination, not to Home.
 
 Concrete visual tokens (colors, typography, dimensions) are defined in [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) and must match the reference.
 
@@ -308,7 +341,9 @@ Timeline collage → Moment media gallery → tap item → Full-screen viewer
 
 ## 6. Creating a moment
 
-Creation happens **inline inside the current timeline**. The composer sits at the chronological end of the timeline (after the newest moment). Its rail terminates at the center of the final plus marker; no rail continues below it.
+Creation happens **inline inside the current timeline**. The composer sits at the chronological end of the timeline, after the newest moment.
+
+On the Home surface the All moments feed is newest-first, so that chronological end renders at the **head** of the feed, directly beneath the `All moments` heading: the composer's rail terminates at the center of its plus marker and **no rail continues above it**. The composer is therefore always inside the loaded newest window, and `+ New` reaches it with a short scroll rather than by paging through history. In custom timeline detail the composer keeps its existing position at the end of the timeline, where its rail terminates at the center of the final plus marker and no rail continues below it.
 
 ### 6.1 Composer collapse/expand behavior
 
@@ -319,10 +354,10 @@ The composer is **collapsed by default**. In the collapsed state:
 - No modal, no bottom sheet, no separate screen — the composer opens in place.
 - Expansion and collapse are **smoothly animated** (`AnimatedContent` with expand/shrink vertical transitions).
 - The `×` reset button resets all fields and **collapses** the composer.
-- A successful **Keep Moment** resets all fields and **collapses** the composer.
-- System/visible Back preserves an unfinished draft for its current timeline and leaves/collapses without a discard dialog. Reopening that same timeline restores it during the app session; `×` remains the explicit discard-confirmation path.
+- A successful **Keep Moment** resets all fields and **collapses** the composer to its rail `+` marker. The surface does not move with it: saved from Home, the user remains in focused All moments at the same scroll offset, and the welcome and Rediscover sections are never automatically restored (see §6.7).
+- System/visible Back collapses the composer and preserves its unfinished draft without a discard dialog. On Home it only collapses the composer — the user stays in focused All moments at the same scroll offset and the Home top state is not restored; in custom timeline detail it collapses the composer and then leaves. Reopening that same composer restores the draft during the app session; `×` remains the explicit discard-confirmation path. Back precedence on Home is given in §2.
 - Keyboard behavior keeps the active composer usable above the IME (see ADR-0016).
-- Entry from global `+ New` waits for All's content projection and one collapsed composed frame, then runs this same expansion transition and requests first-field focus after the expanding composer enters composition. It uses no arbitrary delay; subsequent media actions do not re-request focus.
+- Entry from global `+ New` brings Home into focused All moments and runs this same in-place expansion transition on the existing rail composer, scrolling only the minimum needed to seat the composer and its Keep Moment button. There is no navigation, no waiting on a fresh content projection, no settled-frame handoff, and no arbitrary delay. Per ADR-0059 the composer requests no field focus and opens no IME — the person taps a field when ready — and subsequent media actions do not request focus either.
 
 ### 6.2 Composer fields
 
@@ -401,9 +436,9 @@ Active recording row layout: **Stop | flexible waveform | duration | ×/remove**
 
 Pressing **Keep Moment** saves the moment. After save:
 
-- the plus marker becomes a normal timeline dot
-- the new moment immediately adopts the standard timeline presentation
-- the composer resets and collapses
+- the composer resets and collapses to its rail `+` marker
+- the saved moment renders immediately in the timeline adjacent to the collapsed composer, taking a normal timeline dot and adopting the standard timeline presentation
+- the surface does not move: there is **no app-initiated scroll of any kind** — not to the top, not to the newest item, not to the composer. Saved from Home, the user remains in focused All moments at the same scroll offset, and the welcome and Rediscover sections are never restored.
 
 ---
 
@@ -498,7 +533,7 @@ A moment may be **edited** or **forgotten** only during the **first 4 days after
 
 ### Within the first 4 days
 
-Long-pressing a Moment in the editable **All** timeline selects it and smoothly replaces the normal header with a contextual Material 3 app bar. The bar has a Back action that exits selection, plus:
+Long-pressing a Moment in **All moments** on Home selects it and smoothly animates a contextual Material 3 app bar in over Home's app bar, in either Home state, without leaving the surface or restoring the Home top state; All moments needs no persistent header of its own. Long-pressing in a custom timeline replaces that timeline's header the same way. Back exits selection before any other Back behavior (§2), and the bar itself has a Back action that exits selection, plus:
 
 - **Edit**
 - **Add to timeline** — opens a single-choice add-only picker for custom timelines. Already assigned timelines remain visible but disabled. Choosing an unassigned timeline immediately creates only that membership; it does not duplicate the Moment.
@@ -527,13 +562,13 @@ Long-pressing a Moment in the editable **All** timeline selects it and smoothly 
 
 ## 9. Search
 
-Search v1 is a dedicated top-level destination. It searches the complete local archive, not a selected timeline.
+Search v1 is the one separate destination alongside the Home surface. It searches the complete local archive, not a selected timeline.
 
 - The autofocus `Search memories...` field performs a debounced, case-insensitive SQL search across Moment title and content.
 - Empty queries show `Find anything you've saved.` and never render the whole archive. No results show `No moments found.`
-- Matches retain the same chronological ordering and full timeline rail/card/media presentation as All Timeline, but are strictly read-only. Media viewing/playback remains available.
+- Matches keep their own chronological ordering and the full timeline rail/card/media presentation, but are strictly read-only. Media viewing/playback remains available. Search results are not the All moments feed, so Home's newest-first, bounded/paged feed rules do not govern them.
 - The first match is active. The `N / total` counter and up/down controls move through matches without wrapping and scroll the active Moment into view.
-- Search state (query, result selection, and scroll position) persists while switching top-level destinations during the app session.
+- Search state (query, result selection, and scroll position) persists while the user leaves Search for Home and returns during the app session. Home's own scroll state — top state or focused All moments — is likewise preserved across those returns, except when the Search Calendar action resolves a Moment, which returns to Home in focused All moments positioned at that Moment (§3.1).
 
 Filters, chips, categories, Tags/Places tabs, suggestions, search history, relevance ranking, AI search, and timeline-name results are not part of Search v1. Text highlighting is deferred unless it can be added without restructuring MomentCard.
 
@@ -543,13 +578,13 @@ Filters, chips, categories, Tags/Places tabs, suggestions, search history, relev
 
 - Every moment has a subtle **favorite/heart** action.
 - Favorite state must **not** visually dominate the moment.
-- Rediscover's bounded Favorites shelf and full read-only Favorites timeline are derived from this same state, so favoriting or unfavoriting elsewhere updates both immediately.
+- The Rediscover row's Favourites card and the full read-only Favourites timeline are derived from this same state, so favoriting or unfavoriting elsewhere updates both immediately.
 
 ---
 
 ## 11. Themes
 
-All timelines share the **same layout and behavior**. Themes only change **presentation**.
+All timelines share the **same Moment presentation and interaction model**. Themes only change **presentation**.
 
 Selectable palettes:
 
@@ -560,7 +595,7 @@ Selectable palettes:
 - **Blue Hour**
 - **Rosewood**
 
-The global appearance mode is **System**, **Light**, or **Dark**. System follows the live platform appearance. The selected palette is the app default. The editable All timeline and each custom timeline own independent `TimelineAppearance` values; All's appearance is stored in native local preferences because All is logical, while custom timeline appearances are archive data. Profile, Search, Rediscover, and read-only system collections use the app default. A timeline's mode always remains global.
+The global appearance mode is **System**, **Light**, or **Dark**. System follows the live platform appearance. The selected palette is the app default. All moments and each custom timeline own independent `TimelineAppearance` values; All's appearance is stored in native local preferences because All is logical, while custom timeline appearances are archive data. On Home, All's `TimelineAppearance` governs the **All moments band only**: the welcome block, the `Relive your memories` heading, and the Rediscover row always render on the plain canvas. Profile, Search, the Rediscover row, and read-only system collections use the app default. A timeline's mode always remains global.
 
 Original/Warm Cream and Evergreen/Sage Green are available in Free. All other palettes and wallpapers are Relive Pro appearance options. A former Pro subscriber continues to see an already-selected premium appearance, but cannot select a new premium appearance without Pro.
 
@@ -586,16 +621,19 @@ Themes **must NOT** change:
 
 ## 12. Settings
 
-Profile is an auxiliary destination opened from Timeline Home's profile affordance; it is not a bottom-navigation destination. It shows a neutral identity placeholder, installation joining date when known, informational Moment/custom-Timeline/place counts, an inline Appearance card, and the approved remaining Profile IA: Preferences; Media & storage; Backup; Location; Rediscover notifications; Privacy & security; Help & feedback; About Relive. Appearance provides persistent System/Light/Dark and app-default palette controls. Media & Storage is a read-only archive-insights screen showing Relive-managed attachment storage and category counts; it provides no optimization, deletion, cleanup, or device-wide storage controls. Other Profile-row functionality remains deferred unless a real destination exists.
+Profile is an auxiliary destination opened from the Home surface's profile affordance; it is not a bottom-navigation destination. It shows the profile identity — a real display name when one is set, otherwise a neutral identity placeholder — and this is the only source for Home's `Welcome back, {name}` greeting; with no real display name Home shows exactly `Welcome back` (§2). It also shows installation joining date when known, informational Moment/custom-Timeline/place counts, an inline Appearance card, and the approved remaining Profile IA: Preferences; Media & storage; Backup; Location; Rediscover notifications; Privacy & security; Help & feedback; About Relive. Appearance provides persistent System/Light/Dark and app-default palette controls. Media & Storage is a read-only archive-insights screen showing Relive-managed attachment storage and category counts; it provides no optimization, deletion, cleanup, or device-wide storage controls. Other Profile-row functionality remains deferred unless a real destination exists.
 
 ### 12.1 Behavior preferences
 
-Preferences is a small behavior-only screen; it does not duplicate Appearance, Backup, Media & Storage, Privacy & security, account, per-timeline themes, or archive actions. Its persisted controls are:
+Preferences is a small behavior-only screen; it does not duplicate Appearance, Backup, Media & Storage, Privacy & security, account, per-timeline themes, or archive actions.
 
-- **Start Relive on** — Timelines by default, or Rediscover. This applies only to a fresh app-root startup; an authoritative restoration or deep-link destination remains higher priority. Search is not a startup option.
+Startup is fixed rather than preferred: with a single root there is nothing to choose between, so Relive always starts at the top of the Home surface, in the Home top state. There is no start-destination preference; an authoritative restoration or deep-link destination remains higher priority.
+
+Preferences' persisted controls are:
+
 - **Confirm before discarding** — on by default. It controls only a dirty inline composer's explicit `×` reset. When off, `×` immediately resets and collapses; system/visible Back continues preserving the originating timeline's session draft.
-- **Show locations** and **Show tags** — on by default. These are presentation-only controls for normal editable All/custom Timeline Moment cards. They do not alter stored Moment data, composer/edit fields, Search matching or results, or read-only Rediscover collection details.
-- **On This Day** and **Favorites** — on by default. Turning one off omits that complete section from the Rediscover root without changing eligibility, favorite state, Moment data, or read-only collection behavior. Remaining section spacing collapses naturally.
+- **Show locations** and **Show tags** — on by default. These are presentation-only controls for normal All moments and custom Timeline Moment cards. They do not alter stored Moment data, composer/edit fields, Search matching or results, or read-only Rediscover collection details.
+- **On This Day** and **Favourites** — on by default. Turning one off omits that collection card from the Rediscover row on Home without changing eligibility, favorite state, Moment data, or read-only collection behavior. The row closes up naturally and Home's welcome → Rediscover row → All moments ordering is unaffected.
 
 Behavior preferences take effect reactively where safe and persist outside the archive database through native local preferences. The current fixed 12-hour editorial time format remains settled by ADR-0020. Video autoplay remains prohibited by the passive, lazy, single-owner playback architecture, and audio has no approved automatic-play context; those three controls are not shown.
 

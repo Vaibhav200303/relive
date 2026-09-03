@@ -522,7 +522,7 @@ private fun TimelineSearchGlyph() {
 }
 
 @Composable
-private fun ProfileAffordanceGlyph(photo: MediaStorageRef?, mediaStore: MediaStore) {
+internal fun ProfileAffordanceGlyph(photo: MediaStorageRef?, mediaStore: MediaStore) {
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
     val ringShape = RoundedCornerShape(dims.radii.pill)

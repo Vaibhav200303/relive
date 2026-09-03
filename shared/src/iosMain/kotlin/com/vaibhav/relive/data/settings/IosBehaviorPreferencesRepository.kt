@@ -1,7 +1,6 @@
 package com.vaibhav.relive.data.settings
 
 import com.vaibhav.relive.domain.model.BehaviorPreferences
-import com.vaibhav.relive.domain.model.StartDestination
 import com.vaibhav.relive.domain.repository.BehaviorPreferencesRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,12 +13,6 @@ class IosBehaviorPreferencesRepository : BehaviorPreferencesRepository {
     private val mutablePreferences = MutableStateFlow(readPreferences())
 
     override val preferences: StateFlow<BehaviorPreferences> = mutablePreferences.asStateFlow()
-
-    override suspend fun setStartDestination(destination: StartDestination): Result<Unit> = persist(
-        key = START_DESTINATION_KEY,
-        value = destination.encodePreference(),
-        update = { it.copy(startDestination = destination) },
-    )
 
     override suspend fun setConfirmBeforeDiscarding(enabled: Boolean): Result<Unit> = persistBoolean(
         key = CONFIRM_BEFORE_DISCARDING_KEY,
@@ -67,7 +60,6 @@ class IosBehaviorPreferencesRepository : BehaviorPreferencesRepository {
     }
 
     private fun readPreferences(): BehaviorPreferences = decodeBehaviorPreferences(
-        startDestination = storage.stringForKey(START_DESTINATION_KEY),
         confirmBeforeDiscarding = storage.stringForKey(CONFIRM_BEFORE_DISCARDING_KEY),
         showLocations = storage.stringForKey(SHOW_LOCATIONS_KEY),
         showTags = storage.stringForKey(SHOW_TAGS_KEY),

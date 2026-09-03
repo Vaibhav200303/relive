@@ -1,7 +1,6 @@
 package com.vaibhav.relive.presentation.settings
 
 import com.vaibhav.relive.domain.model.BehaviorPreferences
-import com.vaibhav.relive.domain.model.StartDestination
 import com.vaibhav.relive.domain.repository.BehaviorPreferencesRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,10 +28,6 @@ class BehaviorPreferencesViewModel(
         SharingStarted.WhileSubscribed(5_000),
         BehaviorPreferencesState(preferences = repository.preferences.value),
     )
-
-    fun setStartDestination(destination: StartDestination) {
-        persist { repository.setStartDestination(destination) }
-    }
 
     fun setConfirmBeforeDiscarding(enabled: Boolean) {
         persist { repository.setConfirmBeforeDiscarding(enabled) }

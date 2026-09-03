@@ -47,6 +47,8 @@ fun TimelineHeader(
     onBack: (() -> Unit)? = null,
     onJumpToDate: (() -> Unit)? = null,
     onChangeTheme: (() -> Unit)? = null,
+    /** Leading slot for surfaces that are roots rather than details, so carry no back action. */
+    leading: (@Composable () -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val colors = ReliveTheme.colors
@@ -69,11 +71,17 @@ fun TimelineHeader(
             ) {
                 BackGlyph(size = dims.icon.lg, color = colors.textSecondary, strokeWidth = dims.stroke.icon)
             }
+        } else if (leading != null) {
+            Box(modifier = Modifier.align(Alignment.CenterStart)) { leading() }
         }
         Text(
             text = "Relive",
             style = type.wordmark,
-            color = colors.accent,
+            // Ink, like every other title in the app: the palette's one-ink rule makes ink the
+            // single font colour for a mode and leaves hierarchy to the serif wordmark style, so
+            // accent stays on buttons, pills and selection. This is the same wordmark the Timelines
+            // root draws one tab away, and it matches how a custom timeline titles its own hero.
+            color = colors.textPrimary,
             modifier = Modifier.align(Alignment.Center),
         )
         if (onJumpToDate != null || onChangeTheme != null) {

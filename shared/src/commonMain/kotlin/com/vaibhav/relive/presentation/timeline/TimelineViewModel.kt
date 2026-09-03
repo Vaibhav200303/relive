@@ -16,14 +16,17 @@ import com.vaibhav.relive.presentation.date.RediscoverCalendar
 import com.vaibhav.relive.presentation.date.editorialDayMonth
 import com.vaibhav.relive.domain.model.LocalCalendarDate
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class TimelineViewModel(
     private val momentRepository: MomentRepository,
     private val timelineRepository: TimelineRepository,
@@ -38,6 +41,14 @@ class TimelineViewModel(
     val state: StateFlow<TimelineScreenState> = _state.asStateFlow()
 
     private var momentsJob: Job? = null
+
+    /**
+     * How many of All's newest moments the Home feed currently holds. Grows one page at a time as
+     * the person scrolls toward older moments; the root never reads the whole archive (ADR-0061).
+     * Only [CurrentTimeline.All] is windowed — custom timelines and the read-only collections are
+     * already bounded by their own scope.
+     */
+    private val allWindowLimit = MutableStateFlow(HOME_FEED_PAGE_SIZE)
     init {
         scope.launch {
             timelineRepository.observeCustom().collect { timelines ->
@@ -233,8 +244,16 @@ class TimelineViewModel(
         momentsJob?.cancel()
         momentsJob = scope.launch {
             timeline.momentsFlow().collect { moments ->
-                val orderedMoments = if (timeline is CurrentTimeline.FromYourPast) moments else moments.asReversed()
+                // The repository reads newest-first. The All moments feed on Home keeps that order
+                // (ADR-0061) and From Your Past keeps its curated order; every other surface is
+                // presented oldest-first.
+                val keepsRepositoryOrder =
+                    timeline is CurrentTimeline.FromYourPast || timeline is CurrentTimeline.All
+                val orderedMoments = if (keepsRepositoryOrder) moments else moments.asReversed()
                 val presentation = orderedMoments.map { it.toPresentation() }
+                // A full window means the archive may hold older moments still to load.
+                val windowIsFull = timeline is CurrentTimeline.All &&
+                    moments.size >= allWindowLimit.value
                 _state.update { current ->
                     if (current.currentTimeline != timeline) {
                         current
@@ -248,6 +267,7 @@ class TimelineViewModel(
                             momentActions = current.momentActions.takeIf { actions ->
                                 actions.selectedMomentId == null || presentation.any { it.id == actions.selectedMomentId }
                             } ?: MomentContextualActionState(),
+                            hasOlderMoments = windowIsFull,
                         )
                     }
                 }
@@ -255,9 +275,22 @@ class TimelineViewModel(
         }
     }
 
+    /**
+     * Grows the Home feed by one page. Safe to call repeatedly while a load is in flight and once
+     * the whole archive is loaded; both are no-ops.
+     */
+    fun loadOlderMoments() {
+        if (_state.value.currentTimeline !is CurrentTimeline.All) return
+        if (!_state.value.hasOlderMoments) return
+        allWindowLimit.update { it + HOME_FEED_PAGE_SIZE }
+    }
+
     private fun CurrentTimeline.momentsFlow(): Flow<List<Moment>> = when (this) {
-        CurrentTimeline.All -> momentRepository.observeAll()
+        CurrentTimeline.All -> allWindowLimit.flatMapLatest { limit ->
+            momentRepository.observeAllWindow(limit)
+        }
         CurrentTimeline.Favorites -> rediscoverRepository.observeFavoriteMoments()
+        CurrentTimeline.AllPhotos -> rediscoverRepository.observeAllPhotosMoments()
         is CurrentTimeline.OnThisDay -> rediscoverRepository.observeOnThisDayMoments(
             today = date,
             startOfToday = RediscoverCalendar.startOfDay(date),

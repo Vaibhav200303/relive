@@ -18,6 +18,12 @@ SELECT * FROM media_attachments
 WHERE moment_id = :momentId
 ORDER BY sort_index ASC;
 
+-- Batch hydration for a loaded window of Moments; see MomentTags.sq selectTagsForMomentIds.
+selectAttachmentsForMomentIds:
+SELECT * FROM media_attachments
+WHERE moment_id IN :momentIds
+ORDER BY moment_id ASC, sort_index ASC;
+
 selectArchiveAttachmentRefs:
 SELECT media_type, storage_ref FROM media_attachments;
 

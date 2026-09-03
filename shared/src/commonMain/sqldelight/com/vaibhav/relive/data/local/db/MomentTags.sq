@@ -25,6 +25,15 @@ JOIN moment_tags mt ON mt.tag_canonical = t.canonical
 WHERE mt.moment_id = :momentId
 ORDER BY t.canonical ASC;
 
+-- Batch hydration for a loaded window of Moments: one query for the whole page instead of one
+-- per row. Keeps a page's read cost fixed regardless of page size (ARCHITECTURE.md 14).
+selectTagsForMomentIds:
+SELECT mt.moment_id, t.canonical, t.label
+FROM moment_tags mt
+JOIN tags t ON t.canonical = mt.tag_canonical
+WHERE mt.moment_id IN :momentIds
+ORDER BY mt.moment_id ASC, t.canonical ASC;
+
 selectDistinctTagsInTimeline:
 SELECT DISTINCT t.canonical, t.label FROM tags t
 JOIN moment_tags mt ON mt.tag_canonical = t.canonical

@@ -22,6 +22,29 @@ data class FavoritesCollectionSummary(
     }
 }
 
+/**
+ * Cover data for the `All Photos` card in the Home surface's Rediscover row (ADR-0061): how many
+ * Moments carry at least one image or video, and up to four visual previews for the card cover.
+ */
+data class AllPhotosCollectionSummary(
+    val momentCount: Long,
+    val previewAttachments: List<MediaAttachment>,
+) {
+    init {
+        require(momentCount >= 0) { "momentCount must not be negative" }
+        require(previewAttachments.size <= MAX_PREVIEW_ATTACHMENTS) {
+            "All Photos previews are bounded to $MAX_PREVIEW_ATTACHMENTS attachments"
+        }
+        require(previewAttachments.all { it.type == MediaType.Image || it.type == MediaType.Video }) {
+            "All Photos previews include visual media only"
+        }
+    }
+
+    companion object {
+        const val MAX_PREVIEW_ATTACHMENTS = 4
+    }
+}
+
 /** A bounded Rediscover shelf projection for one favorited Moment. */
 data class FavoriteMomentPreview(
     val id: MomentId,

@@ -41,7 +41,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import com.vaibhav.relive.domain.model.StartDestination
 import com.vaibhav.relive.platform.system.ReliveBackHandler
 import com.vaibhav.relive.presentation.settings.BehaviorPreferencesViewModel
 import com.vaibhav.relive.ui.components.timeline.BackGlyph
@@ -62,7 +61,6 @@ fun PreferencesScreen(
     val dims = ReliveTheme.dimensions
     val snackbarHostState = remember { SnackbarHostState() }
     val haptics = rememberReliveHaptics()
-    var showStartDestinationDialog by remember { mutableStateOf(false) }
 
     ReliveBackHandler(enabled = true, onBack = onBack)
     LaunchedEffect(state.errorMessage) {
@@ -93,11 +91,6 @@ fun PreferencesScreen(
                     ),
                 )
                 PreferenceSectionHeading("GENERAL")
-                StartDestinationRow(
-                    selected = preferences.startDestination,
-                    onClick = { showStartDestinationDialog = true },
-                )
-                PreferenceDivider()
                 PreferenceSwitchRow(
                     label = "Confirm before discarding",
                     checked = preferences.confirmBeforeDiscarding,
@@ -143,17 +136,6 @@ fun PreferencesScreen(
         }
     }
 
-    if (showStartDestinationDialog) {
-        StartDestinationDialog(
-            selected = preferences.startDestination,
-            onDismiss = { showStartDestinationDialog = false },
-            onSelect = { destination ->
-                haptics.perform(ReliveHapticCue.Selection)
-                viewModel.setStartDestination(destination)
-                showStartDestinationDialog = false
-            },
-        )
-    }
 }
 
 @Composable
@@ -178,39 +160,6 @@ private fun PreferenceSectionHeading(label: String) {
             )
             .semantics { heading() },
     )
-}
-
-@Composable
-private fun StartDestinationRow(
-    selected: StartDestination,
-    onClick: () -> Unit,
-) {
-    val dims = ReliveTheme.dimensions
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = dims.minTouchTarget)
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = dims.spacing.xl, vertical = dims.spacing.sm)
-            .semantics(mergeDescendants = true) {
-                contentDescription = "Start Relive on, ${selected.displayName()}"
-            },
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = "Start Relive on",
-            style = ReliveTheme.typography.body,
-            color = ReliveTheme.colors.textPrimary,
-            modifier = Modifier.weight(1f),
-        )
-        Text(
-            text = selected.displayName(),
-            style = ReliveTheme.typography.subtitle,
-            color = ReliveTheme.colors.textSecondary,
-            modifier = Modifier.padding(horizontal = dims.spacing.sm),
-        )
-        ForwardGlyph(dims.icon.sm, ReliveTheme.colors.textMuted, dims.stroke.icon)
-    }
 }
 
 @Composable
@@ -256,55 +205,4 @@ private fun PreferenceDivider() {
         thickness = ReliveTheme.dimensions.stroke.hairline,
         color = ReliveTheme.colors.borderMuted,
     )
-}
-
-@Composable
-private fun StartDestinationDialog(
-    selected: StartDestination,
-    onDismiss: () -> Unit,
-    onSelect: (StartDestination) -> Unit,
-) {
-    val dims = ReliveTheme.dimensions
-    ReliveAlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = ReliveTheme.colors.surfaceOverlay,
-        title = {
-            Text("Start Relive on", style = ReliveTheme.typography.title, color = ReliveTheme.colors.textPrimary)
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(dims.spacing.xs)) {
-                StartDestination.entries.forEach { destination ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = dims.minTouchTarget)
-                            .selectable(
-                                selected = destination == selected,
-                                role = Role.RadioButton,
-                                onClick = { onSelect(destination) },
-                            ),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        RadioButton(selected = destination == selected, onClick = null)
-                        Text(
-                            destination.displayName(),
-                            style = ReliveTheme.typography.body,
-                            color = ReliveTheme.colors.textPrimary,
-                            modifier = Modifier.padding(start = dims.spacing.sm),
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = ReliveTheme.colors.accent)
-            }
-        },
-    )
-}
-
-private fun StartDestination.displayName(): String = when (this) {
-    StartDestination.Timelines -> "Timelines"
-    StartDestination.Rediscover -> "Rediscover"
 }

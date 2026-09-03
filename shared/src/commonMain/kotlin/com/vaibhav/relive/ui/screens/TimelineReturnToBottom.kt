@@ -40,12 +40,47 @@ internal data class TimelineReturnToBottomState(
         revealedByManualScroll && canScrollForward && !isAutoScrolling
 }
 
+/**
+ * Presentation state for Home's return-to-top affordance.
+ *
+ * Home's feed is newest-first, so the end people scroll back to is the top of All moments and the
+ * gesture that asks for it is an upward drag. Unlike the timeline's return-to-newest control, this
+ * one withdraws again on the first downward movement: it is a passing offer, not a fixed control.
+ */
+internal data class TimelineReturnToTopState(
+    val revealedByManualScroll: Boolean = false,
+) {
+    fun onManualPositionChanged(
+        movedTowardTop: Boolean,
+        canReturnToTop: Boolean,
+    ): TimelineReturnToTopState = when {
+        !canReturnToTop -> TimelineReturnToTopState()
+        movedTowardTop -> copy(revealedByManualScroll = true)
+        else -> TimelineReturnToTopState()
+    }
+
+    fun onPositionChanged(
+        isProgrammaticScroll: Boolean,
+        movedTowardTop: Boolean,
+        canReturnToTop: Boolean,
+    ): TimelineReturnToTopState = when {
+        !canReturnToTop -> TimelineReturnToTopState()
+        isProgrammaticScroll -> this
+        else -> onManualPositionChanged(movedTowardTop = movedTowardTop, canReturnToTop = true)
+    }
+
+    fun isVisible(canReturnToTop: Boolean): Boolean = revealedByManualScroll && canReturnToTop
+}
+
 internal data class TimelineListPosition(
     val index: Int,
     val scrollOffset: Int,
 ) {
-    fun movedTowardOlderThan(previous: TimelineListPosition): Boolean =
+    fun movedTowardTopOf(previous: TimelineListPosition): Boolean =
         index < previous.index || (index == previous.index && scrollOffset < previous.scrollOffset)
+
+    /** On an oldest-first timeline the top of the list is its oldest end. */
+    fun movedTowardOlderThan(previous: TimelineListPosition): Boolean = movedTowardTopOf(previous)
 }
 
 /** Owns at most one cancellable, user-initiated return-to-bottom animation. */
