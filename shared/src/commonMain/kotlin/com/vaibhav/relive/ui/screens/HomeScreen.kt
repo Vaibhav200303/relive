@@ -244,6 +244,7 @@ fun HomeScreen(
     wallpaper: TimelineWallpaper = TimelineWallpaper.WarmCream,
     onComposerExpandedChanged: ((Boolean) -> Unit)? = null,
     onFocusedAllMomentsChanged: ((Boolean) -> Unit)? = null,
+    onMoodInsightsVisibilityChanged: (Boolean) -> Unit = {},
 ) {
     val profileSettings by profileSettingsRepository.settings.collectAsState()
     val greeting = homeGreeting(profileSettings.displayName)
@@ -330,14 +331,18 @@ fun HomeScreen(
     val moodRevealThresholdPx = with(density) { MoodRevealThreshold.toPx() }
     val isMoodRevealed = expansion.expansionPx >= moodRevealThresholdPx
     var isMoodInsightsOpen by remember { mutableStateOf(false) }
+    val updateMoodInsightsOpen: (Boolean) -> Unit = { isOpen ->
+        isMoodInsightsOpen = isOpen
+        onMoodInsightsVisibilityChanged(isOpen)
+    }
     // Collapsing the welcome area takes the whole surface with it: insights cannot outlive the
     // state that disclosed them.
     LaunchedEffect(isMoodRevealed) {
-        if (!isMoodRevealed) isMoodInsightsOpen = false
+        if (!isMoodRevealed) updateMoodInsightsOpen(false)
     }
     // Back precedence on Home gains one step ahead of selection and the composer (ADR-0066):
     // open insights close first, and closing them is not a navigation event.
-    ReliveBackHandler(enabled = isMoodInsightsOpen) { isMoodInsightsOpen = false }
+    ReliveBackHandler(enabled = isMoodInsightsOpen) { updateMoodInsightsOpen(false) }
 
     // Rediscover row sources. Every one of these is a bounded projection; none of them reads the
     // archive (ADR-0061). Each collector is seeded from the hoisted last-delivered value, so a
@@ -564,7 +569,7 @@ fun HomeScreen(
                 wallpaper = wallpaper,
                 moodInsights = moodInsights,
                 isMoodRevealed = isMoodRevealed,
-                onToggleMoodInsights = { isMoodInsightsOpen = true },
+                onToggleMoodInsights = { updateMoodInsightsOpen(true) },
                 // The measured height is hoisted so a rebuilt Home can reserve the backdrop's
                 // space immediately, and mirrored into the expansion state, which needs it to know
                 // how far the sheet may travel.
@@ -628,7 +633,7 @@ fun HomeScreen(
             visible = isMoodInsightsOpen,
             insights = moodInsights,
             todayIndex = moodViewModel.currentDay().dayOfWeekIndex(),
-            onClose = { isMoodInsightsOpen = false },
+            onClose = { updateMoodInsightsOpen(false) },
         )
     }
 }
@@ -706,8 +711,7 @@ private fun MoodInsightsOverlay(
                         start = dims.spacing.xl,
                         end = dims.spacing.xl,
                         top = dims.spacing.md,
-                        // Clear the floating navigation toolbar and `+ New` at the bottom.
-                        bottom = dims.floatingToolbar.height + dims.spacing.xxl,
+                        bottom = dims.spacing.xxl,
                     ),
                 verticalArrangement = Arrangement.spacedBy(dims.spacing.xl),
             ) {

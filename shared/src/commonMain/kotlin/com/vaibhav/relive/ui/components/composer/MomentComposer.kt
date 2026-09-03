@@ -75,6 +75,7 @@ import com.vaibhav.relive.presentation.date.EditorialDateFormatter
 import com.vaibhav.relive.presentation.date.EditorialTimeFormatter
 import com.vaibhav.relive.presentation.timeline.CurrentTimeline
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.theme.timelineMomentForegroundColors
 import com.vaibhav.relive.ui.components.timeline.LocalTimelineWallpaperPalette
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
@@ -474,6 +475,10 @@ private fun ComposerTitleField(
     focusRequester: FocusRequester,
 ) {
     val colors = ReliveTheme.colors
+    val momentColors = timelineMomentForegroundColors(
+        colors = colors,
+        wallpaper = LocalTimelineWallpaperPalette.current,
+    )
     val type = ReliveTheme.typography
     val requester = remember { BringIntoViewRequester() }
     val scope = rememberCoroutineScope()
@@ -481,7 +486,7 @@ private fun ComposerTitleField(
         value = value,
         onValueChange = onValueChange,
         enabled = enabled,
-        textStyle = type.title.copy(color = colors.textPrimary),
+        textStyle = type.title.copy(color = momentColors.textPrimary),
         cursorBrush = androidx.compose.ui.graphics.SolidColor(colors.accent),
         singleLine = true,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
@@ -493,7 +498,7 @@ private fun ComposerTitleField(
             .semantics { contentDescription = "Memory title" },
         decorationBox = { inner ->
             if (value.isEmpty()) {
-                Text(text = "Memory Title", style = type.title, color = colors.textMuted)
+                Text(text = "Memory Title", style = type.title, color = momentColors.textMuted)
             }
             inner()
         },
