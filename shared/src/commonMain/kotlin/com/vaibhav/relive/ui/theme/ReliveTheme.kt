@@ -25,6 +25,8 @@ enum class ReliveThemeId {
     EmberAqua,
     PlumGold,
     RoseSage,
+    Sunrise,
+    Sunset,
 }
 
 fun ThemeReference.toReliveThemeId(): ReliveThemeId = when (this) {
@@ -33,6 +35,8 @@ fun ThemeReference.toReliveThemeId(): ReliveThemeId = when (this) {
     ThemeReference.EmberAqua -> ReliveThemeId.EmberAqua
     ThemeReference.PlumGold -> ReliveThemeId.PlumGold
     ThemeReference.RoseSage -> ReliveThemeId.RoseSage
+    ThemeReference.Sunrise -> ReliveThemeId.Sunrise
+    ThemeReference.Sunset -> ReliveThemeId.Sunset
 }
 
 /**
@@ -92,6 +96,8 @@ private fun ReliveThemeId.toThemeReference(): ThemeReference = when (this) {
     ReliveThemeId.EmberAqua -> ThemeReference.EmberAqua
     ReliveThemeId.PlumGold -> ThemeReference.PlumGold
     ReliveThemeId.RoseSage -> ThemeReference.RoseSage
+    ReliveThemeId.Sunrise -> ThemeReference.Sunrise
+    ReliveThemeId.Sunset -> ThemeReference.Sunset
 }
 
 private val LocalReliveTokens = staticCompositionLocalOf { DefaultReliveTokens }

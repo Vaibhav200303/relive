@@ -162,12 +162,65 @@ val RoseSagePalette = RelivePalette(
     ),
 )
 
+// 06 · Sunrise — first light: pale gold sky, warm earth ink, an amber sun. Light mode is the
+// golden hour after dawn; dark mode is the violet pre-dawn sky waiting for it. The atmospheric
+// canvas gradient derives from these roles, so the whole app takes on the morning's light.
+val SunrisePalette = RelivePalette(
+    theme = ThemeReference.Sunrise,
+    label = "Sunrise",
+    light = RelivePaletteRoles(
+        canvas = Color(0xFFFBF2E4),
+        surface = Color(0xFFFFFFFF),
+        ink = Color(0xFF46280F),
+        inkSoft = Color(0xFF6F4E30),
+        primary = Color(0xFFB4541A),
+        spark = Color(0xFFFFB94E),
+        tint = Color(0xFFF3DCC0),
+    ),
+    dark = RelivePaletteRoles(
+        canvas = Color(0xFF32213E),
+        surface = Color(0xFF413052),
+        ink = Color(0xFFF7EEE3),
+        inkSoft = Color(0xFFC7AFA6),
+        primary = Color(0xFFF3A356),
+        spark = Color(0xFFFFCF7D),
+        tint = Color(0xFF473556),
+    ),
+)
+
+// 07 · Sunset — dusk: rose-washed sky, deep plum ink, a low orange sun. Light mode is the warm
+// blush just before the light goes; dark mode is the burgundy afterglow once it has.
+val SunsetPalette = RelivePalette(
+    theme = ThemeReference.Sunset,
+    label = "Sunset",
+    light = RelivePaletteRoles(
+        canvas = Color(0xFFF9ECE9),
+        surface = Color(0xFFFFFFFF),
+        ink = Color(0xFF3B1E33),
+        inkSoft = Color(0xFF6D4763),
+        primary = Color(0xFFAD3F63),
+        spark = Color(0xFFFF9E52),
+        tint = Color(0xFFF0D3D5),
+    ),
+    dark = RelivePaletteRoles(
+        canvas = Color(0xFF381D2F),
+        surface = Color(0xFF4A2940),
+        ink = Color(0xFFF8ECEF),
+        inkSoft = Color(0xFFCEA9B9),
+        primary = Color(0xFFEC8FA3),
+        spark = Color(0xFFFFB068),
+        tint = Color(0xFF56304A),
+    ),
+)
+
 val RelivePaletteOptions: List<RelivePalette> = listOf(
     InkLilacPalette,
     TealSaffronPalette,
     EmberAquaPalette,
     PlumGoldPalette,
     RoseSagePalette,
+    SunrisePalette,
+    SunsetPalette,
 )
 
 /** The app-wide default palette. */

@@ -82,7 +82,6 @@ import com.vaibhav.relive.ui.components.AllTimelineCollage
 import com.vaibhav.relive.ui.components.ReliveSkeletonContent
 import com.vaibhav.relive.ui.components.TimelineHomeSkeleton
 import com.vaibhav.relive.ui.components.composer.PlusGlyph
-import com.vaibhav.relive.ui.components.navigation.ReliveWordmarkAppBar
 import com.vaibhav.relive.ui.components.timeline.TimelineCreationDialog
 import com.vaibhav.relive.ui.components.timeline.BackGlyph
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
@@ -381,10 +380,11 @@ private fun TimelineHomeHeader(
         label = "timeline selection app bar",
     ) { isSelectionMode ->
         if (isSelectionMode) {
+            // Transparent like the resting strip below: the selection actions float on the same
+            // canvas gradient rather than bringing a header band back for the mode.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(colors.bgHeader)
                     .windowInsetsPadding(WindowInsets.statusBars)
                     .padding(horizontal = dims.spacing.md, vertical = dims.spacing.sm),
             ) {
@@ -419,7 +419,14 @@ private fun TimelineHomeHeader(
                 }
             }
         } else {
-            ReliveWordmarkAppBar {
+            // No app-bar band: the wordmark and the root's two controls float directly over the
+            // canvas gradient, which runs unbroken to the top of the screen.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .padding(horizontal = dims.spacing.md, vertical = dims.spacing.sm),
+            ) {
                 IconButton(
                     onClick = onOpenProfile,
                     modifier = Modifier
@@ -429,6 +436,12 @@ private fun TimelineHomeHeader(
                 ) {
                     ProfileAffordanceGlyph(profilePhoto, mediaStore)
                 }
+                Text(
+                    text = "Relive",
+                    style = ReliveTheme.typography.wordmark,
+                    color = colors.textPrimary,
+                    modifier = Modifier.align(Alignment.Center),
+                )
                 IconButton(
                     onClick = onCreateTimeline,
                     modifier = Modifier
@@ -468,8 +481,8 @@ private fun TimelineHomeSearchBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            // No header band: the field floats over the canvas gradient below the app bar,
-            // separate from it, rather than extending the app-bar surface.
+            // No header band: the field floats over the canvas gradient beneath the root's
+            // floating controls, a separate element rather than part of a header surface.
             .padding(horizontal = dims.spacing.xl, vertical = dims.spacing.sm)
             .height(dims.search.containerHeight)
             .clip(shape)

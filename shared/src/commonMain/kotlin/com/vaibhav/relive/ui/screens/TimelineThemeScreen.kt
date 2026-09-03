@@ -44,6 +44,7 @@ import com.vaibhav.relive.presentation.timeline.TimelineThemeViewModel
 import com.vaibhav.relive.ui.components.timeline.BackGlyph
 import com.vaibhav.relive.ui.components.timeline.TimelineWallpaperSurface
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.theme.canvasBrush
 import com.vaibhav.relive.domain.entitlement.EntitlementProvider
 import com.vaibhav.relive.domain.entitlement.EntitlementPolicy
 
@@ -66,7 +67,7 @@ fun TimelineThemeScreen(
     val colors = ReliveTheme.colors
 
     Column(
-        modifier = Modifier.fillMaxSize().background(colors.bgCanvas),
+        modifier = Modifier.fillMaxSize().background(colors.canvasBrush()),
     ) {
         Row(
             modifier = Modifier

@@ -69,8 +69,9 @@ internal fun reliveColorsFor(
     return ReliveColors(
         bgCanvas = canvas,
         // A subtle light source at the top edge: dark canvases lift toward their primary hue,
-        // light canvases settle toward the soft tint. One hue, low contrast, never neon.
-        bgCanvasGlow = if (isDark) mix(canvas, primary, 0.18f) else mix(canvas, roles.tint, 0.45f),
+        // light canvases settle toward the soft tint. One hue, low contrast, never neon — but
+        // strong enough that the atmospheric canvas reads as lit air rather than a flat fill.
+        bgCanvasGlow = if (isDark) mix(canvas, primary, 0.22f) else mix(canvas, roles.tint, 0.58f),
         bgHeader = canvas.copy(alpha = ReliveOpacity.VeryHigh),
         textPrimary = ink,
         textSecondary = roles.inkSoft,
@@ -105,17 +106,24 @@ private fun readableTextOn(background: Color, preferredInk: Color): Color =
     }
 
 /**
- * Diagonal light-source gradient for screen canvases: a warm glow ([ReliveColors.bgCanvasGlow])
- * gathered in the top-left corner that settles into the flat [ReliveColors.bgCanvas] toward the
- * bottom-right. `Offset.Infinite` as the end lets the gradient span whatever area it fills, so it
- * runs corner-to-corner on any screen size. Applied at the screen root so content scrolls over a
- * single, calm light source rather than a flat fill. Kept intentionally subtle — one hue, low
- * contrast.
+ * Diagonal atmospheric gradient for screen canvases — a sky, not a spotlight. Light gathers in
+ * the top-left corner where the glow warms a breath toward the accent (the sun just out of
+ * frame), drifts down through the palette's soft tint like haze in the middle air, settles onto
+ * the flat [ReliveColors.bgCanvas], and finally deepens a touch toward the shadow tone in the far
+ * corner so the surface has depth instead of ending flat. Every stop is derived from the active
+ * palette's own roles, so each theme — including Sunrise and Sunset — carries its own weather.
+ *
+ * `Offset.Infinite` as the end lets the gradient span whatever area it fills, so it runs
+ * corner-to-corner on any screen size. Applied at the screen root so content scrolls over a
+ * single, calm light source. The mixes are kept small enough that every text-on-canvas contrast
+ * pair still clears its ratio with room to spare.
  */
 fun ReliveColors.canvasBrush(): Brush = Brush.linearGradient(
-    0.0f to bgCanvasGlow,
-    0.55f to bgCanvas,
-    1.0f to bgCanvas,
+    0.0f to lerp(bgCanvasGlow, accent, 0.10f),
+    0.26f to bgCanvasGlow,
+    0.55f to lerp(bgCanvas, tint, 0.18f),
+    0.82f to bgCanvas,
+    1.0f to lerp(bgCanvas, shadow, 0.07f),
     start = Offset.Zero,
     end = Offset.Infinite,
 )

@@ -160,6 +160,7 @@ import com.vaibhav.relive.ui.components.timeline.EmptyCustomTimelinePlaceholder
 import com.vaibhav.relive.ui.components.timeline.MomentCard
 import com.vaibhav.relive.ui.components.timeline.TimelineMediaSharedTransition
 import com.vaibhav.relive.ui.components.timeline.sharedTransitionKey
+import com.vaibhav.relive.ui.components.timeline.HomeFloatingHeaderActions
 import com.vaibhav.relive.ui.components.timeline.TimelineHeader
 import com.vaibhav.relive.ui.components.timeline.TimelineWallpaperSurface
 import com.vaibhav.relive.ui.components.timeline.TimelineCoverHero
@@ -292,6 +293,8 @@ fun TimelineScreen(
      * make every tap after the first a silent no-op.
      */
     expandComposerRequest: Int = 0,
+    /** Invoked once a pending [expandComposerRequest] has been acted on, so the owner can clear it. */
+    onExpandComposerRequestHandled: (() -> Unit)? = null,
     /** Items emitted above the composer on Home: the backdrop spacer and the section heading. */
     homeHeader: (LazyListScope.() -> Unit)? = null,
     /**
@@ -482,6 +485,9 @@ fun TimelineScreen(
             // `+ New` is just as often pressed from deep in the feed with the composer already open
             // above, and then the useful thing it can do is carry the person back up to it.
             openHomeComposer()
+            // Cleared only after the composer is seated: resetting the counter restarts this
+            // effect, and a restart mid-scroll would abandon the seat-in-view animation.
+            onExpandComposerRequestHandled?.invoke()
         }
     }
 
@@ -1159,7 +1165,10 @@ private fun TimelineContent(
             .nestedScroll(coverStretchConnection),
     ) {
     Column(modifier = Modifier.fillMaxSize()) {
-        AnimatedContent(
+        // Home renders no app bar at all: the canvas runs to the top edge and its few controls
+        // float over the surface (see the overlay below), so only the other timeline modes emit
+        // an in-flow header that content stacks beneath.
+        if (!isHomeSurface) AnimatedContent(
             targetState = isContextualActionMode,
             transitionSpec = {
                 reliveSequentialSlideFade(
@@ -1190,18 +1199,6 @@ private fun TimelineContent(
                 )
             } else if (mode is TimelineMode.ReadOnlySystemCollection) {
                 SystemCollectionHeader(title = mode.title, onBack = onBack ?: {})
-            } else if (isHomeSurface) {
-                // Home carries no cover hero: the welcome block is the first thing on the surface,
-                // and the hero flat-mapped every loaded moment's attachments on each recomposition,
-                // which is the archive hydration ADR-0061 removes. Calendar and the timeline theme
-                // entry belong to the timeline, so they are present and active only once the
-                // timeline dominates the screen.
-                TimelineHeader(
-                    onBack = null,
-                    onJumpToDate = onJumpToDate.takeIf { isFocusedAllMoments },
-                    onChangeTheme = onChangeTheme?.takeIf { isFocusedAllMoments },
-                    leading = homeAppBarLeading,
-                )
             } else if (timelineState.currentTimeline == CurrentTimeline.All) {
                 val collageBucket = allTimelineCollageBucket(clock.now())
                 AllTimelineCoverHero(
@@ -1815,6 +1812,44 @@ private fun TimelineContent(
                     }
                 }
             }
+        }
+    }
+    // Home's replacement for the app bar: profile (and, once the timeline dominates, calendar and
+    // theme) float over the surface instead of sitting in a band above it, so the canvas gradient
+    // owns the whole screen. Long-pressing a moment still swaps in the contextual action header,
+    // overlaid rather than in-flow so entering the mode never pushes the surface down.
+    if (isHomeSurface) AnimatedContent(
+        targetState = isContextualActionMode,
+        transitionSpec = {
+            reliveSequentialSlideFade(
+                motion = motion,
+                reduceMotion = reduceMotion,
+                enterFromRight = targetState,
+            )
+        },
+        label = "moment selection app bar",
+        modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth(),
+    ) { inActionMode ->
+        if (inActionMode && selectedActionMoment != null && actionAvailability != null) {
+            TimelineMomentActionHeader(
+                showEdit = actionAvailability.canEdit,
+                showAddToTimeline = actionAvailability.canAddToTimeline,
+                addToTimelineEnabled = !timelineState.momentActions.isLoadingAssignments &&
+                    !timelineState.momentActions.hasAssignmentLoadFailed,
+                showForget = actionAvailability.canForget,
+                onExit = onExitMomentActions,
+                onEdit = { onEditMoment(selectedActionMoment) },
+                onAddToTimeline = onShowTimelineAssignmentPicker,
+                onForget = { onForgetMoment(selectedActionMoment) },
+            )
+        } else {
+            // Calendar and the timeline theme entry belong to the timeline, so they are present
+            // and active only once the timeline dominates the screen (ADR-0061).
+            HomeFloatingHeaderActions(
+                leading = homeAppBarLeading,
+                onJumpToDate = onJumpToDate.takeIf { isFocusedAllMoments },
+                onChangeTheme = onChangeTheme?.takeIf { isFocusedAllMoments },
+            )
         }
     }
     }

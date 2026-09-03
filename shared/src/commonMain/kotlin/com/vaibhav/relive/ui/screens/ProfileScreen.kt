@@ -61,6 +61,7 @@ import com.vaibhav.relive.ui.components.settings.RelivePalettePicker
 import com.vaibhav.relive.ui.components.timeline.BackGlyph
 import com.vaibhav.relive.ui.components.timeline.ForwardGlyph
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.theme.canvasBrush
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.platform.media.MediaProcessor
 import com.vaibhav.relive.platform.media.RelivedImageTile
@@ -138,7 +139,7 @@ fun ProfileScreen(
     Box(
         Modifier
             .fillMaxSize()
-            .background(ReliveTheme.colors.bgCanvas)
+            .background(ReliveTheme.colors.canvasBrush())
             .clickable(
                 interactionSource = backgroundTapInteraction,
                 indication = null,

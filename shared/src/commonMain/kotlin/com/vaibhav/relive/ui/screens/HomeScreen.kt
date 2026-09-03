@@ -16,9 +16,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
@@ -136,6 +140,8 @@ fun HomeScreen(
      * than a flag because Home is persistent and a latched boolean would only ever fire once.
      */
     expandComposerRequest: Int = 0,
+    /** Invoked once a pending [expandComposerRequest] has been acted on, so the owner can clear it. */
+    onExpandComposerRequestHandled: (() -> Unit)? = null,
     openComposerOnEnter: Boolean = false,
     incomingShare: IncomingSharePayload? = null,
     onIncomingShareApplied: ((String) -> Unit)? = null,
@@ -154,10 +160,14 @@ fun HomeScreen(
     val greeting = homeGreeting(profileSettings.displayName)
     val density = LocalDensity.current
 
-    // Geometry of the sheet riding over the welcome area. The backdrop measures itself, and the
-    // list's own scroll position drives how far the sheet has covered it — one scroll container,
-    // one scroll position (ADR-0061); only the layering changes.
+    // Geometry of the sheet riding over the welcome area. The backdrop measures itself — the
+    // welcome content alone, below the floating wordmark-and-profile strip — and the list's own
+    // scroll position drives how far the sheet has covered it: one scroll container, one scroll
+    // position (ADR-0061); only the layering changes. The whole mechanism plays out beneath the
+    // strip, so the sheet's travel is exactly the measured height and its focused resting edge is
+    // the strip's lower edge, never the top of the screen.
     val headerHeightPx = surfaceState.headerHeightPx
+    val homeControlsInset = homeControlsInset()
     val scrolledIntoHeader by rememberScrolledIntoBackdrop(listState) { surfaceState.headerHeightPx }
 
     // Put the surface back before anything starts recording a new position, so the clamped-to-top
@@ -324,6 +334,7 @@ fun HomeScreen(
             }
         },
         expandComposerRequest = expandComposerRequest,
+        onExpandComposerRequestHandled = onExpandComposerRequestHandled,
         listState = listState,
         homeHeaderCount = HOME_HEADER_ITEM_COUNT,
         isFocusedAllMoments = isFocused,
@@ -341,6 +352,10 @@ fun HomeScreen(
             }
         },
         listModifier = Modifier
+            // The sheet rests below the floating wordmark-and-profile strip rather than at the
+            // top of the screen, so the feed is inset to match: its first pixel is the sheet's
+            // top edge in the focused state, and the strip above it stays the canvas gradient's.
+            .padding(top = homeControlsInset)
             // The feed slides down past the bottom edge with its sheet, so what travels off must
             // stop being drawn. Clipping the feed rather than the whole content area leaves the
             // backdrop free to bleed to the screen edges.
@@ -375,7 +390,9 @@ fun HomeScreen(
         },
         homeHeader = {
             // A transparent window onto the backdrop. The welcome block and Rediscover row are
-            // drawn behind the list, so this reserves their space without scrolling them.
+            // drawn behind the list, so this reserves their space without scrolling them. The
+            // feed is already inset by the floating strip, so window bottom and sheet top stay
+            // the same line throughout.
             item(key = "home-backdrop-window") {
                 Spacer(Modifier.fillMaxWidth().height(with(density) { headerHeightPx.toDp() }))
             }
@@ -400,6 +417,21 @@ fun HomeScreen(
 private const val HOME_HEADER_ITEM_COUNT = 2
 
 /**
+ * How far down the screen Home's sheet comes to rest: clear of the status bar and the floating
+ * wordmark-and-profile strip. Read by the feed's inset, the window item reserving the backdrop's
+ * space, and the welcome block's own top clearance, so the sheet's resting edge, the feed's first
+ * pixel and the welcome block all agree on where the strip ends. The strip itself (in
+ * `HomeFloatingHeaderActions`) is a status-bar inset plus a touch target with `sm` padding either
+ * side — mirrored here rather than measured, like the sliding cover's controls inset.
+ */
+@Composable
+private fun homeControlsInset(): Dp {
+    val dims = ReliveTheme.dimensions
+    return WindowInsets.statusBars.asPaddingValues().calculateTopPadding() +
+        dims.minTouchTarget + dims.spacing.sm * 2
+}
+
+/**
  * How far the welcome content drifts down into the room the expanded state opens up. A fraction,
  * not the whole distance: the block should look like it is settling into the space rather than
  * being dragged along by the sheet.
@@ -410,9 +442,15 @@ private const val HOME_WELCOME_EXPAND_DRIFT = 0.12f
  * The welcome block and Rediscover row, drawn behind the scrolling list, plus the opaque surface
  * the All moments sheet rides on.
  *
- * The sheet's top edge sits at `headerHeight - scrolledIntoHeader`, so scrolling down raises it
- * over the welcome area and scrolling up lowers it again — one continuous, reversible surface
- * (ADR-0061) where the timeline visibly covers what is above it rather than sliding in lockstep.
+ * The whole layer lives below the floating wordmark-and-profile strip: the welcome block starts
+ * under it, is clipped at its lower edge as the parallax carries it up, and the sheet comes to
+ * rest against that same line in the focused state rather than running under the strip to the top
+ * of the screen. The strip itself stays the canvas gradient's at every scroll position.
+ *
+ * The sheet's top edge sits at `inset + headerHeight - scrolledIntoHeader`, so scrolling down
+ * raises it over the welcome area and scrolling up lowers it again — one continuous, reversible
+ * surface (ADR-0061) where the timeline visibly covers what is above it rather than sliding in
+ * lockstep.
  */
 @Composable
 private fun HomeBackdrop(
@@ -428,6 +466,8 @@ private fun HomeBackdrop(
 ) {
     val dims = ReliveTheme.dimensions
     val colors = ReliveTheme.colors
+    val controlsInset = homeControlsInset()
+    val controlsInsetPx = with(LocalDensity.current) { controlsInset.roundToPx() }
     val sheetShape = RoundedCornerShape(
         topStart = dims.radii.xl,
         topEnd = dims.radii.xl,
@@ -442,8 +482,8 @@ private fun HomeBackdrop(
         modifier = Modifier
             .fillMaxSize()
             .bleedHorizontal(dims.timeline.horizontalPadding)
-            // The welcome layer trails the sheet, so without this it would ride up past the top of
-            // the content area and show through the translucent app bar.
+            // The welcome layer trails the sheet, so without this it would ride up past the top
+            // edge of the content area.
             .clipToBounds()
             .onGloballyPositioned { onViewportMeasured(it.size.height) }
             // The welcome area follows the app's global appearance — palette, mode and canvas
@@ -454,25 +494,37 @@ private fun HomeBackdrop(
             .background(colors.canvasBrush()),
     ) {
         Box(
+            // The welcome layer's own window: it starts below the floating strip, and clipping
+            // here (not at the content area's edge) is what stops the parallaxed greeting from
+            // riding up behind the floating wordmark. Full-size so the downward drift of the
+            // expanded state is never cut.
             modifier = Modifier
-                .fillMaxWidth()
-                .onGloballyPositioned { onHeaderMeasured(it.size.height) }
-                .graphicsLayer {
-                    // Trails the sheet instead of matching it, which is what makes the timeline
-                    // read as passing in front rather than pushing.
-                    translationY = -scrolledIntoHeader * BACKDROP_PARALLAX +
-                        expansionPx * HOME_WELCOME_EXPAND_DRIFT
-                    alpha = 1f - covered * 0.4f
-                },
+                .fillMaxSize()
+                .padding(top = controlsInset)
+                .clipToBounds(),
         ) {
-            Column {
-                // No wrapper padding here: the greeting, its subtitle and the section heading
-                // carry their own `spacing.xl` inset, which is exactly the Rediscover row's
-                // content padding, so all of them start on the Favourites card's leading edge.
-                WelcomeBlock(greeting)
-                SectionHeading("Relive your memories")
-                RediscoverCollectionRow(cards = cards, mediaStore = mediaStore)
-                Spacer(Modifier.height(dims.spacing.xl))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onGloballyPositioned { onHeaderMeasured(it.size.height) }
+                    .graphicsLayer {
+                        // Trails the sheet instead of matching it, which is what makes the timeline
+                        // read as passing in front rather than pushing.
+                        translationY = -scrolledIntoHeader * BACKDROP_PARALLAX +
+                            expansionPx * HOME_WELCOME_EXPAND_DRIFT
+                        alpha = 1f - covered * 0.4f
+                    },
+            ) {
+                Column {
+                    // No horizontal wrapper padding: the greeting, its subtitle and the section
+                    // heading carry their own `spacing.xl` inset, which is exactly the Rediscover
+                    // row's content padding, so all of them start on the Favourites card's leading
+                    // edge.
+                    WelcomeBlock(greeting)
+                    SectionHeading("Relive your memories")
+                    RediscoverCollectionRow(cards = cards, mediaStore = mediaStore)
+                    Spacer(Modifier.height(dims.spacing.xl))
+                }
             }
         }
 
@@ -482,7 +534,8 @@ private fun HomeBackdrop(
                 .offset {
                     IntOffset(
                         0,
-                        (headerHeightPx - scrolledIntoHeader).coerceAtLeast(0) +
+                        controlsInsetPx +
+                            (headerHeightPx - scrolledIntoHeader).coerceAtLeast(0) +
                             expansionPx.roundToInt(),
                     )
                 }

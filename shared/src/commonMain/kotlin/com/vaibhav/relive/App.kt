@@ -37,10 +37,10 @@ import com.vaibhav.relive.ui.screens.TimelineScreen
 import com.vaibhav.relive.ui.screens.TimelineHomeScreen
 import com.vaibhav.relive.ui.screens.HomeScreen
 import com.vaibhav.relive.ui.screens.rememberHomeSurfaceState
-import com.vaibhav.relive.ui.screens.RediscoverScreen
 import com.vaibhav.relive.ui.screens.ShareTimelinePickerScreen
 import com.vaibhav.relive.ui.screens.TimelineThemeScreen
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.theme.canvasBrush
 import com.vaibhav.relive.ui.theme.reliveSequentialSlideFade
 import com.vaibhav.relive.ui.theme.reliveForwardBackward
 import com.vaibhav.relive.ui.theme.spec
@@ -154,7 +154,12 @@ fun App(
         darkMode = darkMode,
     ) {
         @OptIn(ExperimentalSharedTransitionApi::class)
-        SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
+        // The app's one global ground: every screen sits on the current theme's atmospheric
+        // canvas gradient, so navigation moves content over a steady light source rather than
+        // between differently-painted rooms.
+        SharedTransitionLayout(
+            modifier = Modifier.fillMaxSize().background(ReliveTheme.colors.canvasBrush()),
+        ) {
         val sharedTransitionScope = this
         val composerDraftStore = remember { TimelineComposerDraftStore() }
         val homeViewModel = remember(container, scope) {
@@ -234,13 +239,15 @@ fun App(
         val openQuickCapture: (QuickCaptureSurface) -> Unit = { surface ->
             quickCaptureCommand(surface)?.let { command ->
                 ActivePlayback.stopActive()
-                val onHomeSurface = topLevel == ReliveTopLevelDestination.Home &&
-                    rediscoverDestination == RediscoverDestination.Root
-                if (onHomeSurface && command.timeline == CurrentTimeline.All) {
-                    // All moments is already part of this surface, so `+ New` expands the existing
-                    // inline composer in place. It must never navigate to a separate All screen
-                    // (ADR-0061). A monotonic counter rather than a boolean, because Home is a
+                if (command.timeline == CurrentTimeline.All) {
+                    // Every root's `+ New` is the same act of writing to the archive, so they all
+                    // land in the same place: Home's inline All composer (ADR-0061). Timelines and
+                    // Search switch to the Home surface first rather than opening a separate All
+                    // detail screen. A monotonic counter rather than a boolean, because Home is a
                     // persistent surface: a latched flag would make the second tap a silent no-op.
+                    topLevel = ReliveTopLevelDestination.Home
+                    rediscoverDestination = RediscoverDestination.Root
+                    navigationToolbarExpanded = true
                     homeComposerRequest += 1
                 } else {
                     quickCaptureTransformActive = true
@@ -654,6 +661,9 @@ fun App(
                                 rediscoverDestination = RediscoverDestination.AllPhotos
                             },
                             expandComposerRequest = homeComposerRequest,
+                            // Cleared once Home has expanded the composer, so re-entering Home
+                            // later does not replay a stale request.
+                            onExpandComposerRequestHandled = { homeComposerRequest = 0 },
                             onOpenTimelineTheme = {
                                 rediscoverDestination = RediscoverDestination.AllTheme
                             },
@@ -811,7 +821,7 @@ fun App(
 @Composable
 private fun ReliveLockSurface(onUnlock: () -> Unit) {
     androidx.compose.foundation.layout.Box(
-        androidx.compose.ui.Modifier.fillMaxSize().background(ReliveTheme.colors.bgCanvas).clickable(onClick = onUnlock),
+        androidx.compose.ui.Modifier.fillMaxSize().background(ReliveTheme.colors.canvasBrush()).clickable(onClick = onUnlock),
         contentAlignment = Alignment.Center,
     ) {
         androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {
