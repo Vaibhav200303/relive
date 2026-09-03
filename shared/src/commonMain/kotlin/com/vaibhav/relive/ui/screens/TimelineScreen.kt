@@ -181,7 +181,6 @@ import com.vaibhav.relive.ui.theme.spec
 import com.vaibhav.relive.presentation.cardcover.allTimelineCollageBucket
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.max
 import kotlin.math.min
 
 private fun timelineViewModelCanEdit(moment: MomentPresentation, clock: Clock): Boolean =
@@ -455,30 +454,36 @@ fun TimelineScreen(
     // and collapsed in place so AnimatedContent still sees a real false -> true transition
     // (ADR-0061). Per ADR-0059 no focus is requested and no IME is opened. A preserved draft is
     // reopened as it stands rather than being prepared over.
+    // One travel speed for the whole surface: the pace the return-to-top control already moves
+    // at, so seating the composer reads as this surface moving rather than a jump cut.
+    val composerSeatPaceMillis = ReliveTheme.motion.durations.short4
     val openHomeComposer: () -> Unit = {
-        if (!composerState.hasUserDraft) {
+        // Already open means this is a request to go back to it, not to start over: re-preparing
+        // would throw away the date, timeline assignments and anything else already set on it.
+        if (!isComposerExpanded && !composerState.hasUserDraft) {
             composerViewModel.prepareForTimeline(timelineState.currentTimeline)
         }
         isComposerExpanded = true
         scope.launch {
             onExpandingComposer?.invoke()
-            // Seat the composer in view with the minimum movement: only when it is not already
-            // the first item on screen, and never past it, so the welcome block and Rediscover
-            // row are not dragged back into view.
-            listState?.let { state ->
-                if (state.firstVisibleItemIndex != homeHeaderCount) {
-                    state.animateScrollToItem(homeHeaderCount)
-                }
-            }
+            // Travel to the composer rather than arrive at it. Whether it is just below the
+            // welcome block or far above the current position, the surface covers the distance at
+            // a steady pace and lands exactly on it.
+            listState?.scrollToItemAtPace(
+                targetIndex = homeHeaderCount,
+                millisPerViewport = composerSeatPaceMillis,
+            )
         }
     }
     LaunchedEffect(expandComposerRequest, composerDestinationSettled) {
         if (expandComposerRequest > 0 &&
             isHomeSurface &&
             mode.allowsMutations &&
-            composerDestinationSettled &&
-            !isComposerExpanded
+            composerDestinationSettled
         ) {
+            // Deliberately not gated on the composer being closed. Home is a persistent surface, so
+            // `+ New` is just as often pressed from deep in the feed with the composer already open
+            // above, and then the useful thing it can do is carry the person back up to it.
             openHomeComposer()
             // Cleared only after the composer is seated: resetting the counter restarts this
             // effect, and a restart mid-scroll would abandon the seat-in-view animation.
@@ -1654,7 +1659,7 @@ private fun TimelineContent(
                             listScope.launch {
                                 isProgrammaticScroll = true
                                 try {
-                                    listState.scrollUpToItem(
+                                    listState.scrollToItemAtPace(
                                         targetIndex = sheetTopIndex,
                                         millisPerViewport = motion.durations.short4,
                                     )
@@ -1960,36 +1965,42 @@ private fun TimelineCoverBackdrop(
 }
 
 /**
- * Travels back up to [targetIndex] at a steady, readable pace of one viewport per
- * [millisPerViewport].
+ * Travels to [targetIndex] — in whichever direction it lies — at a steady, readable pace of one
+ * viewport per [millisPerViewport], landing with the item's top edge at the top of the viewport.
  *
  * `animateScrollToItem` runs for a fixed duration however far it has to go, so from deep in the
  * archive it arrives before anything has been drawn in between and reads as a teleport rather than
  * a scroll. Moving a measured amount each frame keeps the speed the same whatever the distance, and
  * lets the last frame be clamped to what is actually left — so the feed lands exactly on the target
- * instead of overshooting into the welcome block above it and springing back.
+ * instead of overshooting past it and springing back.
  *
  * A user drag takes the scroll mutex at a higher priority, so touching the screen cancels this.
  */
-private suspend fun LazyListState.scrollUpToItem(targetIndex: Int, millisPerViewport: Int) {
+private suspend fun LazyListState.scrollToItemAtPace(targetIndex: Int, millisPerViewport: Int) {
     scroll {
         var lastFrameNanos = withFrameNanos { it }
         while (true) {
             val viewport = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset
             if (viewport <= 0 || millisPerViewport <= 0) break
-            // Known exactly once the target is the first visible item, and unknown while it is
-            // still somewhere above — which is why the pace, not the distance, drives each step.
+            // Known exactly once the target has been measured, and only by direction while it is
+            // still off screen — which is why the pace, not the distance, drives each step. A
+            // positive distance is below the top edge and a negative one above it.
+            val measured = layoutInfo.visibleItemsInfo.firstOrNull { it.index == targetIndex }
             val remaining = when {
+                measured != null -> (measured.offset - layoutInfo.viewportStartOffset).toFloat()
                 firstVisibleItemIndex > targetIndex -> null
-                firstVisibleItemIndex == targetIndex -> -firstVisibleItemScrollOffset.toFloat()
-                else -> 0f
+                else -> Float.MAX_VALUE
             }
-            if (remaining != null && remaining >= 0f) break
+            if (remaining == 0f) break
             val frameNanos = withFrameNanos { it }
             val seconds = (frameNanos - lastFrameNanos) / 1_000_000_000f
             lastFrameNanos = frameNanos
             val pace = viewport * 1000f / millisPerViewport
-            val step = max(remaining ?: -Float.MAX_VALUE, -pace * seconds)
+            val step = if (remaining == null) {
+                -pace * seconds
+            } else {
+                remaining.coerceIn(-pace * seconds, pace * seconds)
+            }
             if (scrollBy(step) == 0f) break
         }
     }
