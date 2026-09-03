@@ -113,6 +113,15 @@ Current implementation note: global appearance, Profile, Preferences, Media & St
 
 - Android system shares of supported Moment media/text may enter the existing composer through a timeline-selection surface. This is an additive Phase 4/5 capability: it adds no schema, dependency, duplicate composer, automatic persistence, or iOS share extension.
 
+## Phase 9A — Moment feelings & Mood insights  ◐
+
+- Add the optional three-value Moment feeling (`Great` / `Good` / `Low`) as a nullable `moments.feeling` column (migration `4.sqm`), a dedicated repository write independent of the 4-day edit window, and a bounded `(created_at, feeling)` sample projection (ADR-0066, PRODUCT_SPEC §10A).
+- Post-save prompt: after a successful Keep Moment for a new Moment, an inline, skippable `How does this moment feel?` strip renders beneath the saved card — no modal, sheet, screen, or scroll. Choosing persists the feeling; dismissing persists nothing.
+- Moment presentation: a felt Moment shows one small drawn face at the bottom-left of its print card; unfelt Moments show nothing.
+- Mood bar on Home: revealed beneath the welcome block by the backdrop's existing expanded resting place, showing `Last week` / `This week` verdicts computed from device-local Sunday–Saturday weeks; quiet em-dash cells when a week has no felt Moments.
+- Mood insights in place: tapping the bar swaps backdrop content around the anchored bar — `Mood over time` (six monthly averages, face axis) above, `Weekly mood` (per-day averages with faces riding the curve), `How the days split`, and the Moments/streak tiles below; Back closes insights first. All reads are bounded; aggregation is a pure calculator.
+- **Exit:** feeling round-trips through persistence and migration; prompt appears once per new save and never for edits; bar and insights render from the calculator's output; calculator, persistence, presentation-mapper, and view-model tests pass.
+
 ## Phase 10 — RevenueCat / Pro  ◐
 
 - Implement the `relive_pro` entitlement behind a swappable shared interface using RevenueCat; wire upgrade and store restore flows.
