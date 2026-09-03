@@ -466,10 +466,11 @@ private fun HomeBackdrop(
                 },
         ) {
             Column {
-                Column(modifier = Modifier.padding(horizontal = dims.timeline.horizontalPadding)) {
-                    WelcomeBlock(greeting)
-                    SectionHeading("Relive your memories")
-                }
+                // No wrapper padding here: the greeting, its subtitle and the section heading
+                // carry their own `spacing.xl` inset, which is exactly the Rediscover row's
+                // content padding, so all of them start on the Favourites card's leading edge.
+                WelcomeBlock(greeting)
+                SectionHeading("Relive your memories")
                 RediscoverCollectionRow(cards = cards, mediaStore = mediaStore)
                 Spacer(Modifier.height(dims.spacing.xl))
             }
