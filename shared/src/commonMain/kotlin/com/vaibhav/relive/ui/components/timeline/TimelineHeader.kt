@@ -181,10 +181,18 @@ fun TimelineCoverHero(
     coverPhotoRef: MediaStorageRef?,
     mediaStore: MediaStore,
     onBack: (() -> Unit)?,
-    onJumpToDate: () -> Unit,
-    onChangeTheme: () -> Unit,
+    /** Null on a sliding-cover surface, which pins these above the feed instead (ADR-0062). */
+    onJumpToDate: (() -> Unit)? = null,
+    onChangeTheme: (() -> Unit)? = null,
     onUpdateCover: (() -> Unit)? = null,
+    /** Extra height beyond the resting cover: an elastic overpull, or the expanded state's growth. */
     stretchPx: Float = 0f,
+    /**
+     * Whether [stretchPx] also zooms the photo. True for the elastic overpull, which springs back;
+     * false when the cover is growing to fill the viewport, where the photo is reaching its full
+     * size rather than being pulled out of shape.
+     */
+    stretchZoom: Boolean = true,
     coverContent: (@Composable (Modifier) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -192,7 +200,11 @@ fun TimelineCoverHero(
     val dims = ReliveTheme.dimensions
     val density = LocalDensity.current
     val stretchHeight = with(density) { stretchPx.toDp() }
-    val zoom = 1f + (stretchPx / with(density) { dims.timeline.coverHeroHeight.toPx() }) * .65f
+    val zoom = if (stretchZoom) {
+        1f + (stretchPx / with(density) { dims.timeline.coverHeroHeight.toPx() }) * .65f
+    } else {
+        1f
+    }
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -238,11 +250,38 @@ fun TimelineCoverHero(
                     ),
                 ),
         )
+        TimelineCoverControls(
+            onBack = onBack,
+            onJumpToDate = onJumpToDate,
+            onChangeTheme = onChangeTheme,
+        )
+        Text(name, style = ReliveTheme.typography.coverTitle, color = colors.textPrimary, modifier = Modifier.align(Alignment.BottomStart).padding(dims.spacing.xl))
+    }
+}
+
+/**
+ * The cover's floating controls: Back at the leading corner, timeline theme and calendar in one
+ * pill at the trailing corner.
+ *
+ * Drawn inside the cover on a static hero, and pinned above the feed on a sliding-cover surface
+ * (ADR-0062), where the timeline passes underneath them rather than covering them. Same composable
+ * either way, so the two surfaces cannot drift apart.
+ */
+@Composable
+fun TimelineCoverControls(
+    onBack: (() -> Unit)?,
+    onJumpToDate: (() -> Unit)?,
+    onChangeTheme: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    val colors = ReliveTheme.colors
+    val dims = ReliveTheme.dimensions
+    Box(modifier = modifier.fillMaxWidth()) {
         if (onBack != null) IconButton(
             onClick = onBack,
             modifier = Modifier.align(Alignment.TopStart).windowInsetsPadding(WindowInsets.statusBars).padding(dims.spacing.md).size(dims.minTouchTarget).background(colors.surfaceFloating.copy(alpha = ReliveOpacity.VeryHigh), CircleShape).semantics { contentDescription = "Back to Timeline Home" },
         ) { BackGlyph(dims.icon.lg, colors.textPrimary, dims.stroke.icon) }
-        Row(
+        if (onChangeTheme != null || onJumpToDate != null) Row(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .windowInsetsPadding(WindowInsets.statusBars)
@@ -253,10 +292,9 @@ fun TimelineCoverHero(
                 ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = onChangeTheme, modifier = Modifier.size(dims.minTouchTarget).semantics { contentDescription = "Change timeline theme" }) { PaletteGlyph(dims.icon.md, colors.textPrimary, dims.stroke.icon) }
-            IconButton(onClick = onJumpToDate, modifier = Modifier.size(dims.minTouchTarget).semantics { contentDescription = "Jump to date" }) { CalendarGlyph(dims.icon.md, colors.textPrimary, dims.stroke.icon) }
+            if (onChangeTheme != null) IconButton(onClick = onChangeTheme, modifier = Modifier.size(dims.minTouchTarget).semantics { contentDescription = "Change timeline theme" }) { PaletteGlyph(dims.icon.md, colors.textPrimary, dims.stroke.icon) }
+            if (onJumpToDate != null) IconButton(onClick = onJumpToDate, modifier = Modifier.size(dims.minTouchTarget).semantics { contentDescription = "Jump to date" }) { CalendarGlyph(dims.icon.md, colors.textPrimary, dims.stroke.icon) }
         }
-        Text(name, style = ReliveTheme.typography.coverTitle, color = colors.textPrimary, modifier = Modifier.align(Alignment.BottomStart).padding(dims.spacing.xl))
     }
 }
 

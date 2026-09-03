@@ -16,6 +16,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -29,7 +30,20 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.IntOffset
+import com.vaibhav.relive.domain.model.MediaStorageRef
+import com.vaibhav.relive.ui.components.timeline.TimelineCoverControls
+import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
@@ -70,6 +84,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -1038,6 +1053,7 @@ private fun TimelineContent(
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
     val motion = ReliveTheme.motion
+    val density = LocalDensity.current
     val reduceMotion = ReliveTheme.reduceMotion
     val moments: List<MomentPresentation> = when (val state = timelineState.moments) {
         TimelineMomentsState.Loading, TimelineMomentsState.Empty -> emptyList()
@@ -1060,12 +1076,22 @@ private fun TimelineContent(
         )
     }
     val isContextualActionMode = actionAvailability?.canEnter == true
-    // Home is scoped to the All timeline but renders no cover hero, and its own overscroll belongs
-    // to the welcome block expanding (ADR-0061). Without this exclusion the elastic cover would eat
-    // the pull that Home needs.
-    val hasTimelineCoverHero = !isHomeSurface &&
-        (timelineState.currentTimeline is CurrentTimeline.Custom ||
-            timelineState.currentTimeline == CurrentTimeline.All)
+    // Custom timeline detail rides its cover photo the way Home rides its welcome block: the cover
+    // becomes a backdrop drawn behind the feed, and the feed becomes a sheet that slides over it,
+    // off the bottom edge, and back (ADR-0062). Home is excluded because it already is that
+    // surface, with a backdrop of its own supplied by the caller.
+    val isSlidingCoverSurface = !isHomeSurface &&
+        timelineState.currentTimeline is CurrentTimeline.Custom
+    // What both sliding-backdrop surfaces share: the feed runs newest-first with the composer at
+    // its head, so the chronological end is a short scroll from the top of the surface rather than
+    // the far end of history, and the return control points up rather than down.
+    val isNewestFirst = isHomeSurface || isSlidingCoverSurface
+    // The elastic cover stretch and the sliding backdrop both want the overscroll at the top of the
+    // feed, so a surface has one or the other. Home renders no cover at all (ADR-0061); a custom
+    // timeline now grows its cover to fill the viewport instead of stretching it (ADR-0062). That
+    // leaves the All timeline's generated collage as the one hero that still springs back.
+    val hasTimelineCoverHero = !isHomeSurface && !isSlidingCoverSurface &&
+        timelineState.currentTimeline == CurrentTimeline.All
     var coverStretchPx by remember { mutableFloatStateOf(0f) }
     val maxCoverStretchPx = with(LocalDensity.current) { (dims.spacing.huge * 3).toPx() }
     val maxCoverPullDeltaPx = with(LocalDensity.current) { dims.spacing.xl.toPx() }
@@ -1143,7 +1169,13 @@ private fun TimelineContent(
             },
             label = "moment selection app bar",
         ) { inActionMode ->
-            if (inActionMode && selectedActionMoment != null && actionAvailability != null) {
+            if (isSlidingCoverSurface) {
+                // This surface reserves no app-bar row: its cover is a backdrop inside the content
+                // area below, and both the cover controls and the selection bar are pinned above
+                // the sheet there. Keeping the selection bar out of the layout is what stops a
+                // long-press from shunting the whole timeline down by an app bar's height.
+                Unit
+            } else if (inActionMode && selectedActionMoment != null && actionAvailability != null) {
                 TimelineMomentActionHeader(
                     showEdit = actionAvailability.canEdit,
                     showAddToTimeline = actionAvailability.canAddToTimeline,
@@ -1204,9 +1236,58 @@ private fun TimelineContent(
 
             key(timelineState.currentTimeline) {
                 val listState = listState ?: rememberLazyListState()
-                // Index of the first moment. On Home the header items and the head composer sit
-                // above the feed; everywhere else the feed still starts at zero.
-                val feedOffset = if (isHomeSurface) homeHeaderCount + 1 else 0
+
+                // The sliding cover's own geometry. Unlike Home, whose welcome block has to be
+                // measured, the cover rests at a fixed height, so the backdrop needs no
+                // measurement pass and the sheet knows where it sits from the first frame.
+                //
+                // Two heights, not one. The cover *rests* at its full hero height, which is what
+                // the expanded state grows past to fill the viewport. But the sheet comes to rest
+                // below the pinned controls rather than at the top of the screen, so the distance
+                // it actually travels — and therefore the height of the window reserving its space
+                // — is the hero height less that inset.
+                val coverControlsInset = coverControlsInset()
+                val coverHeightPx = with(density) { dims.timeline.coverHeroHeight.roundToPx() }
+                val coverTravelPx = with(density) {
+                    (dims.timeline.coverHeroHeight - coverControlsInset).roundToPx()
+                }.coerceAtLeast(0)
+                val expansion = rememberBackdropExpansionState()
+                LaunchedEffect(coverHeightPx) { expansion.backdropHeightPx = coverHeightPx }
+                val expansionConnection = rememberBackdropExpansionConnection(expansion)
+                val scrolledIntoCover by rememberScrolledIntoBackdrop(listState) { coverTravelPx }
+                if (isSlidingCoverSurface) {
+                    BackdropSettleEffect(
+                        listState = listState,
+                        backdropHeightPx = coverTravelPx,
+                        scrolledIntoBackdrop = { scrolledIntoCover },
+                    )
+                    val custom = (timelineState.currentTimeline as? CurrentTimeline.Custom)?.let { current ->
+                        timelineState.customTimelines.firstOrNull { it.id == current.id }
+                    }
+                    if (custom != null) {
+                        TimelineCoverBackdrop(
+                            name = custom.name,
+                            coverPhotoRef = custom.coverPhotoRef,
+                            mediaStore = mediaStore,
+                            onUpdateCover = onUpdateCover.takeIf { mode.allowsMutations },
+                            coverHeightPx = coverHeightPx,
+                            coverTravelPx = coverTravelPx,
+                            scrolledIntoCover = scrolledIntoCover,
+                            expansionPx = expansion.expansionPx,
+                            wallpaper = timelineState.appearance.wallpaper,
+                            onViewportMeasured = { expansion.viewportHeightPx = it },
+                        )
+                    }
+                }
+
+                // Index of the first moment. On a sliding-backdrop surface the header items and the
+                // head composer sit above the feed; everywhere else the feed still starts at zero.
+                val headerItemCount = when {
+                    isHomeSurface -> homeHeaderCount
+                    isSlidingCoverSurface -> SLIDING_COVER_HEADER_ITEM_COUNT
+                    else -> 0
+                }
+                val feedOffset = if (isNewestFirst) headerItemCount + 1 else 0
                 // The composer is one item emitted at whichever end of the feed is the
                 // chronological end: the head on Home (newest-first), the tail everywhere else.
                 val composerItem: LazyListScope.() -> Unit = {
@@ -1267,13 +1348,13 @@ private fun TimelineContent(
                                     onOpenAppSettings = onOpenAppSettings,
                                     // On Home the composer is the head of a newest-first feed, so
                                     // the rail leaves its marker downward toward the first moment.
-                                    railContinuesBelow = isHomeSurface,
+                                    railContinuesBelow = isNewestFirst,
                                     modifier = Modifier.fillMaxWidth(),
                                 )
                             } else {
                                 CollapsedComposerMarker(
                                     onExpand = onExpandComposer,
-                                    railContinuesBelow = isHomeSurface,
+                                    railContinuesBelow = isNewestFirst,
                                     modifier = Modifier.fillMaxWidth(),
                                 )
                             }
@@ -1287,14 +1368,19 @@ private fun TimelineContent(
                 var returnToTopState by remember { mutableStateOf(TimelineReturnToTopState()) }
                 val autoScrollController = remember { TimelineAutoScrollController() }
                 val listScope = rememberCoroutineScope()
-                // The top of All moments is its section heading — the last header item above the
-                // composer. Returning there leaves the surface in its focused state rather than
-                // pulling the welcome block back into view.
-                val allMomentsTopIndex = (homeHeaderCount - 1).coerceAtLeast(0)
-                val canReturnToFeedTop by remember(listState, allMomentsTopIndex) {
+                // The first item drawn on the sheet, which is where the return control goes back to:
+                // on Home the `All moments` heading, on a custom timeline the composer at the head
+                // of the feed. Both sit directly after the single backdrop-window item, so landing
+                // there leaves the surface focused rather than pulling the backdrop into view.
+                val sheetTopIndex = if (isSlidingCoverSurface) {
+                    SLIDING_COVER_HEADER_ITEM_COUNT - 1
+                } else {
+                    (homeHeaderCount - 1).coerceAtLeast(0)
+                }
+                val canReturnToFeedTop by remember(listState, sheetTopIndex) {
                     derivedStateOf {
-                        listState.firstVisibleItemIndex > allMomentsTopIndex ||
-                            (listState.firstVisibleItemIndex == allMomentsTopIndex &&
+                        listState.firstVisibleItemIndex > sheetTopIndex ||
+                            (listState.firstVisibleItemIndex == sheetTopIndex &&
                                 listState.firstVisibleItemScrollOffset > 0)
                     }
                 }
@@ -1340,8 +1426,8 @@ private fun TimelineContent(
                             returnToTopState = returnToTopState.onPositionChanged(
                                 isProgrammaticScroll = isProgrammaticScroll,
                                 movedTowardTop = position.movedTowardTopOf(previous),
-                                canReturnToTop = position.index > allMomentsTopIndex ||
-                                    (position.index == allMomentsTopIndex && position.scrollOffset > 0),
+                                canReturnToTop = position.index > sheetTopIndex ||
+                                    (position.index == sheetTopIndex && position.scrollOffset > 0),
                             )
                         }
                         lastListPosition = position
@@ -1355,8 +1441,8 @@ private fun TimelineContent(
                     val target = feedOffset + (
                         selectedIndex ?: when {
                             customName != null && moments.isEmpty() -> 0
-                            mode.allowsMutations && !isHomeSurface -> moments.size
-                            isHomeSurface -> 0
+                            mode.allowsMutations && !isNewestFirst -> moments.size
+                            isNewestFirst -> 0
                             else -> moments.lastIndex.coerceAtLeast(0)
                         }
                         )
@@ -1369,6 +1455,12 @@ private fun TimelineContent(
                             // Home opens at the top of the surface and never scrolls itself: not on
                             // entry, and not when a moment is saved (ADR-0061). Keeping the offset
                             // is what makes the kept moment appear where the composer stood.
+                            Unit
+                        } else if (isSlidingCoverSurface && selectedIndex == null) {
+                            // A custom timeline opens on its cover with the newest moment first and
+                            // holds its offset after a save, under the same rule (ADR-0062). An
+                            // explicitly selected Moment is still navigated to, which is why this
+                            // defers rather than blocking every app-initiated scroll.
                             Unit
                         } else if (lastSeenCount == -1) {
                             listState.scrollToItem(target)
@@ -1383,9 +1475,26 @@ private fun TimelineContent(
                         onDateNavigationHandled()
                     }
                 }
+                // Home receives these already assembled by its caller, which also hangs the
+                // floating-toolbar collapse off the same scroll. A custom timeline owns its
+                // backdrop outright, so it builds them here.
+                val feedModifier = if (!isSlidingCoverSurface) listModifier else listModifier
+                    // The sheet rests below the pinned controls rather than at the top of the
+                    // screen, so the feed is inset to match: its first pixel is the sheet's top
+                    // edge in the focused state, and the strip above it stays the cover's.
+                    .padding(top = coverControlsInset)
+                    // The feed slides down past the bottom edge with its sheet, so what travels off
+                    // must stop being drawn. Clipping the feed rather than the whole content area
+                    // leaves the cover free to bleed to the screen edges.
+                    .clipToBounds()
+                    .nestedScroll(expansionConnection)
+                    // The feed rides with the sheet it sits on, so the timeline leaves and re-enters
+                    // by the bottom edge as one surface rather than standing still while its ground
+                    // moves underneath it.
+                    .graphicsLayer { translationY = expansion.expansionPx }
                 LazyColumn(
                     state = listState,
-                    modifier = listModifier
+                    modifier = feedModifier
                         .fillMaxSize()
                         .pointerInput(returnToBottomState.isAutoScrolling) {
                             awaitEachGesture {
@@ -1411,10 +1520,44 @@ private fun TimelineContent(
                 ) {
                     if (isHomeSurface) {
                         homeHeader?.invoke(this)
-                        // On a newest-first feed the chronological end of the timeline is its head,
-                        // so the composer is emitted before the moments rather than after them.
-                        composerItem()
+                    } else if (isSlidingCoverSurface) {
+                        // A transparent window onto the cover behind the list, reserving its space
+                        // without scrolling it.
+                        //
+                        // It also carries the cover's tap. A scrolling list does not let touches
+                        // fall through to what is drawn behind it, so the cover cannot be its own
+                        // target while the sheet is on screen. The window is exactly as tall as the
+                        // cover and its bottom edge is the sheet's top edge at every position, so
+                        // the target is always precisely the part of the cover still showing.
+                        item(key = "cover-backdrop-window") {
+                            Spacer(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(dims.timeline.coverHeroHeight - coverControlsInset)
+                                    .then(
+                                        if (mode.allowsMutations) {
+                                            Modifier
+                                                .clickable(onClick = onUpdateCover)
+                                                .semantics {
+                                                    contentDescription = "Update cover photo"
+                                                }
+                                        } else {
+                                            Modifier
+                                        },
+                                    ),
+                            )
+                        }
+                        // Breathing room at the head of the sheet, so the composer's plus marker
+                        // does not sit hard against the sheet's own top edge. It is sheet content
+                        // rather than list padding, which is what keeps the window above it aligned
+                        // with the cover.
+                        item(key = "cover-sheet-lead") {
+                            Spacer(Modifier.height(dims.spacing.lg))
+                        }
                     }
+                    // On a newest-first feed the chronological end of the timeline is its head, so
+                    // the composer is emitted before the moments rather than after them.
+                    if (isNewestFirst) composerItem()
                     itemsIndexed(items = moments, key = { _, moment -> moment.id.value }) { index, moment ->
                         if (composerState.editingMoment?.id == moment.id) {
                             MomentComposer(
@@ -1476,7 +1619,7 @@ private fun TimelineContent(
                                 // On Home the composer sits above the newest moment, so the very
                                 // first card still needs rail above its dot for the composer's
                                 // rail to meet it. Elsewhere the first card starts the rail.
-                                hasPreviousMoment = index > 0 || isHomeSurface,
+                                hasPreviousMoment = index > 0 || isNewestFirst,
                                 showLocation = momentVisibility.showLocations,
                                 showTags = momentVisibility.showTags,
                                 modifier = Modifier.fillMaxWidth(),
@@ -1492,22 +1635,22 @@ private fun TimelineContent(
                             EmptyCustomTimelinePlaceholder(timelineName = customName)
                         }
                     }
-                    if (!isHomeSurface) composerItem()
+                    if (!isNewestFirst) composerItem()
                 }
-                // Home's feed runs newest-first, so the end people scroll back to is the top of
-                // All moments and the affordance points up. Every other timeline runs oldest-first
-                // and keeps its return-to-newest control pointing down.
-                val showReturnToBottom = !isHomeSurface &&
+                // A newest-first feed's chronological end is its head, so the place people scroll
+                // back to is the top of the sheet and the affordance points up. Every other
+                // timeline runs oldest-first and keeps its return-to-newest control pointing down.
+                val showReturnToBottom = !isNewestFirst &&
                     returnToBottomState.isVisible(listState.canScrollForward)
-                val showReturnToTop = isHomeSurface && returnToTopState.isVisible(canReturnToFeedTop)
-                if (isHomeSurface) SmallFloatingActionButton(
+                val showReturnToTop = isNewestFirst && returnToTopState.isVisible(canReturnToFeedTop)
+                if (isNewestFirst) SmallFloatingActionButton(
                     onClick = {
                         if (canReturnToFeedTop) {
                             listScope.launch {
                                 isProgrammaticScroll = true
                                 try {
                                     listState.scrollUpToItem(
-                                        targetIndex = allMomentsTopIndex,
+                                        targetIndex = sheetTopIndex,
                                         millisPerViewport = motion.durations.short4,
                                     )
                                 } finally {
@@ -1519,9 +1662,14 @@ private fun TimelineContent(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         // Clear of the floating navigation bar and `+ New`, which Home carries at
-                        // the bottom of this same surface.
+                        // the bottom of this same surface. A custom timeline carries neither, so
+                        // its control sits where every other timeline's does.
                         .padding(
-                            bottom = dims.floatingToolbar.height + dims.spacing.lg + dims.spacing.md,
+                            bottom = if (isHomeSurface) {
+                                dims.floatingToolbar.height + dims.spacing.lg + dims.spacing.md
+                            } else {
+                                dims.spacing.lg
+                            },
                         )
                         .size(dims.minTouchTarget)
                         .animateFloatingActionButton(
@@ -1612,6 +1760,47 @@ private fun TimelineContent(
                         dismissActionContentColor = ReliveTheme.colors.textOnAccent,
                     )
                 }
+
+                if (isSlidingCoverSurface) {
+                    // Pinned above the sheet: the timeline passes underneath these, never over
+                    // them, which is the whole point of lifting them out of the cover. The
+                    // selection bar takes the same slot, so a long-press swaps the controls in
+                    // place rather than shifting the surface underneath them.
+                    AnimatedContent(
+                        targetState = isContextualActionMode,
+                        transitionSpec = {
+                            reliveSequentialSlideFade(
+                                motion = motion,
+                                reduceMotion = reduceMotion,
+                                enterFromRight = targetState,
+                            )
+                        },
+                        label = "cover controls",
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .bleedHorizontal(dims.timeline.horizontalPadding),
+                    ) { inActionMode ->
+                        if (inActionMode && selectedActionMoment != null && actionAvailability != null) {
+                            TimelineMomentActionHeader(
+                                showEdit = actionAvailability.canEdit,
+                                showAddToTimeline = actionAvailability.canAddToTimeline,
+                                addToTimelineEnabled = !timelineState.momentActions.isLoadingAssignments &&
+                                    !timelineState.momentActions.hasAssignmentLoadFailed,
+                                showForget = actionAvailability.canForget,
+                                onExit = onExitMomentActions,
+                                onEdit = { onEditMoment(selectedActionMoment) },
+                                onAddToTimeline = onShowTimelineAssignmentPicker,
+                                onForget = { onForgetMoment(selectedActionMoment) },
+                            )
+                        } else {
+                            TimelineCoverControls(
+                                onBack = onBack,
+                                onJumpToDate = onJumpToDate,
+                                onChangeTheme = onChangeTheme,
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -1653,6 +1842,115 @@ private fun TimelineContent(
             )
         }
     }
+    }
+}
+
+/**
+ * The window reserving the cover's space and the lead-in below it. Keep in step with the feed's
+ * item order in `TimelineScreenContent`.
+ */
+private const val SLIDING_COVER_HEADER_ITEM_COUNT = 2
+
+/**
+ * How far down the screen a sliding cover's sheet comes to rest: clear of the status bar, clear of
+ * the pinned Back / theme / calendar row, plus a gap. Read by both the feed's inset and the window
+ * that reserves the cover's space, so the sheet's top edge and that window's bottom edge stay the
+ * same line at every scroll position.
+ */
+@Composable
+private fun coverControlsInset(): Dp {
+    val dims = ReliveTheme.dimensions
+    return WindowInsets.statusBars.asPaddingValues().calculateTopPadding() +
+        dims.minTouchTarget + dims.spacing.md * 2
+}
+
+/**
+ * The cover photo drawn behind the feed, plus the opaque surface the timeline sheet rides on.
+ *
+ * The counterpart to Home's welcome backdrop (ADR-0062). The sheet's top edge sits at
+ * `coverHeight - scrolledIntoCover`, so scrolling up raises it over the cover and scrolling down
+ * lowers it again; past that the sheet is pushed off the bottom by [expansionPx] and the cover
+ * grows by the same amount, which is exactly the distance left for it to fill the viewport.
+ *
+ * [scrolledIntoCover] tops out at [coverTravelPx] rather than at [coverHeightPx], which is what
+ * leaves the sheet resting clear of the pinned controls instead of running under them.
+ */
+@Composable
+private fun TimelineCoverBackdrop(
+    name: String,
+    coverPhotoRef: MediaStorageRef?,
+    mediaStore: MediaStore,
+    onUpdateCover: (() -> Unit)?,
+    coverHeightPx: Int,
+    coverTravelPx: Int,
+    scrolledIntoCover: Int,
+    expansionPx: Float,
+    wallpaper: com.vaibhav.relive.domain.model.TimelineWallpaper,
+    onViewportMeasured: (Int) -> Unit,
+) {
+    val dims = ReliveTheme.dimensions
+    val colors = ReliveTheme.colors
+    val sheetShape = RoundedCornerShape(topStart = dims.radii.xl, topEnd = dims.radii.xl)
+    val covered = if (coverTravelPx > 0) {
+        (scrolledIntoCover.toFloat() / coverTravelPx).coerceIn(0f, 1f)
+    } else {
+        0f
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .bleedHorizontal(dims.timeline.horizontalPadding)
+            // The cover trails the sheet, so without this it would ride up past the top of the
+            // content area and show through behind the pinned controls.
+            .clipToBounds()
+            .onGloballyPositioned { onViewportMeasured(it.size.height) }
+            // Painted behind the cover so the expanded state has a ground of its own on the frames
+            // where the photo has not been decoded yet.
+            .background(colors.bgCanvas),
+    ) {
+        TimelineCoverHero(
+            name = name,
+            coverPhotoRef = coverPhotoRef,
+            mediaStore = mediaStore,
+            // Back, theme and calendar are pinned above the sheet instead, so the cover carries
+            // only its photo and its name.
+            onBack = null,
+            onUpdateCover = onUpdateCover,
+            stretchPx = expansionPx,
+            stretchZoom = false,
+            modifier = Modifier.graphicsLayer {
+                // Trails the sheet instead of matching it, which is what makes the timeline read
+                // as passing in front of the photo rather than pushing it.
+                translationY = -scrolledIntoCover * BACKDROP_PARALLAX
+                alpha = 1f - covered * 0.4f
+            },
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .offset {
+                    IntOffset(
+                        0,
+                        (coverHeightPx - scrolledIntoCover).coerceAtLeast(0) +
+                            expansionPx.roundToInt(),
+                    )
+                }
+                .shadow(
+                    elevation = dims.timelineHome.cardElevation * covered,
+                    shape = sheetShape,
+                    clip = false,
+                    ambientColor = colors.shadow,
+                    spotColor = colors.shadow,
+                )
+                .background(colors.bgCanvas, sheetShape)
+                .clip(sheetShape),
+        ) {
+            // The sheet carries the timeline's own wallpaper, so raising it reads as one material
+            // moving rather than a flat panel sliding over a decorated background.
+            TimelineWallpaperSurface(wallpaper = wallpaper, modifier = Modifier.fillMaxSize()) {}
+        }
     }
 }
 

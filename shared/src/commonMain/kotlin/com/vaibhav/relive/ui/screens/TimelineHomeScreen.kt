@@ -111,6 +111,12 @@ fun TimelineHomeScreen(
     onNavigationToolbarExpand: () -> Unit = {},
     onNavigationToolbarCollapse: () -> Unit = {},
     onUpgrade: () -> Unit = {},
+    /**
+     * Container-transform bounds for the card that opens a timeline (ADR-0063). Supplied by the
+     * navigation host, which owns the shared-transition and animated-visibility scopes; the default
+     * leaves the card with no shared element, which is what every other caller wants.
+     */
+    cardContainerModifier: @Composable (Timeline.Custom) -> Modifier = { Modifier },
 ) {
     val state by viewModel.state.collectAsState()
     val creation by viewModel.creationState.collectAsState()
@@ -192,6 +198,7 @@ fun TimelineHomeScreen(
                         mediaStore = mediaStore,
                         listState = listState,
                         onOpenTimeline = { navigation -> viewModel.selectTimeline(navigation.timeline) },
+                        cardContainerModifier = cardContainerModifier,
                         onShowTimelineOptions = { timeline ->
                             haptics.perform(ReliveHapticCue.Context)
                             selectedTimelines = setOf(timeline)
@@ -562,6 +569,7 @@ private fun TimelineHomeContent(
     mediaStore: MediaStore,
     listState: LazyListState,
     onOpenTimeline: (TimelineHomeNavigation) -> Unit,
+    cardContainerModifier: @Composable (Timeline.Custom) -> Modifier,
     onShowTimelineOptions: (Timeline.Custom) -> Unit,
     selectedTimelineIds: Set<com.vaibhav.relive.domain.model.TimelineId>,
     onToggleTimelineSelection: (Timeline.Custom) -> Unit,
@@ -614,6 +622,7 @@ private fun TimelineHomeContent(
                     },
                     onLongClick = { onShowTimelineOptions(summary.timeline as Timeline.Custom) },
                     isSelected = (summary.timeline as Timeline.Custom).id in selectedTimelineIds,
+                    modifier = cardContainerModifier(summary.timeline as Timeline.Custom),
                 )
             }
         }
@@ -643,6 +652,7 @@ internal fun TimelineHomeCard(
     onLongClick: (() -> Unit)? = null,
     isSelected: Boolean = false,
     showDraftIndicator: Boolean = false,
+    modifier: Modifier = Modifier,
 ) {
     TimelineHomeCardContent(
         summary = summary,
@@ -653,6 +663,7 @@ internal fun TimelineHomeCard(
         onLongClick = onLongClick,
         isSelected = isSelected,
         showDraftIndicator = showDraftIndicator,
+        modifier = modifier,
     )
 }
 
@@ -666,6 +677,7 @@ private fun TimelineHomeCardContent(
     onLongClick: (() -> Unit)?,
     isSelected: Boolean,
     showDraftIndicator: Boolean,
+    modifier: Modifier = Modifier,
 ) {
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
@@ -683,7 +695,7 @@ private fun TimelineHomeCardContent(
     val cardShape = RoundedCornerShape(dims.radii.largeIncreased)
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .shadow(
                 elevation = dims.timelineHome.cardElevation,
