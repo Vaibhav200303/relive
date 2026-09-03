@@ -239,13 +239,15 @@ fun App(
         val openQuickCapture: (QuickCaptureSurface) -> Unit = { surface ->
             quickCaptureCommand(surface)?.let { command ->
                 ActivePlayback.stopActive()
-                val onHomeSurface = topLevel == ReliveTopLevelDestination.Home &&
-                    rediscoverDestination == RediscoverDestination.Root
-                if (onHomeSurface && command.timeline == CurrentTimeline.All) {
-                    // All moments is already part of this surface, so `+ New` expands the existing
-                    // inline composer in place. It must never navigate to a separate All screen
-                    // (ADR-0061). A monotonic counter rather than a boolean, because Home is a
+                if (command.timeline == CurrentTimeline.All) {
+                    // Every root's `+ New` is the same act of writing to the archive, so they all
+                    // land in the same place: Home's inline All composer (ADR-0061). Timelines and
+                    // Search switch to the Home surface first rather than opening a separate All
+                    // detail screen. A monotonic counter rather than a boolean, because Home is a
                     // persistent surface: a latched flag would make the second tap a silent no-op.
+                    topLevel = ReliveTopLevelDestination.Home
+                    rediscoverDestination = RediscoverDestination.Root
+                    navigationToolbarExpanded = true
                     homeComposerRequest += 1
                 } else {
                     quickCaptureTransformActive = true
@@ -659,6 +661,9 @@ fun App(
                                 rediscoverDestination = RediscoverDestination.AllPhotos
                             },
                             expandComposerRequest = homeComposerRequest,
+                            // Cleared once Home has expanded the composer, so re-entering Home
+                            // later does not replay a stale request.
+                            onExpandComposerRequestHandled = { homeComposerRequest = 0 },
                             onOpenTimelineTheme = {
                                 rediscoverDestination = RediscoverDestination.AllTheme
                             },

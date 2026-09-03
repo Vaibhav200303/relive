@@ -116,10 +116,11 @@ fun TimelineHeader(
 
 /**
  * Floating controls for the Home root, which carries no app bar: the canvas gradient runs to the
- * top of the screen and these controls float over it. [leading] holds the profile affordance;
- * calendar and theme appear once the All moments sheet has the screen. The trailing pair sits in
- * a floating pill — the same treatment the cover heroes give their overlaid controls — so it stays
- * legible over whatever the sheet is showing.
+ * top of the screen and these controls float over it. The wordmark sits centred on the same line
+ * as the controls, drawn directly on the canvas with no band behind it — the strip stays the
+ * gradient's because the All moments sheet comes to rest below it. [leading] holds the profile
+ * affordance; calendar and theme appear once the All moments sheet has the screen, in a floating
+ * pill — the same treatment the cover heroes give their overlaid controls.
  */
 @Composable
 fun HomeFloatingHeaderActions(
@@ -139,6 +140,14 @@ fun HomeFloatingHeaderActions(
         if (leading != null) {
             Box(modifier = Modifier.align(Alignment.CenterStart)) { leading() }
         }
+        Text(
+            text = "Relive",
+            style = ReliveTheme.typography.wordmark,
+            // Ink, like every heading: the one-ink rule leaves hierarchy to the serif wordmark
+            // style, and the canvas gradient behind it stays legible in both modes.
+            color = colors.textPrimary,
+            modifier = Modifier.align(Alignment.Center),
+        )
         if (onJumpToDate != null || onChangeTheme != null) {
             Row(
                 modifier = Modifier

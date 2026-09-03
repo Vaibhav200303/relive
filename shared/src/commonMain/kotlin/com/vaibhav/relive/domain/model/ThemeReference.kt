@@ -7,4 +7,6 @@ enum class ThemeReference {
     EmberAqua,
     PlumGold,
     RoseSage,
+    Sunrise,
+    Sunset,
 }

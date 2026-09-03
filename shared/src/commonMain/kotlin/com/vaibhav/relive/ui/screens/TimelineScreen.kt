@@ -294,6 +294,8 @@ fun TimelineScreen(
      * make every tap after the first a silent no-op.
      */
     expandComposerRequest: Int = 0,
+    /** Invoked once a pending [expandComposerRequest] has been acted on, so the owner can clear it. */
+    onExpandComposerRequestHandled: (() -> Unit)? = null,
     /** Items emitted above the composer on Home: the backdrop spacer and the section heading. */
     homeHeader: (LazyListScope.() -> Unit)? = null,
     /**
@@ -478,6 +480,9 @@ fun TimelineScreen(
             !isComposerExpanded
         ) {
             openHomeComposer()
+            // Cleared only after the composer is seated: resetting the counter restarts this
+            // effect, and a restart mid-scroll would abandon the seat-in-view animation.
+            onExpandComposerRequestHandled?.invoke()
         }
     }
 

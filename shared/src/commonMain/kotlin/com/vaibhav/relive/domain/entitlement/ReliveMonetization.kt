@@ -11,7 +11,12 @@ object ReliveMonetization {
     const val lifetimeProductId = "lifetime"
     const val freeCustomTimelineLimit = 3
 
-    val freePalettes = setOf(ThemeReference.InkLilac, ThemeReference.TealSaffron)
+    val freePalettes = setOf(
+        ThemeReference.InkLilac,
+        ThemeReference.TealSaffron,
+        ThemeReference.Sunrise,
+        ThemeReference.Sunset,
+    )
     val freeWallpapers = setOf(TimelineWallpaper.WarmCream, TimelineWallpaper.SageGreen)
 }
 

@@ -15,6 +15,8 @@ class ThemeReferenceTest {
                 ThemeReference.EmberAqua,
                 ThemeReference.PlumGold,
                 ThemeReference.RoseSage,
+                ThemeReference.Sunrise,
+                ThemeReference.Sunset,
             ),
             ids,
         )

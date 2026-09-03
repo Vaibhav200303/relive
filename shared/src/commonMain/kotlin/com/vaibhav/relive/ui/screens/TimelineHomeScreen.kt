@@ -419,8 +419,8 @@ private fun TimelineHomeHeader(
                 }
             }
         } else {
-            // No wordmark app bar: the root's two controls float directly over the canvas
-            // gradient, which runs unbroken to the top of the screen.
+            // No app-bar band: the wordmark and the root's two controls float directly over the
+            // canvas gradient, which runs unbroken to the top of the screen.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -436,6 +436,12 @@ private fun TimelineHomeHeader(
                 ) {
                     ProfileAffordanceGlyph(profilePhoto, mediaStore)
                 }
+                Text(
+                    text = "Relive",
+                    style = ReliveTheme.typography.wordmark,
+                    color = colors.textPrimary,
+                    modifier = Modifier.align(Alignment.Center),
+                )
                 IconButton(
                     onClick = onCreateTimeline,
                     modifier = Modifier

@@ -24,6 +24,8 @@ internal fun ThemeReference.encodePreference(): String = when (this) {
     ThemeReference.EmberAqua -> "ember_aqua"
     ThemeReference.PlumGold -> "plum_gold"
     ThemeReference.RoseSage -> "rose_sage"
+    ThemeReference.Sunrise -> "sunrise"
+    ThemeReference.Sunset -> "sunset"
 }
 
 internal fun TimelineWallpaper.encodePreference(): String = name
@@ -46,6 +48,8 @@ internal fun decodeAppearancePreferences(
             "ember_aqua" -> ThemeReference.EmberAqua
             "plum_gold" -> ThemeReference.PlumGold
             "rose_sage" -> ThemeReference.RoseSage
+            "sunrise" -> ThemeReference.Sunrise
+            "sunset" -> ThemeReference.Sunset
             // Retired palette keys and the default both resolve to Ink & Lilac.
             else -> ThemeReference.InkLilac
         },
