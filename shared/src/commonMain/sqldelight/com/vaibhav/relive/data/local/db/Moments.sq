@@ -5,6 +5,8 @@ CREATE TABLE moments (
     title TEXT NOT NULL DEFAULT '',
     content TEXT NOT NULL DEFAULT '',
     is_favorite INTEGER NOT NULL DEFAULT 0,
+    -- Optional post-save reflection (ADR-0064). NULL forever unless chosen; never backfilled.
+    feeling TEXT,
     location_lat REAL,
     location_lon REAL,
     location_display_name TEXT,
@@ -19,10 +21,10 @@ CREATE INDEX moments_updated_at ON moments(updated_at);
 insertMoment:
 INSERT INTO moments (
     id, created_at, updated_at,
-    title, content, is_favorite,
+    title, content, is_favorite, feeling,
     location_lat, location_lon,
     location_display_name, location_locality, location_region, location_country
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 selectMomentById:
 SELECT * FROM moments WHERE id = :id;
@@ -121,6 +123,16 @@ WHERE id = :id;
 
 updateFavorite:
 UPDATE moments SET is_favorite = :isFavorite WHERE id = :id;
+
+updateFeeling:
+UPDATE moments SET feeling = :feeling WHERE id = :id;
+
+-- Bounded scalar projection for Mood insights (ADR-0064): the two columns the
+-- calculator aggregates over, never full rows, limited to the recent window.
+selectFeelingSamplesSince:
+SELECT created_at, feeling FROM moments
+WHERE created_at >= :cutoff
+ORDER BY created_at ASC, id ASC;
 
 deleteMoment:
 DELETE FROM moments WHERE id = :id;

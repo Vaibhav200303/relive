@@ -97,7 +97,22 @@ class AndroidBackupPackageStore(
                 val moments = payload.getJSONArray("moments")
                 for (i in 0 until moments.length()) {
                     val m = moments.getJSONObject(i)
-                    database.momentsQueries.insertMoment(m.getString("id"), m.getLong("createdAt"), if (m.isNull("updatedAt")) null else m.optLong("updatedAt"), m.optString("title"), m.optString("content"), if (m.optBoolean("favorite")) 1L else 0L, if (m.isNull("locationLat")) null else m.optDouble("locationLat"), if (m.isNull("locationLon")) null else m.optDouble("locationLon"), m.optNullableString("locationDisplayName"), m.optNullableString("locationLocality"), m.optNullableString("locationRegion"), m.optNullableString("locationCountry"))
+                    database.momentsQueries.insertMoment(
+                        id = m.getString("id"),
+                        created_at = m.getLong("createdAt"),
+                        updated_at = if (m.isNull("updatedAt")) null else m.optLong("updatedAt"),
+                        title = m.optString("title"),
+                        content = m.optString("content"),
+                        is_favorite = if (m.optBoolean("favorite")) 1L else 0L,
+                        // Absent in backups written before feelings existed → restores unfelt (ADR-0064).
+                        feeling = m.optNullableString("feeling"),
+                        location_lat = if (m.isNull("locationLat")) null else m.optDouble("locationLat"),
+                        location_lon = if (m.isNull("locationLon")) null else m.optDouble("locationLon"),
+                        location_display_name = m.optNullableString("locationDisplayName"),
+                        location_locality = m.optNullableString("locationLocality"),
+                        location_region = m.optNullableString("locationRegion"),
+                        location_country = m.optNullableString("locationCountry"),
+                    )
                 }
                 val timelines = payload.getJSONArray("timelines")
                 for (i in 0 until timelines.length()) {
@@ -148,6 +163,7 @@ class AndroidBackupPackageStore(
                 put(JSONObject().apply {
                     put("id", row.id); put("createdAt", row.created_at); put("updatedAt", row.updated_at)
                     put("title", row.title); put("content", row.content); put("favorite", row.is_favorite)
+                    put("feeling", row.feeling)
                     put("locationLat", row.location_lat); put("locationLon", row.location_lon)
                     put("locationDisplayName", row.location_display_name); put("locationLocality", row.location_locality)
                     put("locationRegion", row.location_region); put("locationCountry", row.location_country)
@@ -207,7 +223,7 @@ class AndroidBackupPackageStore(
             }
             val manifest = JSONObject().apply {
                 put("formatVersion", 2); put("generation", generation); put("createdAt", System.currentTimeMillis())
-                put("schemaVersion", 4); put("momentCount", database.momentsQueries.countMoments().executeAsOne()); put("media", mediaInventory)
+                put("schemaVersion", 5); put("momentCount", database.momentsQueries.countMoments().executeAsOne()); put("media", mediaInventory)
                 put("archiveSha256", sha256(archiveBytes))
             }
             zip.putNextEntry(ZipEntry("manifest.json")); zip.write(manifest.toString().toByteArray(Charsets.UTF_8)); zip.closeEntry()

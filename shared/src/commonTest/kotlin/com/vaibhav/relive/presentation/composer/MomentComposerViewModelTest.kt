@@ -56,7 +56,7 @@ class MomentComposerViewModelTest {
         val invalid = assertIs<SaveState.Invalid>(vm.state.value.saveState)
         assertTrue(MomentValidation.Reason.Empty in invalid.reasons)
         assertTrue(repo.inserts.isEmpty(), "empty moment must not be persisted")
-        assertEquals(listOf(MomentSaveOutcome.Rejected), outcomes)
+        assertEquals(listOf<MomentSaveOutcome>(MomentSaveOutcome.Rejected), outcomes)
     }
 
     @Test
@@ -69,7 +69,33 @@ class MomentComposerViewModelTest {
         vm.keepMoment()
         assertEquals(1, repo.inserts.size)
         assertEquals("A", repo.inserts.single().first.title)
-        assertEquals(listOf(MomentSaveOutcome.Succeeded), outcomes)
+        // The outcome carries what the post-save feeling prompt needs to anchor itself: the
+        // saved Moment's id, and that this was a first save rather than an edit (ADR-0064).
+        val succeeded = assertIs<MomentSaveOutcome.Succeeded>(outcomes.single())
+        assertEquals(repo.inserts.single().first.id, succeeded.momentId)
+        assertTrue(succeeded.isNewMoment)
+    }
+
+    @Test
+    fun editSaveIsNotMarkedAsANewMoment() = runTest {
+        val existing = Moment(
+            id = MomentId("existing"),
+            createdAt = Instant(1_000L),
+            title = "Before",
+        )
+        val repo = RecordingRepository(persisted = existing)
+        // Inside the 4-day edit window, so the inline edit is permitted.
+        val vm = newViewModel(repo, clockValue = Instant(2_000L))
+        val outcomes = mutableListOf<MomentSaveOutcome>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.saveOutcomes.toList(outcomes) }
+
+        assertTrue(vm.beginEdit(existing))
+        vm.updateTitle("After")
+        vm.keepMoment()
+
+        val succeeded = assertIs<MomentSaveOutcome.Succeeded>(outcomes.single())
+        assertEquals(existing.id, succeeded.momentId)
+        assertFalse(succeeded.isNewMoment, "an inline edit must never re-arm the prompt")
     }
 
     @Test
@@ -918,6 +944,10 @@ private class RecordingRepository(
         persisted = moment
     }
     override suspend fun setFavorite(id: MomentId, isFavorite: Boolean) = Unit
+    override suspend fun setFeeling(
+        id: MomentId,
+        feeling: com.vaibhav.relive.domain.model.MomentFeeling?,
+    ) = Unit
     override suspend fun delete(id: MomentId) = Unit
     override suspend fun listAll(): List<Moment> = inserts.map { it.first }
     private val emptyFlow = MutableStateFlow<List<Moment>>(emptyList()).asStateFlow()

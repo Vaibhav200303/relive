@@ -18,6 +18,7 @@ fun Moment.toPresentation(): MomentPresentation = MomentPresentation(
     locationLabel = location?.readableLabel(),
     location = location,
     isFavorite = isFavorite,
+    feeling = feeling,
     tags = tags,
     attachments = attachments
         .sortedBy { it.sortIndex }
@@ -43,6 +44,7 @@ fun MomentPresentation.toMoment(): Moment = Moment(
     title = title,
     content = content,
     isFavorite = isFavorite,
+    feeling = feeling,
     location = location,
     tags = tags,
     attachments = attachments.mapIndexed { index, attachment ->

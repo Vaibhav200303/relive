@@ -1,6 +1,7 @@
 package com.vaibhav.relive.debug
 
 import com.vaibhav.relive.domain.model.Moment
+import com.vaibhav.relive.domain.model.MomentFeeling
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.ReliveLocation
 import com.vaibhav.relive.domain.model.TimelineId
@@ -38,6 +39,10 @@ internal class DebugSampleMomentRepository : MomentRepository {
         state.value = state.value.map {
             if (it.id == id) it.copy(isFavorite = isFavorite) else it
         }
+    }
+
+    override suspend fun setFeeling(id: MomentId, feeling: MomentFeeling?) {
+        state.value = state.value.map { if (it.id == id) it.copy(feeling = feeling) else it }
     }
 
     override suspend fun delete(id: MomentId) {

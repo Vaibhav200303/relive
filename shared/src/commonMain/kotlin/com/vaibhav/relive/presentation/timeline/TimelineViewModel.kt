@@ -1,6 +1,7 @@
 package com.vaibhav.relive.presentation.timeline
 
 import com.vaibhav.relive.domain.model.Moment
+import com.vaibhav.relive.domain.model.MomentFeeling
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.MediaStorageRef
 import com.vaibhav.relive.domain.model.Timeline
@@ -78,6 +79,12 @@ class TimelineViewModel(
     fun setFavorite(id: MomentId, isFavorite: Boolean) {
         if (!mode.allowsMutations) return
         scope.launch { momentRepository.setFavorite(id, isFavorite) }
+    }
+
+    /** Post-save feeling write; independent of the 4-day edit window like [setFavorite]. */
+    fun setFeeling(id: MomentId, feeling: MomentFeeling?) {
+        if (!mode.allowsMutations) return
+        scope.launch { momentRepository.setFeeling(id, feeling) }
     }
 
     fun updateCurrentTimelineAppearance(

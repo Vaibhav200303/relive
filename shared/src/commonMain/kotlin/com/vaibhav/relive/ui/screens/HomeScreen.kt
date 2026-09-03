@@ -1,9 +1,20 @@
 package com.vaibhav.relive.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -22,7 +33,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.gestures.scrollable
@@ -46,6 +59,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
@@ -55,8 +69,10 @@ import com.vaibhav.relive.domain.id.IdGenerator
 import com.vaibhav.relive.domain.model.BehaviorPreferences
 import com.vaibhav.relive.domain.model.LocalCalendarDate
 import com.vaibhav.relive.domain.model.MomentId
+import com.vaibhav.relive.domain.model.MoodInsights
 import com.vaibhav.relive.domain.model.RediscoverQuery
 import com.vaibhav.relive.domain.model.TimelineWallpaper
+import com.vaibhav.relive.domain.model.dayOfWeekIndex
 import com.vaibhav.relive.domain.repository.AppearanceRepository
 import com.vaibhav.relive.domain.repository.MomentRepository
 import com.vaibhav.relive.domain.repository.ProfileSettingsRepository
@@ -71,13 +87,22 @@ import com.vaibhav.relive.presentation.date.RediscoverCalendar
 import com.vaibhav.relive.presentation.date.editorialDayMonth
 import com.vaibhav.relive.presentation.home.HOME_GREETING_SUBTITLE
 import com.vaibhav.relive.presentation.home.homeGreeting
+import com.vaibhav.relive.presentation.insights.MoodInsightsViewModel
 import com.vaibhav.relive.presentation.timeline.CurrentTimeline
+import com.vaibhav.relive.platform.system.ReliveBackHandler
+import com.vaibhav.relive.ui.components.mood.MoodBar
+import com.vaibhav.relive.ui.components.mood.MoodCountTiles
+import com.vaibhav.relive.ui.components.mood.MoodOverTimePanel
+import com.vaibhav.relive.ui.components.mood.MoodSplitRows
+import com.vaibhav.relive.ui.components.mood.WeeklyMoodPanel
 import com.vaibhav.relive.ui.components.rediscover.RediscoverCollectionCardModel
 import com.vaibhav.relive.ui.components.rediscover.RediscoverCollectionRow
 import com.vaibhav.relive.ui.components.timeline.LocalTimelineWallpaperPalette
 import com.vaibhav.relive.ui.components.timeline.TimelineWallpaperSurface
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.theme.canvasBrush
+import com.vaibhav.relive.ui.theme.reliveInContextVerticalEnter
+import com.vaibhav.relive.ui.theme.reliveInContextVerticalExit
 import com.vaibhav.relive.ui.theme.timelineMomentForegroundColors
 import androidx.compose.ui.graphics.Color
 import kotlin.math.roundToInt
@@ -168,6 +193,19 @@ fun HomeScreen(
     val profileSettings by profileSettingsRepository.settings.collectAsState()
     val greeting = homeGreeting(profileSettings.displayName)
     val density = LocalDensity.current
+    val homeScope = rememberCoroutineScope()
+
+    // Mood insights read only the bounded feeling-sample projection (ADR-0064), so this is a
+    // Home-lifetime state holder like the Rediscover projections around it.
+    val moodViewModel = remember(momentRepository, clock) {
+        MoodInsightsViewModel(
+            momentRepository = momentRepository,
+            clock = clock,
+            scope = homeScope,
+        )
+    }
+    val moodInsights by moodViewModel.insights.collectAsState()
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { moodViewModel.refreshToday() }
 
     // Geometry of the sheet riding over the welcome area. The backdrop measures itself — the
     // welcome content alone, below the floating wordmark-and-profile strip — and the list's own
@@ -230,6 +268,21 @@ fun HomeScreen(
         backdropHeightPx = headerHeightPx,
         scrolledIntoBackdrop = { scrolledIntoHeader },
     )
+
+    // The mood bar is disclosed by the backdrop's expanded position rather than living on Home
+    // at rest (PRODUCT_SPEC §10A.3). The threshold is the room the bar and its slot need, so the
+    // space exists before the bar occupies it and the sheet has already begun leaving.
+    val moodRevealThresholdPx = with(density) { MoodRevealThreshold.toPx() }
+    val isMoodRevealed = expansion.expansionPx >= moodRevealThresholdPx
+    var isMoodInsightsOpen by remember { mutableStateOf(false) }
+    // Collapsing the welcome area takes the whole surface with it: insights cannot outlive the
+    // state that disclosed them.
+    LaunchedEffect(isMoodRevealed) {
+        if (!isMoodRevealed) isMoodInsightsOpen = false
+    }
+    // Back precedence on Home gains one step ahead of selection and the composer (ADR-0064):
+    // open insights close first, and closing them is not a navigation event.
+    ReliveBackHandler(enabled = isMoodInsightsOpen) { isMoodInsightsOpen = false }
 
     // Rediscover row sources. Every one of these is a bounded projection; none of them reads the
     // archive (ADR-0061).
@@ -330,6 +383,7 @@ fun HomeScreen(
         false,
     )
 
+    Box(modifier = Modifier.fillMaxSize()) {
     TimelineScreen(
         momentRepository = momentRepository,
         timelineRepository = timelineRepository,
@@ -401,6 +455,9 @@ fun HomeScreen(
                 headerHeightPx = headerHeightPx,
                 expansionPx = expansion.expansionPx,
                 wallpaper = wallpaper,
+                moodInsights = moodInsights,
+                isMoodRevealed = isMoodRevealed,
+                onToggleMoodInsights = { isMoodInsightsOpen = true },
                 // The measured height is hoisted so a rebuilt Home can reserve the backdrop's
                 // space immediately, and mirrored into the expansion state, which needs it to know
                 // how far the sheet may travel.
@@ -446,6 +503,18 @@ fun HomeScreen(
             }
         },
     )
+
+        // Mood insights open as a full-screen scrollable surface over Home rather than inside the
+        // backdrop behind the list, so the charts get room and their own scroll without fighting
+        // the feed for touch (ADR-0064). The revealed bar is what opens it; the overlay carries its
+        // own copy of the bar between the two charts, matching the reference composition.
+        MoodInsightsOverlay(
+            visible = isMoodInsightsOpen,
+            insights = moodInsights,
+            todayIndex = moodViewModel.currentDay().dayOfWeekIndex(),
+            onClose = { isMoodInsightsOpen = false },
+        )
+    }
 }
 
 /** The backdrop window and the `All moments` heading. Keep in step with [HomeScreen]. */
@@ -474,6 +543,94 @@ private fun homeControlsInset(): Dp {
 private const val HOME_WELCOME_EXPAND_DRIFT = 0.12f
 
 /**
+ * How far the welcome area must be pulled open before the mood bar is disclosed
+ * (PRODUCT_SPEC §10A.3). Enough room has to exist for the bar before it occupies it, so the
+ * sheet has visibly begun leaving by the time the bar arrives.
+ */
+private val MoodRevealThreshold: Dp = 120.dp
+
+/**
+ * Mood insights as a full-screen scrollable surface over Home (PRODUCT_SPEC §10A.4, ADR-0064).
+ *
+ * Opened by the revealed mood bar, it lays the composition out top to bottom — `Mood over time`,
+ * the bar between the two charts as in the reference, `Weekly mood`, the day split, the count
+ * tiles — with generous spacing and its own scroll, so the charts get room without competing
+ * with the feed underneath for touch. It paints the app canvas so it fully covers Home, and
+ * closes on the bar, the `×`, or Back.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MoodInsightsOverlay(
+    visible: Boolean,
+    insights: MoodInsights?,
+    todayIndex: Int,
+    onClose: () -> Unit,
+) {
+    val dims = ReliveTheme.dimensions
+    val colors = ReliveTheme.colors
+    val motion = ReliveTheme.motion
+    val reduceMotion = ReliveTheme.reduceMotion
+    AnimatedVisibility(
+        visible = visible && insights != null,
+        enter = fadeIn(animationSpec = tween(motion.durations.medium2)),
+        exit = fadeOut(animationSpec = tween(motion.durations.short4)),
+    ) {
+        val current = insights ?: return@AnimatedVisibility
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(colors.canvasBrush()),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .padding(
+                        start = dims.spacing.xl,
+                        end = dims.spacing.xl,
+                        top = dims.spacing.md,
+                        // Clear the floating navigation toolbar and `+ New` at the bottom.
+                        bottom = dims.floatingToolbar.height + dims.spacing.xxl,
+                    ),
+                verticalArrangement = Arrangement.spacedBy(dims.spacing.xl),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Your pulse",
+                        style = ReliveTheme.typography.title,
+                        color = colors.textPrimary,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(
+                        onClick = onClose,
+                        modifier = Modifier
+                            .size(dims.minTouchTarget)
+                            .semantics { contentDescription = "Close mood insights" },
+                    ) {
+                        com.vaibhav.relive.ui.components.composer.CloseGlyph(
+                            size = dims.icon.md,
+                            color = colors.accent,
+                            strokeWidth = dims.stroke.iconBold,
+                        )
+                    }
+                }
+                MoodOverTimePanel(insights = current)
+                MoodBar(
+                    lastWeek = current.lastWeek,
+                    thisWeek = current.thisWeek,
+                    isInsightsOpen = true,
+                    onToggleInsights = onClose,
+                )
+                WeeklyMoodPanel(insights = current, todayIndex = todayIndex)
+                MoodSplitRows(insights = current)
+                MoodCountTiles(insights = current)
+            }
+        }
+    }
+}
+
+/**
  * The welcome block and Rediscover row, drawn behind the scrolling list, plus the opaque surface
  * the All moments sheet rides on.
  *
@@ -498,11 +655,16 @@ private fun HomeBackdrop(
     headerHeightPx: Int,
     expansionPx: Float,
     wallpaper: TimelineWallpaper,
+    moodInsights: MoodInsights?,
+    isMoodRevealed: Boolean,
+    onToggleMoodInsights: () -> Unit,
     onHeaderMeasured: (Int) -> Unit,
     onViewportMeasured: (Int) -> Unit,
 ) {
     val dims = ReliveTheme.dimensions
     val colors = ReliveTheme.colors
+    val motion = ReliveTheme.motion
+    val reduceMotion = ReliveTheme.reduceMotion
     val controlsInset = homeControlsInset()
     val controlsInsetPx = with(LocalDensity.current) { controlsInset.roundToPx() }
     val sheetShape = RoundedCornerShape(
@@ -543,7 +705,15 @@ private fun HomeBackdrop(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .onGloballyPositioned { onHeaderMeasured(it.size.height) }
+                    // The reported height is the backdrop's **at-rest** height only. While the
+                    // welcome area is expanded, the mood bar and Mood insights make this layer
+                    // taller, but the sheet is already parked past the bottom edge, so its exact
+                    // parked offset is immaterial — and freezing the measurement is what stops
+                    // the disclosed content from feeding back into `maxExpansionPx` and pulling
+                    // the sheet (and therefore its own disclosure) back.
+                    .onGloballyPositioned {
+                        if (!isMoodRevealed) onHeaderMeasured(it.size.height)
+                    }
                     .graphicsLayer {
                         // Trails the sheet instead of matching it, which is what makes the timeline
                         // read as passing in front rather than pushing.
@@ -556,8 +726,30 @@ private fun HomeBackdrop(
                     // No horizontal wrapper padding: the greeting, its subtitle and the section
                     // heading carry their own `spacing.xl` inset, which is exactly the Rediscover
                     // row's content padding, so all of them start on the Favourites card's leading
-                    // edge.
-                    WelcomeBlock(greeting)
+                    // edge. The greeting grows once the welcome area is pulled open, so the room the
+                    // expansion makes reads as the greeting settling into it rather than a gap.
+                    WelcomeBlock(greeting, enlarged = isMoodRevealed)
+
+                    AnimatedVisibility(
+                        visible = isMoodRevealed && moodInsights != null,
+                        enter = motion.reliveInContextVerticalEnter(reduceMotion, Alignment.Top),
+                        exit = motion.reliveInContextVerticalExit(reduceMotion, Alignment.Top),
+                    ) {
+                        moodInsights?.let { insights ->
+                            Column {
+                                Spacer(Modifier.height(dims.spacing.md))
+                                MoodBar(
+                                    lastWeek = insights.lastWeek,
+                                    thisWeek = insights.thisWeek,
+                                    isInsightsOpen = false,
+                                    onToggleInsights = onToggleMoodInsights,
+                                    modifier = Modifier.padding(horizontal = dims.spacing.xl),
+                                )
+                                Spacer(Modifier.height(dims.spacing.md))
+                            }
+                        }
+                    }
+
                     SectionHeading("Relive your memories")
                     RediscoverCollectionRow(
                         cards = cards,
@@ -617,16 +809,35 @@ private fun momentCountLabel(count: Long): String =
     if (count == 1L) "1 moment" else "$count moments"
 
 @Composable
-private fun WelcomeBlock(greeting: String) {
+private fun WelcomeBlock(greeting: String, enlarged: Boolean = false) {
     val dims = ReliveTheme.dimensions
+    val display = ReliveTheme.typography.display
+    // Pulling the welcome area open grows the greeting so it settles into the room the expansion
+    // makes, rather than leaving a gap above the disclosed mood bar (PRODUCT_SPEC §10A.3).
+    val greetingScale by animateFloatAsState(
+        targetValue = if (enlarged) 1.32f else 1f,
+        animationSpec = tween(
+            durationMillis = ReliveTheme.motion.durations.medium2,
+            easing = ReliveTheme.motion.easings.standard,
+        ),
+        label = "greeting scale",
+    )
+    val verticalPadding by animateDpAsState(
+        targetValue = if (enlarged) dims.spacing.xl else dims.spacing.lg,
+        animationSpec = tween(durationMillis = ReliveTheme.motion.durations.medium2),
+        label = "greeting padding",
+    )
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = dims.spacing.xl, vertical = dims.spacing.lg),
+            .padding(horizontal = dims.spacing.xl, vertical = verticalPadding),
     ) {
         Text(
             text = greeting,
-            style = ReliveTheme.typography.display,
+            style = display.copy(
+                fontSize = display.fontSize * greetingScale,
+                lineHeight = display.lineHeight * greetingScale,
+            ),
             color = ReliveTheme.colors.textPrimary,
         )
         Text(

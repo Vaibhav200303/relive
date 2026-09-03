@@ -9,6 +9,7 @@ import com.vaibhav.relive.domain.model.MediaAttachmentId
 import com.vaibhav.relive.domain.model.MediaStorageRef
 import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.domain.model.Moment
+import com.vaibhav.relive.domain.model.MomentFeeling
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.MomentTheme
 import com.vaibhav.relive.domain.model.ReliveLocation
@@ -34,6 +35,7 @@ internal fun Moments.toDomain(tags: List<Tag>, attachments: List<MediaAttachment
             title = title,
             content = content,
             isFavorite = is_favorite != 0L,
+            feeling = feeling?.let(::decodeFeeling),
             location = decodeLocation(
                 lat = location_lat,
                 lon = location_lon,
@@ -137,3 +139,9 @@ internal fun encodeMomentTheme(theme: MomentTheme): String = theme.name
 internal fun encodeMediaTypeName(type: MediaType): String = type.name
 
 internal fun encodeFavorite(isFavorite: Boolean): Long = if (isFavorite) 1L else 0L
+
+internal fun encodeFeeling(feeling: MomentFeeling?): String? = feeling?.name
+
+internal fun decodeFeeling(raw: String): MomentFeeling =
+    MomentFeeling.entries.firstOrNull { it.name == raw }
+        ?: throw PersistenceMappingException("Unknown feeling='$raw'")

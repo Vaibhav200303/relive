@@ -2,6 +2,7 @@ package com.vaibhav.relive.presentation.timeline
 
 import com.vaibhav.relive.domain.model.MediaStorageRef
 import com.vaibhav.relive.domain.model.MediaType
+import com.vaibhav.relive.domain.model.MomentFeeling
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.Tag
 import com.vaibhav.relive.domain.model.Timeline
@@ -129,6 +130,7 @@ data class MomentPresentation(
     val locationLabel: String?,
     val location: ReliveLocation?,
     val isFavorite: Boolean,
+    val feeling: MomentFeeling? = null,
     val tags: List<Tag>,
     val attachments: List<MomentAttachmentPresentation>,
 ) {

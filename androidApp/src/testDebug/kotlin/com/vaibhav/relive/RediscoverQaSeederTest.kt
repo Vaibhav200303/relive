@@ -69,6 +69,7 @@ private class FakeMomentRepository : MomentRepository {
     override suspend fun findById(id: MomentId): Moment? = moments[id.value]
     override suspend fun updateEditable(moment: Moment) { moments[moment.id.value] = moment }
     override suspend fun setFavorite(id: MomentId, isFavorite: Boolean) = Unit
+    override suspend fun setFeeling(id: MomentId, feeling: com.vaibhav.relive.domain.model.MomentFeeling?) = Unit
     override suspend fun delete(id: MomentId) { moments.remove(id.value) }
     override suspend fun listAll(): List<Moment> = moments.values.toList()
     override fun observeAll(): Flow<List<Moment>> = flowOf(moments.values.toList())

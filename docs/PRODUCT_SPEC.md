@@ -600,6 +600,37 @@ Filters, chips, categories, Tags/Places tabs, suggestions, search history, relev
 
 ---
 
+## 10A. Moment feelings and Mood insights
+
+A Moment may carry one optional **feeling**: `Great`, `Good`, or `Low`. Feelings are captured through a quiet post-save prompt, shown on the Moment as a small hand-drawn face, and aggregated into the local **Mood insights** surface. Everything is computed on-device from persisted Moments; no AI, recommendation, or analytics capability is introduced (§15 is unchanged).
+
+### 10A.1 Capturing a feeling
+
+- After a successful **Keep Moment** for a **new** Moment on an editable surface, a small `How does this moment feel?` prompt renders inline beneath the freshly saved Moment card, inside the timeline flow. It is never a modal, dialog, bottom sheet, or separate screen, and it causes no scroll.
+- The prompt offers exactly the three feelings as face chips plus a dismiss `×`. Choosing writes the feeling; dismissing writes nothing. The prompt also leaves when another Moment is saved or the surface is left. Ignoring it forever is a fully supported path — a Moment with no feeling is a normal Moment, not an incomplete one.
+- Editing a Moment never shows the prompt and never clears an existing feeling; the feeling write path is independent of the 4-day edit window, like the favorite toggle.
+
+### 10A.2 Presentation on the Moment
+
+- A Moment with a feeling shows one small face at the **bottom-left of its print card**, after the content and tags. It must stay subtle and must not dominate the Moment.
+- A Moment without a feeling shows nothing — no placeholder, no empty slot.
+
+### 10A.3 The mood bar on Home
+
+- The week-over-week **mood bar** (`Last week` / `This week`, each cell a face plus a one-word verdict) lives in Home's backdrop, directly beneath the welcome block.
+- It is **not present in the Home top state at rest**. It is revealed by the backdrop's existing expanded position (§2's sliding-backdrop mechanism): pulling the sheet down past resting expands the welcome area, and the bar animates in beneath the greeting. Collapsing the expansion hides it again.
+- Weekly verdicts are the average of that calendar week's felt Moments (weeks run Sunday–Saturday, device-local). A week with no felt Moments shows a quiet em-dash cell rather than a fake value.
+
+### 10A.4 Mood insights
+
+- Tapping the revealed mood bar opens **Mood insights** as a full-screen scrollable surface over Home, titled `Your pulse` with a close `×`. It reads top to bottom — `Mood over time`, the mood bar between the two charts as in the reference, `Weekly mood`, the day split, the count tiles — generously spaced, with its own scroll so the charts have room and never compete with the feed beneath for touch. Tapping the bar, the `×`, or Back closes it; Back closes insights before any other Home Back behavior.
+- `Weekly mood` is a soft filled curve of the current week's per-day feeling averages, one face riding the curve on each day that has felt Moments, with `SUN`–`SAT` labels and today emphasized.
+- `Mood over time` is the same curve treatment over the last six calendar months' averages, with the three faces standing as the left axis and month labels along the bottom.
+- Beneath the charts: `How the days split` (felt-Moment counts per feeling over the last 28 days), a Moments count and streak tile pair for the same window, all reading from bounded projections — the surface never hydrates the archive.
+- Empty states stay quiet and editorial: with no felt Moments the bar and charts show their em-dash/empty forms and invite nothing loudly.
+
+---
+
 ## 11. Themes
 
 All timelines share the **same Moment presentation and interaction model**. Themes only change **presentation**.

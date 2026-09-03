@@ -622,6 +622,16 @@ private class FakeMomentRepository(
         }
     }
 
+    val feelingChanges = mutableListOf<Pair<MomentId, com.vaibhav.relive.domain.model.MomentFeeling?>>()
+
+    override suspend fun setFeeling(
+        id: MomentId,
+        feeling: com.vaibhav.relive.domain.model.MomentFeeling?,
+    ) {
+        feelingChanges += id to feeling
+        all.value = all.value.map { if (it.id == id) it.copy(feeling = feeling) else it }
+    }
+
     override suspend fun delete(id: MomentId) {
         deleteFailure?.let { throw it }
         deleted += id
