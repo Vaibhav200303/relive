@@ -324,6 +324,15 @@ Behavior introduced by the unified Home surface ([`DECISIONS.md`](DECISIONS.md) 
 
 ---
 
+## 13. Moment feelings & Mood insights (Phase 9A)
+
+- Persistence: a feeling round-trips (`Great`/`Good`/`Low` and absent); `setFeeling` writes and clears without touching other fields; `updateEditable` never changes a feeling; migration from the pre-feeling schema leaves existing Moments unfelt; the sample projection returns only `(created_at, feeling)` pairs at or after the cutoff.
+- Calculator (pure, `commonTest`): Sunday–Saturday week bucketing on the device-local calendar; weekly verdict is the mean score with the `>= 2.5` / `>= 1.75` boundaries; weeks/days/months with no felt Moments produce null summaries, never fake values; the 28-day split counts only felt Moments while the Moments count and streak count all Moments; six calendar-month buckets end at the current month; epoch-day date arithmetic is exact across month/year boundaries and leap days.
+- Presentation: `MomentPresentation` carries the feeling; `MomentSaveOutcome.Succeeded` carries the saved id and is marked as a new save only when not editing; the prompt state clears on choose, dismiss, and a subsequent save, and never arms for an edit.
+- UI expectations (manual until Compose coverage exists): prompt renders beneath the saved card without scroll; the bar is absent at Home rest, revealed in the expanded backdrop, and does not move when insights open; Back closes insights before composer/selection handling; reduced motion stops the face bob/blink.
+
+---
+
 ## Conventions
 
 - Keep domain tests platform-free in `commonTest`.

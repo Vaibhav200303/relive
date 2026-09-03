@@ -533,7 +533,9 @@ class MomentComposerViewModel(
                 rawByDraftId.clear()
                 _state.value = freshStateFor(snapshot.timelineContext)
                 draftStore?.clear(snapshot.timelineContext)
-                _saveOutcomes.emit(MomentSaveOutcome.Succeeded)
+                _saveOutcomes.emit(
+                    MomentSaveOutcome.Succeeded(momentId = moment.id, isNewMoment = editing == null),
+                )
             } catch (t: Throwable) {
                 _state.update { it.copy(saveState = SaveState.Failure(t)) }
                 _saveOutcomes.emit(MomentSaveOutcome.Rejected)
@@ -569,9 +571,13 @@ internal fun appendSharedText(existing: String, additions: List<String>): String
     }
 }
 
-enum class MomentSaveOutcome {
-    Succeeded,
-    Rejected,
+sealed interface MomentSaveOutcome {
+    /**
+     * [isNewMoment] is what arms the post-save feeling prompt (PRODUCT_SPEC §10A):
+     * only a first save reflects; an inline edit never re-prompts.
+     */
+    data class Succeeded(val momentId: MomentId, val isNewMoment: Boolean) : MomentSaveOutcome
+    data object Rejected : MomentSaveOutcome
 }
 
 private fun SaveState.clearedOnEdit(): SaveState = when (this) {

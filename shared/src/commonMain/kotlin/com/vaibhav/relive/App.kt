@@ -282,6 +282,7 @@ fun App(
         var rediscoverDestination by remember { mutableStateOf<RediscoverDestination>(RediscoverDestination.Root) }
         var profileNavigation by remember { mutableStateOf(ProfileNavigationState()) }
         var navigationToolbarExpanded by remember { mutableStateOf(true) }
+        var moodInsightsOpen by remember { mutableStateOf(false) }
         // The card that the timeline detail screen morphs out of and back into (ADR-0063). Held
         // past the forward navigation so the reverse transform has a source to return to; a detail
         // reached any other way carries no `cameFromCard`, so a stale id simply matches nothing.
@@ -831,6 +832,7 @@ fun App(
                             behaviorPreferences = behaviorState.preferences,
                             wallpaper = appearanceState.preferences.allTimelineAppearance.wallpaper,
                             onMediaCaptureOverlayChanged = { homeCaptureOverlayActive = it },
+                            onMoodInsightsVisibilityChanged = { moodInsightsOpen = it },
                         )
                         RediscoverDestination.AllTheme -> TimelineThemeScreen(
                             timelineRepository = container.timelineRepository,
@@ -973,8 +975,9 @@ fun App(
                     }
                 }
                 if (
-                    topLevel != ReliveTopLevelDestination.Home ||
-                        rediscoverDestination is RediscoverDestination.Root
+                    (topLevel != ReliveTopLevelDestination.Home ||
+                        rediscoverDestination is RediscoverDestination.Root) &&
+                        !moodInsightsOpen
                 ) AnimatedVisibility(
                     // The floating chrome stands down while Home's full-screen camera is up —
                     // otherwise it floats over the viewfinder. The exit hides under the opaque

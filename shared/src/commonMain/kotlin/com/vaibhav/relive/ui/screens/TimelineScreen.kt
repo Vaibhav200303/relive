@@ -108,6 +108,7 @@ import androidx.compose.material3.animateFloatingActionButton
 import kotlinx.coroutines.flow.distinctUntilChanged
 import com.vaibhav.relive.domain.id.IdGenerator
 import com.vaibhav.relive.domain.policy.EditWindow
+import com.vaibhav.relive.domain.model.MomentFeeling
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.MediaAttachment
 import com.vaibhav.relive.domain.model.MediaAttachmentId
@@ -445,6 +446,8 @@ fun TimelineScreen(
     }
     var wasSaving by remember { mutableStateOf(false) }
     var wasEditingWhenSaving by remember { mutableStateOf(false) }
+    // Armed by a successful new save, cleared by choosing, skipping, or the next save.
+    var feelingPromptMomentId by remember { mutableStateOf<MomentId?>(null) }
     var momentToForget by remember { mutableStateOf<MomentPresentation?>(null) }
     var editorBounds by remember { mutableStateOf<Rect?>(null) }
     var showDatePicker by remember { mutableStateOf(false) }
@@ -579,10 +582,15 @@ fun TimelineScreen(
         composerViewModel.saveOutcomes.collect { outcome ->
             haptics.perform(
                 when (outcome) {
-                    MomentSaveOutcome.Succeeded -> ReliveHapticCue.Confirm
+                    is MomentSaveOutcome.Succeeded -> ReliveHapticCue.Confirm
                     MomentSaveOutcome.Rejected -> ReliveHapticCue.Reject
                 },
             )
+            // Only a first save reflects, and only where Moments can be mutated: an inline
+            // edit never re-prompts, and a read-only collection never prompts (ADR-0066).
+            feelingPromptMomentId = (outcome as? MomentSaveOutcome.Succeeded)
+                ?.takeIf { it.isNewMoment && mode.allowsMutations }
+                ?.momentId
         }
     }
     LaunchedEffect(timelineState.dateNavigation) {
@@ -747,6 +755,12 @@ fun TimelineScreen(
             onDismissMicPermissionMessage = composerViewModel::dismissMicPermissionMessage,
             onOpenAppSettings = composerViewModel::openAppSettings,
             onEditorBoundsChanged = { editorBounds = it },
+            feelingPromptMomentId = feelingPromptMomentId,
+            onChooseFeeling = { momentId, feeling ->
+                timelineViewModel.setFeeling(momentId, feeling)
+                feelingPromptMomentId = null
+            },
+            onDismissFeelingPrompt = { feelingPromptMomentId = null },
             onJumpToDate = { showDatePicker = true },
             onChangeTheme = if (mode.allowsMutations && timelineState.currentTimeline.timelineThemeDestinationOrNull() != null) onOpenTimelineTheme else null,
             onUpdateCover = { showCoverPicker = true },
@@ -1114,6 +1128,10 @@ private fun TimelineContent(
     onEditorBoundsChanged: (Rect) -> Unit,
     isComposerExpanded: Boolean,
     onExpandComposer: () -> Unit,
+    /** The Moment whose post-save reflection prompt is currently armed (PRODUCT_SPEC §10A.1). */
+    feelingPromptMomentId: MomentId? = null,
+    onChooseFeeling: ((MomentId, MomentFeeling) -> Unit)? = null,
+    onDismissFeelingPrompt: (() -> Unit)? = null,
     onJumpToDate: () -> Unit,
     onChangeTheme: (() -> Unit)?,
     onUpdateCover: () -> Unit,
@@ -1763,6 +1781,13 @@ private fun TimelineContent(
                                 hasPreviousMoment = index > 0 || isNewestFirst,
                                 showLocation = momentVisibility.showLocations,
                                 showTags = momentVisibility.showTags,
+                                showFeelingPrompt = feelingPromptMomentId == moment.id,
+                                onChooseFeeling = if (mode.allowsMutations && onChooseFeeling != null) {
+                                    { feeling -> onChooseFeeling(moment.id, feeling) }
+                                } else {
+                                    null
+                                },
+                                onDismissFeelingPrompt = onDismissFeelingPrompt,
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         }

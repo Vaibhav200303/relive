@@ -67,6 +67,10 @@ private class SearchFakeRepository(initial: List<Moment>) : MomentRepository {
     override suspend fun findById(id: MomentId): Moment? = null
     override suspend fun updateEditable(moment: Moment) = Unit
     override suspend fun setFavorite(id: MomentId, isFavorite: Boolean) = Unit
+    override suspend fun setFeeling(
+        id: MomentId,
+        feeling: com.vaibhav.relive.domain.model.MomentFeeling?,
+    ) = Unit
     override suspend fun delete(id: MomentId) = Unit
     override suspend fun listAll(): List<Moment> = moments.value
     override fun observeAll(): Flow<List<Moment>> = moments.asStateFlow()

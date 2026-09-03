@@ -1,6 +1,8 @@
 package com.vaibhav.relive.domain.repository
 
 import com.vaibhav.relive.domain.model.Moment
+import com.vaibhav.relive.domain.model.MomentFeeling
+import com.vaibhav.relive.domain.model.MomentFeelingSample
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.time.Instant
@@ -37,6 +39,25 @@ interface MomentRepository {
     suspend fun updateEditable(moment: Moment)
 
     suspend fun setFavorite(id: MomentId, isFavorite: Boolean)
+
+    /**
+     * Writes or clears the Moment's optional feeling. Like [setFavorite] this is
+     * independent of [updateEditable] and of the 4-day edit window (ADR-0066).
+     */
+    suspend fun setFeeling(id: MomentId, feeling: MomentFeeling?)
+
+    /**
+     * `(createdAt, feeling)` pairs for every Moment created at or after [cutoff],
+     * re-emitting on any archive change. This is the bounded projection Mood
+     * insights read (PRODUCT_SPEC §10A) — implementations must not hydrate full
+     * Moments for it; this default exists for in-memory fakes only.
+     */
+    fun observeFeelingSamplesSince(cutoff: Instant): Flow<List<MomentFeelingSample>> =
+        observeAll().map { moments ->
+            moments
+                .filter { it.createdAt >= cutoff }
+                .map { MomentFeelingSample(it.createdAt, it.feeling) }
+        }
 
     /** Deletes the moment and all cascaded rows (memberships, tag links, media). */
     suspend fun delete(id: MomentId)

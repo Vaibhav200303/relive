@@ -56,10 +56,13 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.vaibhav.relive.domain.model.MomentFeeling
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.presentation.timeline.MomentAttachmentPresentation
 import com.vaibhav.relive.presentation.timeline.MomentPresentation
 import com.vaibhav.relive.ui.components.composer.PinGlyph
+import com.vaibhav.relive.ui.components.mood.FeelingPrompt
+import com.vaibhav.relive.ui.components.mood.MomentFeelingMark
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveTheme
@@ -85,6 +88,10 @@ fun MomentCard(
     showLocation: Boolean = true,
     showTags: Boolean = true,
     isActive: Boolean = false,
+    /** Arms the post-save reflection prompt beneath this card (PRODUCT_SPEC §10A.1). */
+    showFeelingPrompt: Boolean = false,
+    onChooseFeeling: ((MomentFeeling) -> Unit)? = null,
+    onDismissFeelingPrompt: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val colors = ReliveTheme.colors
@@ -254,6 +261,24 @@ fun MomentCard(
                 sharedTransition = sharedTransition,
                 showTags = showTags,
             )
+
+            // The reflection prompt rides under the card it belongs to, inside the same
+            // rail column, so it reads as part of the Moment that was just kept rather
+            // than a floating interruption.
+            AnimatedVisibility(
+                visible = showFeelingPrompt && onChooseFeeling != null,
+                enter = motion.reliveInContextVerticalEnter(ReliveTheme.reduceMotion, Alignment.Top),
+                exit = motion.reliveInContextVerticalExit(ReliveTheme.reduceMotion, Alignment.Top),
+                label = "feeling prompt",
+            ) {
+                Column {
+                    Spacer(Modifier.height(dims.spacing.md))
+                    FeelingPrompt(
+                        onChoose = { feeling -> onChooseFeeling?.invoke(feeling) },
+                        onDismiss = { onDismissFeelingPrompt?.invoke() },
+                    )
+                }
+            }
         }
     }
         DropdownMenu(
@@ -409,6 +434,13 @@ private fun PinnedMomentCard(
                         }
                     }
                 }
+            }
+
+            // The feeling closes the card at its bottom-left, in the print's lower band
+            // (PRODUCT_SPEC §10A.2). An unfelt Moment reserves nothing at all.
+            moment.feeling?.let { feeling ->
+                Spacer(Modifier.height(dims.spacing.md))
+                MomentFeelingMark(feeling = feeling)
             }
         }
 

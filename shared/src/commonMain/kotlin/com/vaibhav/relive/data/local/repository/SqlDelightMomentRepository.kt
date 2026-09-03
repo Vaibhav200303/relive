@@ -5,12 +5,16 @@ import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.coroutines.mapToOne
 import com.vaibhav.relive.data.local.db.Moments
 import com.vaibhav.relive.data.local.db.ReliveDatabase
+import com.vaibhav.relive.data.local.mapper.decodeFeeling
 import com.vaibhav.relive.data.local.mapper.decodeTag
 import com.vaibhav.relive.data.local.mapper.encodeFavorite
+import com.vaibhav.relive.data.local.mapper.encodeFeeling
 import com.vaibhav.relive.data.local.mapper.encodeMediaTypeName
 import com.vaibhav.relive.data.local.mapper.toDomain
 import com.vaibhav.relive.domain.model.MediaAttachment
 import com.vaibhav.relive.domain.model.Moment
+import com.vaibhav.relive.domain.model.MomentFeeling
+import com.vaibhav.relive.domain.model.MomentFeelingSample
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.Tag
 import com.vaibhav.relive.domain.model.TimelineId
@@ -92,6 +96,28 @@ class SqlDelightMomentRepository(
             )
         }
     }
+
+    override suspend fun setFeeling(id: MomentId, feeling: MomentFeeling?) {
+        withContext(dispatcher) {
+            database.momentsQueries.updateFeeling(
+                feeling = encodeFeeling(feeling),
+                id = id.value,
+            )
+        }
+    }
+
+    override fun observeFeelingSamplesSince(cutoff: Instant): Flow<List<MomentFeelingSample>> =
+        database.momentsQueries.selectFeelingSamplesSince(cutoff.epochMilliseconds)
+            .asFlow()
+            .mapToList(dispatcher)
+            .map { rows ->
+                rows.map { row ->
+                    MomentFeelingSample(
+                        createdAt = Instant(row.created_at),
+                        feeling = row.feeling?.let(::decodeFeeling),
+                    )
+                }
+            }
 
     override suspend fun delete(id: MomentId) {
         withContext(dispatcher) {
@@ -233,6 +259,7 @@ class SqlDelightMomentRepository(
             title = moment.title,
             content = moment.content,
             is_favorite = encodeFavorite(moment.isFavorite),
+            feeling = encodeFeeling(moment.feeling),
             location_lat = moment.location?.latitude,
             location_lon = moment.location?.longitude,
             location_display_name = moment.location?.placeName,
