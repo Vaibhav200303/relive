@@ -42,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -214,6 +215,15 @@ fun ProfileScreen(
             item(key = "profile-statistics") {
                 ProfileStatistics(state.momentCount, state.customTimelineCount, state.placeCount)
             }
+            item(key = "relive-pro") {
+                ProfileProCard(
+                    isPro = entitlement.isPro,
+                    onClick = {
+                        finishNameEdit()
+                        onOpenUpgrade()
+                    },
+                )
+            }
             item(key = "appearance") {
                 ProfileAppearanceSection(
                     mode = appearance.preferences.mode,
@@ -244,7 +254,7 @@ fun ProfileScreen(
                 )
             }
             item(key = "relive") {
-                ProfileSection("RELIVE", listOf("Relive Pro", "Help & feedback", "About Relive"), last = true, onUpgrade = { finishNameEdit(); onOpenUpgrade() }, onHelp = { finishNameEdit(); onOpenHelp() }, onAbout = { finishNameEdit(); onOpenAbout() })
+                ProfileSection("RELIVE", listOf("Help & feedback", "About Relive"), last = true, onHelp = { finishNameEdit(); onOpenHelp() }, onAbout = { finishNameEdit(); onOpenAbout() })
             }
         }
         ReliveSnackbarHost(
@@ -384,6 +394,67 @@ private fun ProfileStatistic(value: Long, label: String) {
 }
 
 @Composable
+private fun ProfileProCard(isPro: Boolean, onClick: () -> Unit) {
+    val dims = ReliveTheme.dimensions
+    val colors = ReliveTheme.colors
+    val shape = RoundedCornerShape(dims.radii.largeIncreased)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = dims.spacing.xl, vertical = dims.spacing.lg)
+            .clip(shape)
+            .background(if (isPro) colors.surfaceCard else colors.tint)
+            .border(dims.stroke.icon, colors.accent, shape)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(dims.spacing.lg)
+            .semantics {
+                contentDescription = if (isPro) {
+                    "Relive Pro active. View membership"
+                } else {
+                    "Upgrade to Relive Pro. Automatic backup, unlimited timelines, and every appearance"
+                }
+            },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(dims.spacing.md),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(dims.minTouchTarget)
+                .clip(RoundedCornerShape(dims.radii.medium))
+                .background(colors.accent),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = ProfileIcons.Backup,
+                contentDescription = null,
+                modifier = Modifier.size(dims.icon.lg),
+                tint = colors.textOnAccent,
+            )
+        }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(dims.spacing.xs),
+        ) {
+            Text(
+                text = if (isPro) "Relive Pro active" else "Upgrade to Relive Pro",
+                style = ReliveTheme.typography.subtitle,
+                color = if (isPro) colors.accent else colors.textPrimary,
+            )
+            Text(
+                text = if (isPro) {
+                    "Your complete archive experience is unlocked."
+                } else {
+                    "Automatic backup, unlimited timelines, and every appearance."
+                },
+                style = ReliveTheme.typography.tag,
+                color = colors.textSecondary,
+            )
+        }
+        ForwardGlyph(dims.icon.sm, colors.textMuted, dims.stroke.icon)
+    }
+}
+
+@Composable
 private fun ProfileSection(
     title: String,
     labels: List<String>,
@@ -391,7 +462,6 @@ private fun ProfileSection(
     onPreferences: (() -> Unit)? = null,
     onMediaStorage: (() -> Unit)? = null,
     onBackup: (() -> Unit)? = null,
-    onUpgrade: (() -> Unit)? = null,
     onLocation: (() -> Unit)? = null,
     onNotifications: (() -> Unit)? = null,
     onPrivacy: (() -> Unit)? = null,
@@ -418,7 +488,6 @@ private fun ProfileSection(
                     "Preferences" -> onPreferences
                     "Media & storage" -> onMediaStorage
                     "Backup" -> onBackup
-                    "Relive Pro" -> onUpgrade
                     "Location" -> onLocation
                     "Rediscover notifications" -> onNotifications
                     "Privacy & security" -> onPrivacy
@@ -434,7 +503,6 @@ private fun ProfileSection(
 private fun profileIconFor(label: String): ImageVector = when (label.trim()) {
     "Media & storage" -> ProfileIcons.Media
     "Backup" -> ProfileIcons.Backup
-    "Relive Pro" -> ProfileIcons.Info
     "Preferences" -> ProfileIcons.Preferences
     "Location" -> ProfileIcons.Location
     "Rediscover notifications" -> ProfileIcons.Notifications
