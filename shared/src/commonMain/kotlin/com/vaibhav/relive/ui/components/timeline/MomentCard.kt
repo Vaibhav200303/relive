@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.presentation.timeline.MomentAttachmentPresentation
 import com.vaibhav.relive.presentation.timeline.MomentPresentation
+import com.vaibhav.relive.ui.components.composer.PinGlyph
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveTheme
@@ -211,12 +212,25 @@ fun MomentCard(
                         )
                     }
                     if (showLocation && moment.locationLabel != null) {
-                        Text(
-                            text = moment.locationLabel,
-                            style = type.eyebrow,
-                            color = momentColors.textSecondary,
+                        Row(
                             modifier = Modifier.padding(top = dims.spacing.xs),
-                        )
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(dims.spacing.xs),
+                        ) {
+                            // The same stroked pin the composer's location field wears, in the
+                            // label's own wallpaper-corrected tone — input and display agree on
+                            // what a location looks like.
+                            PinGlyph(
+                                size = dims.icon.sm,
+                                color = momentColors.textSecondary,
+                                strokeWidth = dims.stroke.icon,
+                            )
+                            Text(
+                                text = moment.locationLabel,
+                                style = type.eyebrow,
+                                color = momentColors.textSecondary,
+                            )
+                        }
                     }
                 }
                 onToggleFavorite?.let { toggle ->

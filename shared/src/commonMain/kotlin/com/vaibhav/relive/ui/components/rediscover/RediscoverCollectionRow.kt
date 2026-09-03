@@ -21,16 +21,23 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import com.vaibhav.relive.domain.model.MediaAttachment
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.platform.media.RelivedImageTile
@@ -39,7 +46,6 @@ import com.vaibhav.relive.presentation.timeline.SystemCollectionCover
 import com.vaibhav.relive.ui.theme.ReliveCoverLabelScrim
 import com.vaibhav.relive.ui.theme.ReliveGeneratedCover
 import com.vaibhav.relive.ui.theme.ReliveTheme
-import com.vaibhav.relive.ui.theme.stableCoverIndex
 import kotlin.random.Random
 
 /** Stable card keys, shared with the navigation host that keys the container transform on them. */
@@ -50,33 +56,22 @@ const val REDISCOVER_CARD_ALL_PHOTOS = "all-photos"
 
 /**
  * One shuffle per app launch, mixed into every cover key (ADR-0064). Which accent-derived
- * gradient a collection card wears — or which preview attachment fills it — is redrawn each
- * session, but holds still within one so covers don't churn as cards scroll in and out of
- * composition.
+ * gradient a collection card wears is redrawn each session, but holds still within one so covers
+ * don't churn as cards scroll in and out of composition.
  */
 private val sessionCoverShuffle: String = Random.nextInt().toString()
 
 private fun sessionCoverKey(coverSeed: String): String = "$coverSeed-$sessionCoverShuffle"
 
 /**
- * The cover a collection wears this session: one preview attachment chosen by the
- * session-shuffled seed, or the generated accent-derived gradient chosen the same way. One
- * function serves the Home card and the collection screen the card opens, so the two surfaces
- * carry the same image and the container transform between them is continuous (ADR-0065).
+ * The cover a collection wears this session: always the generated accent-derived gradient chosen
+ * by the session-shuffled seed — never a member's own media, so collection cards read as a
+ * considered set rather than a lottery of whatever was saved last. One function serves the Home
+ * card and the collection screen the card opens, so the two surfaces carry the same gradient and
+ * the container transform between them is continuous (ADR-0065).
  */
-fun resolvedRediscoverCollectionCover(
-    attachments: List<MediaAttachment>,
-    coverSeed: String,
-): SystemCollectionCover {
-    val candidates = attachments.filter { it.type != MediaType.Audio }
-    val coverKey = sessionCoverKey(coverSeed)
-    return if (candidates.isEmpty()) {
-        SystemCollectionCover.Generated(coverKey)
-    } else {
-        val pick = candidates[stableCoverIndex(coverKey, candidates.size)]
-        SystemCollectionCover.Media(pick.storageRef, pick.type)
-    }
-}
+fun resolvedRediscoverCollectionCover(coverSeed: String): SystemCollectionCover =
+    SystemCollectionCover.Generated(sessionCoverKey(coverSeed))
 
 /** Renders a resolved collection cover; the fallback for every surface that shows one. */
 @Composable
@@ -124,15 +119,12 @@ class RediscoverRowHitTester {
 /**
  * One card in the Home surface's Rediscover row.
  *
- * [coverSeed] seeds the card's cover pick — the generated gradient when the collection has no
- * visual media, or which single preview attachment fills the card when it does. The seed is
- * mixed with the per-launch shuffle above, so an empty collection still reads as a considered
- * card rather than a hole, freshly dealt each session.
+ * [coverSeed] seeds the card's generated-gradient pick. The seed is mixed with the per-launch
+ * shuffle above, so every collection reads as a considered card, freshly dealt each session.
  */
 data class RediscoverCollectionCardModel(
     val key: String,
     val title: String,
-    val coverAttachments: List<MediaAttachment>,
     val coverSeed: String,
     val onOpen: () -> Unit,
 )
@@ -179,6 +171,38 @@ fun RediscoverCollectionRow(
     }
 }
 
+/**
+ * An elevation shadow that tracks the carousel item's *visible* (masked) bounds, so the card
+ * reads as lifted off the backdrop. A plain [androidx.compose.ui.draw.shadow] cannot serve here:
+ * carousel items are laid out at full slot size and masked down per frame, so a fixed-shape
+ * shadow would cast around the unmasked bounds and bleed across neighbouring cards. Reading
+ * `maskRect` inside the layer block keeps the outline current per frame — the rect is
+ * snapshot-state-backed, exactly like the label layer's alpha ramp below. The shadow sits a
+ * touch lower on masked medium/small items than on the focal card, so the card the row invites
+ * you to open is also the one lifted highest.
+ */
+@Composable
+private fun CarouselItemScope.maskShadow(elevation: Dp, cornerRadius: Dp, color: Color): Modifier =
+    Modifier.graphicsLayer {
+        val info = carouselItemDrawInfo
+        val mask = info.maskRect
+        val range = info.maxSize - info.minSize
+        val grown = if (range > 0f) ((info.size - info.minSize) / range).coerceIn(0f, 1f) else 1f
+        shadowElevation = elevation.toPx() * (0.6f + 0.4f * grown)
+        ambientShadowColor = color
+        spotShadowColor = color
+        clip = false
+        shape = object : Shape {
+            // A fresh instance per invalidation, so the cached outline recomputes as the mask
+            // moves — a remembered Shape would freeze the shadow at its first-frame bounds.
+            override fun createOutline(
+                size: Size,
+                layoutDirection: LayoutDirection,
+                density: Density,
+            ): Outline = Outline.Rounded(RoundRect(mask, CornerRadius(cornerRadius.toPx())))
+        }
+    }
+
 @Composable
 private fun CarouselItemScope.RediscoverCollectionCard(
     card: RediscoverCollectionCardModel,
@@ -194,8 +218,18 @@ private fun CarouselItemScope.RediscoverCollectionCard(
         }
     }
     Box(
+        // The shadow lives inside the shared element (after [cardContainerModifier]) so it
+        // travels and fades with the container transform instead of ghosting behind it, and
+        // before [maskClip] because the mask is a clipping layer that would cut the cast off.
         modifier = cardContainerModifier(card)
             .fillMaxSize()
+            .then(
+                maskShadow(
+                    elevation = dims.rediscover.cardElevation,
+                    cornerRadius = dims.rediscover.cardOuterRadius,
+                    color = ReliveTheme.colors.shadow,
+                ),
+            )
             .maskClip(shape)
             .background(ReliveTheme.colors.surfaceCard)
             .clickable(onClick = card.onOpen)
@@ -217,7 +251,7 @@ private fun CarouselItemScope.RediscoverCollectionCard(
             .semantics { contentDescription = "Open ${card.title}" },
     ) {
         SystemCollectionCoverImage(
-            cover = resolvedRediscoverCollectionCover(card.coverAttachments, card.coverSeed),
+            cover = resolvedRediscoverCollectionCover(card.coverSeed),
             mediaStore = mediaStore,
             modifier = Modifier.matchParentSize(),
         )

@@ -150,6 +150,16 @@ expect fun readVideoNaturalSizeFromPath(path: String): NaturalSizePx?
 expect fun VideoSourceThumbnail(sourcePath: String?, modifier: Modifier)
 
 /**
+ * Renders a downsampled, crop-filled still of the image file at [sourcePath] (an ORIGINAL
+ * pre-processing file, e.g. an incoming share's temp copy). The sibling of
+ * [VideoSourceThumbnail] with the same contract: decode off the main thread, cache keyed by
+ * [sourcePath], and render nothing (empty layout) when [sourcePath] is null or decoding fails
+ * so the caller's own background shows through.
+ */
+@Composable
+expect fun ImageSourceThumbnail(sourcePath: String?, modifier: Modifier)
+
+/**
  * Best-effort real-audio amplitude envelope for [ref] with roughly
  * [targetBuckets] normalized peaks (`0f..1f`). Returns null on any decode
  * failure so the tile can fall back to a flat baseline (ADR-0019 §12).

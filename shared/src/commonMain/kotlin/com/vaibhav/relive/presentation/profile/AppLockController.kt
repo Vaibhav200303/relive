@@ -35,7 +35,23 @@ class AppLockController(
 
     suspend fun unlock(): AuthenticationResult {
         val settings = settingsRepository.settings.value
-        val result = authenticate(settings.biometricUnlockEnabled, "Authenticate to open your archive")
+        // Biometrics-only only while the device can actually perform biometrics: with the
+        // preference on but the sensor unavailable (disabled, re-enrolled away), demanding
+        // biometrics would leave the archive permanently locked. Fall back to the device
+        // credential instead.
+        val biometricsOnly = settings.biometricUnlockEnabled &&
+            authentication.capabilities.biometricsAvailable
+        val result = authenticate(biometricsOnly, "Authenticate to open your archive")
+        if (result == AuthenticationResult.Authenticated) mutableLocked.value = false
+        return result
+    }
+
+    /**
+     * Unlock with the device credential (PIN/pattern/password) even while biometric unlock is
+     * enabled — the lock screen's fallback for a failed or unavailable biometric.
+     */
+    suspend fun unlockWithDeviceCredential(): AuthenticationResult {
+        val result = authenticate(false, "Authenticate to open your archive")
         if (result == AuthenticationResult.Authenticated) mutableLocked.value = false
         return result
     }

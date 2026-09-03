@@ -125,6 +125,69 @@ object ReliveDoodles {
         }
     }
 
+    /** A closed journal with a clasp and a rising spark — "your memories, kept safe". */
+    @Composable
+    fun KeptSafe(
+        modifier: Modifier = Modifier,
+        size: Dp = 96.dp,
+        color: Color = ReliveTheme.colors.accentMuted,
+    ) {
+        val stroke = ReliveTheme.dimensions.stroke.iconBold
+        Canvas(modifier = modifier.size(size)) {
+            val s = Stroke(width = stroke.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+            val w = this.size.width
+            val h = this.size.height
+            val left = w * 0.20f
+            val right = w * 0.78f
+            val top = h * 0.22f
+            val bottom = h * 0.84f
+            val corner = w * 0.06f
+
+            // The closed cover: a softly rounded book seen face-on.
+            drawPath(
+                Path().apply {
+                    moveTo(left + corner, top)
+                    lineTo(right - corner, top)
+                    quadraticBezierTo(right, top, right, top + corner)
+                    lineTo(right, bottom - corner)
+                    quadraticBezierTo(right, bottom, right - corner, bottom)
+                    lineTo(left + corner, bottom)
+                    quadraticBezierTo(left, bottom, left, bottom - corner)
+                    lineTo(left, top + corner)
+                    quadraticBezierTo(left, top, left + corner, top)
+                },
+                color = color,
+                style = s,
+            )
+            // The spine, a quieter inner line.
+            drawLine(
+                color.copy(alpha = 0.7f),
+                Offset(left + w * 0.10f, top),
+                Offset(left + w * 0.10f, bottom),
+                s.width * 0.8f,
+                StrokeCap.Round,
+            )
+            // The clasp: a strap reaching in from the fore-edge to a small round keeper.
+            val claspCenter = Offset(right - w * 0.14f, (top + bottom) * 0.5f)
+            drawLine(
+                color,
+                Offset(right, claspCenter.y),
+                Offset(claspCenter.x + w * 0.055f, claspCenter.y),
+                s.width,
+                StrokeCap.Round,
+            )
+            drawCircle(
+                color = color,
+                radius = w * 0.055f,
+                center = claspCenter,
+                style = Stroke(s.width * 0.85f),
+            )
+            drawCircle(color = color, radius = w * 0.018f, center = claspCenter)
+            // A spark rising off the corner: kept, not forgotten.
+            spark(center = Offset(right + w * 0.09f, top - h * 0.03f), radius = w * 0.08f, color = color, strokePx = stroke.toPx())
+        }
+    }
+
     /** A simple four-point sparkle centered at [center]. */
     private fun DrawScope.spark(center: Offset, radius: Float, color: Color, strokePx: Float) {
         val s = Stroke(width = strokePx * 0.85f, cap = StrokeCap.Round)

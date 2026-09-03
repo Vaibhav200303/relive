@@ -835,6 +835,49 @@ actual fun VideoSourceThumbnail(sourcePath: String?, modifier: Modifier) {
 }
 
 /**
+ * Cache for stills decoded from a pre-processing source image file (the incoming-share hero
+ * preview). Keyed by absolute path so it never collides with the ref-keyed tile caches.
+ */
+private object AndroidSourceImageThumbnailCache {
+    private const val CAPACITY = 32
+    @Volatile private var map: Map<String, Bitmap> = emptyMap()
+    fun get(key: String): Bitmap? = map[key]
+    fun put(key: String, value: Bitmap) {
+        val cur = map
+        map = if (cur.size < CAPACITY) cur + (key to value)
+        else cur.entries.drop(cur.size - CAPACITY + 1).associate { it.key to it.value } + (key to value)
+    }
+}
+
+@Composable
+actual fun ImageSourceThumbnail(sourcePath: String?, modifier: Modifier) {
+    if (sourcePath == null) {
+        Box(modifier = modifier)
+        return
+    }
+    val cached = AndroidSourceImageThumbnailCache.get(sourcePath)
+    val still by produceState<Bitmap?>(initialValue = cached, key1 = sourcePath) {
+        if (value != null) return@produceState
+        val bmp = withContext(Dispatchers.Default) { decodeOriented(sourcePath, targetLongEdgePx = 1024) }
+        if (bmp != null) {
+            AndroidSourceImageThumbnailCache.put(sourcePath, bmp)
+            value = bmp
+        }
+    }
+    val s = still
+    if (s != null) {
+        Image(
+            bitmap = s.asImageBitmap(),
+            contentDescription = null,
+            modifier = modifier,
+            contentScale = ContentScale.Crop,
+        )
+    } else {
+        Box(modifier = modifier)
+    }
+}
+
+/**
  * Decodes an image at [path] downsampled so its longest edge is at most
  * ~[targetLongEdgePx]. Uses a bounds-only probe first, then an
  * `inSampleSize`-guided decode. Returns null on any failure.

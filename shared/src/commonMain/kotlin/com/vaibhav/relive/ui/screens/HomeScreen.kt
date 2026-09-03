@@ -219,6 +219,8 @@ fun HomeScreen(
     wallpaper: TimelineWallpaper = TimelineWallpaper.WarmCream,
     onComposerExpandedChanged: ((Boolean) -> Unit)? = null,
     onFocusedAllMomentsChanged: ((Boolean) -> Unit)? = null,
+    /** True while the composer's full-screen camera covers Home, so the host drops its chrome. */
+    onMediaCaptureOverlayChanged: ((Boolean) -> Unit)? = null,
 ) {
     val profileSettings by profileSettingsRepository.settings.collectAsState()
     val greeting = homeGreeting(profileSettings.displayName)
@@ -240,7 +242,10 @@ fun HomeScreen(
     LaunchedEffect(listState, surfaceState) {
         val index = surfaceState.anchorIndex
         val offset = surfaceState.anchorScrollOffset
-        if (index > 0 || offset > 0) {
+        // A pending `+ New` means the surface's next act is to travel to the feed head anyway.
+        // Skipping the deep-anchor restore then isn't just economy: its scrollToItem snaps would
+        // steal the scroll mutex from the composer's paced travel mid-flight.
+        if (expandComposerRequest == 0 && (index > 0 || offset > 0)) {
             // The archive window reloads at its first page, so a deep anchor needs paging to catch
             // up before the feed can hold it. Parking at the end of what is loaded is what asks for
             // the next page; repeat until the anchor is reachable or the feed stops growing, then
@@ -276,6 +281,7 @@ fun HomeScreen(
     // is the sheet riding over them (ADR-0061). Custom timeline detail runs the same mechanism over
     // its cover photo (ADR-0062).
     val motion = ReliveTheme.motion
+    val reduceMotion = ReliveTheme.reduceMotion
     val settleDurationMillis = motion.durations.standardMillis
     val settleEasing = motion.easings.standard
     val expansion = rememberBackdropExpansionState()
@@ -327,17 +333,16 @@ fun HomeScreen(
         surfaceState.lastFromYourPastPreviews = fromYourPastPreviews
     }
 
-    // Each card resolves its cover from the same inputs the card composable renders it from, so
-    // what travels to the opened collection is exactly the image on screen (ADR-0065). Every
+    // Each card resolves its cover from the same seed the card composable renders it from, so
+    // what travels to the opened collection is exactly the gradient on screen (ADR-0065). Every
     // collection opens at its top: no card carries a selected moment.
     val cards = buildList {
         if (behaviorPreferences.showFavorites) {
-            val cover = resolvedRediscoverCollectionCover(favorites.previewAttachments, "collection-favourites")
+            val cover = resolvedRediscoverCollectionCover("collection-favourites")
             add(
                 RediscoverCollectionCardModel(
                     key = REDISCOVER_CARD_FAVOURITES,
                     title = "Favourites",
-                    coverAttachments = favorites.previewAttachments,
                     coverSeed = "collection-favourites",
                     onOpen = { onOpenFavorites(null, cover) },
                 ),
@@ -346,35 +351,32 @@ fun HomeScreen(
         // On This Day and From Your Past drop out of the row entirely when they have nothing to
         // show; the row closes up rather than reserving a gap.
         if (behaviorPreferences.showOnThisDay && onThisDayPreviews.isNotEmpty()) {
-            val cover = resolvedRediscoverCollectionCover(emptyList(), "collection-on-this-day")
+            val cover = resolvedRediscoverCollectionCover("collection-on-this-day")
             add(
                 RediscoverCollectionCardModel(
                     key = REDISCOVER_CARD_ON_THIS_DAY,
                     title = "On This Day",
-                    coverAttachments = emptyList(),
                     coverSeed = "collection-on-this-day",
                     onOpen = { onOpenOnThisDay(null, today, cover) },
                 ),
             )
         }
         if (fromYourPastPreviews.isNotEmpty()) {
-            val cover = resolvedRediscoverCollectionCover(emptyList(), "collection-from-your-past")
+            val cover = resolvedRediscoverCollectionCover("collection-from-your-past")
             add(
                 RediscoverCollectionCardModel(
                     key = REDISCOVER_CARD_FROM_YOUR_PAST,
                     title = "From Your Past",
-                    coverAttachments = emptyList(),
                     coverSeed = "collection-from-your-past",
                     onOpen = { onOpenFromYourPast(null, fromYourPastQuery, cover) },
                 ),
             )
         }
-        val allPhotosCover = resolvedRediscoverCollectionCover(allPhotos.previewAttachments, "collection-all-photos")
+        val allPhotosCover = resolvedRediscoverCollectionCover("collection-all-photos")
         add(
             RediscoverCollectionCardModel(
                 key = REDISCOVER_CARD_ALL_PHOTOS,
                 title = "All Photos",
-                coverAttachments = allPhotos.previewAttachments,
                 coverSeed = "collection-all-photos",
                 onOpen = { onOpenAllPhotos(allPhotosCover) },
             ),
@@ -457,7 +459,11 @@ fun HomeScreen(
         // All moments is back on screen.
         onExpandingComposer = {
             if (expansion.expansionPx > 0f) {
-                animateExpansionTo(expansion, 0f, settleDurationMillis, settleEasing)
+                if (reduceMotion) {
+                    expansion.expansionPx = 0f
+                } else {
+                    animateExpansionTo(expansion, 0f, settleDurationMillis, settleEasing)
+                }
             }
         },
         expandComposerRequest = expandComposerRequest,
@@ -466,6 +472,8 @@ fun HomeScreen(
         homeHeaderCount = HOME_HEADER_ITEM_COUNT,
         isFocusedAllMoments = isFocused,
         onFocusedAllMomentsChanged = onFocusedAllMomentsChanged,
+        onMediaCaptureOverlayChanged = onMediaCaptureOverlayChanged,
+        isSurfaceRestored = isRestored,
         homeAppBarLeading = if (onOpenProfile == null) null else {
             {
                 IconButton(

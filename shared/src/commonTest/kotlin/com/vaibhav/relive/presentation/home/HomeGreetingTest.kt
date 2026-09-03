@@ -11,6 +11,12 @@ class HomeGreetingTest {
     }
 
     @Test
+    fun greetingAddressesTheFirstNameOnly() {
+        assertEquals("Welcome back, Vaibhav", homeGreeting("Vaibhav Sharma"))
+        assertEquals("Welcome back, Alex", homeGreeting("Alex  van der Berg"))
+    }
+
+    @Test
     fun namelessGreetingIsExactlyWelcomeBack() {
         assertEquals("Welcome back", homeGreeting(null))
     }
@@ -37,7 +43,8 @@ class HomeGreetingTest {
 
     @Test
     fun aNameThatMerelyContainsThePlaceholderIsStillARealName() {
-        assertEquals("Welcome back, Your Relive Companion", homeGreeting("Your Relive Companion"))
+        // Still greeted (not dropped like the exact placeholder), by its first word as always.
+        assertEquals("Welcome back, Your", homeGreeting("Your Relive Companion"))
     }
 
     @Test

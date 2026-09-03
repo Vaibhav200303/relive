@@ -35,9 +35,22 @@ class TimelineViewModel(
     private val scope: CoroutineScope,
     initialTimeline: CurrentTimeline = CurrentTimeline.All,
     private val mode: TimelineMode = TimelineMode.Editable,
+    /**
+     * The tapped card's own timeline, when the screen is entered through a card (ADR-0063). It
+     * seeds the very first frame — real wallpaper, cover, name — so the container transform never
+     * shows the default appearance popping into the timeline's mid-morph. [observeCustom]'s first
+     * emission then overwrites it with identical database data.
+     */
+    seedTimelines: List<Timeline.Custom> = emptyList(),
 ) {
 
-    private val _state = MutableStateFlow(TimelineScreenState(currentTimeline = initialTimeline))
+    private val _state = MutableStateFlow(
+        TimelineScreenState(
+            currentTimeline = initialTimeline,
+            customTimelines = seedTimelines,
+            appearance = initialTimeline.appearanceFrom(seedTimelines),
+        ),
+    )
     val state: StateFlow<TimelineScreenState> = _state.asStateFlow()
 
     private var momentsJob: Job? = null

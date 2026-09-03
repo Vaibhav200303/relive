@@ -11,6 +11,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.EnterTransition
@@ -25,7 +26,6 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -35,6 +35,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.vaibhav.relive.di.ReliveAppContainer
 import com.vaibhav.relive.ui.screens.TimelineScreen
 import com.vaibhav.relive.ui.screens.TimelineHomeScreen
+import com.vaibhav.relive.ui.screens.AppLockScreen
 import com.vaibhav.relive.ui.screens.HomeScreen
 import com.vaibhav.relive.ui.screens.rememberHomeSurfaceState
 import com.vaibhav.relive.ui.screens.ShareTimelinePickerScreen
@@ -113,6 +114,12 @@ private sealed interface TimelinesDestination {
         val cameFromQuickCapture: Boolean = false,
         /** Entered by tapping this timeline's card on Timeline Home, so the two morph (ADR-0063). */
         val cameFromCard: Boolean = false,
+        /**
+         * The tapped card's own timeline, carried through the route so the detail's first frame
+         * wears the real wallpaper and cover instead of the defaults popping mid-morph
+         * (ADR-0063) — the same pattern as the Rediscover routes carrying their cover.
+         */
+        val seedTimeline: Timeline.Custom? = null,
     ) : TimelinesDestination
     data class TimelineTheme(val returnTo: TimelineDetail) : TimelinesDestination
 }
@@ -285,6 +292,10 @@ fun App(
         var quickCaptureTransformActive by remember { mutableStateOf(false) }
         /** Bumped by `+ New` while on Home; the Home surface expands its composer in place. */
         var homeComposerRequest by remember { mutableIntStateOf(0) }
+        // True while Home's composer has its full-screen camera up. The floating navigation bar
+        // and `+ New` live above every top-level surface, so they must stand down for the camera
+        // rather than floating over the viewfinder.
+        var homeCaptureOverlayActive by remember { mutableStateOf(false) }
         var quickCaptureTransformEpoch by remember { mutableIntStateOf(0) }
         val quickCaptureTransformDuration = ReliveTheme.motion.durations.long2
         var selectedIncomingShareId by remember { mutableStateOf<String?>(null) }
@@ -306,6 +317,10 @@ fun App(
                     topLevel = ReliveTopLevelDestination.Home
                     rediscoverDestination = RediscoverDestination.Root
                     navigationToolbarExpanded = true
+                    // Bumped in the swap frame deliberately: a rebuilt Home reads the pending
+                    // request to skip its deep-anchor restore (whose scrollToItem snaps would
+                    // steal the scroll mutex from the composer travel). The one-beat hold that
+                    // lets Home visibly arrive before traveling lives on the Home surface itself.
                     homeComposerRequest += 1
                 } else {
                     quickCaptureTransformActive = true
@@ -349,9 +364,56 @@ fun App(
             navigationToolbarExpanded = true
         }
         ReliveBackHandler(enabled = !locked && canReturnToTimelineHome, onBack = returnToTimelineHome)
-        if (locked) ReliveLockSurface(onUnlock = { scope.launch { lockController.unlock() } }) else {
-            val motion = ReliveTheme.motion
-            val reduceMotion = ReliveTheme.reduceMotion
+        val motion = ReliveTheme.motion
+        val reduceMotion = ReliveTheme.reduceMotion
+        // The lock gate animates in one direction only. Unlocking lifts the veil — it scales up
+        // slightly as it fades while the app scales in from 0.92 beneath it, the same
+        // fade-through voice as the top-level destination swap. Locking, though, is the
+        // privacy-critical direction: it only ever happens when a locked app returns to the
+        // foreground, and any cross-fade would leave the archive legible under a settling veil
+        // for its first frames — so the veil takes the screen in a single frame, exactly as the
+        // unanimated gate always did.
+        AnimatedContent(
+            targetState = locked,
+            transitionSpec = {
+                if (targetState) {
+                    EnterTransition.None togetherWith ExitTransition.None
+                } else {
+                    val enterSpec = motion.spec<Float>(
+                        reduceMotion = reduceMotion,
+                        full = tween(
+                            durationMillis = motion.durations.medium2,
+                            delayMillis = motion.durations.short4,
+                            easing = motion.easings.emphasizedDecelerate,
+                        ),
+                    )
+                    val exitSpec = motion.spec<Float>(
+                        reduceMotion = reduceMotion,
+                        full = tween(
+                            durationMillis = motion.durations.medium2,
+                            easing = motion.easings.emphasizedAccelerate,
+                        ),
+                    )
+                    val enter = fadeIn(enterSpec).let { fade ->
+                        if (reduceMotion) fade else fade + scaleIn(enterSpec, initialScale = 0.92f)
+                    }
+                    val exit = fadeOut(exitSpec).let { fade ->
+                        if (reduceMotion) fade else fade + scaleOut(exitSpec, targetScale = 1.06f)
+                    }
+                    enter togetherWith exit
+                }
+            },
+            label = "app lock gate",
+        ) { isLocked ->
+        if (isLocked) {
+            AppLockScreen(
+                biometricsEnabled = profileSettings.biometricUnlockEnabled &&
+                    container.deviceAuthentication.capabilities.biometricsAvailable,
+                deviceCredentialAvailable = container.deviceAuthentication.capabilities.deviceAuthenticationAvailable,
+                onUnlock = { lockController.unlock() },
+                onUnlockWithDeviceCredential = { lockController.unlockWithDeviceCredential() },
+            )
+        } else {
             val showIncomingSharePicker = incomingShareState !is IncomingShareState.Idle &&
                 (incomingShareState !is IncomingShareState.Ready ||
                     (incomingShareState as IncomingShareState.Ready).payload.requestId != selectedIncomingShareId)
@@ -545,6 +607,7 @@ fun App(
                         mediaProcessor = container.mediaProcessor,
                         draftStore = composerDraftStore,
                         initialTimeline = active.scope,
+                        seedCustomTimeline = active.seedTimeline,
                         selectedMomentId = active.selectedMomentId,
                         openComposerOnEnter = active.openComposerOnEnter,
                         incomingShare = active.incomingShare,
@@ -643,6 +706,7 @@ fun App(
                                     },
                                     openComposerOnEnter = destination.openComposerOnEnter,
                                     cameFromCard = timeline is Timeline.Custom,
+                                    seedTimeline = timeline as? Timeline.Custom,
                                 )
                             },
                             cardContainerModifier = { timeline ->
@@ -766,6 +830,7 @@ fun App(
                             onNavigationToolbarCollapse = { navigationToolbarExpanded = false },
                             behaviorPreferences = behaviorState.preferences,
                             wallpaper = appearanceState.preferences.allTimelineAppearance.wallpaper,
+                            onMediaCaptureOverlayChanged = { homeCaptureOverlayActive = it },
                         )
                         RediscoverDestination.AllTheme -> TimelineThemeScreen(
                             timelineRepository = container.timelineRepository,
@@ -910,32 +975,58 @@ fun App(
                 if (
                     topLevel != ReliveTopLevelDestination.Home ||
                         rediscoverDestination is RediscoverDestination.Root
-                ) ReliveFloatingBottomControls(
-                    selected = topLevel,
-                    expanded = navigationToolbarExpanded,
+                ) AnimatedVisibility(
+                    // The floating chrome stands down while Home's full-screen camera is up —
+                    // otherwise it floats over the viewfinder. The exit hides under the opaque
+                    // camera surface, so it is fast; the return matches the top-level enter fade.
+                    visible = !homeCaptureOverlayActive,
                     modifier = Modifier.align(Alignment.BottomCenter),
-                    onSelect = {
-                        ActivePlayback.stopActive()
-                        topLevel = it
-                        navigationToolbarExpanded = true
-                    },
-                    onCreateMoment = {
-                        openQuickCapture(
-                            when (topLevel) {
-                                ReliveTopLevelDestination.Home -> QuickCaptureSurface.Rediscover
-                                ReliveTopLevelDestination.Timelines -> QuickCaptureSurface.TimelineHome
-                                ReliveTopLevelDestination.Search -> QuickCaptureSurface.Search
-                            },
-                        )
-                    },
-                    newMomentModifier = if (quickCaptureTransformActive) {
-                        Modifier.quickCaptureSharedBounds(
-                            sharedScope = sharedTransitionScope,
-                            animatedScope = animatedScope,
+                    enter = fadeIn(
+                        animationSpec = motion.spec(
                             reduceMotion = reduceMotion,
-                        )
-                    } else Modifier,
-                )
+                            full = tween(
+                                durationMillis = motion.durations.medium2,
+                                easing = motion.easings.emphasizedDecelerate,
+                            ),
+                        ),
+                    ),
+                    exit = fadeOut(
+                        animationSpec = motion.spec(
+                            reduceMotion = reduceMotion,
+                            full = tween(
+                                durationMillis = motion.durations.short2,
+                                easing = motion.easings.emphasizedAccelerate,
+                            ),
+                        ),
+                    ),
+                    label = "home chrome under camera",
+                ) {
+                    ReliveFloatingBottomControls(
+                        selected = topLevel,
+                        expanded = navigationToolbarExpanded,
+                        onSelect = {
+                            ActivePlayback.stopActive()
+                            topLevel = it
+                            navigationToolbarExpanded = true
+                        },
+                        onCreateMoment = {
+                            openQuickCapture(
+                                when (topLevel) {
+                                    ReliveTopLevelDestination.Home -> QuickCaptureSurface.Rediscover
+                                    ReliveTopLevelDestination.Timelines -> QuickCaptureSurface.TimelineHome
+                                    ReliveTopLevelDestination.Search -> QuickCaptureSurface.Search
+                                },
+                            )
+                        },
+                        newMomentModifier = if (quickCaptureTransformActive) {
+                            Modifier.quickCaptureSharedBounds(
+                                sharedScope = sharedTransitionScope,
+                                animatedScope = animatedScope,
+                                reduceMotion = reduceMotion,
+                            )
+                        } else Modifier,
+                    )
+                }
             }
                             }
                             }
@@ -945,18 +1036,6 @@ fun App(
                 }
         }
         }
-    }
-}
-
-@Composable
-private fun ReliveLockSurface(onUnlock: () -> Unit) {
-    androidx.compose.foundation.layout.Box(
-        androidx.compose.ui.Modifier.fillMaxSize().background(ReliveTheme.colors.canvasBrush()).clickable(onClick = onUnlock),
-        contentAlignment = Alignment.Center,
-    ) {
-        androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            androidx.compose.material3.Text("Relive is locked", style = ReliveTheme.typography.title, color = ReliveTheme.colors.textPrimary)
-            androidx.compose.material3.Text("Tap to unlock", style = ReliveTheme.typography.body, color = ReliveTheme.colors.textSecondary)
         }
     }
 }

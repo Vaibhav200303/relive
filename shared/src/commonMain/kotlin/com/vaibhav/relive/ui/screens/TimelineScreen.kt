@@ -5,8 +5,10 @@ import androidx.compose.animation.BoundsTransform
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -43,6 +45,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.IntOffset
 import com.vaibhav.relive.domain.model.MediaStorageRef
 import com.vaibhav.relive.ui.components.timeline.TimelineCoverControls
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
@@ -57,6 +60,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -270,6 +274,12 @@ fun TimelineScreen(
     draftStore: TimelineComposerDraftStore? = null,
     initialTimeline: CurrentTimeline = CurrentTimeline.All,
     mode: TimelineMode = TimelineMode.Editable,
+    /**
+     * The tapped card's own timeline when this screen is entered through its card (ADR-0063),
+     * seeding the first frame with the real wallpaper, cover and name so the container transform
+     * never shows the default appearance being swapped out mid-morph.
+     */
+    seedCustomTimeline: Timeline.Custom? = null,
     selectedMomentId: MomentId? = null,
     openComposerOnEnter: Boolean = false,
     incomingShare: IncomingSharePayload? = null,
@@ -315,6 +325,12 @@ fun TimelineScreen(
     homeHeaderCount: Int = 0,
     /** Hoisted so Home's scroll position outlives the screen's own composition. */
     listState: LazyListState? = null,
+    /**
+     * False while the host is still putting [listState] back where it was (Home's deep-anchor
+     * restore). A pending [expandComposerRequest] waits for it: the restore's scrollToItem snaps
+     * would steal the scroll mutex from the composer's paced travel and cancel it mid-flight.
+     */
+    isSurfaceRestored: Boolean = true,
     /** True while the welcome block and Rediscover row have scrolled above the viewport. */
     onFocusedAllMomentsChanged: ((Boolean) -> Unit)? = null,
     /** Leading app-bar slot for Home, which is a root and so carries no back action. */
@@ -323,6 +339,12 @@ fun TimelineScreen(
     listModifier: Modifier = Modifier,
     /** Run before the head composer is seated, so Home can bring its feed back on screen first. */
     onExpandingComposer: (suspend () -> Unit)? = null,
+    /**
+     * True while a full-screen capture overlay (the in-app camera) covers this timeline, so a
+     * host that floats chrome above this screen — Home's navigation bar and `+ New` — can drop
+     * it instead of letting it ride over the camera.
+     */
+    onMediaCaptureOverlayChanged: ((Boolean) -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
     val timelineViewModel = remember(
@@ -343,6 +365,9 @@ fun TimelineScreen(
             scope = scope,
             initialTimeline = initialTimeline,
             mode = mode,
+            // Deliberately not a remember key: the seed only feeds the initial state, and keying
+            // on it would recreate the view-model if a stale seed recomposes in.
+            seedTimelines = listOfNotNull(seedCustomTimeline),
         )
     }
     val composerViewModel = remember(
@@ -386,6 +411,13 @@ fun TimelineScreen(
     }
 
     var navState by remember { mutableStateOf(TimelineMediaNavState.Idle) }
+    LaunchedEffect(composerState.overlay) {
+        onMediaCaptureOverlayChanged?.invoke(composerState.overlay == ComposerOverlay.Camera)
+    }
+    // The overlay dies with this screen, so the host must not be left thinking it is still up.
+    DisposableEffect(Unit) {
+        onDispose { onMediaCaptureOverlayChanged?.invoke(false) }
+    }
     var isComposerExpanded by remember { mutableStateOf(false) }
     LaunchedEffect(isComposerExpanded) {
         onComposerExpandedChanged?.invoke(isComposerExpanded)
@@ -463,30 +495,64 @@ fun TimelineScreen(
     // One travel speed for the whole surface: the pace the return-to-top control already moves
     // at, so seating the composer reads as this surface moving rather than a jump cut.
     val composerSeatPaceMillis = ReliveTheme.motion.durations.short4
+    // The last stretch of that travel decelerates into place, and even the shortest hop — from
+    // rest, with the composer already on screen — takes this long, so focusing All moments reads
+    // as one continuous motion instead of a snap.
+    val composerSeatLandingEasing = ReliveTheme.motion.easings.emphasizedDecelerate
+    val composerSeatMinLandingMillis = ReliveTheme.motion.durations.medium4
+    val composerSeatReduceMotion = ReliveTheme.reduceMotion
     val openHomeComposer: () -> Unit = {
         // Already open means this is a request to go back to it, not to start over: re-preparing
         // would throw away the date, timeline assignments and anything else already set on it.
         if (!isComposerExpanded && !composerState.hasUserDraft) {
             composerViewModel.prepareForTimeline(timelineState.currentTimeline)
         }
-        isComposerExpanded = true
         scope.launch {
-            onExpandingComposer?.invoke()
-            // Travel to the composer rather than arrive at it. Whether it is just below the
-            // welcome block or far above the current position, the surface covers the distance at
-            // a steady pace and lands exactly on it.
-            listState?.scrollToItemAtPace(
-                targetIndex = homeHeaderCount,
-                millisPerViewport = composerSeatPaceMillis,
-            )
+            try {
+                onExpandingComposer?.invoke()
+                if (composerSeatReduceMotion) {
+                    // Reduced motion seats immediately; the composer's own reduced fade is the
+                    // only movement left.
+                    listState?.scrollToItem(homeHeaderCount)
+                } else {
+                    // Travel to the composer rather than arrive at it. Whether it is just below
+                    // the welcome block or far above the current position, the surface covers the
+                    // distance at a steady pace and glides exactly onto it.
+                    listState?.scrollToItemAtPace(
+                        targetIndex = homeHeaderCount,
+                        millisPerViewport = composerSeatPaceMillis,
+                        landingEasing = composerSeatLandingEasing,
+                        minLandingMillis = composerSeatMinLandingMillis,
+                    )
+                }
+            } finally {
+                // Only once the surface has settled does the composer unfold in place — two
+                // legible beats instead of the focus snap and the expansion firing at once. A
+                // drag that steals the scroll still opens the composer wherever the feed stops.
+                isComposerExpanded = true
+            }
         }
     }
-    LaunchedEffect(expandComposerRequest, composerDestinationSettled) {
+    // A request already pending when this surface first composed is the cross-surface `+ New`:
+    // the route swap and the bump land in the same frame, and firing the travel immediately
+    // would run the whole refocus under the fade-through and read as a snap on arrival. Hold it
+    // for one exit beat — once — so Home visibly arrives first and then travels.
+    val composerRequestPendingAtEntry = remember { expandComposerRequest > 0 }
+    var composerEntryBeatAwaited by remember { mutableStateOf(false) }
+    val composerEntryBeatMillis = ReliveTheme.motion.durations.short4
+    LaunchedEffect(expandComposerRequest, composerDestinationSettled, isSurfaceRestored) {
         if (expandComposerRequest > 0 &&
             isHomeSurface &&
             mode.allowsMutations &&
-            composerDestinationSettled
+            composerDestinationSettled &&
+            // An effect key, not just a guard: the request re-fires the moment the host finishes
+            // restoring the feed's position, so it is deferred, never dropped.
+            isSurfaceRestored
         ) {
+            if (composerRequestPendingAtEntry && !composerEntryBeatAwaited) {
+                composerEntryBeatAwaited = true
+                delay(composerEntryBeatMillis.toLong())
+            }
             // Deliberately not gated on the composer being closed. Home is a persistent surface, so
             // `+ New` is just as often pressed from deep in the feed with the composer already open
             // above, and then the useful thing it can do is carry the person back up to it.
@@ -1348,21 +1414,45 @@ private fun TimelineContent(
                             transitionSpec = {
                                 val expandMs = motion.durations.slowMillis
                                 val collapseMs = motion.durations.standardMillis
-                                val enter = expandVertically(
-                                    animationSpec = tween(expandMs, easing = motion.easings.standard),
-                                    expandFrom = Alignment.Top,
-                                ) + fadeIn(animationSpec = tween(expandMs, easing = motion.easings.standard))
-                                val exit = shrinkVertically(
-                                    animationSpec = tween(collapseMs, easing = motion.easings.standard),
-                                    shrinkTowards = Alignment.Top,
-                                ) + fadeOut(animationSpec = tween(collapseMs, easing = motion.easings.standard))
+                                // Reduced motion keeps the fades and drops the vertical growth,
+                                // per the house rule that every transition degrades to a fade.
+                                val enter = fadeIn(
+                                    animationSpec = motion.spec(
+                                        reduceMotion = reduceMotion,
+                                        full = tween(expandMs, easing = motion.easings.standard),
+                                    ),
+                                ).let { fade ->
+                                    if (reduceMotion) fade else fade + expandVertically(
+                                        animationSpec = tween(expandMs, easing = motion.easings.standard),
+                                        expandFrom = Alignment.Top,
+                                    )
+                                }
+                                val exit = fadeOut(
+                                    animationSpec = motion.spec(
+                                        reduceMotion = reduceMotion,
+                                        full = tween(collapseMs, easing = motion.easings.standard),
+                                    ),
+                                ).let { fade ->
+                                    if (reduceMotion) fade else fade + shrinkVertically(
+                                        animationSpec = tween(collapseMs, easing = motion.easings.standard),
+                                        shrinkTowards = Alignment.Top,
+                                    )
+                                }
                                 (enter togetherWith exit).using(
                                     SizeTransform(
                                         clip = false,
                                         sizeAnimationSpec = { _, _ ->
-                                            tween(
-                                                durationMillis = if (targetState) expandMs else collapseMs,
-                                                easing = motion.easings.standard,
+                                            motion.spec(
+                                                reduceMotion = reduceMotion,
+                                                full = tween(
+                                                    durationMillis = if (targetState) expandMs else collapseMs,
+                                                    easing = motion.easings.standard,
+                                                ),
+                                                // The container must snap, not shrink to a short
+                                                // tween: an animated height still slides the whole
+                                                // feed below it, which is exactly the travel the
+                                                // reduced contract forbids.
+                                                reduced = snap(),
                                             )
                                         },
                                     ),
@@ -1700,10 +1790,16 @@ private fun TimelineContent(
                             listScope.launch {
                                 isProgrammaticScroll = true
                                 try {
-                                    listState.scrollToItemAtPace(
-                                        targetIndex = sheetTopIndex,
-                                        millisPerViewport = motion.durations.short4,
-                                    )
+                                    if (reduceMotion) {
+                                        listState.scrollToItem(sheetTopIndex)
+                                    } else {
+                                        listState.scrollToItemAtPace(
+                                            targetIndex = sheetTopIndex,
+                                            millisPerViewport = motion.durations.short4,
+                                            landingEasing = motion.easings.emphasizedDecelerate,
+                                            minLandingMillis = motion.durations.medium2,
+                                        )
+                                    }
                                 } finally {
                                     isProgrammaticScroll = false
                                 }
@@ -2021,9 +2117,20 @@ private fun TimelineCoverBackdrop(
  * lets the last frame be clamped to what is actually left — so the feed lands exactly on the target
  * instead of overshooting past it and springing back.
  *
+ * A steady pace has a hard edge, though: it stops dead on arrival, and over a short distance the
+ * whole travel is that edge — a jump cut. So once the target is measured and the distance is
+ * exactly known, the remainder is flown as one [landingEasing] glide instead, lasting at least
+ * [minLandingMillis] so even a half-viewport hop reads as movement rather than a snap. With no
+ * easing supplied the constant pace runs to the very end, as before.
+ *
  * A user drag takes the scroll mutex at a higher priority, so touching the screen cancels this.
  */
-private suspend fun LazyListState.scrollToItemAtPace(targetIndex: Int, millisPerViewport: Int) {
+private suspend fun LazyListState.scrollToItemAtPace(
+    targetIndex: Int,
+    millisPerViewport: Int,
+    landingEasing: Easing? = null,
+    minLandingMillis: Int = 0,
+) {
     scroll {
         var lastFrameNanos = withFrameNanos { it }
         while (true) {
@@ -2039,6 +2146,32 @@ private suspend fun LazyListState.scrollToItemAtPace(targetIndex: Int, millisPer
                 else -> Float.MAX_VALUE
             }
             if (remaining == 0f) break
+            if (landingEasing != null && remaining != null && remaining != Float.MAX_VALUE) {
+                val landingMillis = maxOf(
+                    minLandingMillis,
+                    (abs(remaining) / viewport * millisPerViewport).roundToInt(),
+                )
+                if (landingMillis <= 0) {
+                    scrollBy(remaining)
+                    break
+                }
+                val startNanos = withFrameNanos { it }
+                var consumed = 0f
+                while (true) {
+                    val now = withFrameNanos { it }
+                    val fraction = ((now - startNanos) / (landingMillis * 1_000_000f)).coerceIn(0f, 1f)
+                    val glideTo = remaining * landingEasing.transform(fraction)
+                    scrollBy(glideTo - consumed)
+                    consumed = glideTo
+                    if (fraction >= 1f) break
+                }
+                // Content can resize mid-glide (images settling, items animating); square up any
+                // drift so the landing is exact.
+                layoutInfo.visibleItemsInfo.firstOrNull { it.index == targetIndex }?.let {
+                    scrollBy((it.offset - layoutInfo.viewportStartOffset).toFloat())
+                }
+                break
+            }
             val frameNanos = withFrameNanos { it }
             val seconds = (frameNanos - lastFrameNanos) / 1_000_000_000f
             lastFrameNanos = frameNanos

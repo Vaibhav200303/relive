@@ -681,6 +681,52 @@ actual fun VideoSourceThumbnail(sourcePath: String?, modifier: Modifier) {
     }
 }
 
+/** Cache for stills loaded from a pre-processing source image file (share hero preview). */
+private object IosSourceImageThumbnailCache {
+    private const val CAPACITY = 32
+    @Volatile private var map: Map<String, UIImage> = emptyMap()
+    fun get(key: String): UIImage? = map[key]
+    fun put(key: String, value: UIImage) {
+        val cur = map
+        map = if (cur.size < CAPACITY) cur + (key to value)
+        else cur.entries.drop(cur.size - CAPACITY + 1).associate { it.key to it.value } + (key to value)
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+@Composable
+actual fun ImageSourceThumbnail(sourcePath: String?, modifier: Modifier) {
+    if (sourcePath == null) {
+        Box(modifier = modifier)
+        return
+    }
+    val cached = IosSourceImageThumbnailCache.get(sourcePath)
+    val image by produceState<UIImage?>(initialValue = cached, key1 = sourcePath) {
+        if (value != null) return@produceState
+        val img = withContext(Dispatchers.Default) { loadUIImage(sourcePath) }
+        if (img != null) {
+            IosSourceImageThumbnailCache.put(sourcePath, img)
+            value = img
+        }
+    }
+    val current = image
+    if (current != null) {
+        UIKitView(
+            factory = {
+                val iv = UIImageView()
+                iv.contentMode = UIViewContentMode.UIViewContentModeScaleAspectFill
+                iv.clipsToBounds = true
+                iv.image = current
+                iv
+            },
+            update = { it.image = current },
+            modifier = modifier,
+        )
+    } else {
+        Box(modifier = modifier)
+    }
+}
+
 private fun formatSec(sec: Double): String {
     val total = sec.toInt()
     val m = total / 60
