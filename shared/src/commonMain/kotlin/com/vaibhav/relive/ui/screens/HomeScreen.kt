@@ -23,11 +23,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.ui.unit.Dp
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.ScrollableDefaults
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.carousel.CarouselDefaults
+import androidx.compose.material3.carousel.CarouselState
+import androidx.compose.material3.carousel.rememberCarouselState
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.semantics.contentDescription
@@ -116,6 +124,7 @@ private const val HOME_RESTORE_PAGE_ATTEMPTS = 8
  * Home behave differently from a timeline detail screen (newest-first feed, composer at the head,
  * no entry scroll, no scroll after a save) is expressed by that one flag.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     momentRepository: MomentRepository,
@@ -308,6 +317,19 @@ fun HomeScreen(
         )
     }
 
+    // One carousel state serves two nodes. The carousel itself lives in the backdrop, but the
+    // feed's transparent window is drawn over it and wins the hit test at rest (the topmost
+    // pointer-input branch is chosen at pointer-down), so a horizontal drag on the row would die
+    // in the window. The window instead proxies horizontal drags into this state, while vertical
+    // drags fall through to the feed's own scrolling as before.
+    val rediscoverCarouselState = rememberCarouselState(itemCount = { cards.size })
+    val rediscoverCarouselFling = CarouselDefaults.singleAdvanceFlingBehavior(rediscoverCarouselState)
+    val rediscoverDragReversed = ScrollableDefaults.reverseDirection(
+        LocalLayoutDirection.current,
+        Orientation.Horizontal,
+        false,
+    )
+
     TimelineScreen(
         momentRepository = momentRepository,
         timelineRepository = timelineRepository,
@@ -373,6 +395,7 @@ fun HomeScreen(
             HomeBackdrop(
                 greeting = greeting,
                 cards = cards,
+                carouselState = rediscoverCarouselState,
                 mediaStore = mediaStore,
                 scrolledIntoHeader = scrolledIntoHeader,
                 headerHeightPx = headerHeightPx,
@@ -392,9 +415,21 @@ fun HomeScreen(
             // A transparent window onto the backdrop. The welcome block and Rediscover row are
             // drawn behind the list, so this reserves their space without scrolling them. The
             // feed is already inset by the floating strip, so window bottom and sheet top stay
-            // the same line throughout.
+            // the same line throughout. The window also owns the hit test over the backdrop, so
+            // it forwards horizontal drags to the Rediscover carousel; vertical drags pass to
+            // the list around it as always.
             item(key = "home-backdrop-window") {
-                Spacer(Modifier.fillMaxWidth().height(with(density) { headerHeightPx.toDp() }))
+                Spacer(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(with(density) { headerHeightPx.toDp() })
+                        .scrollable(
+                            state = rediscoverCarouselState,
+                            orientation = Orientation.Horizontal,
+                            reverseDirection = rediscoverDragReversed,
+                            flingBehavior = rediscoverCarouselFling,
+                        ),
+                )
             }
             item(key = "home-all-moments-heading") {
                 // This heading is the first thing on the All moments sheet, and that sheet keeps
@@ -452,10 +487,12 @@ private const val HOME_WELCOME_EXPAND_DRIFT = 0.12f
  * surface (ADR-0061) where the timeline visibly covers what is above it rather than sliding in
  * lockstep.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HomeBackdrop(
     greeting: String,
     cards: List<RediscoverCollectionCardModel>,
+    carouselState: CarouselState,
     mediaStore: MediaStore,
     scrolledIntoHeader: Int,
     headerHeightPx: Int,
@@ -522,7 +559,11 @@ private fun HomeBackdrop(
                     // edge.
                     WelcomeBlock(greeting)
                     SectionHeading("Relive your memories")
-                    RediscoverCollectionRow(cards = cards, mediaStore = mediaStore)
+                    RediscoverCollectionRow(
+                        cards = cards,
+                        mediaStore = mediaStore,
+                        state = carouselState,
+                    )
                     Spacer(Modifier.height(dims.spacing.xl))
                 }
             }

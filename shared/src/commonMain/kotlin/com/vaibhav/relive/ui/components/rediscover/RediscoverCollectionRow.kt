@@ -2,24 +2,25 @@ package com.vaibhav.relive.ui.components.rediscover
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
+import androidx.compose.material3.carousel.CarouselItemScope
+import androidx.compose.material3.carousel.CarouselState
+import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
+import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -51,43 +52,49 @@ data class RediscoverCollectionCardModel(
  * (ADR-0061). It is a row inside the Home surface, not a destination: none of its cards is an
  * entry point into the All moments feed, which is already on this surface directly below.
  *
- * The row deliberately bleeds past the screen edge — the partially visible trailing card is the
- * affordance that says it scrolls.
+ * Laid out as a Material 3 multi-browse carousel: the leading card is shown at full size and
+ * trailing cards compress into masked medium/small items, which is both the scroll affordance and
+ * the invitation to browse. Labels fade out as a card shrinks so masked items read as imagery, not
+ * clipped text.
+ *
+ * [state] is hoisted because on Home the feed's transparent window sits over this row and owns the
+ * hit test at rest — the window proxies its horizontal drags into the same state (see the window
+ * item in `HomeScreen`).
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RediscoverCollectionRow(
     cards: List<RediscoverCollectionCardModel>,
     mediaStore: MediaStore,
     modifier: Modifier = Modifier,
+    state: CarouselState = rememberCarouselState(itemCount = { cards.size }),
 ) {
     if (cards.isEmpty()) return
     val dims = ReliveTheme.dimensions
-    LazyRow(
-        modifier = modifier.fillMaxWidth(),
+    HorizontalMultiBrowseCarousel(
+        state = state,
+        preferredItemWidth = dims.rediscover.compactCardWidth,
+        modifier = modifier
+            .fillMaxWidth()
+            .height(dims.rediscover.compactMediaHeight + dims.rediscover.compactInfoAreaHeight),
+        itemSpacing = dims.spacing.md,
         contentPadding = PaddingValues(horizontal = dims.spacing.xl),
-        horizontalArrangement = Arrangement.spacedBy(dims.spacing.md),
-    ) {
-        items(cards, key = { it.key }) { card ->
-            RediscoverCollectionCard(
-                card = card,
-                mediaStore = mediaStore,
-                modifier = Modifier.width(dims.rediscover.compactCardWidth),
-            )
-        }
+    ) { index ->
+        RediscoverCollectionCard(cards[index], mediaStore)
     }
 }
 
 @Composable
-private fun RediscoverCollectionCard(
+private fun CarouselItemScope.RediscoverCollectionCard(
     card: RediscoverCollectionCardModel,
     mediaStore: MediaStore,
-    modifier: Modifier = Modifier,
 ) {
     val dims = ReliveTheme.dimensions
     val shape = RoundedCornerShape(dims.rediscover.cardOuterRadius)
     Column(
-        modifier = modifier
-            .clip(shape)
+        modifier = Modifier
+            .fillMaxSize()
+            .maskClip(shape)
             .background(ReliveTheme.colors.surfaceCard)
             .clickable(onClick = card.onOpen)
             .semantics { contentDescription = "Open ${card.title}" },
@@ -96,8 +103,23 @@ private fun RediscoverCollectionCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = dims.rediscover.compactInfoAreaHeight)
-                .padding(dims.spacing.lg),
+                .weight(1f)
+                .padding(dims.spacing.lg)
+                .graphicsLayer {
+                    val info = carouselItemDrawInfo
+                    // The mask is centred in the item, so pin the label block to its visible left
+                    // edge instead of letting letters get sliced mid-glyph.
+                    translationX = info.maskRect.left
+                    val range = info.maxSize - info.minSize
+                    val grown = if (range > 0f) {
+                        ((info.size - info.minSize) / range).coerceIn(0f, 1f)
+                    } else {
+                        1f
+                    }
+                    // Labels belong to the focal card only: gone on medium/small masks, fading in
+                    // as a card grows toward the large slot.
+                    alpha = ((grown - 0.8f) / 0.2f).coerceIn(0f, 1f)
+                },
         ) {
             Text(
                 text = card.title,
