@@ -335,6 +335,28 @@ class TimelineViewModelTest {
     }
 
     @Test
+    fun readOnlySystemCollectionPresentationIsNewestFirst() = runTest {
+        val vm = newViewModel(
+            rediscoverRepository = FakeRediscoverRepository(
+                favoriteMoments = listOf(
+                    moment("newest", 3L),
+                    moment("middle", 2L),
+                    moment("oldest", 1L),
+                ),
+            ),
+            mode = TimelineMode.ReadOnlySystemCollection("Favourites"),
+        )
+
+        vm.selectTimeline(CurrentTimeline.Favorites)
+
+        assertEquals(
+            listOf("newest", "middle", "oldest"),
+            loadedMoments(vm).map { it.id.value },
+            "read-only collections keep the repository's newest-first order and open at the top (ADR-0065)",
+        )
+    }
+
+    @Test
     fun readOnlySystemCollectionRejectsFavoriteAndForgetMutations() = runTest {
         val target = moment("favorite", 1L)
         val moments = FakeMomentRepository(initialAll = listOf(target))
@@ -448,12 +470,13 @@ class TimelineViewModelTest {
     private fun TestScope.newViewModel(
         momentRepository: FakeMomentRepository = FakeMomentRepository(),
         timelineRepository: FakeTimelineRepository = FakeTimelineRepository(),
+        rediscoverRepository: RediscoverRepository = FakeRediscoverRepository(),
         clock: Clock = Clock { Instant(42L) },
         mode: TimelineMode = TimelineMode.Editable,
     ): TimelineViewModel = TimelineViewModel(
         momentRepository = momentRepository,
         timelineRepository = timelineRepository,
-        rediscoverRepository = FakeRediscoverRepository(),
+        rediscoverRepository = rediscoverRepository,
         clock = clock,
         scope = TestScope(UnconfinedTestDispatcher(testScheduler)),
         mode = mode,
@@ -560,10 +583,12 @@ class TimelineViewModelTest {
     )
 }
 
-private class FakeRediscoverRepository : RediscoverRepository {
+private class FakeRediscoverRepository(
+    private val favoriteMoments: List<Moment> = emptyList(),
+) : RediscoverRepository {
     override fun observeOverview(query: RediscoverQuery): Flow<RediscoverOverview> = error("Not used")
     override fun observeFavoritesSummary(): Flow<FavoritesCollectionSummary> = error("Not used")
-    override fun observeFavoriteMoments(): Flow<List<Moment>> = MutableStateFlow(emptyList())
+    override fun observeFavoriteMoments(): Flow<List<Moment>> = MutableStateFlow(favoriteMoments)
     override fun observeFavoritePreviews(limit: Int) = error("Not used")
     override fun observeOnThisDayPreviews(
         today: com.vaibhav.relive.domain.model.LocalCalendarDate,

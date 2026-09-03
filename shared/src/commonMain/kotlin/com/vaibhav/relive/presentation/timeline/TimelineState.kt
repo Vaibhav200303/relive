@@ -44,6 +44,17 @@ sealed interface TimelineMode {
     }
 }
 
+/**
+ * The cover a read-only Rediscover collection screen opens under (ADR-0065): exactly what the
+ * tapped card on Home was wearing — one preview attachment, or the accent-derived generated
+ * gradient chosen by the card's session-shuffled key — so the card and the screen it morphs into
+ * carry one continuous image.
+ */
+sealed interface SystemCollectionCover {
+    data class Media(val storageRef: MediaStorageRef, val type: MediaType) : SystemCollectionCover
+    data class Generated(val coverKey: String) : SystemCollectionCover
+}
+
 data class TimelineScreenState(
     val customTimelines: List<Timeline.Custom> = emptyList(),
     val currentTimeline: CurrentTimeline = CurrentTimeline.All,

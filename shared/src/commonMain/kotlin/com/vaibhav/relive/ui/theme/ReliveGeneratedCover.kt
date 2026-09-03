@@ -8,7 +8,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 
-/** A dark, restrained gradient pair used when a collection card has no visual media. */
+/** An accent-derived gradient pair used when a collection card has no visual media. */
 data class ReliveGeneratedCoverColors(
     val start: Color,
     val end: Color,
@@ -30,12 +30,19 @@ data class ReliveGeneratedCoverSelection(
 fun generatedCoverSelection(
     stableKey: String,
     palette: ReliveGeneratedCoverPalette,
-): ReliveGeneratedCoverSelection {
+): ReliveGeneratedCoverSelection = ReliveGeneratedCoverSelection(
+    paletteIndex = stableCoverIndex(stableKey, palette.covers.size),
+)
+
+/**
+ * Map [stableKey] onto one of [optionCount] choices with the shared cover hash. The same function
+ * backs gradient selection and the Rediscover row's single-preview-attachment pick, so every cover
+ * decision keyed the same way stays put until the key itself changes.
+ */
+fun stableCoverIndex(stableKey: String, optionCount: Int): Int {
     require(stableKey.isNotBlank()) { "Generated cover stable key must not be blank" }
-    val hash = stableCoverHash(stableKey)
-    return ReliveGeneratedCoverSelection(
-        paletteIndex = (hash % palette.covers.size.toUInt()).toInt(),
-    )
+    require(optionCount > 0) { "Cover selection needs at least one option" }
+    return (stableCoverHash(stableKey) % optionCount.toUInt()).toInt()
 }
 
 private fun stableCoverHash(value: String): UInt {
@@ -63,23 +70,31 @@ fun ReliveGeneratedCover(
 }
 
 /**
- * Media-less covers are always deep tiles carrying light-on-dark content, so they are seeded from
- * the palette's dark roles regardless of the active mode — a card without a photo reads the same
- * whether the app is light or dark, and stays tied to the selected palette's hue.
+ * Media-less covers are cut from the same cloth as the `+ New` button: every pair is the active
+ * mode's workhorse accent taken to two different depths — settled toward black in light mode,
+ * lifted toward white in dark mode — so generated cards read as siblings of the primary action
+ * in whichever palette and mode are active (ADR-0064). All stops stay strictly on the darker
+ * (light mode) or lighter (dark mode) side of the accent, and fully opaque.
  */
-fun generatedCoverPaletteFor(palette: RelivePalette): ReliveGeneratedCoverPalette {
-    val d = palette.dark
+fun generatedCoverPaletteFor(
+    palette: RelivePalette,
+    isDark: Boolean,
+): ReliveGeneratedCoverPalette {
+    val accent = palette.roles(isDark).primary
+    val anchor = if (isDark) Color.White else Color.Black
+    fun step(depth: Float): Color = lerp(accent, anchor, depth)
     return ReliveGeneratedCoverPalette(
         covers = listOf(
-            ReliveGeneratedCoverColors(d.canvas, d.surface),
-            ReliveGeneratedCoverColors(lerp(d.canvas, d.primary, 0.30f), d.canvas),
-            ReliveGeneratedCoverColors(d.surface, lerp(d.surface, d.primary, 0.42f)),
-            ReliveGeneratedCoverColors(lerp(d.canvas, Color.Black, 0.12f), d.tint),
-            ReliveGeneratedCoverColors(d.tint, d.canvas),
-            ReliveGeneratedCoverColors(lerp(d.primary, Color.Black, 0.45f), d.canvas),
+            ReliveGeneratedCoverColors(step(0.10f), step(0.42f)),
+            ReliveGeneratedCoverColors(step(0.38f), step(0.12f)),
+            ReliveGeneratedCoverColors(step(0.22f), step(0.55f)),
+            ReliveGeneratedCoverColors(step(0.55f), step(0.22f)),
+            ReliveGeneratedCoverColors(step(0.06f), step(0.30f)),
+            ReliveGeneratedCoverColors(step(0.46f), step(0.68f)),
         ),
     )
 }
 
-/** The app-wide default cover palette (Ink &amp; Lilac). */
-val DefaultGeneratedCoverPalette: ReliveGeneratedCoverPalette = generatedCoverPaletteFor(DefaultRelivePalette)
+/** The app-wide default cover palette (Ink &amp; Lilac, light). */
+val DefaultGeneratedCoverPalette: ReliveGeneratedCoverPalette =
+    generatedCoverPaletteFor(DefaultRelivePalette, isDark = false)

@@ -27,7 +27,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
- * The Home mood-bar/insights state holder (PRODUCT_SPEC §10A, ADR-0064). Its job is to read the
+ * The Home mood-bar/insights state holder (PRODUCT_SPEC §10A, ADR-0066). Its job is to read the
  * bounded sample projection, resolve each sample to a device-local day, and hand the numbers to
  * the pure calculator — never to hydrate Moments.
  */

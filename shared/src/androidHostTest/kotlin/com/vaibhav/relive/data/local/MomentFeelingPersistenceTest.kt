@@ -15,7 +15,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/** Feeling persistence and its bounded insights projection (PRODUCT_SPEC §10A, ADR-0064). */
+/** Feeling persistence and its bounded insights projection (PRODUCT_SPEC §10A, ADR-0066). */
 class MomentFeelingPersistenceTest {
 
     private val fixture = TestFixture()

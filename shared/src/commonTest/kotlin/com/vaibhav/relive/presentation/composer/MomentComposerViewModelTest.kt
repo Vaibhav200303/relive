@@ -70,7 +70,7 @@ class MomentComposerViewModelTest {
         assertEquals(1, repo.inserts.size)
         assertEquals("A", repo.inserts.single().first.title)
         // The outcome carries what the post-save feeling prompt needs to anchor itself: the
-        // saved Moment's id, and that this was a first save rather than an edit (ADR-0064).
+        // saved Moment's id, and that this was a first save rather than an edit (ADR-0066).
         val succeeded = assertIs<MomentSaveOutcome.Succeeded>(outcomes.single())
         assertEquals(repo.inserts.single().first.id, succeeded.momentId)
         assertTrue(succeeded.isNewMoment)

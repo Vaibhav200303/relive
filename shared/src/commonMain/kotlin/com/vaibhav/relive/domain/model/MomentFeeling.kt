@@ -4,7 +4,7 @@ import com.vaibhav.relive.domain.time.Instant
 
 /**
  * The optional feeling a person attaches to a Moment through the post-save prompt
- * (PRODUCT_SPEC §10A, ADR-0064). Absent is a first-class state forever — a Moment
+ * (PRODUCT_SPEC §10A, ADR-0066). Absent is a first-class state forever — a Moment
  * with no feeling is a normal Moment, never an incomplete one.
  *
  * [score] is the ordinal weight Mood insights average over: verdicts and curve

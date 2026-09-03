@@ -84,7 +84,7 @@ fun reliveTokensFor(
     return DefaultReliveTokens.copy(
         id = id,
         colors = reliveColorsFor(palette.roles(isDark), isDark),
-        generatedCoverPalette = generatedCoverPaletteFor(palette),
+        generatedCoverPalette = generatedCoverPaletteFor(palette, isDark),
         isDark = isDark,
         systemBarIconsDark = !isDark,
     )

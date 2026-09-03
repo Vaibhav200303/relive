@@ -104,7 +104,7 @@ class AndroidBackupPackageStore(
                         title = m.optString("title"),
                         content = m.optString("content"),
                         is_favorite = if (m.optBoolean("favorite")) 1L else 0L,
-                        // Absent in backups written before feelings existed → restores unfelt (ADR-0064).
+                        // Absent in backups written before feelings existed → restores unfelt (ADR-0066).
                         feeling = m.optNullableString("feeling"),
                         location_lat = if (m.isNull("locationLat")) null else m.optDouble("locationLat"),
                         location_lon = if (m.isNull("locationLon")) null else m.optDouble("locationLon"),

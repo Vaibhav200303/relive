@@ -110,6 +110,12 @@ data class ReliveRediscoverDimensions(
     val heroMediaHeight: Dp = 280.dp,
     val compactMediaHeight: Dp = 144.dp,
     val compactInfoAreaHeight: Dp = 128.dp,
+    /**
+     * The Home row's full-bleed collection card (ADR-0064): one cover surface with the title
+     * overlaid, sized to what the former media area plus info area occupied so the row's
+     * footprint on Home is unchanged.
+     */
+    val compactCardHeight: Dp = 272.dp,
     val heroInfoAreaMinHeight: Dp = 128.dp,
     val favoriteShelfCardHeight: Dp = 272.dp,
     val compactCardWidth: Dp = 208.dp,

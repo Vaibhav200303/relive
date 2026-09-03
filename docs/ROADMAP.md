@@ -115,7 +115,7 @@ Current implementation note: global appearance, Profile, Preferences, Media & St
 
 ## Phase 9A — Moment feelings & Mood insights  ◐
 
-- Add the optional three-value Moment feeling (`Great` / `Good` / `Low`) as a nullable `moments.feeling` column (migration `4.sqm`), a dedicated repository write independent of the 4-day edit window, and a bounded `(created_at, feeling)` sample projection (ADR-0064, PRODUCT_SPEC §10A).
+- Add the optional three-value Moment feeling (`Great` / `Good` / `Low`) as a nullable `moments.feeling` column (migration `4.sqm`), a dedicated repository write independent of the 4-day edit window, and a bounded `(created_at, feeling)` sample projection (ADR-0066, PRODUCT_SPEC §10A).
 - Post-save prompt: after a successful Keep Moment for a new Moment, an inline, skippable `How does this moment feel?` strip renders beneath the saved card — no modal, sheet, screen, or scroll. Choosing persists the feeling; dismissing persists nothing.
 - Moment presentation: a felt Moment shows one small drawn face at the bottom-left of its print card; unfelt Moments show nothing.
 - Mood bar on Home: revealed beneath the welcome block by the backdrop's existing expanded resting place, showing `Last week` / `This week` verdicts computed from device-local Sunday–Saturday weeks; quiet em-dash cells when a week has no felt Moments.

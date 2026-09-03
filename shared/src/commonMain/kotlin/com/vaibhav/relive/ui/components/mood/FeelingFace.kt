@@ -26,7 +26,7 @@ import com.vaibhav.relive.domain.model.MomentFeeling
 import com.vaibhav.relive.ui.theme.ReliveTheme
 
 /**
- * Fixed face palette (ADR-0064): like the print card's white and the audio tile's black,
+ * Fixed face palette (ADR-0066): like the print card's white and the audio tile's black,
  * the faces keep one warm gold identity in every palette and appearance mode.
  */
 internal object FeelingFaceColors {

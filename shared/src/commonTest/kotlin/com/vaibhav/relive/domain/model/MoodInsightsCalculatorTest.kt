@@ -7,7 +7,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * Mood insights aggregation (PRODUCT_SPEC §10A, ADR-0064). Every window here is expressed in
+ * Mood insights aggregation (PRODUCT_SPEC §10A, ADR-0066). Every window here is expressed in
  * device-local calendar days, so the calculator can be pinned exactly without a platform clock.
  */
 class MoodInsightsCalculatorTest {

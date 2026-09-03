@@ -42,7 +42,7 @@ interface MomentRepository {
 
     /**
      * Writes or clears the Moment's optional feeling. Like [setFavorite] this is
-     * independent of [updateEditable] and of the 4-day edit window (ADR-0064).
+     * independent of [updateEditable] and of the 4-day edit window (ADR-0066).
      */
     suspend fun setFeeling(id: MomentId, feeling: MomentFeeling?)
 

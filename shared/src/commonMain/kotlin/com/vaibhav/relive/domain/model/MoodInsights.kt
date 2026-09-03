@@ -1,7 +1,7 @@
 package com.vaibhav.relive.domain.model
 
 /**
- * Local aggregation for the Mood insights surface (PRODUCT_SPEC §10A, ADR-0064).
+ * Local aggregation for the Mood insights surface (PRODUCT_SPEC §10A, ADR-0066).
  * Everything here is pure arithmetic over day-resolved samples: the presentation
  * layer resolves each Moment's `createdAt` to a device-local [LocalCalendarDate]
  * through its platform calendar seam and hands the result in, so this calculator

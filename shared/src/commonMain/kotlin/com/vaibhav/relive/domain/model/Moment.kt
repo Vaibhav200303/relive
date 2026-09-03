@@ -19,7 +19,7 @@ data class Moment(
     val title: String = "",
     val content: String = "",
     val isFavorite: Boolean = false,
-    /** Optional post-save reflection; absent forever unless the person chooses one (ADR-0064). */
+    /** Optional post-save reflection; absent forever unless the person chooses one (ADR-0066). */
     val feeling: MomentFeeling? = null,
     val location: ReliveLocation? = null,
     val tags: List<Tag> = emptyList(),

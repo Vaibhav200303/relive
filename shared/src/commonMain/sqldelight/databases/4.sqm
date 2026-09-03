@@ -17,6 +17,6 @@ CREATE TABLE IF NOT EXISTS moments (
     location_country TEXT
 );
 
--- The optional post-save reflection (ADR-0064). Nullable with no default, so every
+-- The optional post-save reflection (ADR-0066). Nullable with no default, so every
 -- existing Moment stays unfelt and nothing is ever backfilled.
 ALTER TABLE moments ADD COLUMN feeling TEXT;
