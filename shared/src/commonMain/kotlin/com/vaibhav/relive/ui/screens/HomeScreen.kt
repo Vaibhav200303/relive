@@ -22,9 +22,12 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
@@ -549,8 +552,8 @@ private fun HomeBackdrop(
         modifier = Modifier
             .fillMaxSize()
             .bleedHorizontal(dims.timeline.horizontalPadding)
-            // The welcome layer trails the sheet, so without this it would ride up past the top of
-            // the content area and show through the translucent app bar.
+            // The welcome layer trails the sheet, so without this it would ride up past the top
+            // edge of the content area.
             .clipToBounds()
             .onGloballyPositioned { onViewportMeasured(it.size.height) }
             // The welcome area follows the app's global appearance — palette, mode and canvas
@@ -572,7 +575,14 @@ private fun HomeBackdrop(
                     alpha = 1f - covered * 0.4f
                 },
         ) {
-            Column {
+            Column(
+                modifier = Modifier
+                    // With no app bar the surface owns the top of the screen, so the welcome block
+                    // clears the status bar itself plus the floating profile control that now
+                    // occupies the strip where the wordmark bar used to sit.
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .padding(top = dims.minTouchTarget + dims.spacing.sm * 2),
+            ) {
                 Column(modifier = Modifier.padding(horizontal = dims.timeline.horizontalPadding)) {
                     WelcomeBlock(greeting)
                     SectionHeading("Relive your memories")

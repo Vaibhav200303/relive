@@ -65,6 +65,7 @@ import com.vaibhav.relive.ui.components.viewer.MomentMediaGallery
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.theme.canvasBrush
 import com.vaibhav.relive.ui.theme.spec
 import com.vaibhav.relive.platform.media.ActivePlayback
 import com.vaibhav.relive.presentation.viewer.TimelineMediaNavState
@@ -155,7 +156,7 @@ fun SearchScreen(
             boundsTransform = galleryBoundsTransform,
         )
         Box(Modifier.fillMaxSize()) {
-    Column(Modifier.fillMaxSize().background(ReliveTheme.colors.bgCanvas)) {
+    Column(Modifier.fillMaxSize().background(ReliveTheme.colors.canvasBrush())) {
         SearchHeader(
             query = state.query,
             resultCount = state.resultCount,
@@ -309,7 +310,7 @@ private fun SearchHeader(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .background(colors.bgHeader)
+            // No header band: like every root, the search field floats on the canvas gradient.
             .windowInsetsPadding(WindowInsets.statusBars)
             .padding(horizontal = dims.spacing.xl, vertical = dims.spacing.sm),
     ) {

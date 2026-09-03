@@ -26,6 +26,7 @@ import com.vaibhav.relive.domain.entitlement.RelivePurchaseOption
 import com.vaibhav.relive.domain.entitlement.PurchaseOutcome
 import com.vaibhav.relive.ui.components.profile.ProfilePageHeader
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.theme.canvasBrush
 import kotlinx.coroutines.launch
 
 @Composable
@@ -39,7 +40,7 @@ fun UpgradeToProScreen(
     val uriHandler = LocalUriHandler.current
     var purchaseMessage by remember { mutableStateOf<String?>(null) }
     Column(
-        Modifier.fillMaxSize().background(ReliveTheme.colors.bgCanvas),
+        Modifier.fillMaxSize().background(ReliveTheme.colors.canvasBrush()),
     ) {
         ProfilePageHeader("Relive Pro", onBack)
         Column(

@@ -37,10 +37,10 @@ import com.vaibhav.relive.ui.screens.TimelineScreen
 import com.vaibhav.relive.ui.screens.TimelineHomeScreen
 import com.vaibhav.relive.ui.screens.HomeScreen
 import com.vaibhav.relive.ui.screens.rememberHomeSurfaceState
-import com.vaibhav.relive.ui.screens.RediscoverScreen
 import com.vaibhav.relive.ui.screens.ShareTimelinePickerScreen
 import com.vaibhav.relive.ui.screens.TimelineThemeScreen
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.theme.canvasBrush
 import com.vaibhav.relive.ui.theme.reliveSequentialSlideFade
 import com.vaibhav.relive.ui.theme.reliveForwardBackward
 import com.vaibhav.relive.ui.theme.spec
@@ -150,7 +150,12 @@ fun App(
         darkMode = darkMode,
     ) {
         @OptIn(ExperimentalSharedTransitionApi::class)
-        SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
+        // The app's one global ground: every screen sits on the current theme's atmospheric
+        // canvas gradient, so navigation moves content over a steady light source rather than
+        // between differently-painted rooms.
+        SharedTransitionLayout(
+            modifier = Modifier.fillMaxSize().background(ReliveTheme.colors.canvasBrush()),
+        ) {
         val sharedTransitionScope = this
         val composerDraftStore = remember { TimelineComposerDraftStore() }
         val homeViewModel = remember(container, scope) {
@@ -769,7 +774,7 @@ fun App(
 @Composable
 private fun ReliveLockSurface(onUnlock: () -> Unit) {
     androidx.compose.foundation.layout.Box(
-        androidx.compose.ui.Modifier.fillMaxSize().background(ReliveTheme.colors.bgCanvas).clickable(onClick = onUnlock),
+        androidx.compose.ui.Modifier.fillMaxSize().background(ReliveTheme.colors.canvasBrush()).clickable(onClick = onUnlock),
         contentAlignment = Alignment.Center,
     ) {
         androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {

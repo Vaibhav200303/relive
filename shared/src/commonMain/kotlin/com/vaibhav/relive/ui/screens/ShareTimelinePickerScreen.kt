@@ -50,6 +50,7 @@ import com.vaibhav.relive.ui.components.timeline.BackGlyph
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.theme.canvasBrush
 
 @Composable
 fun ShareTimelinePickerScreen(
@@ -62,7 +63,7 @@ fun ShareTimelinePickerScreen(
     onRetry: () -> Unit,
 ) {
     val motion = ReliveTheme.motion
-    Box(Modifier.fillMaxSize().background(ReliveTheme.colors.bgCanvas)) {
+    Box(Modifier.fillMaxSize().background(ReliveTheme.colors.canvasBrush())) {
         AnimatedContent(
             targetState = shareState,
             transitionSpec = {

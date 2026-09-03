@@ -114,6 +114,66 @@ fun TimelineHeader(
     }
 }
 
+/**
+ * Floating controls for the Home root, which carries no app bar: the canvas gradient runs to the
+ * top of the screen and these controls float over it. [leading] holds the profile affordance;
+ * calendar and theme appear once the All moments sheet has the screen. The trailing pair sits in
+ * a floating pill — the same treatment the cover heroes give their overlaid controls — so it stays
+ * legible over whatever the sheet is showing.
+ */
+@Composable
+fun HomeFloatingHeaderActions(
+    leading: (@Composable () -> Unit)? = null,
+    onJumpToDate: (() -> Unit)? = null,
+    onChangeTheme: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    val colors = ReliveTheme.colors
+    val dims = ReliveTheme.dimensions
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .padding(horizontal = dims.spacing.md, vertical = dims.spacing.sm),
+    ) {
+        if (leading != null) {
+            Box(modifier = Modifier.align(Alignment.CenterStart)) { leading() }
+        }
+        if (onJumpToDate != null || onChangeTheme != null) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .background(
+                        colors.surfaceFloating.copy(alpha = ReliveOpacity.VeryHigh),
+                        RoundedCornerShape(dims.radii.pill),
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (onChangeTheme != null) {
+                    IconButton(
+                        onClick = onChangeTheme,
+                        modifier = Modifier
+                            .size(dims.minTouchTarget)
+                            .semantics { contentDescription = "Change timeline theme" },
+                    ) {
+                        PaletteGlyph(dims.icon.md, colors.textPrimary, dims.stroke.icon)
+                    }
+                }
+                if (onJumpToDate != null) {
+                    IconButton(
+                        onClick = onJumpToDate,
+                        modifier = Modifier
+                            .size(dims.minTouchTarget)
+                            .semantics { contentDescription = "Jump to date" },
+                    ) {
+                        CalendarGlyph(dims.icon.md, colors.textPrimary, dims.stroke.icon)
+                    }
+                }
+            }
+        }
+    }
+}
+
 /** Custom-timeline identity hero. The cover is independent from Moment media. */
 @Composable
 fun TimelineCoverHero(

@@ -17,6 +17,7 @@ import com.vaibhav.relive.platform.system.ReliveBackHandler
 import com.vaibhav.relive.ui.components.timeline.BackGlyph
 import com.vaibhav.relive.ui.components.timeline.ForwardGlyph
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.theme.canvasBrush
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 
@@ -24,7 +25,7 @@ import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 fun ProfileScaffold(title: String, intro: String? = null, onBack: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
     val d = ReliveTheme.dimensions
     ReliveBackHandler(true, onBack)
-    Column(Modifier.fillMaxSize().background(ReliveTheme.colors.bgCanvas)) {
+    Column(Modifier.fillMaxSize().background(ReliveTheme.colors.canvasBrush())) {
         ProfilePageHeader(title, onBack)
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = d.spacing.huge)) {
             intro?.let { ProfileSupportingText(it, Modifier.padding(top = d.spacing.md)) }
@@ -36,7 +37,9 @@ fun ProfileScaffold(title: String, intro: String? = null, onBack: () -> Unit, co
 @Composable
 fun ProfilePageHeader(title: String, onBack: () -> Unit, backDescription: String = "Back to Profile", icon: ImageVector? = null) {
     val d = ReliveTheme.dimensions
-    Row(Modifier.fillMaxWidth().background(ReliveTheme.colors.bgHeader).windowInsetsPadding(WindowInsets.statusBars).padding(horizontal = d.spacing.md, vertical = d.spacing.sm), verticalAlignment = Alignment.CenterVertically) {
+    // No band fill: nothing scrolls beneath this header, so back and title sit directly on the
+    // canvas gradient the scaffold paints.
+    Row(Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.statusBars).padding(horizontal = d.spacing.md, vertical = d.spacing.sm), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onBack, Modifier.size(d.minTouchTarget).semantics { contentDescription = backDescription }) { BackGlyph(d.icon.lg, ReliveTheme.colors.textSecondary, d.stroke.icon) }
         icon?.let { Icon(it, contentDescription = null, modifier = Modifier.size(d.icon.md), tint = ReliveTheme.colors.accentMuted) }
         Text(title, modifier = Modifier.padding(start = d.spacing.sm).semantics { heading() }, color = ReliveTheme.colors.textPrimary, style = ReliveTheme.typography.title)

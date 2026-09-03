@@ -48,6 +48,7 @@ import com.vaibhav.relive.ui.components.timeline.ForwardGlyph
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.theme.canvasBrush
 import com.vaibhav.relive.ui.components.profile.ProfilePageHeader
 import com.vaibhav.relive.ui.components.ReliveSnackbarHost
 
@@ -70,7 +71,7 @@ fun PreferencesScreen(
         }
     }
 
-    Box(Modifier.fillMaxSize().background(ReliveTheme.colors.bgCanvas)) {
+    Box(Modifier.fillMaxSize().background(ReliveTheme.colors.canvasBrush())) {
         Column(Modifier.fillMaxSize()) {
             PreferencesHeader(onBack)
             Column(

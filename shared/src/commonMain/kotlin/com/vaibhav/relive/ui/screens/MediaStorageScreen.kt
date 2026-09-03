@@ -42,6 +42,7 @@ import com.vaibhav.relive.ui.components.timeline.BackGlyph
 import com.vaibhav.relive.ui.components.MediaStorageSkeleton
 import com.vaibhav.relive.ui.components.ReliveSkeletonContent
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.theme.canvasBrush
 import com.vaibhav.relive.ui.components.profile.ProfilePageHeader
 
 @Composable
@@ -54,7 +55,7 @@ fun MediaStorageScreen(
     LaunchedEffect(Unit) { viewModel.loadOnEntry() }
 
     Column(
-        modifier = Modifier.fillMaxSize().background(ReliveTheme.colors.bgCanvas),
+        modifier = Modifier.fillMaxSize().background(ReliveTheme.colors.canvasBrush()),
     ) {
         MediaStorageHeader(onBack)
         ReliveSkeletonContent(
