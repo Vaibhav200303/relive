@@ -104,6 +104,12 @@ class ReliveTokensTest {
         assertEquals(272.dp, rediscover.favoriteShelfCardHeight)
         assertEquals(128.dp, rediscover.compactInfoAreaHeight)
         assertEquals(128.dp, rediscover.heroInfoAreaMinHeight)
+        // The full-bleed Home-row card (ADR-0064) keeps the footprint of the former split card.
+        assertEquals(272.dp, rediscover.compactCardHeight)
+        assertEquals(
+            rediscover.compactMediaHeight + rediscover.compactInfoAreaHeight,
+            rediscover.compactCardHeight,
+        )
     }
 
     @Test

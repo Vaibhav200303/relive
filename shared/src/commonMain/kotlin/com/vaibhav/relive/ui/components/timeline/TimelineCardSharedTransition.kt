@@ -7,9 +7,11 @@ import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.ui.theme.ReliveTheme
@@ -31,6 +33,44 @@ fun Modifier.timelineCardSharedBounds(
     sharedScope: SharedTransitionScope,
     animatedScope: AnimatedVisibilityScope,
     reduceMotion: Boolean,
+): Modifier = cardContainerSharedBounds(
+    containerKey = timelineCardContainerKey(timelineId),
+    sharedScope = sharedScope,
+    animatedScope = animatedScope,
+    reduceMotion = reduceMotion,
+)
+
+/**
+ * The same container transform for a Rediscover collection card on Home and the read-only
+ * collection screen it opens (ADR-0065). Permitted by the rule ADR-0060 established: the card's
+ * cover *is* the destination's cover now, so the morphing container carries a genuinely
+ * continuous image. Keyed by the collection, so one card can only ever morph into its own screen.
+ */
+@Composable
+fun Modifier.rediscoverCardSharedBounds(
+    collectionKey: String,
+    sharedScope: SharedTransitionScope,
+    animatedScope: AnimatedVisibilityScope,
+    reduceMotion: Boolean,
+): Modifier = cardContainerSharedBounds(
+    containerKey = "rediscover-collection-container-$collectionKey",
+    sharedScope = sharedScope,
+    animatedScope = animatedScope,
+    reduceMotion = reduceMotion,
+    // Clipped to the animated bounds with the card's own corners, so the screen's content never
+    // bleeds past the shrinking container on the way back and the container reads as the card it
+    // is becoming.
+    clipShape = RoundedCornerShape(ReliveTheme.dimensions.rediscover.cardOuterRadius),
+)
+
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+private fun Modifier.cardContainerSharedBounds(
+    containerKey: String,
+    sharedScope: SharedTransitionScope,
+    animatedScope: AnimatedVisibilityScope,
+    reduceMotion: Boolean,
+    clipShape: Shape? = null,
 ): Modifier {
     if (reduceMotion) return this
     val motion = ReliveTheme.motion
@@ -50,19 +90,32 @@ fun Modifier.timelineCardSharedBounds(
         easing = motion.easings.emphasizedDecelerate,
     )
     return with(sharedScope) {
-        this@timelineCardSharedBounds.sharedBounds(
-            sharedContentState = rememberSharedContentState(timelineCardContainerKey(timelineId)),
-            animatedVisibilityScope = animatedScope,
-            enter = fadeIn(enterSpec),
-            exit = fadeOut(exitSpec),
-            boundsTransform = transform,
-            // The detail screen is laid out at its own full size and cropped to the morphing
-            // container, rather than squashed into the card's aspect ratio on the first frame.
-            resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(
-                contentScale = ContentScale.None,
-                alignment = Alignment.TopCenter,
-            ),
+        // The detail screen is laid out at its own full size and cropped to the morphing
+        // container, rather than squashed into the card's aspect ratio on the first frame.
+        val resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(
+            contentScale = ContentScale.None,
+            alignment = Alignment.TopCenter,
         )
+        if (clipShape != null) {
+            this@cardContainerSharedBounds.sharedBounds(
+                sharedContentState = rememberSharedContentState(containerKey),
+                animatedVisibilityScope = animatedScope,
+                enter = fadeIn(enterSpec),
+                exit = fadeOut(exitSpec),
+                boundsTransform = transform,
+                resizeMode = resizeMode,
+                clipInOverlayDuringTransition = OverlayClip(clipShape),
+            )
+        } else {
+            this@cardContainerSharedBounds.sharedBounds(
+                sharedContentState = rememberSharedContentState(containerKey),
+                animatedVisibilityScope = animatedScope,
+                enter = fadeIn(enterSpec),
+                exit = fadeOut(exitSpec),
+                boundsTransform = transform,
+                resizeMode = resizeMode,
+            )
+        }
     }
 }
 

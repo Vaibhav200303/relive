@@ -136,6 +136,7 @@ import com.vaibhav.relive.presentation.timeline.MomentPresentation
 import com.vaibhav.relive.presentation.timeline.HOME_FEED_PREFETCH
 import com.vaibhav.relive.presentation.timeline.TimelineMomentsState
 import com.vaibhav.relive.presentation.timeline.TimelineMode
+import com.vaibhav.relive.presentation.timeline.SystemCollectionCover
 import com.vaibhav.relive.presentation.timeline.TimelineMomentVisibility
 import com.vaibhav.relive.presentation.timeline.resolveTimelineMomentVisibility
 import com.vaibhav.relive.presentation.timeline.TimelineScreenState
@@ -170,7 +171,7 @@ import com.vaibhav.relive.ui.components.timeline.DateNavigationPicker
 import com.vaibhav.relive.ui.components.timeline.DiscardTimelineDraftDialog
 import com.vaibhav.relive.ui.components.timeline.DownGlyph
 import com.vaibhav.relive.ui.components.timeline.UpGlyph
-import com.vaibhav.relive.ui.components.timeline.SystemCollectionHeader
+import com.vaibhav.relive.ui.components.rediscover.SystemCollectionCoverImage
 import com.vaibhav.relive.ui.components.viewer.MediaViewer
 import com.vaibhav.relive.ui.components.viewer.MomentMediaGallery
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
@@ -277,6 +278,11 @@ fun TimelineScreen(
     onOpenTimelineTheme: (() -> Unit)? = null,
     behaviorPreferences: BehaviorPreferences = BehaviorPreferences(),
     onComposerExpandedChanged: ((Boolean) -> Unit)? = null,
+    /**
+     * The cover a read-only system collection opens under (ADR-0065): what the tapped Rediscover
+     * card was wearing, so card and screen carry one continuous image. Ignored by other modes.
+     */
+    collectionCover: SystemCollectionCover? = null,
     /**
      * Renders this timeline as the All moments region of the unified Home surface (ADR-0061).
      *
@@ -683,6 +689,7 @@ fun TimelineScreen(
             snackbarHostState = snackbarHostState,
             momentVisibility = resolveTimelineMomentVisibility(mode, behaviorPreferences),
             sharedTransition = mediaSharedTransition,
+            collectionCover = collectionCover,
             isHomeSurface = isHomeSurface,
             homeHeader = homeHeader,
             homeBackdrop = homeBackdrop,
@@ -1048,6 +1055,7 @@ private fun TimelineContent(
     onDateNavigationHandled: () -> Unit,
     snackbarHostState: SnackbarHostState,
     momentVisibility: TimelineMomentVisibility,
+    collectionCover: SystemCollectionCover? = null,
     isHomeSurface: Boolean = false,
     homeHeader: (LazyListScope.() -> Unit)? = null,
     homeBackdrop: (@Composable () -> Unit)? = null,
@@ -1088,10 +1096,13 @@ private fun TimelineContent(
     val isContextualActionMode = actionAvailability?.canEnter == true
     // Custom timeline detail rides its cover photo the way Home rides its welcome block: the cover
     // becomes a backdrop drawn behind the feed, and the feed becomes a sheet that slides over it,
-    // off the bottom edge, and back (ADR-0062). Home is excluded because it already is that
-    // surface, with a backdrop of its own supplied by the caller.
+    // off the bottom edge, and back (ADR-0062). The read-only Rediscover collections run the same
+    // mechanism over the cover their Home card wears, minus theme, calendar and cover editing
+    // (ADR-0065). Home is excluded because it already is that surface, with a backdrop of its own
+    // supplied by the caller.
     val isSlidingCoverSurface = !isHomeSurface &&
-        timelineState.currentTimeline is CurrentTimeline.Custom
+        (timelineState.currentTimeline is CurrentTimeline.Custom ||
+            mode is TimelineMode.ReadOnlySystemCollection)
     // What both sliding-backdrop surfaces share: the feed runs newest-first with the composer at
     // its head, so the chronological end is a short scroll from the top of the surface rather than
     // the far end of history, and the return control points up rather than down.
@@ -1197,8 +1208,6 @@ private fun TimelineContent(
                     onAddToTimeline = onShowTimelineAssignmentPicker,
                     onForget = { onForgetMoment(selectedActionMoment) },
                 )
-            } else if (mode is TimelineMode.ReadOnlySystemCollection) {
-                SystemCollectionHeader(title = mode.title, onBack = onBack ?: {})
             } else if (timelineState.currentTimeline == CurrentTimeline.All) {
                 val collageBucket = allTimelineCollageBucket(clock.now())
                 AllTimelineCoverHero(
@@ -1287,6 +1296,32 @@ private fun TimelineContent(
                             wallpaper = timelineState.appearance.wallpaper,
                             onViewportMeasured = { expansion.viewportHeightPx = it },
                         )
+                    } else if (mode is TimelineMode.ReadOnlySystemCollection) {
+                        // The collection's cover is the one its Home card wears — the same
+                        // resolved attachment or generated gradient — so the card the person
+                        // tapped and the screen it became carry one continuous image (ADR-0065).
+                        // A cover is fixed here: no update tap, and no theme or calendar either
+                        // (see the pinned controls below).
+                        TimelineCoverBackdrop(
+                            name = mode.title,
+                            coverPhotoRef = null,
+                            mediaStore = mediaStore,
+                            onUpdateCover = null,
+                            coverHeightPx = coverHeightPx,
+                            coverTravelPx = coverTravelPx,
+                            scrolledIntoCover = scrolledIntoCover,
+                            expansionPx = expansion.expansionPx,
+                            wallpaper = timelineState.appearance.wallpaper,
+                            onViewportMeasured = { expansion.viewportHeightPx = it },
+                            coverContent = { coverModifier ->
+                                SystemCollectionCoverImage(
+                                    cover = collectionCover
+                                        ?: SystemCollectionCover.Generated("collection-${mode.title}"),
+                                    mediaStore = mediaStore,
+                                    modifier = coverModifier,
+                                )
+                            },
+                        )
                     }
                 }
 
@@ -1297,7 +1332,13 @@ private fun TimelineContent(
                     isSlidingCoverSurface -> SLIDING_COVER_HEADER_ITEM_COUNT
                     else -> 0
                 }
-                val feedOffset = if (isNewestFirst) headerItemCount + 1 else 0
+                // The composer counts toward the offset only where it is actually emitted — the
+                // read-only collections are newest-first sliding surfaces with no composer at all.
+                val feedOffset = if (isNewestFirst) {
+                    headerItemCount + (if (mode.allowsMutations) 1 else 0)
+                } else {
+                    0
+                }
                 // The composer is one item emitted at whichever end of the feed is the
                 // chronological end: the head on Home (newest-first), the tail everywhere else.
                 val composerItem: LazyListScope.() -> Unit = {
@@ -1803,9 +1844,12 @@ private fun TimelineContent(
                                 onForget = { onForgetMoment(selectedActionMoment) },
                             )
                         } else {
+                            // A read-only collection pins Back alone: no calendar, no theme, and
+                            // its cover is not updatable (ADR-0065). A custom timeline keeps all
+                            // three of its pinned controls.
                             TimelineCoverControls(
                                 onBack = onBack,
-                                onJumpToDate = onJumpToDate,
+                                onJumpToDate = onJumpToDate.takeIf { mode.allowsMutations },
                                 onChangeTheme = onChangeTheme,
                             )
                         }
@@ -1897,6 +1941,8 @@ private fun TimelineCoverBackdrop(
     expansionPx: Float,
     wallpaper: com.vaibhav.relive.domain.model.TimelineWallpaper,
     onViewportMeasured: (Int) -> Unit,
+    /** Custom cover imagery: a read-only collection's resolved card cover (ADR-0065). */
+    coverContent: (@Composable (Modifier) -> Unit)? = null,
 ) {
     val dims = ReliveTheme.dimensions
     val colors = ReliveTheme.colors
@@ -1929,6 +1975,7 @@ private fun TimelineCoverBackdrop(
             onUpdateCover = onUpdateCover,
             stretchPx = expansionPx,
             stretchZoom = false,
+            coverContent = coverContent,
             modifier = Modifier.graphicsLayer {
                 // Trails the sheet instead of matching it, which is what makes the timeline read
                 // as passing in front of the photo rather than pushing it.

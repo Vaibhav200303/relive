@@ -138,6 +138,20 @@ fun ReliveColors.accentHeroBrush(): Brush = Brush.verticalGradient(
     listOf(accent, lerp(accent, Color.Black, 0.24f)),
 )
 
+/**
+ * Legibility scrim laid over a Rediscover collection card's full-bleed cover while its title is
+ * overlaid (ADR-0064). Nearly transparent through the upper card so the imagery stays vivid — a
+ * slight dim is all the label state adds there — then deepening toward the bottom edge where the
+ * white title sits, so large text clears contrast over any photo or gradient in either mode. The
+ * card component fades this in and out with the label itself: a card showing no text shows no
+ * scrim.
+ */
+val ReliveCoverLabelScrim: Brush = Brush.verticalGradient(
+    0.00f to Color.Black.copy(alpha = 0.08f),
+    0.45f to Color.Black.copy(alpha = 0.20f),
+    1.00f to Color.Black.copy(alpha = 0.60f),
+)
+
 internal fun contrastRatio(foreground: Color, background: Color): Float {
     val lighter = maxOf(relativeLuminance(foreground), relativeLuminance(background))
     val darker = minOf(relativeLuminance(foreground), relativeLuminance(background))

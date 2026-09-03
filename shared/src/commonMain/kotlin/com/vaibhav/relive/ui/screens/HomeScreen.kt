@@ -25,8 +25,11 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.ScrollableDefaults
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
@@ -34,13 +37,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.carousel.CarouselDefaults
 import androidx.compose.material3.carousel.CarouselState
-import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -52,9 +55,13 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.Lifecycle
 import com.vaibhav.relive.domain.id.IdGenerator
+import com.vaibhav.relive.domain.model.AllPhotosCollectionSummary
 import com.vaibhav.relive.domain.model.BehaviorPreferences
+import com.vaibhav.relive.domain.model.FavoritesCollectionSummary
+import com.vaibhav.relive.domain.model.FromYourPastMomentPreview
 import com.vaibhav.relive.domain.model.LocalCalendarDate
 import com.vaibhav.relive.domain.model.MomentId
+import com.vaibhav.relive.domain.model.OnThisDayMomentPreview
 import com.vaibhav.relive.domain.model.RediscoverQuery
 import com.vaibhav.relive.domain.model.TimelineWallpaper
 import com.vaibhav.relive.domain.repository.AppearanceRepository
@@ -68,12 +75,18 @@ import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.platform.share.IncomingSharePayload
 import com.vaibhav.relive.presentation.composer.TimelineComposerDraftStore
 import com.vaibhav.relive.presentation.date.RediscoverCalendar
-import com.vaibhav.relive.presentation.date.editorialDayMonth
 import com.vaibhav.relive.presentation.home.HOME_GREETING_SUBTITLE
 import com.vaibhav.relive.presentation.home.homeGreeting
 import com.vaibhav.relive.presentation.timeline.CurrentTimeline
+import com.vaibhav.relive.presentation.timeline.SystemCollectionCover
+import com.vaibhav.relive.ui.components.rediscover.REDISCOVER_CARD_ALL_PHOTOS
+import com.vaibhav.relive.ui.components.rediscover.REDISCOVER_CARD_FAVOURITES
+import com.vaibhav.relive.ui.components.rediscover.REDISCOVER_CARD_FROM_YOUR_PAST
+import com.vaibhav.relive.ui.components.rediscover.REDISCOVER_CARD_ON_THIS_DAY
 import com.vaibhav.relive.ui.components.rediscover.RediscoverCollectionCardModel
 import com.vaibhav.relive.ui.components.rediscover.RediscoverCollectionRow
+import com.vaibhav.relive.ui.components.rediscover.RediscoverRowHitTester
+import com.vaibhav.relive.ui.components.rediscover.resolvedRediscoverCollectionCover
 import com.vaibhav.relive.ui.components.timeline.LocalTimelineWallpaperPalette
 import com.vaibhav.relive.ui.components.timeline.TimelineWallpaperSurface
 import com.vaibhav.relive.ui.theme.ReliveTheme
@@ -96,13 +109,37 @@ import kotlinx.coroutines.withTimeoutOrNull
  * content that justified it comes back, and no amount of hoisting the list state alone can save it.
  *
  * Keeping the measured header height and an unclamped anchor out here is what lets the surface be
- * put back where it was, once it can hold that position again.
+ * put back where it was, once it can hold that position again. The Rediscover row has the same
+ * problem in miniature — its projections also rebuild from empty — so its carousel state, an
+ * unclamped item anchor, and the last-delivered projections live here too. Seeding the rebuilt
+ * collectors from those projections is what gives the very first frame the full card list, which
+ * the reverse container transform needs: without it the tapped card does not exist yet, and the
+ * returning screen has nothing to morph into (ADR-0065).
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Stable
 class HomeSurfaceState {
     var headerHeightPx: Int by mutableIntStateOf(0)
     var anchorIndex: Int by mutableIntStateOf(0)
     var anchorScrollOffset: Int by mutableIntStateOf(0)
+
+    /** Live card count backing [rediscoverCarousel]'s item lookup; Home keeps it current. */
+    var rediscoverCardCount: Int by mutableIntStateOf(0)
+
+    /** The carousel item the row was left on — the row's equivalent of the feed's anchor. */
+    var rediscoverAnchorItem: Int by mutableIntStateOf(0)
+
+    /**
+     * The Rediscover row's scroll state, hoisted with the rest so a rebuilt Home does not reset
+     * the row to its first card after a collection, Profile or another destination takes over.
+     */
+    val rediscoverCarousel: CarouselState = CarouselState(itemCount = { rediscoverCardCount })
+
+    /** The row's last-delivered projections, seeding a rebuilt Home's collectors. */
+    var lastFavoritesSummary: FavoritesCollectionSummary by mutableStateOf(FavoritesCollectionSummary(0, emptyList()))
+    var lastAllPhotosSummary: AllPhotosCollectionSummary by mutableStateOf(AllPhotosCollectionSummary(0, emptyList()))
+    var lastOnThisDayPreviews: List<OnThisDayMomentPreview> by mutableStateOf(emptyList())
+    var lastFromYourPastPreviews: List<FromYourPastMomentPreview> by mutableStateOf(emptyList())
 }
 
 @Composable
@@ -113,6 +150,13 @@ private const val HOME_RESTORE_TIMEOUT_MS = 2_000L
 
 /** How many pages a restore will wait through before settling for as deep as it got. */
 private const val HOME_RESTORE_PAGE_ATTEMPTS = 8
+
+/**
+ * How long the Rediscover row's card count must hold still before its anchor is re-seated. The
+ * transient rebuild emissions land within a frame or two of each other, so a quarter second of
+ * silence means the settled list is in.
+ */
+private const val HOME_ROW_COUNT_SETTLE_MS = 250L
 
 /**
  * The unified Home surface (ADR-0061): one vertically scrollable container holding the welcome
@@ -139,10 +183,21 @@ fun HomeScreen(
     listState: LazyListState,
     /** Hoisted with [listState]: together they are what Home is restored from. */
     surfaceState: HomeSurfaceState = rememberHomeSurfaceState(),
-    onOpenFavorites: (MomentId?) -> Unit,
-    onOpenOnThisDay: (MomentId, LocalCalendarDate) -> Unit,
-    onOpenFromYourPast: (MomentId?, RediscoverQuery) -> Unit,
-    onOpenAllPhotos: () -> Unit,
+    /**
+     * Every open callback carries the cover the tapped card was wearing, so the collection screen
+     * opens under the same image and the container transform between them is continuous
+     * (ADR-0065).
+     */
+    onOpenFavorites: (MomentId?, SystemCollectionCover) -> Unit,
+    onOpenOnThisDay: (MomentId?, LocalCalendarDate, SystemCollectionCover) -> Unit,
+    onOpenFromYourPast: (MomentId?, RediscoverQuery, SystemCollectionCover) -> Unit,
+    onOpenAllPhotos: (SystemCollectionCover) -> Unit,
+    /**
+     * Container-transform bounds for the Rediscover card being opened (ADR-0065). Supplied by the
+     * navigation host, which owns the shared-transition and animated-visibility scopes; the
+     * default leaves every card with no shared element.
+     */
+    rediscoverCardModifier: @Composable (RediscoverCollectionCardModel) -> Modifier = { Modifier },
     draftStore: TimelineComposerDraftStore? = null,
     /**
      * Incremented by `+ New`. Each new value expands the inline composer in place; a counter rather
@@ -232,11 +287,13 @@ fun HomeScreen(
     )
 
     // Rediscover row sources. Every one of these is a bounded projection; none of them reads the
-    // archive (ADR-0061).
+    // archive (ADR-0061). Each collector is seeded from the hoisted last-delivered value, so a
+    // rebuilt Home renders the full row on its first frame instead of watching the cards trickle
+    // back in — which is also what gives the reverse container transform its target (ADR-0065).
     val favorites by rediscoverRepository.observeFavoritesSummary()
-        .collectAsState(com.vaibhav.relive.domain.model.FavoritesCollectionSummary(0, emptyList()))
+        .collectAsState(surfaceState.lastFavoritesSummary)
     val allPhotos by rediscoverRepository.observeAllPhotosSummary()
-        .collectAsState(com.vaibhav.relive.domain.model.AllPhotosCollectionSummary(0, emptyList()))
+        .collectAsState(surfaceState.lastAllPhotosSummary)
 
     var today by remember(clock) { mutableStateOf(RediscoverCalendar.localDate(clock.now())) }
     LaunchedEffect(today) {
@@ -250,7 +307,7 @@ fun HomeScreen(
     val onThisDayPreviews by rediscoverRepository.observeOnThisDayPreviews(
         today = today,
         startOfToday = RediscoverCalendar.startOfDay(today),
-    ).collectAsState(emptyList())
+    ).collectAsState(surfaceState.lastOnThisDayPreviews)
 
     val fromYourPastQuery = remember(today, clock) {
         val now = clock.now()
@@ -262,57 +319,64 @@ fun HomeScreen(
         )
     }
     val fromYourPastPreviews by rediscoverRepository.observeFromYourPastPreviews(fromYourPastQuery)
-        .collectAsState(emptyList())
+        .collectAsState(surfaceState.lastFromYourPastPreviews)
+    SideEffect {
+        surfaceState.lastFavoritesSummary = favorites
+        surfaceState.lastAllPhotosSummary = allPhotos
+        surfaceState.lastOnThisDayPreviews = onThisDayPreviews
+        surfaceState.lastFromYourPastPreviews = fromYourPastPreviews
+    }
 
+    // Each card resolves its cover from the same inputs the card composable renders it from, so
+    // what travels to the opened collection is exactly the image on screen (ADR-0065). Every
+    // collection opens at its top: no card carries a selected moment.
     val cards = buildList {
         if (behaviorPreferences.showFavorites) {
+            val cover = resolvedRediscoverCollectionCover(favorites.previewAttachments, "collection-favourites")
             add(
                 RediscoverCollectionCardModel(
-                    key = "favourites",
+                    key = REDISCOVER_CARD_FAVOURITES,
                     title = "Favourites",
-                    subtitle = momentCountLabel(favorites.momentCount),
                     coverAttachments = favorites.previewAttachments,
                     coverSeed = "collection-favourites",
-                    onOpen = { onOpenFavorites(null) },
+                    onOpen = { onOpenFavorites(null, cover) },
                 ),
             )
         }
         // On This Day and From Your Past drop out of the row entirely when they have nothing to
         // show; the row closes up rather than reserving a gap.
         if (behaviorPreferences.showOnThisDay && onThisDayPreviews.isNotEmpty()) {
+            val cover = resolvedRediscoverCollectionCover(emptyList(), "collection-on-this-day")
             add(
                 RediscoverCollectionCardModel(
-                    key = "on-this-day",
+                    key = REDISCOVER_CARD_ON_THIS_DAY,
                     title = "On This Day",
-                    subtitle = today.editorialDayMonth(),
                     coverAttachments = emptyList(),
                     coverSeed = "collection-on-this-day",
-                    onOpen = {
-                        onThisDayPreviews.firstOrNull()?.let { onOpenOnThisDay(it.id, today) }
-                    },
+                    onOpen = { onOpenOnThisDay(null, today, cover) },
                 ),
             )
         }
         if (fromYourPastPreviews.isNotEmpty()) {
+            val cover = resolvedRediscoverCollectionCover(emptyList(), "collection-from-your-past")
             add(
                 RediscoverCollectionCardModel(
-                    key = "from-your-past",
+                    key = REDISCOVER_CARD_FROM_YOUR_PAST,
                     title = "From Your Past",
-                    subtitle = momentCountLabel(fromYourPastPreviews.size.toLong()),
                     coverAttachments = emptyList(),
                     coverSeed = "collection-from-your-past",
-                    onOpen = { onOpenFromYourPast(null, fromYourPastQuery) },
+                    onOpen = { onOpenFromYourPast(null, fromYourPastQuery, cover) },
                 ),
             )
         }
+        val allPhotosCover = resolvedRediscoverCollectionCover(allPhotos.previewAttachments, "collection-all-photos")
         add(
             RediscoverCollectionCardModel(
-                key = "all-photos",
+                key = REDISCOVER_CARD_ALL_PHOTOS,
                 title = "All Photos",
-                subtitle = momentCountLabel(allPhotos.momentCount),
                 coverAttachments = allPhotos.previewAttachments,
                 coverSeed = "collection-all-photos",
-                onOpen = onOpenAllPhotos,
+                onOpen = { onOpenAllPhotos(allPhotosCover) },
             ),
         )
     }
@@ -321,14 +385,55 @@ fun HomeScreen(
     // feed's transparent window is drawn over it and wins the hit test at rest (the topmost
     // pointer-input branch is chosen at pointer-down), so a horizontal drag on the row would die
     // in the window. The window instead proxies horizontal drags into this state, while vertical
-    // drags fall through to the feed's own scrolling as before.
-    val rediscoverCarouselState = rememberCarouselState(itemCount = { cards.size })
+    // drags fall through to the feed's own scrolling as before. The state itself is hoisted in
+    // [surfaceState] so the row holds its position across navigation; its item count is fed from
+    // here because the hoisted state outlives any one card list.
+    val rediscoverCarouselState = surfaceState.rediscoverCarousel
+    SideEffect { surfaceState.rediscoverCardCount = cards.size }
+    // The row is put back the way the feed is: the projections rebuild from empty on return, so
+    // over the first frames the card count climbs back up, and every step of that climb can shove
+    // the hoisted pager off its position. Wait until the row can hold the anchor and the count has
+    // stopped moving, seat the anchor once, and only then start recording — the transient frames
+    // are never mistaken for somewhere the person actually browsed to.
+    var isRowRestored by remember { mutableStateOf(false) }
+    LaunchedEffect(surfaceState) {
+        val anchor = surfaceState.rediscoverAnchorItem
+        if (anchor > 0) {
+            withTimeoutOrNull(HOME_RESTORE_TIMEOUT_MS) {
+                snapshotFlow { surfaceState.rediscoverCardCount }.first { it > anchor }
+            }
+            var settled = surfaceState.rediscoverCardCount
+            while (true) {
+                val next = withTimeoutOrNull(HOME_ROW_COUNT_SETTLE_MS) {
+                    snapshotFlow { surfaceState.rediscoverCardCount }.first { it != settled }
+                } ?: break
+                settled = next
+            }
+            // With the collectors seeded from the last-delivered projections the position is
+            // normally undisturbed; the seat is only for genuine drift, so the healthy path never
+            // jumps the row mid-transform.
+            val available = surfaceState.rediscoverCardCount
+            if (available > 0 && surfaceState.rediscoverCarousel.currentItem != anchor) {
+                surfaceState.rediscoverCarousel.scrollToItem(anchor.coerceAtMost(available - 1))
+            }
+        }
+        isRowRestored = true
+    }
+    LaunchedEffect(surfaceState) {
+        snapshotFlow { surfaceState.rediscoverCarousel.currentItem }.collect { item ->
+            if (isRowRestored) surfaceState.rediscoverAnchorItem = item
+        }
+    }
     val rediscoverCarouselFling = CarouselDefaults.singleAdvanceFlingBehavior(rediscoverCarouselState)
     val rediscoverDragReversed = ScrollableDefaults.reverseDirection(
         LocalLayoutDirection.current,
         Orientation.Horizontal,
         false,
     )
+    // The window owns taps over the row for the same hit-test reason it owns horizontal drags, so
+    // it forwards them here against the cards' registered visible bounds — without this, a tap on
+    // a card at rest dies in the window and the row only opens when the backdrop is expanded.
+    val rediscoverRowHitTester = remember { RediscoverRowHitTester() }
 
     TimelineScreen(
         momentRepository = momentRepository,
@@ -396,6 +501,8 @@ fun HomeScreen(
                 greeting = greeting,
                 cards = cards,
                 carouselState = rediscoverCarouselState,
+                hitTester = rediscoverRowHitTester,
+                cardContainerModifier = rediscoverCardModifier,
                 mediaStore = mediaStore,
                 scrolledIntoHeader = scrolledIntoHeader,
                 headerHeightPx = headerHeightPx,
@@ -416,13 +523,22 @@ fun HomeScreen(
             // drawn behind the list, so this reserves their space without scrolling them. The
             // feed is already inset by the floating strip, so window bottom and sheet top stay
             // the same line throughout. The window also owns the hit test over the backdrop, so
-            // it forwards horizontal drags to the Rediscover carousel; vertical drags pass to
-            // the list around it as always.
+            // it forwards horizontal drags to the Rediscover carousel and taps to the card under
+            // them; vertical drags pass to the list around it as always.
             item(key = "home-backdrop-window") {
+                var windowCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
                 Spacer(
                     Modifier
                         .fillMaxWidth()
                         .height(with(density) { headerHeightPx.toDp() })
+                        .onGloballyPositioned { windowCoordinates = it }
+                        .pointerInput(rediscoverRowHitTester) {
+                            detectTapGestures { offset ->
+                                windowCoordinates?.let { coordinates ->
+                                    rediscoverRowHitTester.openAt(coordinates.localToRoot(offset))
+                                }
+                            }
+                        }
                         .scrollable(
                             state = rediscoverCarouselState,
                             orientation = Orientation.Horizontal,
@@ -493,6 +609,8 @@ private fun HomeBackdrop(
     greeting: String,
     cards: List<RediscoverCollectionCardModel>,
     carouselState: CarouselState,
+    hitTester: RediscoverRowHitTester,
+    cardContainerModifier: @Composable (RediscoverCollectionCardModel) -> Modifier,
     mediaStore: MediaStore,
     scrolledIntoHeader: Int,
     headerHeightPx: Int,
@@ -563,6 +681,8 @@ private fun HomeBackdrop(
                         cards = cards,
                         mediaStore = mediaStore,
                         state = carouselState,
+                        hitTester = hitTester,
+                        cardContainerModifier = cardContainerModifier,
                     )
                     Spacer(Modifier.height(dims.spacing.xl))
                 }
@@ -612,9 +732,6 @@ private fun Modifier.floatingToolbarNestedScroll(
         onCollapse = onCollapse,
     )
 }
-
-private fun momentCountLabel(count: Long): String =
-    if (count == 1L) "1 moment" else "$count moments"
 
 @Composable
 private fun WelcomeBlock(greeting: String) {
