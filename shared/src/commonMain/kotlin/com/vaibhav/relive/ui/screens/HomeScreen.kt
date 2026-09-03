@@ -1,9 +1,6 @@
 package com.vaibhav.relive.ui.screens
 
-import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -11,16 +8,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -30,20 +24,14 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -80,10 +68,8 @@ import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.theme.canvasBrush
 import com.vaibhav.relive.ui.theme.timelineMomentForegroundColors
 import androidx.compose.ui.graphics.Color
-import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -172,15 +158,7 @@ fun HomeScreen(
     // list's own scroll position drives how far the sheet has covered it — one scroll container,
     // one scroll position (ADR-0061); only the layering changes.
     val headerHeightPx = surfaceState.headerHeightPx
-    val scrolledIntoHeader by remember(listState, surfaceState) {
-        derivedStateOf {
-            if (listState.firstVisibleItemIndex == 0) {
-                listState.firstVisibleItemScrollOffset
-            } else {
-                surfaceState.headerHeightPx
-            }
-        }
-    }
+    val scrolledIntoHeader by rememberScrolledIntoBackdrop(listState) { surfaceState.headerHeightPx }
 
     // Put the surface back before anything starts recording a new position, so the clamped-to-top
     // frames of a rebuild are never mistaken for somewhere the person actually scrolled to.
@@ -219,97 +197,20 @@ fun HomeScreen(
     }
     val isFocused = headerHeightPx > 0 && scrolledIntoHeader >= headerHeightPx
 
-    // Home has three resting places along one axis, and the sheet never stops between them:
-    //
-    //   expanded  the welcome block and Rediscover row own the whole viewport, All moments parked
-    //             below the bottom edge
-    //   resting   the welcome area on top, All moments starting below it
-    //   focused   All moments covering everything
-    //
-    // Only the middle-to-bottom stretch is list scrolling. Above `resting` the list is already at
-    // its top, so the leftover pull drives [expansionPx] instead: All moments is pushed off the
-    // bottom, and the next downward gesture slides it back up from that edge. There is still one
-    // scroll container and one scroll position (ADR-0061); expansion is a layer offset on top.
+    // Home is the reference implementation of the three-position sliding backdrop described in
+    // [BackdropExpansionState]: the welcome block and Rediscover row are the backdrop, All moments
+    // is the sheet riding over them (ADR-0061). Custom timeline detail runs the same mechanism over
+    // its cover photo (ADR-0062).
     val motion = ReliveTheme.motion
-    var expansionPx by remember { mutableFloatStateOf(0f) }
-    var viewportHeightPx by remember { mutableIntStateOf(0) }
-    val maxExpansionPx = (viewportHeightPx - headerHeightPx).coerceAtLeast(0).toFloat()
-    LaunchedEffect(maxExpansionPx) {
-        if (expansionPx > maxExpansionPx) expansionPx = maxExpansionPx
-    }
     val settleDurationMillis = motion.durations.standardMillis
     val settleEasing = motion.easings.standard
-    val expansionConnection = remember(maxExpansionPx, settleDurationMillis, settleEasing) {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                // Parking All moments again comes before the feed moves at all, so one continuous
-                // downward gesture closes the welcome block and then scrolls the timeline.
-                if (available.y >= 0f || expansionPx <= 0f) return Offset.Zero
-                val consumed = min(-available.y, expansionPx)
-                expansionPx -= consumed
-                return Offset(0f, -consumed)
-            }
-
-            override fun onPostScroll(
-                consumed: Offset,
-                available: Offset,
-                source: NestedScrollSource,
-            ): Offset {
-                // Only reached once the list itself has nothing left to give at the top, which is
-                // exactly the "scrolling more upward" this state answers.
-                if (source != NestedScrollSource.UserInput || available.y <= 0f) return Offset.Zero
-                val applied = min(available.y, maxExpansionPx - expansionPx)
-                if (applied <= 0f) return Offset.Zero
-                expansionPx += applied
-                return Offset(0f, applied)
-            }
-
-            override suspend fun onPreFling(available: Velocity): Velocity {
-                if (expansionPx <= 0f || maxExpansionPx <= 0f) return Velocity.Zero
-                val target = when {
-                    available.y > SETTLE_VELOCITY -> maxExpansionPx
-                    available.y < -SETTLE_VELOCITY -> 0f
-                    expansionPx >= maxExpansionPx / 2f -> maxExpansionPx
-                    else -> 0f
-                }
-                animate(
-                    initialValue = expansionPx,
-                    targetValue = target,
-                    animationSpec = tween(settleDurationMillis, easing = settleEasing),
-                ) { value, _ -> expansionPx = value }
-                // Consume the fling: the gesture ended on this layer, not in the feed.
-                return available
-            }
-        }
-    }
-
-    // Below `resting` the same rule applies to the list's own scroll: whichever direction the
-    // gesture was travelling when it ended wins, so the sheet never stops half over the welcome.
-    var settleTowardFocused by remember { mutableStateOf(true) }
-    LaunchedEffect(listState) {
-        var previous = scrolledIntoHeader
-        snapshotFlow { scrolledIntoHeader }.collect { current ->
-            if (current != previous) settleTowardFocused = current > previous
-            previous = current
-        }
-    }
-    LaunchedEffect(listState, headerHeightPx) {
-        if (headerHeightPx <= 0) return@LaunchedEffect
-        snapshotFlow { listState.isScrollInProgress }
-            .distinctUntilChanged()
-            .collect { scrolling ->
-                if (scrolling || listState.firstVisibleItemIndex != 0) return@collect
-                val offset = listState.firstVisibleItemScrollOffset
-                if (offset <= 0 || offset >= headerHeightPx) return@collect
-                listState.animateScrollBy(
-                    value = ((if (settleTowardFocused) headerHeightPx else 0) - offset).toFloat(),
-                    animationSpec = tween(
-                        durationMillis = motion.durations.standardMillis,
-                        easing = motion.easings.standard,
-                    ),
-                )
-            }
-    }
+    val expansion = rememberBackdropExpansionState()
+    val expansionConnection = rememberBackdropExpansionConnection(expansion)
+    BackdropSettleEffect(
+        listState = listState,
+        backdropHeightPx = headerHeightPx,
+        scrolledIntoBackdrop = { scrolledIntoHeader },
+    )
 
     // Rediscover row sources. Every one of these is a bounded projection; none of them reads the
     // archive (ADR-0061).
@@ -418,12 +319,8 @@ fun HomeScreen(
         // Opening the composer seats it at the top of the feed, which is only meaningful once
         // All moments is back on screen.
         onExpandingComposer = {
-            if (expansionPx > 0f) {
-                animate(
-                    initialValue = expansionPx,
-                    targetValue = 0f,
-                    animationSpec = tween(settleDurationMillis, easing = settleEasing),
-                ) { value, _ -> expansionPx = value }
+            if (expansion.expansionPx > 0f) {
+                animateExpansionTo(expansion, 0f, settleDurationMillis, settleEasing)
             }
         },
         expandComposerRequest = expandComposerRequest,
@@ -456,7 +353,7 @@ fun HomeScreen(
             .nestedScroll(expansionConnection)
             // The feed rides with the sheet it sits on, so the timeline leaves and re-enters by
             // the bottom edge as one surface instead of standing still while its ground moves.
-            .graphicsLayer { translationY = expansionPx },
+            .graphicsLayer { translationY = expansion.expansionPx },
         homeBackdrop = {
             HomeBackdrop(
                 greeting = greeting,
@@ -464,10 +361,16 @@ fun HomeScreen(
                 mediaStore = mediaStore,
                 scrolledIntoHeader = scrolledIntoHeader,
                 headerHeightPx = headerHeightPx,
-                expansionPx = expansionPx,
+                expansionPx = expansion.expansionPx,
                 wallpaper = wallpaper,
-                onHeaderMeasured = { surfaceState.headerHeightPx = it },
-                onViewportMeasured = { viewportHeightPx = it },
+                // The measured height is hoisted so a rebuilt Home can reserve the backdrop's
+                // space immediately, and mirrored into the expansion state, which needs it to know
+                // how far the sheet may travel.
+                onHeaderMeasured = {
+                    surfaceState.headerHeightPx = it
+                    expansion.backdropHeightPx = it
+                },
+                onViewportMeasured = { expansion.viewportHeightPx = it },
             )
         },
         homeHeader = {
@@ -497,21 +400,11 @@ fun HomeScreen(
 private const val HOME_HEADER_ITEM_COUNT = 2
 
 /**
- * How much slower the welcome area travels than the sheet riding over it. Zero would pin it
- * outright, which reads as a static wallpaper; a small amount keeps it feeling like a layer of the
- * same surface that the timeline is covering.
- */
-private const val HOME_BACKDROP_PARALLAX = 0.35f
-
-/**
  * How far the welcome content drifts down into the room the expanded state opens up. A fraction,
  * not the whole distance: the block should look like it is settling into the space rather than
  * being dragged along by the sheet.
  */
 private const val HOME_WELCOME_EXPAND_DRIFT = 0.12f
-
-/** Fling speed, in pixels per second, past which the gesture's direction decides where it lands. */
-private const val SETTLE_VELOCITY = 320f
 
 /**
  * The welcome block and Rediscover row, drawn behind the scrolling list, plus the opaque surface
@@ -567,7 +460,7 @@ private fun HomeBackdrop(
                 .graphicsLayer {
                     // Trails the sheet instead of matching it, which is what makes the timeline
                     // read as passing in front rather than pushing.
-                    translationY = -scrolledIntoHeader * HOME_BACKDROP_PARALLAX +
+                    translationY = -scrolledIntoHeader * BACKDROP_PARALLAX +
                         expansionPx * HOME_WELCOME_EXPAND_DRIFT
                     alpha = 1f - covered * 0.4f
                 },
@@ -609,22 +502,6 @@ private fun HomeBackdrop(
                 modifier = Modifier.fillMaxSize(),
             ) {}
         }
-    }
-}
-
-/**
- * Lets a child ignore an ancestor's horizontal padding so the sheet's edge and shadow reach the
- * screen edges. Without it the sheet reads as a floating card rather than a surface being covered.
- */
-private fun Modifier.bleedHorizontal(padding: Dp): Modifier = layout { measurable, constraints ->
-    val extra = padding.roundToPx() * 2
-    val widened = constraints.copy(
-        minWidth = constraints.maxWidth + extra,
-        maxWidth = constraints.maxWidth + extra,
-    )
-    val placeable = measurable.measure(widened)
-    layout(constraints.maxWidth, placeable.height) {
-        placeable.place(-padding.roundToPx(), 0)
     }
 }
 

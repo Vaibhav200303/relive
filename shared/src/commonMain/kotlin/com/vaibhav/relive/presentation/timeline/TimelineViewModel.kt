@@ -244,11 +244,14 @@ class TimelineViewModel(
         momentsJob?.cancel()
         momentsJob = scope.launch {
             timeline.momentsFlow().collect { moments ->
-                // The repository reads newest-first. The All moments feed on Home keeps that order
-                // (ADR-0061) and From Your Past keeps its curated order; every other surface is
+                // The repository reads newest-first. Every sliding-backdrop surface keeps that
+                // order — the All moments feed on Home (ADR-0061) and custom timeline detail
+                // (ADR-0062), both of which put the composer at the head of the feed — and From
+                // Your Past keeps its curated order. The read-only system collections are still
                 // presented oldest-first.
-                val keepsRepositoryOrder =
-                    timeline is CurrentTimeline.FromYourPast || timeline is CurrentTimeline.All
+                val keepsRepositoryOrder = timeline is CurrentTimeline.FromYourPast ||
+                    timeline is CurrentTimeline.All ||
+                    timeline is CurrentTimeline.Custom
                 val orderedMoments = if (keepsRepositoryOrder) moments else moments.asReversed()
                 val presentation = orderedMoments.map { it.toPresentation() }
                 // A full window means the archive may hold older moments still to load.

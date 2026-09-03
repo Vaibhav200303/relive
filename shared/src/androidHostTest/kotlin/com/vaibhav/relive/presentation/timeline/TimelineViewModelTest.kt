@@ -163,7 +163,7 @@ class TimelineViewModelTest {
     }
 
     @Test
-    fun customTimelinePresentationIsOldestFirst() = runTest {
+    fun customTimelinePresentationIsNewestFirst() = runTest {
         val travelId = TimelineId("travel")
         val moments = FakeMomentRepository(
             initialByTimeline = mapOf(
@@ -179,8 +179,9 @@ class TimelineViewModelTest {
         vm.selectTimeline(CurrentTimeline.Custom(travelId))
 
         assertEquals(
-            listOf("oldest", "middle", "newest"),
+            listOf("newest", "middle", "oldest"),
             loadedMoments(vm).map { it.id.value },
+            "custom timeline detail keeps the repository's newest-first order (ADR-0062)",
         )
     }
 
@@ -476,7 +477,7 @@ class TimelineViewModelTest {
     }
 
     @Test
-    fun customTimelineStaysOldestFirst() = runTest {
+    fun customTimelineStaysNewestFirst() = runTest {
         val familyId = TimelineId("family")
         val moments = FakeMomentRepository(
             initialByTimeline = mapOf(
@@ -487,9 +488,9 @@ class TimelineViewModelTest {
         vm.selectTimeline(CurrentTimeline.Custom(familyId))
 
         assertEquals(
-            listOf("older", "newer"),
+            listOf("newer", "older"),
             loadedMoments(vm).map { it.id.value },
-            "custom timeline detail keeps its existing oldest-first presentation",
+            "custom timeline detail is newest-first, so its composer sits at the head of the feed",
         )
     }
 

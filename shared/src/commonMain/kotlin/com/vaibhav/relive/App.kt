@@ -46,6 +46,7 @@ import com.vaibhav.relive.ui.theme.reliveForwardBackward
 import com.vaibhav.relive.ui.theme.spec
 import com.vaibhav.relive.ui.theme.toReliveThemeId
 import com.vaibhav.relive.domain.model.Timeline
+import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.RediscoverQuery
 import com.vaibhav.relive.presentation.timeline.CurrentTimeline
@@ -60,6 +61,7 @@ import com.vaibhav.relive.presentation.profile.MediaStorageViewModel
 import com.vaibhav.relive.ui.components.navigation.ReliveFloatingBottomControls
 import com.vaibhav.relive.ui.components.navigation.ReliveTopLevelDestination
 import com.vaibhav.relive.ui.components.composer.quickCaptureSharedBounds
+import com.vaibhav.relive.ui.components.timeline.timelineCardSharedBounds
 import com.vaibhav.relive.platform.media.ActivePlayback
 import com.vaibhav.relive.ui.screens.ProfileScreen
 import com.vaibhav.relive.ui.screens.PreferencesScreen
@@ -101,6 +103,8 @@ private sealed interface TimelinesDestination {
         val openComposerOnEnter: Boolean = false,
         val incomingShare: IncomingSharePayload? = null,
         val cameFromQuickCapture: Boolean = false,
+        /** Entered by tapping this timeline's card on Timeline Home, so the two morph (ADR-0063). */
+        val cameFromCard: Boolean = false,
     ) : TimelinesDestination
     data class TimelineTheme(val returnTo: TimelineDetail) : TimelinesDestination
 }
@@ -211,6 +215,10 @@ fun App(
         var rediscoverDestination by remember { mutableStateOf<RediscoverDestination>(RediscoverDestination.Root) }
         var profileNavigation by remember { mutableStateOf(ProfileNavigationState()) }
         var navigationToolbarExpanded by remember { mutableStateOf(true) }
+        // The card that the timeline detail screen morphs out of and back into (ADR-0063). Held
+        // past the forward navigation so the reverse transform has a source to return to; a detail
+        // reached any other way carries no `cameFromCard`, so a stale id simply matches nothing.
+        var cardTransformTimelineId by remember { mutableStateOf<TimelineId?>(null) }
         var quickCaptureTransformActive by remember { mutableStateOf(false) }
         /** Bumped by `+ New` while on Home; the Home surface expands its composer in place. */
         var homeComposerRequest by remember { mutableIntStateOf(0) }
@@ -407,13 +415,22 @@ fun App(
                                             targetState is TimelinesDestination.TimelineDetail) ||
                                             (initialState is TimelinesDestination.TimelineDetail &&
                                                 targetState is TimelinesDestination.TimelineHome))
+                                    val from = initialState
+                                    val to = targetState
+                                    val isCardTransform =
+                                        (from is TimelinesDestination.TimelineHome &&
+                                            to is TimelinesDestination.TimelineDetail &&
+                                            to.cameFromCard) ||
+                                            (from is TimelinesDestination.TimelineDetail &&
+                                                from.cameFromCard &&
+                                                to is TimelinesDestination.TimelineHome)
                                     if (isThemeNavigation) {
                                         reliveForwardBackward(
                                             motion = motion,
                                             reduceMotion = reduceMotion,
                                             movingForward = targetState is TimelinesDestination.TimelineTheme,
                                         )
-                                    } else if (isQuickCaptureSwap && !reduceMotion) {
+                                    } else if ((isQuickCaptureSwap || isCardTransform) && !reduceMotion) {
                                         val spec = tween<Float>(
                                             durationMillis = motion.durations.long2,
                                             easing = motion.easings.emphasized,
@@ -429,16 +446,24 @@ fun App(
                                 when (val active = destination) {
             is TimelinesDestination.TimelineDetail -> {
                 val transformActive = quickCaptureTransformActive && active.cameFromQuickCapture
-                val containerModifier = if (transformActive) {
-                    Modifier.fillMaxSize().quickCaptureSharedBounds(
+                val cardTransformId = (active.scope as? CurrentTimeline.Custom)
+                    ?.id
+                    ?.takeIf { active.cameFromCard }
+                val containerModifier = when {
+                    transformActive -> Modifier.fillMaxSize().quickCaptureSharedBounds(
                         sharedScope = sharedTransitionScope,
                         animatedScope = animatedScope,
                         reduceMotion = reduceMotion,
                     )
-                } else {
-                    Modifier.fillMaxSize()
+                    cardTransformId != null -> Modifier.fillMaxSize().timelineCardSharedBounds(
+                        timelineId = cardTransformId,
+                        sharedScope = sharedTransitionScope,
+                        animatedScope = animatedScope,
+                        reduceMotion = reduceMotion,
+                    )
+                    else -> Modifier.fillMaxSize()
                 }
-                val innerModifier = if (transformActive && !reduceMotion) {
+                val innerModifier = if ((transformActive || cardTransformId != null) && !reduceMotion) {
                     with(sharedTransitionScope) {
                         Modifier.fillMaxSize().skipToLookaheadSize()
                     }
@@ -542,13 +567,30 @@ fun App(
                             mediaProcessor = container.mediaProcessor,
                             listState = homeListState,
                             onOpenTimeline = { destination ->
+                                val timeline = destination.timeline
+                                // The tapped card is what the detail screen grows out of, so the
+                                // id that keys the two halves is recorded before the route changes.
+                                cardTransformTimelineId = (timeline as? Timeline.Custom)?.id
                                 timelinesDestination = TimelinesDestination.TimelineDetail(
-                                    scope = when (val timeline = destination.timeline) {
+                                    scope = when (timeline) {
                                         Timeline.All -> CurrentTimeline.All
                                         is Timeline.Custom -> CurrentTimeline.Custom(timeline.id)
                                     },
                                     openComposerOnEnter = destination.openComposerOnEnter,
+                                    cameFromCard = timeline is Timeline.Custom,
                                 )
+                            },
+                            cardContainerModifier = { timeline ->
+                                if (cardTransformTimelineId == timeline.id) {
+                                    Modifier.timelineCardSharedBounds(
+                                        timelineId = timeline.id,
+                                        sharedScope = sharedTransitionScope,
+                                        animatedScope = animatedScope,
+                                        reduceMotion = reduceMotion,
+                                    )
+                                } else {
+                                    Modifier
+                                }
                             },
                             onOpenProfile = { profileNavigation = profileNavigation.openProfile() },
                             profilePhoto = profileSettings.profilePhoto,

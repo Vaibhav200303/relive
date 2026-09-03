@@ -72,7 +72,7 @@ The Android notification shade is an **interaction reference only**, for the sin
 
 ### Destinations
 
-There are three top-level destinations: **Home**, **Timelines**, and **Search**. Home is the primary landing destination and the app's default. Timelines is unchanged from before this redesign — Timeline Home remains its root, listing custom timelines and opening their existing scoped detail screens. Search is unchanged. They live in a floating bottom-left navigation toolbar: it shows the active destination icon while collapsed and expands horizontally to reveal its icon actions in Home / Timelines / Search order, collapsing to the active destination icon on scroll and expanding again on reverse scroll. There is **no Rediscover destination icon**, because Rediscover is a row inside Home. Custom timeline detail, the read-only Rediscover collections, and Profile are auxiliary surfaces layered above their destination, never roots.
+There are three top-level destinations: **Home**, **Timelines**, and **Search**. Home is the primary landing destination and the app's default. Timelines keeps Timeline Home as its root, listing custom timelines and opening their scoped detail screens; those detail screens are sliding-cover surfaces (§3.2). Search is unchanged. They live in a floating bottom-left navigation toolbar: it shows the active destination icon while collapsed and expands horizontally to reveal its icon actions in Home / Timelines / Search order, collapsing to the active destination icon on scroll and expanding again on reverse scroll. There is **no Rediscover destination icon**, because Rediscover is a row inside Home. Custom timeline detail, the read-only Rediscover collections, and Profile are auxiliary surfaces layered above their destination, never roots.
 
 ### Global quick capture
 
@@ -150,7 +150,7 @@ Visual direction:
 
 The interface must **encourage continuous scrolling**. It must **not** feel like a database or a list of records.
 
-When a user manually moves toward older Moments, a bottom-centered return-to-newest arrow appears. On Home it is scoped to **focused All moments only**: because that feed is newest-first, movement toward older Moments is downward scroll, and the control returns to the newest end at the head of the feed. It is hidden whenever the Rediscover row is visible, so it never competes with the upward scroll that restores the Home top state, and it never restores that state itself. In custom timeline detail it behaves as before. It remains available until the newest end is reached. Selecting it visibly and rapidly scrolls to that newest end; touching the scrolling timeline cancels the motion at the current Moment without activating content beneath that touch. The control is absent on empty and non-scrollable timelines.
+When a user manually moves toward older Moments, a bottom-centered return-to-newest arrow appears. On Home it is scoped to **focused All moments only**: because that feed is newest-first, movement toward older Moments is downward scroll, and the control returns to the newest end at the head of the feed. It is hidden whenever the Rediscover row is visible, so it never competes with the upward scroll that restores the Home top state, and it never restores that state itself. Custom timeline detail is a sliding-cover surface with the same newest-first feed (ADR-0062), so it carries the same upward-pointing control under the same rule, returning to the head of its feed without pulling the cover back into view. The read-only system collections keep the downward-pointing return-to-newest control. It remains available until the newest end is reached. Selecting it visibly and rapidly scrolls to that newest end; touching the scrolling timeline cancels the motion at the current Moment without activating content beneath that touch. The control is absent on empty and non-scrollable timelines.
 
 ### 3.1 Date navigation
 
@@ -161,6 +161,24 @@ Timeline Home, the root of the Timelines destination, has a separate capsule for
 Concrete visual tokens (colors, typography, dimensions) are defined in [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) and must match the reference.
 
 ---
+
+### 3.2 Custom timeline detail
+
+Opening a custom timeline is a **container transform** from the card that was tapped: the card's bounds morph into the screen's, which is honest here because the card's cover photo is the screen's cover photo. Back reverses it. What it opens is a **sliding-cover surface**: one scroll container in which the timeline's cover photo is a backdrop and the feed of Moments is a sheet riding over it. It is the same motion as the Home surface (§2), with the cover standing where Home's welcome block stands.
+
+It has three resting places along one axis, and never comes to rest between them:
+
+- **expanded** — the cover fills the whole screen and the feed is parked below the bottom edge;
+- **resting** — the cover at its natural height with the feed starting below it; this is where the screen opens;
+- **focused** — the feed covering the cover, coming to rest just below the pinned controls rather than at the top of the screen, so a strip of cover stays visible behind them.
+
+Scrolling down from `resting` raises the sheet over the cover; scrolling up past `resting` pushes the sheet off the bottom edge while the cover grows into the room this opens, until it fills the screen. Scrolling down from there slides the feed back up from that edge. The cover trails the sheet slightly and dims as it is covered, so the timeline reads as passing in front of the photo rather than pushing it. Whichever direction the gesture was travelling when it ended decides where the sheet lands. Moving between these positions is a scroll, not a navigation: it produces no route change and no back-stack entry.
+
+The feed is **newest-first with the inline composer at its head** (§6). The surface opens at the top of its cover and performs no scroll of its own — not on entry, and not after Keep Moment, so a saved Moment appears where the composer stood. Manual upward movement reveals the return-to-top control described in §3; calendar navigation and opening at an explicitly selected Moment remain the only app-initiated scrolls.
+
+Back, timeline theme and calendar are **pinned above the sheet**: the feed slides underneath them on its way up and comes to rest clear of them, so they are never covered, and they stay in place through all three positions. The moment-selection bar (§8) takes the same pinned slot, so a long-press shifts nothing. The sheet carries no heading — once the cover is covered, nothing on screen names the timeline, which is the intended reading state; the name is on the cover, one scroll away. Tapping the cover changes the cover photo (§11) wherever it is visible.
+
+A custom timeline carries **no floating navigation toolbar and no `+ New`** (§2); its rail `+` is its only creation affordance. The logical All timeline opened as a detail screen keeps its generated collage cover and its own oldest-first order, and is not a sliding-cover surface.
 
 ## 4. Moment structure
 
@@ -343,7 +361,7 @@ Timeline collage → Moment media gallery → tap item → Full-screen viewer
 
 Creation happens **inline inside the current timeline**. The composer sits at the chronological end of the timeline, after the newest moment.
 
-On the Home surface the All moments feed is newest-first, so that chronological end renders at the **head** of the feed, directly beneath the `All moments` heading: the composer's rail terminates at the center of its plus marker and **no rail continues above it**. The composer is therefore always inside the loaded newest window, and `+ New` reaches it with a short scroll rather than by paging through history. In custom timeline detail the composer keeps its existing position at the end of the timeline, where its rail terminates at the center of the final plus marker and no rail continues below it.
+On the Home surface the All moments feed is newest-first, so that chronological end renders at the **head** of the feed, directly beneath the `All moments` heading: the composer's rail terminates at the center of its plus marker and **no rail continues above it**. The composer is therefore always inside the loaded newest window, and `+ New` reaches it with a short scroll rather than by paging through history. Custom timeline detail is newest-first for the same reason (ADR-0062), so its composer likewise renders at the head of its feed, as the first thing on the sheet that rides over the cover photo; its rail terminates at the center of its plus marker and no rail continues above it. In the read-only system collections the composer is absent, those surfaces being oldest-first and unwritable.
 
 ### 6.1 Composer collapse/expand behavior
 
