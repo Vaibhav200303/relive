@@ -48,6 +48,20 @@ fun EmptyCustomTimelinesPlaceholder(modifier: Modifier = Modifier) {
     )
 }
 
+/**
+ * The external-share picker's empty state. It says the same thing as
+ * [EmptyCustomTimelinesPlaceholder] without pointing at a `+` — that surface deliberately carries
+ * no creation control, so the timeline has to be made in the app first.
+ */
+@Composable
+fun EmptyShareTimelinesPlaceholder(modifier: Modifier = Modifier) {
+    EditorialEmptyTimelineState(
+        title = "A new chapter can begin whenever you are ready.",
+        message = "Create a timeline in Relive first, then share this here.",
+        modifier = modifier,
+    )
+}
+
 @Composable
 private fun EditorialEmptyTimelineState(
     title: String,

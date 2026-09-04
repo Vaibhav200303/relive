@@ -25,12 +25,15 @@ data class TimelineHomeState(
             .filter { it.timeline is Timeline.Custom }
 
     val visibleCustomSummaries: List<TimelineHomeSummary>
-        get() {
-            val normalizedQuery = query.trim()
-            return if (normalizedQuery.isEmpty()) {
-                customSummaries
-            } else {
-                customSummaries.filter { it.name.contains(normalizedQuery, ignoreCase = true) }
-            }
-        }
+        get() = customSummaries.matchingTimelineQuery(query)
+}
+
+/**
+ * The name filter Timeline Home's search field applies. Shared with the external-share timeline
+ * picker, which runs the same field over its own query so both surfaces narrow identically.
+ */
+fun List<TimelineHomeSummary>.matchingTimelineQuery(query: String): List<TimelineHomeSummary> {
+    val normalizedQuery = query.trim()
+    return if (normalizedQuery.isEmpty()) this
+    else filter { it.name.contains(normalizedQuery, ignoreCase = true) }
 }

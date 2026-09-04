@@ -97,14 +97,6 @@ data class ReliveTimelineHomeDimensions(
 )
 
 @Immutable
-data class ReliveShareTimelinePickerDimensions(
-    /** The incoming share's hero preview band (single tile or media carousel). */
-    val heroHeight: Dp = 220.dp,
-    /** Minimum height of the text-only hero card, so a one-line note still reads as a card. */
-    val heroTextMinHeight: Dp = 120.dp,
-)
-
-@Immutable
 data class ReliveRediscoverDimensions(
     val cardOuterRadius: Dp = 20.dp,
     /** Resting elevation for a Rediscover card, lifting it off the backdrop like a print. */
@@ -208,7 +200,6 @@ data class ReliveDimensions(
     val stroke: ReliveStrokes = ReliveStrokes(),
     val timeline: ReliveTimelineDimensions = ReliveTimelineDimensions(),
     val timelineHome: ReliveTimelineHomeDimensions = ReliveTimelineHomeDimensions(),
-    val shareTimelinePicker: ReliveShareTimelinePickerDimensions = ReliveShareTimelinePickerDimensions(),
     val rediscover: ReliveRediscoverDimensions = ReliveRediscoverDimensions(),
     val profile: ReliveProfileDimensions = ReliveProfileDimensions(),
     val search: ReliveSearchDimensions = ReliveSearchDimensions(),

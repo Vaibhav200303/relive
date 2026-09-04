@@ -35,6 +35,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.vaibhav.relive.di.ReliveAppContainer
 import com.vaibhav.relive.ui.screens.TimelineScreen
 import com.vaibhav.relive.ui.screens.TimelineHomeScreen
+import com.vaibhav.relive.presentation.timelinehome.TimelineHomeContent
 import com.vaibhav.relive.ui.screens.AppLockScreen
 import com.vaibhav.relive.ui.screens.HomeScreen
 import com.vaibhav.relive.ui.screens.rememberHomeSurfaceState
@@ -299,6 +300,17 @@ fun App(
         var homeCaptureOverlayActive by remember { mutableStateOf(false) }
         var quickCaptureTransformEpoch by remember { mutableIntStateOf(0) }
         val quickCaptureTransformDuration = ReliveTheme.motion.durations.long2
+        // True while a timeline chosen on the external-share picker is morphing into its detail
+        // screen (ADR-0069). Held for exactly the transform's duration, like the quick-capture flag
+        // above, so afterwards the detail's Back morphs back to its Timelines card instead.
+        var shareCardTransformActive by remember { mutableStateOf(false) }
+        var shareCardTransformEpoch by remember { mutableIntStateOf(0) }
+        LaunchedEffect(shareCardTransformEpoch) {
+            if (shareCardTransformActive) {
+                kotlinx.coroutines.delay(quickCaptureTransformDuration.toLong())
+                shareCardTransformActive = false
+            }
+        }
         var selectedIncomingShareId by remember { mutableStateOf<String?>(null) }
         LaunchedEffect(incomingShareState) {
             val ready = incomingShareState as? IncomingShareState.Ready
@@ -421,44 +433,72 @@ fun App(
             AnimatedContent(
                 targetState = showIncomingSharePicker,
                 transitionSpec = {
-                    reliveSequentialSlideFade(
-                        motion = motion,
-                        reduceMotion = reduceMotion,
-                        enterFromRight = targetState,
-                    )
+                    // Choosing a timeline on the picker is the same container transform as
+                    // choosing one on Timelines (ADR-0069), so the route swap cross-fades over the
+                    // morph exactly as the Timelines to detail swap does. Cancelling the share, and
+                    // the picker's own arrival, keep the short slide/fade.
+                    if (shareCardTransformActive && !targetState && !reduceMotion) {
+                        val spec = tween<Float>(
+                            durationMillis = motion.durations.long2,
+                            easing = motion.easings.emphasized,
+                        )
+                        fadeIn(animationSpec = spec) togetherWith fadeOut(animationSpec = spec)
+                    } else {
+                        reliveSequentialSlideFade(
+                            motion = motion,
+                            reduceMotion = reduceMotion,
+                            enterFromRight = targetState,
+                        )
+                    }
                 },
                 label = "incoming share route",
             ) { showingPicker ->
+                // The picker and the detail screen it opens are the two states of this content, so
+                // this is the scope that keys their shared container (ADR-0069) — the same
+                // arrangement the Timelines/detail transform already runs on.
+                val shareRouteScope = this
                 if (showingPicker) {
-                    val summaries = (homeState.content as? com.vaibhav.relive.presentation.timelinehome.TimelineHomeContent.Loaded)
-                        ?.summaries
-                        .orEmpty()
                     ShareTimelinePickerScreen(
                         shareState = incomingShareState,
-                        summaries = summaries,
+                        summaries = homeState.customSummaries,
+                        timelinesLoading = homeState.content == TimelineHomeContent.Loading,
                         mediaStore = container.mediaStore,
                         hasDraft = { timeline -> composerDraftStore.restore(timeline)?.hasUserDraft == true },
-                        onSelect = { timeline ->
-                            (incomingShareState as? IncomingShareState.Ready)?.let { ready ->
-                                selectedIncomingShareId = ready.payload.requestId
-                                ActivePlayback.stopActive()
-                                profileNavigation = ProfileNavigationState()
-                                topLevel = ReliveTopLevelDestination.Timelines
-                                timelinesDestination = TimelinesDestination.TimelineDetail(
-                                    scope = when (timeline) {
-                                        Timeline.All -> CurrentTimeline.All
-                                        is Timeline.Custom -> CurrentTimeline.Custom(timeline.id)
-                                    },
-                                    openComposerOnEnter = true,
-                                    incomingShare = ready.payload,
-                                )
-                            }
+                        onSelect = { timeline, payload ->
+                            selectedIncomingShareId = payload.requestId
+                            ActivePlayback.stopActive()
+                            profileNavigation = ProfileNavigationState()
+                            topLevel = ReliveTopLevelDestination.Timelines
+                            // The tapped card is what the timeline grows out of, so the id that
+                            // keys the two halves is recorded before the route changes.
+                            cardTransformTimelineId = timeline.id
+                            shareCardTransformActive = true
+                            shareCardTransformEpoch += 1
+                            timelinesDestination = TimelinesDestination.TimelineDetail(
+                                scope = CurrentTimeline.Custom(timeline.id),
+                                openComposerOnEnter = true,
+                                incomingShare = payload,
+                                cameFromCard = true,
+                                seedTimeline = timeline,
+                            )
                         },
                         onCancel = {
                             container.incomingShareGateway.cancel()
                             onIncomingShareCancelled?.invoke()
                         },
                         onRetry = container.incomingShareGateway::retry,
+                        cardContainerModifier = { timeline ->
+                            if (cardTransformTimelineId == timeline.id) {
+                                Modifier.timelineCardSharedBounds(
+                                    timelineId = timeline.id,
+                                    sharedScope = sharedTransitionScope,
+                                    animatedScope = shareRouteScope,
+                                    reduceMotion = reduceMotion,
+                                )
+                            } else {
+                                Modifier
+                            }
+                        },
                     )
                 } else {
                     AnimatedContent(
@@ -588,7 +628,10 @@ fun App(
                     cardTransformId != null -> Modifier.fillMaxSize().timelineCardSharedBounds(
                         timelineId = cardTransformId,
                         sharedScope = sharedTransitionScope,
-                        animatedScope = animatedScope,
+                        // Arriving from the share picker, the card being morphed out of belongs to
+                        // the share route, not to this one (ADR-0069); once that swap has run its
+                        // course the detail rejoins the Timelines route it returns to.
+                        animatedScope = if (shareCardTransformActive) shareRouteScope else animatedScope,
                         reduceMotion = reduceMotion,
                     )
                     else -> Modifier.fillMaxSize()

@@ -470,8 +470,9 @@ private fun TimelineHomeHeader(
     }
 }
 
+/** Shared with the external-share timeline picker, which wears this surface's search field. */
 @Composable
-private fun TimelineHomeSearchBar(
+internal fun TimelineHomeSearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
 ) {
