@@ -18,6 +18,7 @@ import com.vaibhav.relive.domain.backup.GoogleDriveAccountManager
 import com.vaibhav.relive.domain.backup.GoogleDriveAuthorizationUnavailableException
 import com.vaibhav.relive.domain.backup.BackupCoordinator
 import com.vaibhav.relive.domain.backup.UnavailableBackupCoordinator
+import com.vaibhav.relive.platform.capture.QuickCaptureRequestBus
 import com.vaibhav.relive.platform.notifications.RediscoverReminderService
 import com.vaibhav.relive.platform.notifications.UnavailableRediscoverReminderService
 import com.vaibhav.relive.platform.system.DeviceAuthentication
@@ -63,6 +64,8 @@ class ReliveAppContainer(
     val deviceAuthentication: DeviceAuthentication = UnavailableDeviceAuthentication,
     val rediscoverReminderService: RediscoverReminderService = UnavailableRediscoverReminderService,
     val incomingShareGateway: IncomingShareGateway = UnavailableIncomingShareGateway,
+    /** Lets a notification tap or home-screen widget ask the app to open the quick-capture composer. */
+    val quickCaptureRequestBus: QuickCaptureRequestBus = QuickCaptureRequestBus(),
     val entitlementProvider: EntitlementProvider = UnavailableEntitlementProvider(),
     val legalLinks: ReliveLegalLinks = ReliveLegalLinks(),
 )

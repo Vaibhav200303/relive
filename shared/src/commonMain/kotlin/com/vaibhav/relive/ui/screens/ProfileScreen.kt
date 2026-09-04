@@ -249,7 +249,7 @@ fun ProfileScreen(
             item(key = "preferences") {
                 ProfileSection(
                     title = "PREFERENCES",
-                    labels = listOf("Preferences", "Location", "Rediscover notifications", "Privacy & security"),
+                    labels = listOf("Preferences", "Location", "Reminders", "Privacy & security"),
                     onPreferences = { finishNameEdit(); onOpenPreferences() },
                     onLocation = { finishNameEdit(); onOpenLocation() },
                     onNotifications = { finishNameEdit(); onOpenNotifications() },
@@ -492,7 +492,7 @@ private fun ProfileSection(
                     "Media & storage" -> onMediaStorage
                     "Backup" -> onBackup
                     "Location" -> onLocation
-                    "Rediscover notifications" -> onNotifications
+                    "Reminders" -> onNotifications
                     "Privacy & security" -> onPrivacy
                     "Help & feedback" -> onHelp
                     "About Relive" -> onAbout
@@ -508,7 +508,7 @@ private fun profileIconFor(label: String): ImageVector = when (label.trim()) {
     "Backup" -> ProfileIcons.Backup
     "Preferences" -> ProfileIcons.Preferences
     "Location" -> ProfileIcons.Location
-    "Rediscover notifications" -> ProfileIcons.Notifications
+    "Reminders" -> ProfileIcons.Notifications
     "Privacy & security" -> ProfileIcons.Security
     "Help & feedback" -> ProfileIcons.Help
     "About Relive" -> ProfileIcons.Info

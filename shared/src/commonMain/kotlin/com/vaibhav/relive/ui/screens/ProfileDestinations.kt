@@ -27,9 +27,9 @@ fun LocationScreen(showLocation: Boolean, onShowLocationChange: (Boolean) -> Uni
 }
 
 @Composable
-fun RediscoverNotificationsScreen(settings: ProfileSettings, permission: NotificationPermissionState, onEnabledChange: (Boolean) -> Unit, onOpenSettings: () -> Unit, onBack: () -> Unit) = ProfileScaffold("Rediscover notifications", "Private reminders appear only when your archive has an eligible On This Day memory.", onBack) {
+fun RediscoverNotificationsScreen(settings: ProfileSettings, permission: NotificationPermissionState, onEnabledChange: (Boolean) -> Unit, onOpenSettings: () -> Unit, onBack: () -> Unit) = ProfileScaffold("Reminders", "A gentle daily nudge to capture today, and a look back when a memory resurfaces.", onBack) {
     ProfileSectionHeading("REMINDERS")
-    ProfileSwitchRow("Rediscover reminders", "No memory titles, text, media, or locations appear in notifications.", settings.rediscoverRemindersEnabled, permission != NotificationPermissionState.Unavailable, onEnabledChange)
+    ProfileSwitchRow("Daily reminders", "No memory titles, text, media, or locations appear in notifications.", settings.rediscoverRemindersEnabled, permission != NotificationPermissionState.Unavailable, onEnabledChange)
     if (permission == NotificationPermissionState.Denied) ProfileSettingRow("Notifications are off in system settings", "Open settings to allow reminders", onClick = onOpenSettings)
 }
 

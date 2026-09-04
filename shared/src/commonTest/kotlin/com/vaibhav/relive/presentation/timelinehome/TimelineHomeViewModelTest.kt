@@ -260,7 +260,7 @@ class TimelineHomeViewModelTest {
 }
 
 private class FakeTimelineHomeRepository(
-    summaries: List<TimelineHomeSummary> = emptyList(),
+    private val summaries: List<TimelineHomeSummary> = emptyList(),
 ) : TimelineHomeRepository {
     override fun observeSummaries(): Flow<List<TimelineHomeSummary>> = MutableStateFlow(summaries)
     override fun observeAllCollageCandidates(bucket: Long): Flow<List<MediaAttachment>> =
