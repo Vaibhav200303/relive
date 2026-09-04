@@ -28,6 +28,19 @@ class ProfileNavigationStateTest {
         assertEquals(ProfileDestination.Profile, preferences.returnToProfile().destination)
     }
 
+    @Test fun upgrade_returns_to_the_destination_that_opened_it() {
+        val fromProfile = ProfileNavigationState().openProfile().openUpgrade()
+        val fromTimelineHome = ProfileNavigationState().openUpgrade(ProfileDestination.Closed)
+        val fromBackupRestore = ProfileNavigationState()
+            .openProfile()
+            .openBackupRestore()
+            .openUpgrade(ProfileDestination.BackupRestore)
+
+        assertEquals(ProfileDestination.Profile, fromProfile.returnFromUpgrade().destination)
+        assertEquals(ProfileDestination.Closed, fromTimelineHome.returnFromUpgrade().destination)
+        assertEquals(ProfileDestination.BackupRestore, fromBackupRestore.returnFromUpgrade().destination)
+    }
+
     @Test fun all_profile_destinations_return_to_profile() {
         val destinations = listOf(
             ProfileNavigationState().openLocation(),
