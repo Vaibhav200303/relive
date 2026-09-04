@@ -502,12 +502,14 @@ fun App(
             ProfileDestination.BackupRestore -> BackupRestoreScreen(
                 viewModel = backupRestoreViewModel,
                 onBack = { profileNavigation = profileNavigation.returnToProfile() },
-                onUpgrade = { profileNavigation = profileNavigation.openUpgrade() },
+                onUpgrade = {
+                    profileNavigation = profileNavigation.openUpgrade(ProfileDestination.BackupRestore)
+                },
             )
             ProfileDestination.Upgrade -> UpgradeToProScreen(
                 entitlementProvider = container.entitlementProvider,
                 legalLinks = container.legalLinks,
-                onBack = { profileNavigation = profileNavigation.returnToProfile() },
+                onBack = { profileNavigation = profileNavigation.returnFromUpgrade() },
             )
             ProfileDestination.Location -> LocationScreen(behaviorState.preferences.showLocations, behaviorPreferencesViewModel::setShowLocations) { profileNavigation = profileNavigation.returnToProfile() }
             ProfileDestination.RediscoverNotifications -> RediscoverNotificationsScreen(
@@ -643,7 +645,9 @@ fun App(
                         destination = destination,
                         onBack = { timelinesDestination = active.returnTo },
                         entitlementProvider = container.entitlementProvider,
-                        onUpgrade = { profileNavigation = profileNavigation.openUpgrade() },
+                        onUpgrade = {
+                            profileNavigation = profileNavigation.openUpgrade(ProfileDestination.Closed)
+                        },
                     )
                 } else {
                     timelinesDestination = active.returnTo
@@ -728,7 +732,9 @@ fun App(
                             navigationToolbarExpanded = navigationToolbarExpanded,
                             onNavigationToolbarExpand = { navigationToolbarExpanded = true },
                             onNavigationToolbarCollapse = { navigationToolbarExpanded = false },
-                            onUpgrade = { profileNavigation = profileNavigation.openUpgrade() },
+                            onUpgrade = {
+                                profileNavigation = profileNavigation.openUpgrade(ProfileDestination.Closed)
+                            },
                         )
                         ReliveTopLevelDestination.Home -> {
                 AnimatedContent(
@@ -840,7 +846,9 @@ fun App(
                             destination = TimelineThemeDestination.All,
                             onBack = { rediscoverDestination = RediscoverDestination.Root },
                             entitlementProvider = container.entitlementProvider,
-                            onUpgrade = { profileNavigation = profileNavigation.openUpgrade() },
+                            onUpgrade = {
+                                profileNavigation = profileNavigation.openUpgrade(ProfileDestination.Closed)
+                            },
                         )
                         is RediscoverDestination.Favorites -> {
                             val favorites = destination
