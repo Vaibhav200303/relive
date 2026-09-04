@@ -3,9 +3,12 @@ package com.vaibhav.relive.ui.components.timeline
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -16,34 +19,11 @@ import com.vaibhav.relive.ui.theme.ReliveTheme
 
 @Composable
 fun EmptyTimelinePlaceholder(modifier: Modifier = Modifier) {
-    val colors = ReliveTheme.colors
-    val type = ReliveTheme.typography
-    val dims = ReliveTheme.dimensions
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = dims.spacing.xl),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(dims.spacing.md),
-        ) {
-            ReliveDoodles.OpenJournal()
-            Text(
-                text = "Your timeline is waiting.",
-                style = type.title,
-                color = colors.textPrimary,
-                textAlign = TextAlign.Center,
-            )
-            Text(
-                text = "The moments you keep will live here.",
-                style = type.subtitle,
-                color = colors.textSecondary,
-                textAlign = TextAlign.Center,
-            )
-        }
-    }
+    EditorialEmptyTimelineState(
+        title = "Your timeline is waiting.",
+        message = "The moments you keep will live here.",
+        modifier = modifier,
+    )
 }
 
 @Composable
@@ -51,30 +31,65 @@ fun EmptyCustomTimelinePlaceholder(
     timelineName: String,
     modifier: Modifier = Modifier,
 ) {
+    EditorialEmptyTimelineState(
+        title = "$timelineName is waiting for its first Moment.",
+        message = "Use the + below to begin this chapter.",
+        doodle = { ReliveDoodles.FramedMemory() },
+        modifier = modifier,
+    )
+}
+
+@Composable
+fun EmptyCustomTimelinesPlaceholder(modifier: Modifier = Modifier) {
+    EditorialEmptyTimelineState(
+        title = "A new chapter can begin whenever you are ready.",
+        message = "Use + to create your first timeline.",
+        modifier = modifier,
+    )
+}
+
+@Composable
+private fun EditorialEmptyTimelineState(
+    title: String,
+    message: String,
+    modifier: Modifier = Modifier,
+    doodle: @Composable () -> Unit = { ReliveDoodles.OpenJournal() },
+) {
     val colors = ReliveTheme.colors
-    val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
-    Column(
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(
-                start = dims.timeline.contentInset,
-                top = dims.spacing.huge,
-                end = dims.spacing.sm,
-                bottom = dims.spacing.xl,
-            ),
-        verticalArrangement = Arrangement.spacedBy(dims.spacing.sm),
+            .heightIn(min = dims.timeline.coverHeroHeight)
+            .padding(vertical = dims.spacing.lg),
+        contentAlignment = Alignment.Center,
     ) {
-        ReliveDoodles.FramedMemory(modifier = Modifier.padding(bottom = dims.spacing.xs))
-        Text(
-            text = "$timelineName is waiting for its first Moment.",
-            style = type.title,
-            color = colors.textPrimary,
-        )
-        Text(
-            text = "Use the + below to begin this chapter.",
-            style = type.subtitle,
-            color = colors.textSecondary,
-        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(colors.surfaceCardTranslucent, RoundedCornerShape(dims.radii.largeIncreased))
+                .border(
+                    width = dims.stroke.cardOuter,
+                    color = colors.borderMuted,
+                    shape = RoundedCornerShape(dims.radii.largeIncreased),
+                )
+                .padding(horizontal = dims.spacing.xl, vertical = dims.spacing.xxl),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(dims.spacing.md),
+        ) {
+            doodle()
+            Text(
+                text = title,
+                style = ReliveTheme.typography.title,
+                color = colors.textPrimary,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = message,
+                style = ReliveTheme.typography.subtitle,
+                color = colors.textSecondary,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }

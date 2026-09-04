@@ -86,7 +86,7 @@ import com.vaibhav.relive.ui.components.timeline.TimelineCreationDialog
 import com.vaibhav.relive.ui.components.timeline.BackGlyph
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
-import com.vaibhav.relive.ui.components.ReliveDoodles
+import com.vaibhav.relive.ui.components.timeline.EmptyCustomTimelinesPlaceholder
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.theme.ReliveOpacity
 import com.vaibhav.relive.ui.theme.canvasBrush
@@ -768,16 +768,10 @@ private fun TimelineHomeCardContent(
 
 @Composable
 private fun TimelineHomeEmptyCustomState() {
-    val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(vertical = dims.spacing.lg),
-        verticalArrangement = Arrangement.spacedBy(dims.spacing.xs),
-    ) {
-        ReliveDoodles.OpenJournal(modifier = Modifier.padding(bottom = dims.spacing.sm))
-        Text("A new chapter can begin whenever you are ready.", style = ReliveTheme.typography.title, color = colors.textPrimary)
-        Text("Use + to create your first timeline.", style = ReliveTheme.typography.subtitle, color = colors.textSecondary)
-    }
+    EmptyCustomTimelinesPlaceholder(
+        modifier = Modifier.padding(vertical = dims.spacing.lg),
+    )
 }
 
 @Composable

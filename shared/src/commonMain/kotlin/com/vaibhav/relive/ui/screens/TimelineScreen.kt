@@ -163,6 +163,7 @@ import com.vaibhav.relive.ui.components.composer.MomentComposer
 import com.vaibhav.relive.ui.components.ReliveSnackbarHost
 import com.vaibhav.relive.ui.components.ReliveAlertDialog
 import com.vaibhav.relive.ui.components.timeline.EmptyCustomTimelinePlaceholder
+import com.vaibhav.relive.ui.components.timeline.EmptyTimelinePlaceholder
 import com.vaibhav.relive.ui.components.timeline.MomentCard
 import com.vaibhav.relive.ui.components.timeline.TimelineMediaSharedTransition
 import com.vaibhav.relive.ui.components.timeline.sharedTransitionKey
@@ -1799,6 +1800,10 @@ private fun TimelineContent(
                     } else if (customName != null && timelineState.moments == TimelineMomentsState.Empty) {
                         item(key = "custom-empty") {
                             EmptyCustomTimelinePlaceholder(timelineName = customName)
+                        }
+                    } else if (isHomeSurface && timelineState.moments == TimelineMomentsState.Empty) {
+                        item(key = "all-moments-empty") {
+                            EmptyTimelinePlaceholder()
                         }
                     }
                     if (!isNewestFirst) composerItem()
