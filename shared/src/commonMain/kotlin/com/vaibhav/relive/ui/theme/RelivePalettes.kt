@@ -223,6 +223,10 @@ val RelivePaletteOptions: List<RelivePalette> = listOf(
     SunsetPalette,
 )
 
+/** Palettes a person can choose in Appearance; Original remains resolvable for existing settings. */
+val ReliveSelectablePaletteOptions: List<RelivePalette> =
+    RelivePaletteOptions.filterNot { it.theme == ThemeReference.InkLilac }
+
 /** The app-wide default palette. */
 val DefaultRelivePalette: RelivePalette = InkLilacPalette
 

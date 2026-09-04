@@ -8,7 +8,7 @@ enum class AppearanceMode {
 
 data class AppearancePreferences(
     val mode: AppearanceMode = AppearanceMode.System,
-    val defaultTheme: ThemeReference = ThemeReference.InkLilac,
+    val defaultTheme: ThemeReference = ThemeReference.Sunset,
     /** Appearance owned by the logical All timeline; it never changes the app palette. */
     val allTimelineAppearance: TimelineAppearance = TimelineAppearance(),
 )

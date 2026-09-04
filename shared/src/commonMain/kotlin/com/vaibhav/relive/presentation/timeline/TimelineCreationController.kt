@@ -42,6 +42,10 @@ class TimelineCreationController(
         _state.update { TimelineCreationState(isVisible = true) }
     }
 
+    fun requirePro() {
+        _outcomes.tryEmit(TimelineCreationOutcome.RequiresPro)
+    }
+
     fun dismiss() {
         if (_state.value.isSaving) return
         _state.value.coverPhotoRef?.let { mediaStore?.delete(it) }

@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,6 +44,7 @@ import com.vaibhav.relive.presentation.timeline.TimelineThemeDestination
 import com.vaibhav.relive.presentation.timeline.TimelineThemeViewModel
 import com.vaibhav.relive.ui.components.timeline.BackGlyph
 import com.vaibhav.relive.ui.components.timeline.TimelineWallpaperSurface
+import com.vaibhav.relive.ui.icons.ProfileIcons
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.theme.canvasBrush
 import com.vaibhav.relive.domain.entitlement.EntitlementProvider
@@ -114,6 +116,7 @@ fun TimelineThemeScreen(
                     TimelineWallpaperOption(
                         wallpaper = wallpaper,
                         selected = wallpaper == state.appearance.wallpaper,
+                        locked = !EntitlementPolicy(entitlement).maySelectWallpaper(wallpaper),
                         onClick = {
                             if (EntitlementPolicy(entitlement).maySelectWallpaper(wallpaper)) viewModel.selectWallpaper(wallpaper)
                             else onUpgrade()
@@ -189,6 +192,7 @@ private fun TimelineThemePreview(wallpaper: TimelineWallpaper) {
 private fun TimelineWallpaperOption(
     wallpaper: TimelineWallpaper,
     selected: Boolean,
+    locked: Boolean,
     onClick: () -> Unit,
 ) {
     val dims = ReliveTheme.dimensions
@@ -202,9 +206,32 @@ private fun TimelineWallpaperOption(
             .background(colors.surfaceCard, shape)
             .clickable(onClick = onClick)
             .padding(dims.spacing.sm)
-            .semantics { contentDescription = "${wallpaper.label()}${if (selected) ", selected" else ""}" },
+            .semantics {
+                contentDescription = buildString {
+                    append(wallpaper.label())
+                    if (selected) append(", selected")
+                    if (locked) append(", Relive Pro")
+                }
+            },
     ) {
-        Box(Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(dims.radii.sm))) { TimelineWallpaperThumbnail(wallpaper) }
+        Box(Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(dims.radii.sm))) {
+            TimelineWallpaperThumbnail(wallpaper)
+            if (locked) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(colors.surfaceOverlay.copy(alpha = 0.70f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = ProfileIcons.Lock,
+                        contentDescription = null,
+                        modifier = Modifier.size(dims.icon.md),
+                        tint = colors.textPrimary,
+                    )
+                }
+            }
+        }
         Column(modifier = Modifier.padding(top = dims.spacing.sm)) {
             Text(wallpaper.label(), style = ReliveTheme.typography.body, color = colors.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (selected) Text("Selected", style = ReliveTheme.typography.eyebrow, color = colors.textSecondary)

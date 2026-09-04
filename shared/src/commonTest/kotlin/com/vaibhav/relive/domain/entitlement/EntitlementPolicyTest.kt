@@ -23,12 +23,15 @@ class EntitlementPolicyTest {
     }
 
     @Test fun freeTierOnlyAllowsApprovedAppearance() {
-        assertTrue(free.maySelectPalette(ThemeReference.InkLilac))
-        assertTrue(free.maySelectPalette(ThemeReference.TealSaffron))
+        assertEquals(setOf(ThemeReference.Sunrise, ThemeReference.Sunset), ReliveMonetization.freePalettes)
+        assertEquals(setOf(TimelineWallpaper.WarmCream, TimelineWallpaper.BlushPink), ReliveMonetization.freeWallpapers)
+        assertTrue(free.maySelectPalette(ThemeReference.Sunrise))
+        assertTrue(free.maySelectPalette(ThemeReference.Sunset))
+        assertFalse(free.maySelectPalette(ThemeReference.InkLilac))
         assertFalse(free.maySelectPalette(ThemeReference.EmberAqua))
         assertTrue(free.maySelectWallpaper(TimelineWallpaper.WarmCream))
-        assertTrue(free.maySelectWallpaper(TimelineWallpaper.SageGreen))
-        assertFalse(free.maySelectWallpaper(TimelineWallpaper.BlushPink))
+        assertTrue(free.maySelectWallpaper(TimelineWallpaper.BlushPink))
+        assertFalse(free.maySelectWallpaper(TimelineWallpaper.SageGreen))
     }
 
     @Test fun purchasesRequireBothConfiguredLegalLinks() {

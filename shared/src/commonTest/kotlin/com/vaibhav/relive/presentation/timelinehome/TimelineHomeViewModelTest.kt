@@ -14,6 +14,10 @@ import com.vaibhav.relive.domain.repository.TimelineRepository
 import com.vaibhav.relive.domain.time.Clock
 import com.vaibhav.relive.domain.time.Instant
 import com.vaibhav.relive.presentation.timeline.TimelineCreationOutcome
+import com.vaibhav.relive.domain.entitlement.EntitlementProvider
+import com.vaibhav.relive.domain.entitlement.EntitlementState
+import com.vaibhav.relive.domain.entitlement.PurchaseOutcome
+import com.vaibhav.relive.domain.entitlement.RelivePurchaseOption
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
@@ -131,6 +135,27 @@ class TimelineHomeViewModelTest {
     }
 
     @Test
+    fun plusEntrySendsFreeUserToProBeforeShowingTheCreationDialogAtTheirLimit() = runTest {
+        val viewModel = TimelineHomeViewModel(
+            homeRepository = FakeTimelineHomeRepository(
+                List(3) { index -> summary("timeline-$index", "Timeline $index", index.toLong()) },
+            ),
+            timelineRepository = FakeTimelineRepository(),
+            clock = Clock { Instant(23) },
+            idGenerator = IdGenerator { "unused" },
+            scope = backgroundScope,
+            entitlementProvider = FakeEntitlementProvider(),
+        )
+        val outcome = async(start = CoroutineStart.UNDISPATCHED) { viewModel.creationOutcomes.first() }
+
+        viewModel.state.first { it.content is TimelineHomeContent.Loaded }
+        viewModel.showTimelineCreation()
+
+        assertEquals(TimelineCreationOutcome.RequiresPro, outcome.await())
+        assertFalse(viewModel.creationState.value.isVisible)
+    }
+
+    @Test
     fun normalTimelineEntryDoesNotRequestComposerOpen() = runTest {
         val timeline = Timeline.Custom(TimelineId("saved"), "Saved")
         val viewModel = TimelineHomeViewModel(
@@ -234,10 +259,18 @@ class TimelineHomeViewModelTest {
     )
 }
 
-private class FakeTimelineHomeRepository : TimelineHomeRepository {
-    override fun observeSummaries(): Flow<List<TimelineHomeSummary>> = MutableStateFlow(emptyList())
+private class FakeTimelineHomeRepository(
+    summaries: List<TimelineHomeSummary> = emptyList(),
+) : TimelineHomeRepository {
+    override fun observeSummaries(): Flow<List<TimelineHomeSummary>> = MutableStateFlow(summaries)
     override fun observeAllCollageCandidates(bucket: Long): Flow<List<MediaAttachment>> =
         MutableStateFlow(emptyList())
+}
+
+private class FakeEntitlementProvider : EntitlementProvider {
+    override val state = MutableStateFlow(EntitlementState())
+    override suspend fun purchase(option: RelivePurchaseOption) = PurchaseOutcome.Unavailable("Unavailable")
+    override suspend fun restorePurchases() = PurchaseOutcome.Unavailable("Unavailable")
 }
 
 private class FakeTimelineRepository : TimelineRepository {

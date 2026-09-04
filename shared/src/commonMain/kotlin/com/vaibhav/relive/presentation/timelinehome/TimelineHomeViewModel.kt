@@ -10,6 +10,7 @@ import com.vaibhav.relive.presentation.timeline.TimelineCreationState
 import com.vaibhav.relive.domain.model.MediaStorageRef
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.domain.entitlement.EntitlementProvider
+import com.vaibhav.relive.domain.entitlement.EntitlementPolicy
 import com.vaibhav.relive.domain.entitlement.UnavailableEntitlementProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -28,7 +29,7 @@ class TimelineHomeViewModel(
     idGenerator: IdGenerator,
     private val scope: CoroutineScope,
     mediaStore: MediaStore? = null,
-    entitlementProvider: EntitlementProvider = UnavailableEntitlementProvider(),
+    private val entitlementProvider: EntitlementProvider = UnavailableEntitlementProvider(),
 ) {
     private val _state = MutableStateFlow(TimelineHomeState())
     val state: StateFlow<TimelineHomeState> = _state.asStateFlow()
@@ -79,7 +80,13 @@ class TimelineHomeViewModel(
         }
     }
 
-    fun showTimelineCreation() = creation.show()
+    fun showTimelineCreation() {
+        if (EntitlementPolicy(entitlementProvider.state.value).mayCreateCustomTimeline(state.value.customSummaries.size)) {
+            creation.show()
+        } else {
+            creation.requirePro()
+        }
+    }
     fun dismissTimelineCreation() = creation.dismiss()
     fun updateTimelineName(value: String) = creation.updateName(value)
     fun setTimelineCoverPhoto(value: MediaStorageRef?) = creation.setCoverPhoto(value)

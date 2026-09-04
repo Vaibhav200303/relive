@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -17,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -33,8 +35,9 @@ import com.vaibhav.relive.domain.model.AppearanceMode
 import com.vaibhav.relive.domain.model.ThemeReference
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
+import com.vaibhav.relive.ui.icons.ProfileIcons
 import com.vaibhav.relive.ui.theme.RelivePalette
-import com.vaibhav.relive.ui.theme.RelivePaletteOptions
+import com.vaibhav.relive.ui.theme.ReliveSelectablePaletteOptions
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.theme.paletteFor
 import com.vaibhav.relive.ui.theme.previewGradientFor
@@ -109,7 +112,7 @@ fun RelivePalettePicker(
         if (includeUseAppTheme) {
             add(PaletteChoice(null, "Use app theme", paletteFor(globalTheme)))
         }
-        RelivePaletteOptions.forEach { option ->
+        ReliveSelectablePaletteOptions.forEach { option ->
             add(PaletteChoice(option.theme, option.label, option))
         }
     }
@@ -122,6 +125,7 @@ fun RelivePalettePicker(
             PaletteChoiceItem(
                 choice = choice,
                 selected = selected,
+                locked = !isSelectionAllowed(choice.theme),
                 isDark = ReliveTheme.isDark,
                 onClick = {
                     if (!selected && isSelectionAllowed(choice.theme)) {
@@ -140,6 +144,7 @@ fun RelivePalettePicker(
 private fun PaletteChoiceItem(
     choice: PaletteChoice,
     selected: Boolean,
+    locked: Boolean,
     isDark: Boolean,
     onClick: () -> Unit,
 ) {
@@ -150,7 +155,13 @@ private fun PaletteChoiceItem(
             .width(dims.profile.appearanceItemWidth)
             .heightIn(min = dims.minTouchTarget)
             .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
-            .semantics { contentDescription = "${choice.label} palette" },
+            .semantics {
+                contentDescription = buildString {
+                    append(choice.label)
+                    append(" palette")
+                    if (locked) append(", Relive Pro")
+                }
+            },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(dims.spacing.sm),
     ) {
@@ -176,6 +187,21 @@ private fun PaletteChoiceItem(
                 contentAlignment = Alignment.Center,
             ) {
                 if (selected) PaletteCheck()
+                if (locked) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(colors.surfaceOverlay.copy(alpha = 0.70f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = ProfileIcons.Lock,
+                            contentDescription = null,
+                            modifier = Modifier.size(dims.icon.sm),
+                            tint = colors.textPrimary,
+                        )
+                    }
+                }
             }
         }
         Text(

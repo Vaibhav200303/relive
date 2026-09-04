@@ -12,12 +12,10 @@ object ReliveMonetization {
     const val freeCustomTimelineLimit = 3
 
     val freePalettes = setOf(
-        ThemeReference.InkLilac,
-        ThemeReference.TealSaffron,
         ThemeReference.Sunrise,
         ThemeReference.Sunset,
     )
-    val freeWallpapers = setOf(TimelineWallpaper.WarmCream, TimelineWallpaper.SageGreen)
+    val freeWallpapers = setOf(TimelineWallpaper.WarmCream, TimelineWallpaper.BlushPink)
 }
 
 enum class RelivePurchaseOption(val productId: String) {

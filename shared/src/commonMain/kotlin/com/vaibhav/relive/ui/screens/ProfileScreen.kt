@@ -240,7 +240,10 @@ fun ProfileScreen(
                     title = "YOUR MEMORIES",
                     labels = listOf("Media & storage", "Backup"),
                     onMediaStorage = { finishNameEdit(); onOpenMediaStorage() },
-                    onBackup = { finishNameEdit(); onOpenBackupRestore() },
+                    onBackup = {
+                        finishNameEdit()
+                        if (entitlement.isPro) onOpenBackupRestore() else onOpenUpgrade()
+                    },
                 )
             }
             item(key = "preferences") {
