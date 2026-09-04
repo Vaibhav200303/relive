@@ -49,6 +49,7 @@ internal data class MoodChartPoint(
 private val ChartHeight = 200.dp
 private val ChartFaceSize = 28.dp
 private val AxisLabelWidth = 44.dp
+private val AxisLabelAreaHeight = 28.dp
 
 /**
  * `Weekly mood` (PRODUCT_SPEC §10A.4): the current week's per-day averages as a soft
@@ -152,7 +153,8 @@ private fun MoodAreaChart(
     val padStart = if (showFaceAxis) 36.dp else 12.dp
     val padEnd = 12.dp
     val padTop = 14.dp
-    val padBottom = 24.dp
+    // Reserve a distinct x-axis strip so a Low face never enters the day/month labels.
+    val padBottom = AxisLabelAreaHeight + ChartFaceSize / 2 + 6.dp
 
     BoxWithConstraints(
         modifier = modifier
@@ -294,7 +296,7 @@ private fun MoodAreaChart(
                 modifier = Modifier
                     .offset(
                         x = xOf(index) - AxisLabelWidth / 2,
-                        y = height - padBottom + dims.spacing.xs,
+                        y = height - AxisLabelAreaHeight,
                     )
                     .width(AxisLabelWidth),
             )
