@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Relive</string>
+    <string name="widget_quick_capture_description">Capture a moment in Relive</string>
 </resources>

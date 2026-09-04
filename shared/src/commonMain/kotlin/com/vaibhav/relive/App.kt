@@ -347,6 +347,14 @@ fun App(
                 }
             }
         }
+        // A notification tap or the home-screen widget can ask the running app to add a moment. It
+        // routes through the same inline Home composer as the global `+ New`, so a cold start lands
+        // in the composer once Home settles and a warm tap re-opens it. The bus is a monotonic count,
+        // so the second tap is never a silent no-op.
+        val quickCaptureRequest by container.quickCaptureRequestBus.requests.collectAsState()
+        LaunchedEffect(quickCaptureRequest) {
+            if (quickCaptureRequest > 0) openQuickCapture(QuickCaptureSurface.TimelineHome)
+        }
         LaunchedEffect(quickCaptureTransformEpoch) {
             if (quickCaptureTransformActive) {
                 kotlinx.coroutines.delay(quickCaptureTransformDuration.toLong())

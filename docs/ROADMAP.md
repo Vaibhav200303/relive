@@ -103,7 +103,7 @@ Current implementation note: the dedicated autofocus screen, debounced SQL-backe
 - Timeline-owned appearance: editable All and custom timelines persist independent wallpaper selections and render the approved bundled wallpaper artwork without changing global appearance.
 - **Exit:** switching themes changes only presentation; navigation/structure/interaction unchanged; theme tests pass.
 
-Current implementation note: global appearance, Profile, Preferences, Media & Storage, Backup & Restore, Rediscover reminders, Privacy & Security/App Lock, Help, About/Licenses, custom-timeline themes, and All-timeline themes are present. Upgrade to Pro and Export remain entries/deferred behavior.
+Current implementation note: global appearance, Profile, Preferences, Media & Storage, Backup & Restore, Reminders, Privacy & Security/App Lock, Help, About/Licenses, custom-timeline themes, and All-timeline themes are present. Upgrade to Pro and Export remain entries/deferred behavior. Reminders is now the capture-focused set of two "add a moment" nudges and one eligibility-gated "revisit" nudge per day (ADR-0067). An additive Android home-screen **Quick Capture** widget (Jetpack Glance) opens the composer and shows no archive content (ADR-0068); it is net-new scope beyond this phase, added at explicit request.
 
 ### Approved Phase override — Profile foundation
 

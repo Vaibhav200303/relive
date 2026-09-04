@@ -8,15 +8,23 @@ import com.vaibhav.relive.di.createDefaultReliveAppContainer
 import com.vaibhav.relive.platform.backup.AndroidBackupPreferencesRepository
 import android.util.Log
 import android.content.Intent
+import androidx.glance.appwidget.updateAll
+import com.vaibhav.relive.platform.capture.QuickCaptureRequestBus
 import com.vaibhav.relive.platform.share.AndroidIncomingShareGateway
+import com.vaibhav.relive.widget.ReliveQuickCaptureWidget
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private lateinit var deviceAuthentication: AndroidDeviceAuthentication
     private lateinit var reminderService: AndroidRediscoverReminderService
     private val shareScope = MainScope()
     private lateinit var incomingShareGateway: AndroidIncomingShareGateway
+    private val quickCaptureRequestBus = QuickCaptureRequestBus()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -28,11 +36,20 @@ class MainActivity : ComponentActivity() {
         deviceAuthentication = AndroidDeviceAuthentication(this)
         reminderService = AndroidRediscoverReminderService(this)
         incomingShareGateway = AndroidIncomingShareGateway(applicationContext, shareScope)
-        val container = createDefaultReliveAppContainer(applicationContext, googleDriveAccountManager = accountManager, backupPreferencesRepository = backupPreferences, backupCoordinatorFactory = { database, mediaStore, _ -> AndroidBackupCoordinator(applicationContext, database, mediaStore, accountManager) { recreate() } }, deviceAuthentication = deviceAuthentication, rediscoverReminderService = reminderService, incomingShareGateway = incomingShareGateway, entitlementProvider = (application as ReliveApplication).entitlementProvider, termsOfServiceUrl = BuildConfig.TERMS_OF_SERVICE_URL, privacyPolicyUrl = BuildConfig.PRIVACY_POLICY_URL)
+        val container = createDefaultReliveAppContainer(applicationContext, googleDriveAccountManager = accountManager, backupPreferencesRepository = backupPreferences, backupCoordinatorFactory = { database, mediaStore, _ -> AndroidBackupCoordinator(applicationContext, database, mediaStore, accountManager) { recreate() } }, deviceAuthentication = deviceAuthentication, rediscoverReminderService = reminderService, incomingShareGateway = incomingShareGateway, quickCaptureRequestBus = quickCaptureRequestBus, entitlementProvider = (application as ReliveApplication).entitlementProvider, termsOfServiceUrl = BuildConfig.TERMS_OF_SERVICE_URL, privacyPolicyUrl = BuildConfig.PRIVACY_POLICY_URL)
         android.util.Log.d("ReliveBackupAuth", "BackupCoordinator runtime=${container.backupCoordinator::class.java.name}")
-        incomingShareGateway.accept(intent)
+        routeIntent(intent)
         setIntent(Intent(this, MainActivity::class.java))
         setContent { App(container, onIncomingShareCancelled = ::finish) }
+        // Keep the home-screen widget in sync with the chosen palette/mode. The theme can only be
+        // changed while the app is running, so observing here covers every real change.
+        shareScope.launch {
+            container.appearanceRepository.preferences
+                .map { it.mode to it.defaultTheme }
+                .distinctUntilChanged()
+                .drop(1)
+                .collect { ReliveQuickCaptureWidget().updateAll(applicationContext) }
+        }
     }
 
     @Deprecated("Platform credential fallback")
@@ -46,8 +63,17 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        incomingShareGateway.accept(intent)
+        routeIntent(intent)
         setIntent(Intent(this, MainActivity::class.java))
+    }
+
+    /** ADD_MOMENT (notification/widget) opens the composer; anything else is a share intent. */
+    private fun routeIntent(incoming: Intent?) {
+        if (incoming?.action == ReliveIntents.ACTION_ADD_MOMENT) {
+            quickCaptureRequestBus.request()
+        } else {
+            incomingShareGateway.accept(incoming)
+        }
     }
 
     override fun onDestroy() {

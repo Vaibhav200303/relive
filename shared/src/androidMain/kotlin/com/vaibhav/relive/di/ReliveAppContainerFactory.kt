@@ -23,6 +23,7 @@ import com.vaibhav.relive.platform.media.installAndroidMediaContext
 import com.vaibhav.relive.platform.system.installAndroidAppSettingsContext
 import com.vaibhav.relive.platform.system.installAndroidProfilePlatformContext
 import com.vaibhav.relive.platform.system.DeviceAuthentication
+import com.vaibhav.relive.platform.capture.QuickCaptureRequestBus
 import com.vaibhav.relive.platform.notifications.RediscoverReminderService
 import com.vaibhav.relive.presentation.id.UuidGenerator
 import com.vaibhav.relive.presentation.time.SystemClock
@@ -44,6 +45,7 @@ fun createDefaultReliveAppContainer(
     deviceAuthentication: DeviceAuthentication? = null,
     rediscoverReminderService: RediscoverReminderService? = null,
     incomingShareGateway: IncomingShareGateway? = null,
+    quickCaptureRequestBus: QuickCaptureRequestBus? = null,
     entitlementProvider: EntitlementProvider,
     termsOfServiceUrl: String = "",
     privacyPolicyUrl: String = "",
@@ -86,6 +88,7 @@ fun createDefaultReliveAppContainer(
         deviceAuthentication = deviceAuthentication ?: com.vaibhav.relive.platform.system.UnavailableDeviceAuthentication,
         rediscoverReminderService = rediscoverReminderService ?: com.vaibhav.relive.platform.notifications.UnavailableRediscoverReminderService,
         incomingShareGateway = incomingShareGateway ?: com.vaibhav.relive.platform.share.UnavailableIncomingShareGateway,
+        quickCaptureRequestBus = quickCaptureRequestBus ?: QuickCaptureRequestBus(),
         entitlementProvider = entitlementProvider,
         legalLinks = ReliveLegalLinks(termsOfServiceUrl, privacyPolicyUrl),
     )
