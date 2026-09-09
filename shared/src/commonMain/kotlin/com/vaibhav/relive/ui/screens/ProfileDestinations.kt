@@ -1,22 +1,30 @@
 package com.vaibhav.relive.ui.screens
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
+import com.vaibhav.relive.domain.entitlement.ReliveLegalLinks
 import com.vaibhav.relive.domain.model.LockAfter
 import com.vaibhav.relive.domain.model.ProfileSettings
 import com.vaibhav.relive.platform.notifications.NotificationPermissionState
 import com.vaibhav.relive.platform.system.buildSafeDiagnosticMail
 import com.vaibhav.relive.platform.system.platformAppInfo
 import com.vaibhav.relive.platform.system.platformMailComposer
+import com.vaibhav.relive.platform.system.PlatformAppInfo
 import com.vaibhav.relive.ui.components.profile.*
+import com.vaibhav.relive.ui.icons.ProfileIcons
 import com.vaibhav.relive.ui.theme.ReliveTheme
 
 @Composable
@@ -51,71 +59,234 @@ fun PrivacySecurityScreen(settings: ProfileSettings, deviceAuthAvailable: Boolea
     if (selectTimeout) ProfileSelectionDialog("Lock Relive", LockAfter.entries.map { it.label }, settings.lockAfter.label, { selectTimeout = false }) { label -> onLockAfterChange(LockAfter.entries.first { it.label == label }); selectTimeout = false }
 }
 
-private enum class HelpTopic(val title: String, val copy: String) {
-    GettingStarted("Getting started", "Create a Moment with the New button, add what you want to remember, then save it to your private archive."),
-    Timelines("Timelines", "Use custom timelines to gather related moments into chapters without moving them out of chronological order."),
-    FindingMemory("Finding a memory", "Search text and tags, browse Calendar, or revisit Favorites and On This Day in Rediscover."),
-    BackupRestore("Backup & restore", "Connect Google Drive from Backup & Restore. Relive keeps backup controls separate from your local archive."),
+internal enum class HelpTopic(val title: String, val copy: String) {
+    CreatingMoments("Create a Moment", "Tap New, add a title or note, and keep it when it feels complete. A Moment can be text-only or include media."),
+    AddingMedia("Add photos, video, or voice", "Open Add Media in the composer to attach photos, videos, or a voice recording. You can remove any attachment before keeping the Moment."),
+    OrganizingTimelines("Organize timelines", "Custom timelines gather related Moments into chapters. Every Moment still remains safely in your All moments archive."),
+    FindingMemories("Find a memory", "Search saved titles and writing, browse a timeline by date, or return to Favourites, On This Day, From Your Past, and All Photos."),
+    BackupRestore("Backup & restore", "Backup and restore are separate from your local archive. Connect Google Drive from Backup & Restore when it is available to your plan."),
+    PrivacySecurity("Privacy & App Lock", "Your archive stays on this device. Add App Lock in Privacy & Security to require your device authentication before opening Relive."),
+    RelivePro("Relive Pro", "Relive Pro unlocks automatic backup, more timelines, and additional appearances. Use Restore purchases after reinstalling or changing devices."),
 }
 
 @Composable
-fun HelpFeedbackScreen(onBack: () -> Unit, onMessage: (String) -> Unit) {
-    var expanded by remember { mutableStateOf<HelpTopic?>(HelpTopic.GettingStarted) }
+fun HelpFeedbackScreen(
+    supportEmail: String,
+    onBack: () -> Unit,
+    onMessage: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf<HelpTopic?>(HelpTopic.CreatingMoments) }
     var notice by remember { mutableStateOf<String?>(null) }
     val mail = remember { platformMailComposer() }
     val info = remember { platformAppInfo() }
-    fun send(subject: String) { if (!mail.open(buildSafeDiagnosticMail(subject, info, SUPPORT_EMAIL))) { notice = "No mail app is available."; onMessage(notice!!) } }
-    ProfileScaffold("Help & Feedback", "A few quick answers, or send us a note.", onBack) {
-        ProfileSectionHeading("QUICK HELP")
+    val supportAvailable = supportEmail.isNotBlank()
+    fun send(subject: String) {
+        val request = supportMailRequest(subject, info, supportEmail) ?: return
+        if (!mail.open(request)) {
+            notice = "No mail app is available."
+            onMessage(notice!!)
+        }
+    }
+    ProfileScaffold("Help & Feedback", onBack = onBack) {
+        DestinationHero(
+            eyebrow = "SUPPORT CENTER",
+            title = "How can we help?",
+            body = "Find a quick answer, learn how a feature works, or send the Relive team a note.",
+            icon = ProfileIcons.Help,
+        )
+        ProfileSectionHeading("QUICK ANSWERS")
         HelpTopic.entries.forEach { topic ->
-            ProfileSettingRow(topic.title, if (expanded == topic) topic.copy else null, onClick = { expanded = topic })
+            ProfileSettingRow(
+                topic.title,
+                if (expanded == topic) topic.copy else null,
+                onClick = { expanded = if (expanded == topic) null else topic },
+            )
             if (topic != HelpTopic.entries.last()) ProfileDivider()
         }
-        ProfileSectionHeading("FEEDBACK")
-        ProfileSettingRow("Send feedback", onClick = { send("Relive feedback") })
+        ProfileSectionHeading("CONTACT SUPPORT")
+        if (supportAvailable) {
+            ProfileSettingRow(
+                "Email support",
+                supportEmail,
+                onClick = { send("Relive support request") },
+            )
+        } else {
+            ProfileSupportingText("Support email is not configured for this build yet.")
+        }
         ProfileDivider()
-        ProfileSettingRow("Report a problem", onClick = { send("Relive problem report") })
-        ProfileSupportingText("Messages include only app version, platform, and OS version. No archive data is attached.")
+        ProfileSettingRow(
+            "Send feedback",
+            "Share an idea or tell us what you enjoy.",
+            enabled = supportAvailable,
+            onClick = if (supportAvailable) ({ send("Relive feedback") }) else null,
+        )
+        ProfileDivider()
+        ProfileSettingRow(
+            "Report a problem",
+            "Tell us what happened so we can help.",
+            enabled = supportAvailable,
+            onClick = if (supportAvailable) ({ send("Relive problem report") }) else null,
+        )
+        ProfileSupportingText("Messages include only the app version, platform, and OS version. No archive data is attached.")
         notice?.let { ProfileSupportingText(it) }
     }
 }
 
-data class AboutScreenshotPlaceholder(val id: String, val caption: String)
-data class AboutArticleSection(val title: String, val body: String, val screenshot: AboutScreenshotPlaceholder? = null)
+internal fun supportMailRequest(subject: String, info: PlatformAppInfo, supportEmail: String) =
+    supportEmail.takeIf { it.isNotBlank() }?.let { buildSafeDiagnosticMail(subject, info, it) }
+
+data class AboutGuideSection(val title: String, val body: String, val icon: ImageVector)
 
 val aboutGuideSections = listOf(
-    AboutArticleSection("Capture", "Save writing, photos, video, audio, tags, and an optional location in a Moment.", AboutScreenshotPlaceholder("about_capture", "The Moment composer")),
-    AboutArticleSection("Timelines", "Shape custom chapters while keeping every Moment in your chronological archive.", AboutScreenshotPlaceholder("about_timelines", "Timeline Home")),
-    AboutArticleSection("Your timeline", "Scroll chronologically through your memories and open rich media in place.", AboutScreenshotPlaceholder("about_chronology", "A chronological timeline")),
-    AboutArticleSection("Search", "Find memories by their saved words and tags.", AboutScreenshotPlaceholder("about_search", "Search your archive")),
-    AboutArticleSection("Rediscover", "Return to Favorites and eligible On This Day memories.", AboutScreenshotPlaceholder("about_rediscover", "Rediscover")),
-    AboutArticleSection("Calendar", "Move directly to a date in your archive.", AboutScreenshotPlaceholder("about_calendar", "Calendar navigation")),
-    AboutArticleSection("Backup", "Manage Google Drive backup and restore separately from the archive.", AboutScreenshotPlaceholder("about_backup", "Backup & Restore")),
-    AboutArticleSection("Make it yours", "Choose Appearance and Preferences without changing the memories themselves."),
-    AboutArticleSection("Private by design", "Relive is local-first. Your archive is not a social profile and is never used for advertising."),
+    AboutGuideSection(
+        "Capture what matters",
+        "Keep writing, photos, video, voice, tags, and an optional manual location together in one Moment.",
+        ProfileIcons.Media,
+    ),
+    AboutGuideSection(
+        "Make chapters of your life",
+        "Create custom timelines for the people, places, and seasons that belong together. Every Moment also stays in All moments.",
+        ProfileIcons.Person,
+    ),
+    AboutGuideSection(
+        "Rediscover your archive",
+        "Return to Favourites, On This Day, From Your Past, and All Photos whenever a memory deserves another look.",
+        ProfileIcons.Info,
+    ),
+    AboutGuideSection(
+        "Find your way back",
+        "Search saved titles and writing, or use Calendar to move directly to a day in your archive.",
+        ProfileIcons.Help,
+    ),
+    AboutGuideSection(
+        "Notice how life feels",
+        "Optionally mark a new Moment as Great, Good, or Low, then explore gentle mood reflections over time.",
+        ProfileIcons.Info,
+    ),
+    AboutGuideSection(
+        "Make Relive yours",
+        "Choose an appearance, tune preferences, and give All moments and each custom timeline its own visual character.",
+        ProfileIcons.Preferences,
+    ),
+    AboutGuideSection(
+        "Private by design",
+        "Relive is local-first: your archive lives on your device, is never a social profile, and is never used for advertising.",
+        ProfileIcons.Security,
+    ),
+    AboutGuideSection(
+        "Backup on your terms",
+        "Backup and restore are managed separately from the local archive. Relive Pro adds scheduled automatic backup where available.",
+        ProfileIcons.Backup,
+    ),
+    AboutGuideSection(
+        "Grow with Relive Pro",
+        "Relive Pro unlocks automatic backup, more custom timelines, and every appearance while your existing archive remains yours.",
+        ProfileIcons.Info,
+    ),
 )
 
 @Composable
-fun AboutReliveScreen(onOpenLicenses: () -> Unit, onBack: () -> Unit) {
+fun AboutReliveScreen(legalLinks: ReliveLegalLinks, onOpenLicenses: () -> Unit, onBack: () -> Unit) {
     val info = remember { platformAppInfo() }
+    val uriHandler = LocalUriHandler.current
     ProfileScaffold("About Relive", onBack = onBack) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = ReliveTheme.dimensions.spacing.xl, vertical = ReliveTheme.dimensions.spacing.xxl)) {
-            Text("Relive", color = ReliveTheme.colors.textPrimary, style = ReliveTheme.typography.title)
-            Text("Remember. Relive.", color = ReliveTheme.colors.textSecondary, style = ReliveTheme.typography.subtitle)
-            Text("A private, local-first home for the moments that make up your life.", modifier = Modifier.padding(top = ReliveTheme.dimensions.spacing.md), color = ReliveTheme.colors.textMuted, style = ReliveTheme.typography.body)
-        }
-        ProfileSectionHeading("GUIDE")
+        DestinationHero(
+            eyebrow = "CAPTURE MOMENTS. RELIVE THEM LATER.",
+            title = "A home for your life.",
+            body = "Relive is a private, local-first archive for the thoughts, places, people, and small details you want to hold on to.",
+            icon = ProfileIcons.Info,
+        )
+        ProfileSectionHeading("WHAT RELIVE HELPS YOU KEEP")
         aboutGuideSections.forEach { section ->
-            Text(section.title, modifier = Modifier.padding(horizontal = ReliveTheme.dimensions.spacing.xl, vertical = ReliveTheme.dimensions.spacing.sm), color = ReliveTheme.colors.textPrimary, style = ReliveTheme.typography.subtitle)
-            ProfileSupportingText(section.body)
-            section.screenshot?.let { shot -> Box(Modifier.fillMaxWidth().height(132.dp).padding(horizontal = ReliveTheme.dimensions.spacing.xl, vertical = ReliveTheme.dimensions.spacing.sm).semantics { contentDescription = "${shot.caption}, screenshot placeholder ${shot.id}" }) { Text(shot.caption, color = ReliveTheme.colors.textMuted, style = ReliveTheme.typography.tag) } }
+            FeatureGuideCard(section)
         }
         ProfileSectionHeading("APP")
         ProfileSettingRow("Version", info.versionAndBuild)
         ProfileSectionHeading("LEGAL")
-        ProfileSettingRow("Privacy Policy", "Coming before release", enabled = false)
-        ProfileSettingRow("Terms of Service", "Coming before release", enabled = false)
+        ProfileSettingRow(
+            "Privacy Policy",
+            if (legalLinks.privacyPolicyUrl.isBlank()) "Not configured for this build" else null,
+            enabled = legalLinks.privacyPolicyUrl.isNotBlank(),
+            onClick = if (legalLinks.privacyPolicyUrl.isNotBlank()) ({ uriHandler.openUri(legalLinks.privacyPolicyUrl) }) else null,
+        )
+        ProfileDivider()
+        ProfileSettingRow(
+            "Terms of Service",
+            if (legalLinks.termsOfServiceUrl.isBlank()) "Not configured for this build" else null,
+            enabled = legalLinks.termsOfServiceUrl.isNotBlank(),
+            onClick = if (legalLinks.termsOfServiceUrl.isNotBlank()) ({ uriHandler.openUri(legalLinks.termsOfServiceUrl) }) else null,
+        )
+        ProfileDivider()
         ProfileSettingRow("Open-source licenses", onClick = onOpenLicenses)
+    }
+}
+
+@Composable
+private fun DestinationHero(eyebrow: String, title: String, body: String, icon: ImageVector) {
+    val d = ReliveTheme.dimensions
+    val shape = RoundedCornerShape(d.radii.largeIncreased)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = d.spacing.xl, vertical = d.spacing.xl)
+            .clip(shape)
+            .background(ReliveTheme.colors.surfaceCard)
+            .border(d.stroke.hairline, ReliveTheme.colors.borderMuted, shape)
+            .padding(d.spacing.xl)
+            .semantics(mergeDescendants = true) { contentDescription = "$title. $body" },
+        horizontalArrangement = Arrangement.spacedBy(d.spacing.lg),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = ReliveTheme.colors.accent,
+            modifier = Modifier.size(d.icon.lg),
+        )
+        Column(Modifier.weight(1f)) {
+            Text(eyebrow, color = ReliveTheme.colors.textSecondary, style = ReliveTheme.typography.eyebrow)
+            Text(
+                title,
+                modifier = Modifier.padding(top = d.spacing.xs).semantics { heading() },
+                color = ReliveTheme.colors.textPrimary,
+                style = ReliveTheme.typography.title,
+            )
+            Text(body, modifier = Modifier.padding(top = d.spacing.sm), color = ReliveTheme.colors.textSecondary, style = ReliveTheme.typography.body)
+        }
+    }
+}
+
+@Composable
+private fun FeatureGuideCard(section: AboutGuideSection) {
+    val d = ReliveTheme.dimensions
+    val shape = RoundedCornerShape(d.radii.large)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = d.spacing.xl, vertical = d.spacing.xs)
+            .clip(shape)
+            .background(ReliveTheme.colors.surfaceCard)
+            .border(d.stroke.hairline, ReliveTheme.colors.borderMuted, shape)
+            .padding(d.spacing.lg)
+            .semantics(mergeDescendants = true) { contentDescription = "${section.title}. ${section.body}" },
+        horizontalArrangement = Arrangement.spacedBy(d.spacing.md),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Icon(
+            section.icon,
+            contentDescription = null,
+            tint = ReliveTheme.colors.accentMuted,
+            modifier = Modifier.size(d.icon.md),
+        )
+        Column(Modifier.weight(1f)) {
+            Text(section.title, color = ReliveTheme.colors.textPrimary, style = ReliveTheme.typography.subtitle)
+            Text(
+                section.body,
+                modifier = Modifier.padding(top = d.spacing.xs),
+                color = ReliveTheme.colors.textSecondary,
+                style = ReliveTheme.typography.body,
+            )
+        }
     }
 }
 
@@ -124,5 +295,3 @@ fun LicensesScreen(onBack: () -> Unit) = ProfileScaffold("Open-source licenses",
     ProfileSectionHeading("RELIVE DEPENDENCIES")
     listOf("Kotlin", "Compose Multiplatform", "Material 3", "SQLDelight", "kotlinx.coroutines", "AndroidX Activity, Core, Lifecycle, Credentials, CameraX, Media3, and WorkManager", "Google Identity and Play services").forEach { ProfileSettingRow(it, "Apache License 2.0") }
 }
-
-const val SUPPORT_EMAIL = "support@relive.invalid" // RELEASE_CONFIG: replace with a deliverable support address.

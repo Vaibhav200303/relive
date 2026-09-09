@@ -90,5 +90,10 @@ android {
             ?: localProperties.getProperty("RELIVE_PRIVACY_POLICY_URL")
             ?: ""
         buildConfigField("String", "PRIVACY_POLICY_URL", "\"$privacyPolicyUrl\"")
+        val supportEmail = project.findProperty("RELIVE_SUPPORT_EMAIL")?.toString()
+            ?: System.getenv("RELIVE_SUPPORT_EMAIL")
+            ?: localProperties.getProperty("RELIVE_SUPPORT_EMAIL")
+            ?: ""
+        buildConfigField("String", "SUPPORT_EMAIL", "\"$supportEmail\"")
     }
 }

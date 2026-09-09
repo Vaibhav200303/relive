@@ -24,6 +24,7 @@ fun createDefaultReliveAppContainer(
     revenueCatPublicApiKey: String = "",
     termsOfServiceUrl: String = "",
     privacyPolicyUrl: String = "",
+    supportEmail: String = "",
 ): ReliveAppContainer {
     val driver = DatabaseDriverFactory().create()
     val database = ReliveDatabaseFactory.create(driver)
@@ -48,5 +49,6 @@ fun createDefaultReliveAppContainer(
         rediscoverReminderService = IosRediscoverReminderService(momentRepository),
         entitlementProvider = entitlementProviderFor(revenueCatPublicApiKey),
         legalLinks = ReliveLegalLinks(termsOfServiceUrl, privacyPolicyUrl),
+        supportEmail = supportEmail,
     )
 }

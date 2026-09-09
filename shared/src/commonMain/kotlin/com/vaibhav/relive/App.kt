@@ -577,8 +577,8 @@ fun App(
                 onLockAfterChange = { value -> scope.launch { lockController.setLockAfter(value) } },
                 onBack = { profileNavigation = profileNavigation.returnToProfile() },
             )
-            ProfileDestination.HelpFeedback -> HelpFeedbackScreen(onBack = { profileNavigation = profileNavigation.returnToProfile() }, onMessage = {})
-            ProfileDestination.AboutRelive -> AboutReliveScreen(onOpenLicenses = { profileNavigation = profileNavigation.openLicenses() }, onBack = { profileNavigation = profileNavigation.returnToProfile() })
+            ProfileDestination.HelpFeedback -> HelpFeedbackScreen(supportEmail = container.supportEmail, onBack = { profileNavigation = profileNavigation.returnToProfile() }, onMessage = {})
+            ProfileDestination.AboutRelive -> AboutReliveScreen(legalLinks = container.legalLinks, onOpenLicenses = { profileNavigation = profileNavigation.openLicenses() }, onBack = { profileNavigation = profileNavigation.returnToProfile() })
             ProfileDestination.Licenses -> LicensesScreen(onBack = { profileNavigation = profileNavigation.openAbout() })
                             ProfileDestination.Closed -> AnimatedContent(
                                 targetState = timelinesDestination,

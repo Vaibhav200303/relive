@@ -22,12 +22,13 @@ fun MainViewController(
     revenueCatApiKey: String = "",
     termsOfServiceUrl: String = "",
     privacyPolicyUrl: String = "",
+    supportEmail: String = "",
 ): UIViewController {
     val statusDelegate = ReliveComposeControllerDelegate()
     val controller = ComposeUIViewController(
         configure = { delegate = statusDelegate },
     ) {
-        val container = createDefaultReliveAppContainer(revenueCatApiKey, termsOfServiceUrl, privacyPolicyUrl)
+        val container = createDefaultReliveAppContainer(revenueCatApiKey, termsOfServiceUrl, privacyPolicyUrl, supportEmail)
         App(container)
     }
     IosStatusBarAppearance.update = { darkIcons ->

@@ -7,6 +7,9 @@ import com.vaibhav.relive.domain.repository.ProfileSettingsRepository
 import com.vaibhav.relive.platform.notifications.*
 import com.vaibhav.relive.platform.system.*
 import com.vaibhav.relive.ui.screens.aboutGuideSections
+import com.vaibhav.relive.ui.screens.supportMailRequest
+import com.vaibhav.relive.ui.screens.HelpTopic
+import com.vaibhav.relive.domain.entitlement.ReliveLegalLinks
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.CompletableDeferred
@@ -46,12 +49,38 @@ class ProfilePolishTest {
         assertFalse(request.body.contains("location", ignoreCase = true))
     }
 
-    @Test fun `about guide covers implemented features and omits places article`() {
+    @Test fun `about guide covers implemented features without placeholders or unsupported search claims`() {
         val titles = aboutGuideSections.map { it.title }
-        assertContains(titles, "Capture")
-        assertContains(titles, "Rediscover")
-        assertFalse(titles.any { it == "Places" })
-        assertEquals(aboutGuideSections.mapNotNull { it.screenshot?.id }.size, aboutGuideSections.mapNotNull { it.screenshot?.id }.distinct().size)
+        assertContains(titles, "Capture what matters")
+        assertContains(titles, "Rediscover your archive")
+        assertContains(titles, "Notice how life feels")
+        assertContains(titles, "Private by design")
+        assertFalse(aboutGuideSections.any { it.body.contains("search saved titles and writing", ignoreCase = true) && it.body.contains("tag", ignoreCase = true) })
+    }
+
+    @Test fun `help topics are task-oriented and separate from the about guide`() {
+        assertContains(HelpTopic.entries.map { it.title }, "Create a Moment")
+        assertContains(HelpTopic.entries.map { it.title }, "Relive Pro")
+        assertTrue(HelpTopic.entries.all { it.copy.isNotBlank() })
+    }
+
+    @Test fun `support mail is unavailable until a release address is configured`() {
+        val info = PlatformAppInfo("1.2", "7", "Android", "16")
+        assertNull(supportMailRequest("Feedback", info, ""))
+        assertEquals(
+            "help@relive.example",
+            supportMailRequest("Feedback", info, "help@relive.example")?.recipient,
+        )
+    }
+
+    @Test fun `legal links retain the same configured availability used by pro`() {
+        assertFalse(ReliveLegalLinks(termsOfServiceUrl = "https://example.com/terms").areConfigured)
+        assertTrue(
+            ReliveLegalLinks(
+                termsOfServiceUrl = "https://example.com/terms",
+                privacyPolicyUrl = "https://example.com/privacy",
+            ).areConfigured,
+        )
     }
 
     @Test fun `app lock authenticates before enable and respects timeout`() = runTest {

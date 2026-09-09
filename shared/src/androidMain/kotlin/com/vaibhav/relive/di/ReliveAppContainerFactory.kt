@@ -49,6 +49,7 @@ fun createDefaultReliveAppContainer(
     entitlementProvider: EntitlementProvider,
     termsOfServiceUrl: String = "",
     privacyPolicyUrl: String = "",
+    supportEmail: String = "",
 ): ReliveAppContainer {
     val app = context.applicationContext
     installAndroidMediaContext { app }
@@ -91,5 +92,6 @@ fun createDefaultReliveAppContainer(
         quickCaptureRequestBus = quickCaptureRequestBus ?: QuickCaptureRequestBus(),
         entitlementProvider = entitlementProvider,
         legalLinks = ReliveLegalLinks(termsOfServiceUrl, privacyPolicyUrl),
+        supportEmail = supportEmail,
     )
 }

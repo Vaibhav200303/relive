@@ -68,4 +68,6 @@ class ReliveAppContainer(
     val quickCaptureRequestBus: QuickCaptureRequestBus = QuickCaptureRequestBus(),
     val entitlementProvider: EntitlementProvider = UnavailableEntitlementProvider(),
     val legalLinks: ReliveLegalLinks = ReliveLegalLinks(),
+    /** Release-configured address used solely by Help & Feedback mail actions. */
+    val supportEmail: String = "",
 )

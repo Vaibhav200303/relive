@@ -391,6 +391,8 @@ Timeline wallpaper is independent from the global palette. The approved hand-dra
 
 Profile archive-insights uses one restrained summary surface, then direct canvas sections with subtle dividers and proportional indicators. Its category distinctions derive only from semantic Relive colors and are always accompanied by labels and formatted values.
 
+Profile destination pages retain the open canvas, Back header, uppercase section labels, and direct rows, but may introduce one restrained editorial hero and quiet feature-guide cards when they are explanatory rather than settings pages. These surfaces use existing semantic card, border, spacing, icon, and typography tokens only; they are not screenshots, dashboards, or nested elevated panels. Help uses rows as expandable task answers and contact actions, while About uses the cards for descriptive product features and keeps legal links as ordinary accessible rows.
+
 ### 19.1 Visual-media fallback cover
 
 Collection-card visual regions use `ReliveGeneratedCover` when their preview data contains no image or video. The cover uses a deterministic stable hash of the Timeline ID (or logical `timeline-all`) or Moment ID to choose a curated gradient; it is never persisted, time-based, or animated, and outside the Home Rediscover row never random. That row alone mixes one per-launch shuffle value into its cover seeds (ADR-0064), so which gradient — or which preview attachment — each of its cards wears is re-dealt each session while holding still within one. A reactive image/video preview replaces the generated cover automatically. Audio-only and text-only collection cards use the cover, without a waveform, generic icon, or empty-state copy. Normal Timeline MomentCard media presentation remains unchanged.
