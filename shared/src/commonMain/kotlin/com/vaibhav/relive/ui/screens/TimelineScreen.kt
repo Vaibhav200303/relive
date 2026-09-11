@@ -164,6 +164,7 @@ import com.vaibhav.relive.ui.components.ReliveSnackbarHost
 import com.vaibhav.relive.ui.components.ReliveAlertDialog
 import com.vaibhav.relive.ui.components.timeline.EmptyCustomTimelinePlaceholder
 import com.vaibhav.relive.ui.components.timeline.EmptyTimelinePlaceholder
+import com.vaibhav.relive.ui.components.timeline.LocalTimelineWallpaperPalette
 import com.vaibhav.relive.ui.components.timeline.MomentCard
 import com.vaibhav.relive.ui.components.timeline.TimelineMediaSharedTransition
 import com.vaibhav.relive.ui.components.timeline.sharedTransitionKey
@@ -183,6 +184,7 @@ import com.vaibhav.relive.ui.components.viewer.MomentMediaGallery
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.theme.timelineMomentForegroundColors
 import com.vaibhav.relive.ui.theme.reliveSequentialSlideFade
 import com.vaibhav.relive.ui.theme.spec
 import com.vaibhav.relive.presentation.cardcover.allTimelineCollageBucket
@@ -1066,23 +1068,53 @@ private fun TimelineAssignmentDialog(
     )
 }
 
+internal data class SystemCollectionEmptyCopy(
+    val title: String,
+    val message: String,
+)
+
+internal fun systemCollectionEmptyCopy(timeline: CurrentTimeline): SystemCollectionEmptyCopy = when (timeline) {
+    CurrentTimeline.Favorites -> SystemCollectionEmptyCopy(
+        title = "No favorite moments yet.",
+        message = "Moments you favorite will appear here.",
+    )
+    CurrentTimeline.AllPhotos -> SystemCollectionEmptyCopy(
+        title = "No photos or videos yet.",
+        message = "Moments with photos or videos will appear here.",
+    )
+    is CurrentTimeline.OnThisDay -> SystemCollectionEmptyCopy(
+        title = "No moments from this day yet.",
+        message = "Memories from this date in past years will appear here.",
+    )
+    is CurrentTimeline.FromYourPast -> SystemCollectionEmptyCopy(
+        title = "No moments from your past yet.",
+        message = "Older memories will appear here.",
+    )
+    CurrentTimeline.All, is CurrentTimeline.Custom -> error("Not a system collection: $timeline")
+}
+
 @Composable
-private fun SystemCollectionEmptyState() {
+private fun SystemCollectionEmptyState(timeline: CurrentTimeline) {
     val dims = ReliveTheme.dimensions
+    val copy = systemCollectionEmptyCopy(timeline)
+    val foreground = timelineMomentForegroundColors(
+        colors = ReliveTheme.colors,
+        wallpaper = LocalTimelineWallpaperPalette.current,
+    )
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = dims.spacing.huge, horizontal = dims.timeline.contentInset),
     ) {
         Text(
-            text = "No favorite moments yet.",
+            text = copy.title,
             style = ReliveTheme.typography.title,
-            color = ReliveTheme.colors.textPrimary,
+            color = foreground.textPrimary,
         )
         Text(
-            text = "Moments you favorite will appear here.",
+            text = copy.message,
             style = ReliveTheme.typography.subtitle,
-            color = ReliveTheme.colors.textSecondary,
+            color = foreground.textSecondary,
             modifier = Modifier.padding(top = dims.spacing.sm),
         )
     }
@@ -1508,13 +1540,15 @@ private fun TimelineContent(
                                     onOpenAppSettings = onOpenAppSettings,
                                     // On Home the composer is the head of a newest-first feed, so
                                     // the rail leaves its marker downward toward the first moment.
-                                    railContinuesBelow = isNewestFirst,
+                                    railContinuesBelow = isNewestFirst &&
+                                        timelineState.moments is TimelineMomentsState.Loaded,
                                     modifier = Modifier.fillMaxWidth(),
                                 )
                             } else {
                                 CollapsedComposerMarker(
                                     onExpand = onExpandComposer,
-                                    railContinuesBelow = isNewestFirst,
+                                    railContinuesBelow = isNewestFirst &&
+                                        timelineState.moments is TimelineMomentsState.Loaded,
                                     modifier = Modifier.fillMaxWidth(),
                                 )
                             }
@@ -1795,7 +1829,7 @@ private fun TimelineContent(
                     }
                     if (mode is TimelineMode.ReadOnlySystemCollection && timelineState.moments == TimelineMomentsState.Empty) {
                         item(key = "system-collection-empty") {
-                            SystemCollectionEmptyState()
+                            SystemCollectionEmptyState(timelineState.currentTimeline)
                         }
                     } else if (customName != null && timelineState.moments == TimelineMomentsState.Empty) {
                         item(key = "custom-empty") {
