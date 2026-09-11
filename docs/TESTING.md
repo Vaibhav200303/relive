@@ -131,6 +131,16 @@ Using Compose Multiplatform UI testing:
 - On This Day/Favourites preference-off state removes that collection from the Home Rediscover row and collapses dependent spacing without mutating the read model or disturbing the All moments timeline below.
 - Profile → Preferences → Back returns to Profile.
 
+### First-launch onboarding
+
+- A fresh installation with onboarding version `0` and bounded Profile counts of zero shows page one before Home; it performs no whole-archive read.
+- `Begin` / `Next` advance exactly one page, Back returns exactly one page, and Back on page one follows root behavior. `Skip` from pages one through three and `Start your archive` from page four persist the current onboarding version and reveal Home at scroll offset zero.
+- Process death before completion persists no partial page; the next ordinary launch begins again on page one. Once complete, ordinary launches never show onboarding again.
+- A pre-onboarding installation with at least one Moment or custom timeline is marked complete from the bounded Profile snapshot and reaches Home without an onboarding flash. An existing empty installation may see onboarding.
+- App Lock remains outside the onboarding gate. Incoming shares and authoritative deep links bypass onboarding without completing it, and the next ordinary launch still shows page one.
+- Onboarding requests no notification, media, location, or authentication permission and never enables Reminders or App Lock.
+- UI tests cover the four fixed headings, progress semantics, Skip visibility, final action, 48dp targets, large font scaling, dark/light canvases, and reduced motion. Reduced motion uses fade only and runs no idle loop.
+
 ---
 
 ## 11. Manual verification expectations
@@ -154,10 +164,11 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 - [ ] Within focused All moments, manually scrolling toward older Moments reveals the bottom-centered return-to-newest arrow; it is hidden whenever the Rediscover row is visible, so it never competes with the upward scroll that restores the top state. It stays visible until the newest end at the head of the feed, works in custom timeline and read-only collection details, and is absent when no scroll toward older Moments is possible.
 - [ ] Selecting the arrow returns to the newest end of the feed and never restores the welcome/Rediscover top state; because the feed is windowed it is not required to animate through the whole archive. The first touch during that motion stops at the current position and does not activate the touched Moment content; Snackbar feedback remains above the arrow.
 
-### Persistent debug data
+### Persistent local data
 - [ ] Create a moment in a debug build, kill the process, reopen — moment persists.
 - [ ] Remove app from Recents, reopen — moment persists.
 - [ ] No in-memory fallback silently replaces SQLDelight storage.
+- [ ] Fresh debug and release installs contain no sample/QA Moments; upgrading removes only the retired utilities' fixed IDs and preserves every other Moment.
 
 ### Custom timelines
 - [ ] Custom timelines appear newest-created-first wherever the custom-timeline list is surfaced; timestamp ties use deterministic ordering.

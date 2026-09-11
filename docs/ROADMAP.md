@@ -133,6 +133,8 @@ Current implementation note: global appearance, Profile, Preferences, Media & St
 
 ## Phase 11 — Production polish + Shipaton release  ☐
 
+- **Approved phase override — first-launch onboarding:** add the four-page, skippable, versioned introduction from PRODUCT_SPEC §1A and ADR-0073. It is shared Compose UI with original project-owned raster heroes, native install preferences, existing-user protection through bounded Profile counts, no permission request, no account/cloud claim, no archive hydration, and no new runtime dependency. This slice is implemented now at explicit product-owner request while earlier in-progress phases retain their status.
+- **Production-data hygiene:** debug and release builds contain no sample/QA Moment repository or automatic data seeder; migration `5.sqm` removes only the retired utilities' fixed IDs from existing development databases (ADR-0074).
 - Performance — including verified bounded/windowed/paged All moments loading so the Home surface never hydrates the complete archive on launch — accessibility, empty/edge states, and final visual polish. The reference governs warm editorial visual identity only; it is not authoritative for the structure of the Home surface, and the Android notification shade is an interaction reference for one continuous, reversibly scrollable surface, never a visual one.
 - Release readiness per [`RELEASE.md`](RELEASE.md): Android release, iOS build/signing, screenshots/demo video, privacy checks, Shipaton submission.
 - **Exit:** release candidate builds for both platforms; release checklist complete.

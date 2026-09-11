@@ -37,6 +37,7 @@ import com.vaibhav.relive.ui.screens.TimelineScreen
 import com.vaibhav.relive.ui.screens.TimelineHomeScreen
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeContent
 import com.vaibhav.relive.ui.screens.AppLockScreen
+import com.vaibhav.relive.ui.screens.OnboardingScreen
 import com.vaibhav.relive.ui.screens.HomeScreen
 import com.vaibhav.relive.ui.screens.rememberHomeSurfaceState
 import com.vaibhav.relive.ui.screens.ShareTimelinePickerScreen
@@ -95,6 +96,9 @@ import com.vaibhav.relive.presentation.settings.BehaviorPreferencesViewModel
 import com.vaibhav.relive.presentation.settings.resolveDarkMode
 import com.vaibhav.relive.presentation.profile.AppLockController
 import com.vaibhav.relive.presentation.profile.RediscoverReminderController
+import com.vaibhav.relive.presentation.onboarding.CURRENT_ONBOARDING_VERSION
+import com.vaibhav.relive.presentation.onboarding.OnboardingResolution
+import com.vaibhav.relive.presentation.onboarding.resolveOnboarding
 import com.vaibhav.relive.platform.system.openAppSettings
 import com.vaibhav.relive.platform.system.ReliveBackHandler
 import com.vaibhav.relive.platform.system.toLauncherIcon
@@ -105,6 +109,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.first
 
 private sealed interface TimelinesDestination {
     data object TimelineHome : TimelinesDestination
@@ -255,6 +260,32 @@ fun App(
         val searchViewModel = remember(container, scope) { SearchViewModel(container.momentRepository, scope) }
         val profileViewModel = remember(container, scope) { ProfileViewModel(container.profileRepository, container.profileSettingsRepository, container.mediaStore, scope) }
         val profileSettings by container.profileSettingsRepository.settings.collectAsState()
+        val onboardingPreferences by container.onboardingPreferencesRepository.preferences.collectAsState()
+        var onboardingVisible by remember(container) { mutableStateOf<Boolean?>(null) }
+        var onboardingBypassedForSession by remember(container) { mutableStateOf(false) }
+        LaunchedEffect(onboardingPreferences.completedVersion) {
+            if (onboardingPreferences.completedVersion >= CURRENT_ONBOARDING_VERSION) {
+                onboardingVisible = false
+            } else {
+                val profile = container.profileRepository.observeProfile().first()
+                when (
+                    resolveOnboarding(
+                        completedVersion = onboardingPreferences.completedVersion,
+                        momentCount = profile.momentCount,
+                        customTimelineCount = profile.customTimelineCount,
+                    )
+                ) {
+                    OnboardingResolution.Hidden -> onboardingVisible = false
+                    OnboardingResolution.Show -> onboardingVisible = true
+                    OnboardingResolution.CompleteExistingInstall -> {
+                        val migrated = container.onboardingPreferencesRepository
+                            .complete(CURRENT_ONBOARDING_VERSION)
+                            .isSuccess
+                        onboardingVisible = !migrated
+                    }
+                }
+            }
+        }
         val lockController = remember(container) { AppLockController(container.profileSettingsRepository, container.deviceAuthentication) { container.clock.now().epochMilliseconds } }
         val locked by lockController.locked.collectAsState()
         val reminderController = remember(container) { RediscoverReminderController(container.profileSettingsRepository, container.rediscoverReminderService) }
@@ -319,6 +350,9 @@ fun App(
         }
         var selectedIncomingShareId by remember { mutableStateOf<String?>(null) }
         LaunchedEffect(incomingShareState) {
+            if (incomingShareState !is IncomingShareState.Idle) {
+                onboardingBypassedForSession = true
+            }
             val ready = incomingShareState as? IncomingShareState.Ready
             if (ready != null && ready.payload.requestId != selectedIncomingShareId) {
                 selectedIncomingShareId = null
@@ -326,6 +360,7 @@ fun App(
         }
         val openQuickCapture: (QuickCaptureSurface) -> Unit = { surface ->
             quickCaptureCommand(surface)?.let { command ->
+                onboardingBypassedForSession = true
                 ActivePlayback.stopActive()
                 if (command.timeline == CurrentTimeline.All) {
                     // Every root's `+ New` is the same act of writing to the archive, so they all
@@ -514,6 +549,18 @@ fun App(
                             }
                         },
                     )
+                } else if (!onboardingBypassedForSession && onboardingVisible == true) {
+                    OnboardingScreen(
+                        onFinish = {
+                            container.onboardingPreferencesRepository
+                                .complete(CURRENT_ONBOARDING_VERSION)
+                                .isSuccess
+                        },
+                    )
+                } else if (!onboardingBypassedForSession && onboardingVisible == null) {
+                    // Resolve the bounded existing-install migration before choosing between the
+                    // introduction and Home. The atmospheric ground is already painted outside.
+                    Box(Modifier.fillMaxSize())
                 } else {
                     AnimatedContent(
                         targetState = profileNavigation.destination,

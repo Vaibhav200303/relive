@@ -67,6 +67,13 @@ class MainActivity : ComponentActivity() {
         setIntent(Intent(this, MainActivity::class.java))
     }
 
+    override fun onResume() {
+        super.onResume()
+        shareScope.launch {
+            (application as ReliveApplication).entitlementProvider.refresh()
+        }
+    }
+
     /** ADD_MOMENT (notification/widget) opens the composer; anything else is a share intent. */
     private fun routeIntent(incoming: Intent?) {
         if (incoming?.action == ReliveIntents.ACTION_ADD_MOMENT) {

@@ -138,6 +138,29 @@ data class ReliveComposerDimensions(
 )
 
 @Immutable
+data class ReliveOnboardingDimensions(
+    val heroLarge: Dp = 388.dp,
+    val heroCompact: Dp = 292.dp,
+    val heroEntranceTravel: Dp = 18.dp,
+    val heroIdleTravel: Dp = 5.dp,
+    val heroShadowHeight: Dp = 28.dp,
+    val heroShadowBlur: Dp = 16.dp,
+    val progressWidth: Dp = 144.dp,
+    val progressHeight: Dp = 16.dp,
+    val progressDot: Dp = 6.dp,
+    val progressDotActive: Dp = 8.dp,
+    val primaryActionWidth: Dp = 200.dp,
+    val copyMaxWidth: Dp = 440.dp,
+    val compactHeightThreshold: Dp = 760.dp,
+    val heroInitialScale: Float = 0.86f,
+    val heroShadowWidthFraction: Float = 0.58f,
+    val heroEntranceTiltX: Float = 9f,
+    val heroIdleTiltY: Float = 2.5f,
+    val heroIdleRotationZ: Float = 0.6f,
+    val pressedScale: Float = 0.96f,
+)
+
+@Immutable
 data class ReliveFloatingToolbarDimensions(
     val height: Dp = 64.dp,
     val compactWidth: Dp = 64.dp,
@@ -204,6 +227,7 @@ data class ReliveDimensions(
     val profile: ReliveProfileDimensions = ReliveProfileDimensions(),
     val search: ReliveSearchDimensions = ReliveSearchDimensions(),
     val composer: ReliveComposerDimensions = ReliveComposerDimensions(),
+    val onboarding: ReliveOnboardingDimensions = ReliveOnboardingDimensions(),
     val floatingToolbar: ReliveFloatingToolbarDimensions = ReliveFloatingToolbarDimensions(),
     val media: ReliveMediaDimensions = ReliveMediaDimensions(),
     val skeleton: ReliveSkeletonDimensions = ReliveSkeletonDimensions(),

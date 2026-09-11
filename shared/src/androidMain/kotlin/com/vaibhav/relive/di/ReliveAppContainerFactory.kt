@@ -11,6 +11,7 @@ import com.vaibhav.relive.data.local.repository.SqlDelightRediscoverRepository
 import com.vaibhav.relive.data.local.repository.SqlDelightProfileRepository
 import com.vaibhav.relive.data.settings.AndroidAppearanceRepository
 import com.vaibhav.relive.data.settings.AndroidBehaviorPreferencesRepository
+import com.vaibhav.relive.data.settings.AndroidOnboardingPreferencesRepository
 import com.vaibhav.relive.data.settings.AndroidProfileSettingsRepository
 import com.vaibhav.relive.domain.id.IdGenerator
 import com.vaibhav.relive.domain.repository.MomentRepository
@@ -95,5 +96,6 @@ fun createDefaultReliveAppContainer(
         legalLinks = ReliveLegalLinks(termsOfServiceUrl, privacyPolicyUrl),
         supportEmail = supportEmail,
         launcherIconController = AndroidLauncherIconController(app),
+        onboardingPreferencesRepository = AndroidOnboardingPreferencesRepository(app),
     )
 }

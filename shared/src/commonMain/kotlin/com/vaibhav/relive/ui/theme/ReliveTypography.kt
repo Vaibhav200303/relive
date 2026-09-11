@@ -21,6 +21,9 @@ data class ReliveTypography(
     val tag: TextStyle,
     val action: TextStyle,
     val prominentAction: TextStyle,
+    val onboardingTitle: TextStyle,
+    val onboardingBody: TextStyle,
+    val onboardingAction: TextStyle,
 )
 
 /**
@@ -141,6 +144,27 @@ fun reliveTypography(
             fontWeight = prominentWeight,
             fontSize = 16.sp,
             lineHeight = 22.sp,
+            letterSpacing = 0.1.sp,
+        ),
+        onboardingTitle = TextStyle(
+            fontFamily = serif,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 32.sp,
+            lineHeight = 38.sp,
+            letterSpacing = (-0.4).sp,
+        ),
+        onboardingBody = TextStyle(
+            fontFamily = sans,
+            fontWeight = FontWeight.Normal,
+            fontSize = 18.sp,
+            lineHeight = 28.sp,
+            letterSpacing = 0.sp,
+        ),
+        onboardingAction = TextStyle(
+            fontFamily = sans,
+            fontWeight = prominentWeight,
+            fontSize = 17.sp,
+            lineHeight = 24.sp,
             letterSpacing = 0.1.sp,
         ),
     )

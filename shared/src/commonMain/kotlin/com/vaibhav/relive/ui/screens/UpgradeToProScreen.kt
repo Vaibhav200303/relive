@@ -537,7 +537,7 @@ private val RelivePurchaseOption.defaultPeriod: String
 
 private fun PurchaseOutcome.messageOrNull(): String? = when (this) {
     PurchaseOutcome.Succeeded -> null
-    PurchaseOutcome.Cancelled -> "Purchase cancelled."
+    PurchaseOutcome.Cancelled -> null
     is PurchaseOutcome.Unavailable -> message
     is PurchaseOutcome.Failed -> message
 }

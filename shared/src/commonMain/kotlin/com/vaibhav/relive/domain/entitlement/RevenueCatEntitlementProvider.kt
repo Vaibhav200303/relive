@@ -1,22 +1,25 @@
 package com.vaibhav.relive.domain.entitlement
 
-import com.revenuecat.purchases.kmp.Purchases
 import com.revenuecat.purchases.kmp.LogLevel
+import com.revenuecat.purchases.kmp.Purchases
 import com.revenuecat.purchases.kmp.configure
 import com.revenuecat.purchases.kmp.ktx.awaitCustomerInfo
 import com.revenuecat.purchases.kmp.ktx.awaitOfferings
 import com.revenuecat.purchases.kmp.ktx.awaitPurchase
 import com.revenuecat.purchases.kmp.ktx.awaitRestore
+import com.revenuecat.purchases.kmp.models.CustomerInfo
 import com.revenuecat.purchases.kmp.models.PurchasesTransactionException
 import com.revenuecat.purchases.kmp.models.freePhase
 import com.revenuecat.purchases.kmp.models.introPhase
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /** RevenueCat implementation; all feature gates continue to depend only on [EntitlementProvider]. */
 class RevenueCatEntitlementProvider(private val apiKey: String, enableDebugLogging: Boolean = false) : EntitlementProvider {
@@ -26,46 +29,55 @@ class RevenueCatEntitlementProvider(private val apiKey: String, enableDebugLoggi
 
     private val purchases = Purchases.configure(apiKey)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private val refreshMutex = Mutex()
     private val _state = MutableStateFlow(EntitlementState(purchasingAvailable = true, isLoading = true))
     override val state: StateFlow<EntitlementState> = _state.asStateFlow()
 
     init {
-        refresh()
+        scope.launch { refresh() }
     }
 
     override suspend fun purchase(option: RelivePurchaseOption): PurchaseOutcome = runCatching {
         _state.value = _state.value.copy(isLoading = true, message = null)
         val offering = purchases.awaitOfferings().current
             ?: return unavailable("Relive Pro is not configured for this store yet.")
-        val packageToPurchase = offering.availablePackages.firstOrNull { it.storeProduct.id == option.productId }
+        val packageToPurchase = offering.availablePackages.firstOrNull {
+            relivePurchaseOptionForPackage(it.identifier, it.storeProduct.id) == option
+        }
             ?: return unavailable("This Relive Pro option is not available in your store.")
-        purchases.awaitPurchase(packageToPurchase)
-        refresh()
-        PurchaseOutcome.Succeeded
+        val customerInfo = purchases.awaitPurchase(packageToPurchase).customerInfo
+        updateCustomerInfo(customerInfo)
+        if (_state.value.isPro) {
+            PurchaseOutcome.Succeeded
+        } else {
+            failed("Your purchase is still pending or could not be verified yet. Relive Pro will unlock after the store confirms it.")
+        }
     }.getOrElse { error ->
         if (error is PurchasesTransactionException && error.userCancelled) cancelled()
-        else failed(error.safeMessage(apiKey, "Purchase could not be completed."))
+        else failed("Purchase could not be completed. Check your connection and try again.")
     }
 
     override suspend fun restorePurchases(): PurchaseOutcome = runCatching {
         _state.value = _state.value.copy(isLoading = true, message = null)
-        purchases.awaitRestore()
-        refresh()
-        PurchaseOutcome.Succeeded
-    }.getOrElse { error ->
-        failed(error.safeMessage(apiKey, "Purchases could not be restored."))
+        val customerInfo = purchases.awaitRestore()
+        updateCustomerInfo(customerInfo)
+        if (_state.value.isPro) {
+            PurchaseOutcome.Succeeded
+        } else {
+            unavailable("No active Relive Pro purchase was found for this store account.")
+        }
+    }.getOrElse {
+        failed("Purchases could not be restored. Check your connection and try again.")
     }
 
-    private fun refresh() {
-        scope.launchRefresh()
-    }
-
-    private fun CoroutineScope.launchRefresh() = launch {
+    override suspend fun refresh() = refreshMutex.withLock {
+        val previous = _state.value
+        _state.value = previous.copy(isLoading = true, message = null)
         runCatching {
             val offering = purchases.awaitOfferings().current
             val info = purchases.awaitCustomerInfo()
             info to offering?.availablePackages.orEmpty().mapNotNull { packageInfo ->
-                relivePurchaseOptionForProductId(packageInfo.storeProduct.id)
+                relivePurchaseOptionForPackage(packageInfo.identifier, packageInfo.storeProduct.id)
                     ?.let { option -> option to packageInfo.storeProduct.toPurchaseProduct() }
             }.toMap()
         }
@@ -77,9 +89,19 @@ class RevenueCatEntitlementProvider(private val apiKey: String, enableDebugLoggi
                     products = products,
                 )
             }
-            .onFailure { error ->
-                _state.value = offeringsFailureState(error.safeMessage(apiKey, "Could not check Relive Pro right now."))
+            .onFailure {
+                _state.value = offeringsFailureState(previous, "Could not check Relive Pro right now. Check your connection and try again.")
             }
+        Unit
+    }
+
+    private fun updateCustomerInfo(customerInfo: CustomerInfo) {
+        _state.value = _state.value.copy(
+            isPro = customerInfo.entitlements[ReliveMonetization.entitlementId]?.isActive == true,
+            purchasingAvailable = true,
+            isLoading = false,
+            message = null,
+        )
     }
 
     private fun unavailable(message: String): PurchaseOutcome.Unavailable {
@@ -98,13 +120,11 @@ class RevenueCatEntitlementProvider(private val apiKey: String, enableDebugLoggi
     }
 }
 
-internal fun offeringsFailureState(message: String): EntitlementState = EntitlementState(
+internal fun offeringsFailureState(previous: EntitlementState, message: String): EntitlementState = previous.copy(
     purchasingAvailable = true,
+    isLoading = false,
     message = message,
 )
-
-private fun Throwable.safeMessage(apiKey: String, fallback: String): String =
-    message?.takeIf { it.isNotBlank() }?.replace(apiKey, "[redacted]") ?: fallback
 
 private fun com.revenuecat.purchases.kmp.models.StoreProduct.toPurchaseProduct(): RelivePurchaseProduct {
     val androidOption = defaultOption

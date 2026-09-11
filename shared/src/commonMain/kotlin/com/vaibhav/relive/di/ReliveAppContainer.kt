@@ -5,6 +5,7 @@ import com.vaibhav.relive.domain.repository.AppearanceRepository
 import com.vaibhav.relive.domain.repository.ArchiveInsightsRepository
 import com.vaibhav.relive.domain.repository.BehaviorPreferencesRepository
 import com.vaibhav.relive.domain.repository.MomentRepository
+import com.vaibhav.relive.domain.repository.OnboardingPreferencesRepository
 import com.vaibhav.relive.domain.repository.ProfileRepository
 import com.vaibhav.relive.domain.repository.ProfileSettingsRepository
 import com.vaibhav.relive.domain.repository.TimelineRepository
@@ -74,4 +75,6 @@ class ReliveAppContainer(
     val supportEmail: String = "",
     /** Keeps the installed launcher artwork paired with the selected global app palette. */
     val launcherIconController: LauncherIconController = UnavailableLauncherIconController,
+    /** Install-level first-launch state; platform containers replace the completed preview stub. */
+    val onboardingPreferencesRepository: OnboardingPreferencesRepository = InMemoryOnboardingPreferencesRepository(),
 )

@@ -1,0 +1,106 @@
+-- Retire every fixed ID previously owned by Android debug sample/QA utilities.
+-- Delete dependent rows explicitly because platform drivers may run migrations
+-- before ReliveDatabaseFactory enables SQLite foreign-key cascades.
+-- These guarded declarations complete SQLDelight's partial historical migration
+-- snapshot and are no-ops on every real Relive database.
+CREATE TABLE IF NOT EXISTS tags (
+    canonical TEXT NOT NULL PRIMARY KEY,
+    label TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS moment_tags (
+    moment_id TEXT NOT NULL REFERENCES moments(id) ON DELETE CASCADE,
+    tag_canonical TEXT NOT NULL REFERENCES tags(canonical) ON DELETE RESTRICT,
+    PRIMARY KEY (moment_id, tag_canonical)
+);
+
+CREATE TABLE IF NOT EXISTS moment_timeline_memberships (
+    moment_id TEXT NOT NULL REFERENCES moments(id) ON DELETE CASCADE,
+    timeline_id TEXT NOT NULL REFERENCES custom_timelines(id) ON DELETE CASCADE,
+    PRIMARY KEY (moment_id, timeline_id)
+);
+
+CREATE TABLE IF NOT EXISTS media_attachments (
+    id TEXT NOT NULL PRIMARY KEY,
+    moment_id TEXT NOT NULL REFERENCES moments(id) ON DELETE CASCADE,
+    media_type TEXT NOT NULL,
+    storage_ref TEXT NOT NULL,
+    sort_index INTEGER NOT NULL,
+    UNIQUE(moment_id, sort_index)
+);
+
+DELETE FROM media_attachments
+WHERE moment_id IN (
+    'relive-debug-rediscover-qa-photo-v1',
+    'relive-debug-rediscover-qa-video-v1',
+    'relive-debug-rediscover-qa-text-v1',
+    'relive-debug-rediscover-qa-audio-v1',
+    'relive-debug-rediscover-qa-old-trip-v1',
+    'relive-debug-rediscover-qa-college-v1',
+    'relive-debug-rediscover-qa-random-v1',
+    'relive-debug-rediscover-qa-weekend-v1',
+    'relive-debug-rediscover-qa-recent-v1',
+    'debug-1',
+    'debug-2',
+    'debug-3',
+    'debug-4',
+    'debug-5'
+);
+
+DELETE FROM moment_tags
+WHERE moment_id IN (
+    'relive-debug-rediscover-qa-photo-v1',
+    'relive-debug-rediscover-qa-video-v1',
+    'relive-debug-rediscover-qa-text-v1',
+    'relive-debug-rediscover-qa-audio-v1',
+    'relive-debug-rediscover-qa-old-trip-v1',
+    'relive-debug-rediscover-qa-college-v1',
+    'relive-debug-rediscover-qa-random-v1',
+    'relive-debug-rediscover-qa-weekend-v1',
+    'relive-debug-rediscover-qa-recent-v1',
+    'debug-1',
+    'debug-2',
+    'debug-3',
+    'debug-4',
+    'debug-5'
+);
+
+DELETE FROM moment_timeline_memberships
+WHERE moment_id IN (
+    'relive-debug-rediscover-qa-photo-v1',
+    'relive-debug-rediscover-qa-video-v1',
+    'relive-debug-rediscover-qa-text-v1',
+    'relive-debug-rediscover-qa-audio-v1',
+    'relive-debug-rediscover-qa-old-trip-v1',
+    'relive-debug-rediscover-qa-college-v1',
+    'relive-debug-rediscover-qa-random-v1',
+    'relive-debug-rediscover-qa-weekend-v1',
+    'relive-debug-rediscover-qa-recent-v1',
+    'debug-1',
+    'debug-2',
+    'debug-3',
+    'debug-4',
+    'debug-5'
+);
+
+DELETE FROM moments
+WHERE id IN (
+    'relive-debug-rediscover-qa-photo-v1',
+    'relive-debug-rediscover-qa-video-v1',
+    'relive-debug-rediscover-qa-text-v1',
+    'relive-debug-rediscover-qa-audio-v1',
+    'relive-debug-rediscover-qa-old-trip-v1',
+    'relive-debug-rediscover-qa-college-v1',
+    'relive-debug-rediscover-qa-random-v1',
+    'relive-debug-rediscover-qa-weekend-v1',
+    'relive-debug-rediscover-qa-recent-v1',
+    'debug-1',
+    'debug-2',
+    'debug-3',
+    'debug-4',
+    'debug-5'
+);
+
+DELETE FROM tags
+WHERE canonical = 'qa'
+  AND canonical NOT IN (SELECT DISTINCT tag_canonical FROM moment_tags);

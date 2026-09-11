@@ -6,9 +6,9 @@ import com.vaibhav.relive.domain.model.TimelineWallpaper
 /** Central launch configuration. Change product IDs or Free appearance here, not in feature UI. */
 object ReliveMonetization {
     const val entitlementId = "relive_pro"
-    const val monthlyProductId = "monthly"
-    const val annualProductId = "yearly"
-    const val lifetimeProductId = "lifetime"
+    const val monthlyProductId = "relive_pro_monthly"
+    const val annualProductId = "relive_pro_annual"
+    const val lifetimeProductId = "relive_pro_lifetime"
     const val freeCustomTimelineLimit = 3
 
     val freePalettes = setOf(
@@ -25,8 +25,15 @@ enum class RelivePurchaseOption(val productId: String) {
     Lifetime(ReliveMonetization.lifetimeProductId),
 }
 
-internal fun relivePurchaseOptionForProductId(productId: String): RelivePurchaseOption? =
-    RelivePurchaseOption.entries.firstOrNull { it.productId == productId }
+internal fun relivePurchaseOptionForPackage(
+    packageIdentifier: String,
+    productId: String,
+): RelivePurchaseOption? = when (packageIdentifier) {
+    "\$rc_monthly" -> RelivePurchaseOption.Monthly
+    "\$rc_annual" -> RelivePurchaseOption.Annual
+    "\$rc_lifetime" -> RelivePurchaseOption.Lifetime
+    else -> RelivePurchaseOption.entries.firstOrNull { it.productId == productId }
+}
 
 data class EntitlementState(
     val isPro: Boolean = false,
@@ -62,6 +69,7 @@ sealed interface PurchaseOutcome {
 
 interface EntitlementProvider {
     val state: kotlinx.coroutines.flow.StateFlow<EntitlementState>
+    suspend fun refresh() = Unit
     suspend fun purchase(option: RelivePurchaseOption): PurchaseOutcome
     suspend fun restorePurchases(): PurchaseOutcome
 }

@@ -10,6 +10,7 @@ import com.vaibhav.relive.data.local.repository.SqlDelightRediscoverRepository
 import com.vaibhav.relive.data.local.repository.SqlDelightProfileRepository
 import com.vaibhav.relive.data.settings.IosAppearanceRepository
 import com.vaibhav.relive.data.settings.IosBehaviorPreferencesRepository
+import com.vaibhav.relive.data.settings.IosOnboardingPreferencesRepository
 import com.vaibhav.relive.data.settings.IosProfileSettingsRepository
 import com.vaibhav.relive.platform.system.IosDeviceAuthentication
 import com.vaibhav.relive.platform.notifications.IosRediscoverReminderService
@@ -53,5 +54,6 @@ fun createDefaultReliveAppContainer(
         legalLinks = ReliveLegalLinks(termsOfServiceUrl, privacyPolicyUrl),
         supportEmail = supportEmail,
         launcherIconController = IosLauncherIconController(launcherIconUpdate),
+        onboardingPreferencesRepository = IosOnboardingPreferencesRepository(),
     )
 }

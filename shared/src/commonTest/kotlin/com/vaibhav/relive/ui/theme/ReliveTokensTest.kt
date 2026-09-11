@@ -97,6 +97,18 @@ class ReliveTokensTest {
     }
 
     @Test
+    fun onboardingUsesTheApprovedLargeEditorialScale() {
+        val onboarding = DefaultReliveDimensions.onboarding
+        val typography = DefaultReliveTypography
+
+        assertEquals(388.dp, onboarding.heroLarge)
+        assertEquals(292.dp, onboarding.heroCompact)
+        assertEquals(32.sp, typography.onboardingTitle.fontSize)
+        assertEquals(18.sp, typography.onboardingBody.fontSize)
+        assertEquals(17.sp, typography.onboardingAction.fontSize)
+    }
+
+    @Test
     fun rediscoverShelfWidthsPreserveTheFeaturedHierarchy() {
         val rediscover = DefaultReliveDimensions.rediscover
         assertEquals(20.dp, rediscover.cardOuterRadius)

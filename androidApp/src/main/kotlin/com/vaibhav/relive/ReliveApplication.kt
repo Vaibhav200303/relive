@@ -14,7 +14,11 @@ import kotlinx.coroutines.launch
 class ReliveApplication : Application() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val entitlementProvider: EntitlementProvider by lazy {
-        entitlementProviderFor(BuildConfig.REVENUECAT_PUBLIC_API_KEY, enableDebugLogging = BuildConfig.DEBUG)
+        entitlementProviderFor(
+            publicApiKey = BuildConfig.REVENUECAT_PUBLIC_API_KEY,
+            enableDebugLogging = BuildConfig.DEBUG,
+            allowTestStore = BuildConfig.DEBUG,
+        )
     }
     override fun onCreate() {
         super.onCreate()

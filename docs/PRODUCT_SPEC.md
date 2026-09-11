@@ -24,6 +24,18 @@ The product must feel like a **beautiful personal life archive**, never a notes/
 
 ---
 
+## 1A. First-launch onboarding
+
+On a fresh, empty installation, Relive opens with one short four-page introduction before revealing Home. It is an install-level introduction, not a destination, account flow, permission wizard, or archive surface. Its four ideas are fixed and truthful: capture thoughts and media in one archive; understand All moments and custom timelines; understand that the archive stays on device and App Lock is optional; and understand that Favourites, On This Day, and From Your Past can resurface memories.
+
+The pages use Relive's current app palette, atmospheric canvas, Fraunces/Inter typography, and original tactile keepsake artwork. `Begin`, `Next`, and `Start your archive` advance; a quiet `Skip` completes the introduction from the first three pages. Back returns to the prior page, and Back from the first page follows the platform's root behavior. Completion or Skip records a versioned native preference outside the archive database and reveals Home at scroll offset zero. An interrupted introduction stores no partial page and starts again from page one.
+
+App Lock remains the outer privacy gate. An authoritative incoming share or deep-link entry takes priority over onboarding and leaves it pending for the next ordinary launch. When this capability first ships, an installation that already contains a Moment or custom timeline is marked complete through the existing bounded Profile counts and is never interrupted by onboarding; an existing but still-empty installation may receive the introduction.
+
+Onboarding requests no system permission, creates no account, offers no passcode keypad, and makes no cloud-sync claim. Reminder permission stays contextual to Profile → Reminders, and App Lock setup stays in Privacy & Security. The experience adds no backend, analytics, archive hydration, or new runtime dependency.
+
+---
+
 ## 2. Navigation model
 
 The app opens at the top of a single unified **Home surface**. Home is the app's only root: one continuous vertical scroll that runs welcome greeting → Rediscover collection row → All moments timeline. Custom timelines are not part of Home: they keep their own **Timelines** destination, where Timeline Home lists them and opens the existing scoped timeline detail unchanged.

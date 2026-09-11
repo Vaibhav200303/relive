@@ -49,19 +49,24 @@ class EntitlementPolicyTest {
         )
     }
 
-    @Test fun testStoreProductIdsMapToTheThreePurchaseOptions() {
-        assertEquals(RelivePurchaseOption.Monthly, relivePurchaseOptionForProductId("monthly"))
-        assertEquals(RelivePurchaseOption.Annual, relivePurchaseOptionForProductId("yearly"))
-        assertEquals(RelivePurchaseOption.Lifetime, relivePurchaseOptionForProductId("lifetime"))
+    @Test fun standardRevenueCatPackagesMapAcrossStoreProductIdentifiers() {
+        assertEquals(RelivePurchaseOption.Monthly, relivePurchaseOptionForPackage("\$rc_monthly", "monthly"))
+        assertEquals(RelivePurchaseOption.Annual, relivePurchaseOptionForPackage("\$rc_annual", "yearly"))
+        assertEquals(RelivePurchaseOption.Lifetime, relivePurchaseOptionForPackage("\$rc_lifetime", "lifetime"))
     }
 
-    @Test fun mismatchedProductIdsAreIgnored() {
-        assertNull(relivePurchaseOptionForProductId("relive_pro_monthly"))
-        assertNull(relivePurchaseOptionForProductId("monthly_extra"))
+    @Test fun productionProductIdsMapForCustomRevenueCatPackages() {
+        assertEquals(RelivePurchaseOption.Monthly, relivePurchaseOptionForPackage("monthly-plan", "relive_pro_monthly"))
+        assertEquals(RelivePurchaseOption.Annual, relivePurchaseOptionForPackage("annual-plan", "relive_pro_annual"))
+        assertEquals(RelivePurchaseOption.Lifetime, relivePurchaseOptionForPackage("lifetime-plan", "relive_pro_lifetime"))
+        assertNull(relivePurchaseOptionForPackage("unknown", "monthly_extra"))
     }
 
     @Test fun entitlementUsesTheExactReliveProIdentifier() {
         assertEquals("relive_pro", ReliveMonetization.entitlementId)
+        assertEquals("relive_pro_monthly", ReliveMonetization.monthlyProductId)
+        assertEquals("relive_pro_annual", ReliveMonetization.annualProductId)
+        assertEquals("relive_pro_lifetime", ReliveMonetization.lifetimeProductId)
     }
 
     @Test fun emptyOfferingHasNoProductsButIsNotAnError() {
@@ -71,8 +76,20 @@ class EntitlementPolicyTest {
     }
 
     @Test fun getOfferingsFailurePreservesTheSafeErrorMessage() {
-        val state = offeringsFailureState("Network unavailable")
+        val state = offeringsFailureState(
+            previous = EntitlementState(isPro = true, isLoading = true),
+            message = "Network unavailable",
+        )
         assertEquals("Network unavailable", state.message)
         assertTrue(state.purchasingAvailable)
+        assertTrue(state.isPro)
+        assertFalse(state.isLoading)
+    }
+
+    @Test fun releaseConfigurationRejectsTestStoreKeys() {
+        assertTrue(isRevenueCatKeyUsable("test_public", allowTestStore = true))
+        assertFalse(isRevenueCatKeyUsable("test_public", allowTestStore = false))
+        assertTrue(isRevenueCatKeyUsable("goog_public", allowTestStore = false))
+        assertFalse(isRevenueCatKeyUsable("RELIVE_REVENUECAT_ANDROID_PUBLIC_API_KEY", allowTestStore = false))
     }
 }
