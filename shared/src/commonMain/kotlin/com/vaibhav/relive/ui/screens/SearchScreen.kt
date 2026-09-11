@@ -219,6 +219,7 @@ fun SearchScreen(
                             onForget = {},
                             sharedTransition = mediaSharedTransition,
                             hasPreviousMoment = index > 0,
+                            hasNextMoment = index < state.results.lastIndex,
                             isActive = state.activeIndex == index,
                         )
                     }

@@ -1542,6 +1542,7 @@ private fun TimelineContent(
                                     // the rail leaves its marker downward toward the first moment.
                                     railContinuesBelow = isNewestFirst &&
                                         timelineState.moments is TimelineMomentsState.Loaded,
+                                    hasConnectedMoment = moments.isNotEmpty(),
                                     modifier = Modifier.fillMaxWidth(),
                                 )
                             } else {
@@ -1549,6 +1550,7 @@ private fun TimelineContent(
                                     onExpand = onExpandComposer,
                                     railContinuesBelow = isNewestFirst &&
                                         timelineState.moments is TimelineMomentsState.Loaded,
+                                    hasConnectedMoment = moments.isNotEmpty(),
                                     modifier = Modifier.fillMaxWidth(),
                                 )
                             }
@@ -1814,6 +1816,7 @@ private fun TimelineContent(
                                 // first card still needs rail above its dot for the composer's
                                 // rail to meet it. Elsewhere the first card starts the rail.
                                 hasPreviousMoment = index > 0 || isNewestFirst,
+                                hasNextMoment = index < moments.lastIndex,
                                 showLocation = momentVisibility.showLocations,
                                 showTags = momentVisibility.showTags,
                                 showFeelingPrompt = feelingPromptMomentId == moment.id,
