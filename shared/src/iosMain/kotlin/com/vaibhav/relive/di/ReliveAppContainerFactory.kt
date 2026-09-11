@@ -19,12 +19,14 @@ import com.vaibhav.relive.presentation.id.UuidGenerator
 import com.vaibhav.relive.presentation.time.SystemClock
 import com.vaibhav.relive.domain.entitlement.entitlementProviderFor
 import com.vaibhav.relive.domain.entitlement.ReliveLegalLinks
+import com.vaibhav.relive.platform.system.IosLauncherIconController
 
 fun createDefaultReliveAppContainer(
     revenueCatPublicApiKey: String = "",
     termsOfServiceUrl: String = "",
     privacyPolicyUrl: String = "",
     supportEmail: String = "",
+    launcherIconUpdate: (String?) -> Unit = {},
 ): ReliveAppContainer {
     val driver = DatabaseDriverFactory().create()
     val database = ReliveDatabaseFactory.create(driver)
@@ -50,5 +52,6 @@ fun createDefaultReliveAppContainer(
         entitlementProvider = entitlementProviderFor(revenueCatPublicApiKey),
         legalLinks = ReliveLegalLinks(termsOfServiceUrl, privacyPolicyUrl),
         supportEmail = supportEmail,
+        launcherIconController = IosLauncherIconController(launcherIconUpdate),
     )
 }

@@ -371,7 +371,18 @@ Opacity variants for colors come from this scale rather than one-off alpha value
 
 ## 19. Themes
 
-Themes are presentation-only token sets resolved by palette plus global appearance mode. Original preserves the approved Warm Journal light tokens exactly. Evergreen, Lilac Dusk, Crimson Keepsake, Blue Hour, and Rosewood use these ordered light/mid/strong/dark anchors:
+Themes are presentation-only token sets resolved by palette plus global appearance mode. The legacy Original palette preserves its approved light tokens exactly. Evergreen, Lilac Dusk, Crimson Keepsake, Blue Hour, and Rosewood use these ordered light/mid/strong/dark anchors:
+
+Warm Journal is the fresh-install default and mirrors the launcher icon: cream paper (`#F5EFE9`),
+leather brown (`#5A3E2F`), deep brown ink (`#3B251B`), and a restrained tan spark (`#C99455`).
+Its dark variant uses chocolate canvases with cream text. In the Appearance row, the Free palettes
+are grouped first as Warm Journal, Sunrise, and Sunset; premium palettes follow.
+
+The launcher icon is palette-aware, not mode-aware. Every selectable palette uses one full-bleed
+theme-gradient variant of the same safe-zone diary composition in both Light and Dark mode.
+Warm Journal retains the primary brown icon. Palette changes synchronize the corresponding Android
+launcher alias or iOS alternate icon; mode-only changes never replace the icon. The retired
+Original palette retains an icon only for compatibility with an existing saved selection.
 
 | Palette | Light | Mid | Strong | Dark |
 | --- | --- | --- | --- | --- |

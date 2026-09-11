@@ -635,18 +635,21 @@ A Moment may carry one optional **feeling**: `Great`, `Good`, or `Low`. Feelings
 
 All timelines share the **same Moment presentation and interaction model**. Themes only change **presentation**.
 
-Selectable palettes:
+The Appearance row presents palettes in entitlement order. The three Free choices come first:
+**Warm Journal**, **Sunrise**, and **Sunset**. Premium choices follow in their existing order:
+**Evergreen**, **Ember & Aqua**, **Plum & Gold**, and **Rose & Sage**. The retired **Original**
+palette remains resolvable for an existing saved preference but is not offered for new selection.
+Warm Journal matches the launcher icon's cream paper, leather brown, and quiet tan details and is
+the default for a fresh install.
 
-- **Original** (Warm Journal)
-- **Evergreen**
-- **Lilac Dusk**
-- **Crimson Keepsake**
-- **Blue Hour**
-- **Rosewood**
+Each global palette owns one matching launcher icon that remains the same in Light and Dark mode.
+Changing the selected palette changes the installed app icon through the platform's supported
+alternate-icon mechanism. Warm Journal keeps the primary cream-diary-on-brown icon; the retired
+Original palette keeps a matching legacy icon for an existing saved preference.
 
 The global appearance mode is **System**, **Light**, or **Dark**. System follows the live platform appearance. The selected palette is the app default. All moments and each custom timeline own independent `TimelineAppearance` values; All's appearance is stored in native local preferences because All is logical, while custom timeline appearances are archive data. On Home, All's `TimelineAppearance` governs the **All moments band only**: the welcome block, the `Relive your memories` heading, and the Rediscover row always render on the plain canvas. Profile, Search, the Rediscover row, and read-only system collections use the app default. A timeline's mode always remains global.
 
-Original/Warm Cream and Evergreen/Sage Green are available in Free. All other palettes and wallpapers are Relive Pro appearance options. A former Pro subscriber continues to see an already-selected premium appearance, but cannot select a new premium appearance without Pro.
+Warm Journal, Sunrise, and Sunset are available in Free. Warm Cream and Blush Pink are the Free wallpapers. All other selectable palettes and wallpapers are Relive Pro appearance options. A former Pro subscriber continues to see an already-selected premium appearance, but cannot select a new premium appearance without Pro.
 
 Themes **may** affect:
 
@@ -721,7 +724,7 @@ Persistence design detail lives in [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 Relive launches with exactly two product tiers: **Free** and **Relive Pro**. Monthly, annual, and lifetime are billing choices for the single `relive_pro` entitlement, not feature tiers. `relive_pro_monthly` and `relive_pro_annual` are subscriptions; `relive_pro_lifetime` is a non-consumable one-time purchase. Any annual trial is configured in the relevant store, never in application logic.
 
-Free includes unlimited Moments; text, photos, video, and audio; Search; Favorites; On This Day; From Your Past; App Lock and privacy controls; manual backup; every restore operation; and permanent access to existing content. Free users may create three custom timelines. Original/Warm Cream and Evergreen/Sage Green appearance are free.
+Free includes unlimited Moments; text, photos, video, and audio; Search; Favorites; On This Day; From Your Past; App Lock and privacy controls; manual backup; every restore operation; and permanent access to existing content. Free users may create three custom timelines. Warm Journal, Sunrise, and Sunset palettes plus Warm Cream and Blush Pink wallpapers are free.
 
 Relive Pro adds scheduled automatic backup and its cadence/network controls, unlimited custom timelines, and all premium palettes and wallpapers. When Pro expires, existing timelines, Moments, and premium appearance selections remain visible and editable. A person cannot create a further custom timeline while above the free limit, and cannot select a new premium appearance until Pro is active. Manual backup and restore are never gated.
 

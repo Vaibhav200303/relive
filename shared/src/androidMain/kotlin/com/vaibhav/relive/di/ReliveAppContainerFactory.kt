@@ -32,6 +32,7 @@ import com.vaibhav.relive.platform.backup.AndroidBackupPreferencesRepository
 import com.vaibhav.relive.platform.share.IncomingShareGateway
 import com.vaibhav.relive.domain.entitlement.EntitlementProvider
 import com.vaibhav.relive.domain.entitlement.ReliveLegalLinks
+import com.vaibhav.relive.platform.system.AndroidLauncherIconController
 
 fun createDefaultReliveAppContainer(
     context: Context,
@@ -93,5 +94,6 @@ fun createDefaultReliveAppContainer(
         entitlementProvider = entitlementProvider,
         legalLinks = ReliveLegalLinks(termsOfServiceUrl, privacyPolicyUrl),
         supportEmail = supportEmail,
+        launcherIconController = AndroidLauncherIconController(app),
     )
 }

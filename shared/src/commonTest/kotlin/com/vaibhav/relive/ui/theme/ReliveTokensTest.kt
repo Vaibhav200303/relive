@@ -8,6 +8,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vaibhav.relive.domain.model.ThemeReference
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -17,16 +18,16 @@ import kotlin.test.assertTrue
 class ReliveTokensTest {
 
     @Test
-    fun defaultColorsMatchInkLilacLight() {
+    fun defaultColorsMatchWarmJournalLight() {
         val c = DefaultReliveColors
-        assertEquals(Color(0xFFF0EEE9), c.bgCanvas)
-        assertEquals(Color(0xFF17184B), c.textPrimary)
-        assertEquals(Color(0xFF55567A), c.textSecondary)
-        assertEquals(Color(0xFF7E5BC6), c.accent)
-        assertEquals(Color(0xFFCDE24A), c.spark)
-        assertEquals(Color(0xFFD3DDE7), c.tint)
-        assertEquals(Color(0xFFFFFFFF), c.surfaceCard)
-        assertEquals(Color(0xFFFFFFFF), c.surfaceOverlay)
+        assertEquals(Color(0xFFF5EFE9), c.bgCanvas)
+        assertEquals(Color(0xFF3B251B), c.textPrimary)
+        assertEquals(Color(0xFF72594D), c.textSecondary)
+        assertEquals(Color(0xFF5A3E2F), c.accent)
+        assertEquals(Color(0xFFC99455), c.spark)
+        assertEquals(Color(0xFFE7D6C7), c.tint)
+        assertEquals(Color(0xFFFFFDFC), c.surfaceCard)
+        assertEquals(Color(0xFFFFFDFC), c.surfaceOverlay)
         assertEquals(Color(0xFF98111E), c.actionDestructive)
     }
 
@@ -363,8 +364,8 @@ class ReliveTokensTest {
 
     @Test
     fun generatedCoverPalettesRespectTheActiveTheme() {
-        assertEquals(ReliveThemeId.InkLilac, DefaultReliveTokens.id)
-        assertEquals(DefaultGeneratedCoverPalette, reliveTokensFor(ReliveThemeId.InkLilac).generatedCoverPalette)
+        assertEquals(ReliveThemeId.WarmJournal, DefaultReliveTokens.id)
+        assertEquals(DefaultGeneratedCoverPalette, reliveTokensFor(ReliveThemeId.WarmJournal).generatedCoverPalette)
         ReliveThemeId.entries.drop(1).forEach { theme ->
             assertTrue(reliveTokensFor(theme).generatedCoverPalette.covers.isNotEmpty())
             assertTrue(reliveTokensFor(theme, isDark = true).generatedCoverPalette.covers.isNotEmpty())
@@ -373,12 +374,30 @@ class ReliveTokensTest {
 
     @Test
     fun suppliedPaletteRolesAreExact() {
+        assertEquals(Color(0xFF5A3E2F), WarmJournalPalette.light.primary)
+        assertEquals(Color(0xFFF4EEE8), WarmJournalPalette.dark.ink)
         assertEquals(Color(0xFF17184B), InkLilacPalette.light.ink)
         assertEquals(Color(0xFFC4A9F2), InkLilacPalette.dark.primary)
         assertEquals(Color(0xFF2E8079), TealSaffronPalette.light.primary)
         assertEquals(Color(0xFFFF6B3D), EmberAquaPalette.light.spark)
         assertEquals(Color(0xFF6E3F97), PlumGoldPalette.light.primary)
         assertEquals(Color(0xFF63C6A0), RoseSagePalette.light.spark)
+    }
+
+    @Test
+    fun selectablePalettesPutEveryFreeThemeBeforeProThemes() {
+        assertEquals(
+            listOf(
+                ThemeReference.WarmJournal,
+                ThemeReference.Sunrise,
+                ThemeReference.Sunset,
+                ThemeReference.TealSaffron,
+                ThemeReference.EmberAqua,
+                ThemeReference.PlumGold,
+                ThemeReference.RoseSage,
+            ),
+            ReliveSelectablePaletteOptions.map { it.theme },
+        )
     }
 
     @Test

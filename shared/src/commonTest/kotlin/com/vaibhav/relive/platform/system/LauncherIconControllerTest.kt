@@ -1,0 +1,19 @@
+package com.vaibhav.relive.platform.system
+
+import com.vaibhav.relive.domain.model.ThemeReference
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class LauncherIconControllerTest {
+    @Test
+    fun every_palette_maps_to_its_stable_launcher_icon() {
+        assertEquals(LauncherIcon.WarmJournal, ThemeReference.WarmJournal.toLauncherIcon())
+        assertEquals(LauncherIcon.Original, ThemeReference.InkLilac.toLauncherIcon())
+        assertEquals(LauncherIcon.Sunrise, ThemeReference.Sunrise.toLauncherIcon())
+        assertEquals(LauncherIcon.Sunset, ThemeReference.Sunset.toLauncherIcon())
+        assertEquals(LauncherIcon.Evergreen, ThemeReference.TealSaffron.toLauncherIcon())
+        assertEquals(LauncherIcon.EmberAqua, ThemeReference.EmberAqua.toLauncherIcon())
+        assertEquals(LauncherIcon.PlumGold, ThemeReference.PlumGold.toLauncherIcon())
+        assertEquals(LauncherIcon.RoseSage, ThemeReference.RoseSage.toLauncherIcon())
+    }
+}

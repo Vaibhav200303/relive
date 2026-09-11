@@ -94,7 +94,7 @@ internal fun reliveColorsFor(
     )
 }
 
-/** The app-wide default token bundle (Ink &amp; Lilac, light). */
+/** The app-wide default token bundle (Warm Journal, light). */
 val DefaultReliveColors: ReliveColors = reliveColorsFor(DefaultRelivePalette.light, isDark = false)
 
 /** Prefer the palette ink on a filled accent when it is legible; otherwise fall back to B/W. */

@@ -20,6 +20,7 @@ import com.vaibhav.relive.domain.model.ThemeReference
 
 /** Identifier for a selectable Relive palette. Appearance mode is resolved separately. */
 enum class ReliveThemeId {
+    WarmJournal,
     InkLilac,
     TealSaffron,
     EmberAqua,
@@ -30,6 +31,7 @@ enum class ReliveThemeId {
 }
 
 fun ThemeReference.toReliveThemeId(): ReliveThemeId = when (this) {
+    ThemeReference.WarmJournal -> ReliveThemeId.WarmJournal
     ThemeReference.InkLilac -> ReliveThemeId.InkLilac
     ThemeReference.TealSaffron -> ReliveThemeId.TealSaffron
     ThemeReference.EmberAqua -> ReliveThemeId.EmberAqua
@@ -62,9 +64,9 @@ data class ReliveThemeTokens(
     val systemBarIconsDark: Boolean,
 )
 
-/** The app-wide default token bundle (Ink &amp; Lilac, light). */
+/** The app-wide default token bundle (Warm Journal, light). */
 val DefaultReliveTokens: ReliveThemeTokens = ReliveThemeTokens(
-    id = ReliveThemeId.InkLilac,
+    id = ReliveThemeId.WarmJournal,
     colors = DefaultReliveColors,
     typography = DefaultReliveTypography,
     dimensions = DefaultReliveDimensions,
@@ -79,7 +81,7 @@ fun reliveTokensFor(
     id: ReliveThemeId,
     isDark: Boolean = false,
 ): ReliveThemeTokens {
-    if (id == ReliveThemeId.InkLilac && !isDark) return DefaultReliveTokens
+    if (id == ReliveThemeId.WarmJournal && !isDark) return DefaultReliveTokens
     val palette = paletteFor(id.toThemeReference())
     return DefaultReliveTokens.copy(
         id = id,
@@ -91,6 +93,7 @@ fun reliveTokensFor(
 }
 
 private fun ReliveThemeId.toThemeReference(): ThemeReference = when (this) {
+    ReliveThemeId.WarmJournal -> ThemeReference.WarmJournal
     ReliveThemeId.InkLilac -> ThemeReference.InkLilac
     ReliveThemeId.TealSaffron -> ThemeReference.TealSaffron
     ReliveThemeId.EmberAqua -> ThemeReference.EmberAqua
@@ -104,7 +107,7 @@ private val LocalReliveTokens = staticCompositionLocalOf { DefaultReliveTokens }
 
 @Composable
 fun ReliveTheme(
-    themeId: ReliveThemeId = ReliveThemeId.InkLilac,
+    themeId: ReliveThemeId = ReliveThemeId.WarmJournal,
     darkMode: Boolean = false,
     content: @Composable () -> Unit,
 ) {

@@ -40,7 +40,31 @@ data class RelivePalette(
     fun roles(isDark: Boolean): RelivePaletteRoles = if (isDark) dark else light
 }
 
-// 01 · Ink & Lilac — editorial, premium (the reference palette).
+// 01 · Warm Journal — the launcher icon's cream paper and leather-brown cover.
+val WarmJournalPalette = RelivePalette(
+    theme = ThemeReference.WarmJournal,
+    label = "Warm Journal",
+    light = RelivePaletteRoles(
+        canvas = Color(0xFFF5EFE9),
+        surface = Color(0xFFFFFDFC),
+        ink = Color(0xFF3B251B),
+        inkSoft = Color(0xFF72594D),
+        primary = Color(0xFF5A3E2F),
+        spark = Color(0xFFC99455),
+        tint = Color(0xFFE7D6C7),
+    ),
+    dark = RelivePaletteRoles(
+        canvas = Color(0xFF2B1B15),
+        surface = Color(0xFF39241B),
+        ink = Color(0xFFF4EEE8),
+        inkSoft = Color(0xFFCFB9A8),
+        primary = Color(0xFFC89B77),
+        spark = Color(0xFFE4B56F),
+        tint = Color(0xFF4B3025),
+    ),
+)
+
+// 02 · Ink & Lilac — editorial, premium (the reference palette).
 val InkLilacPalette = RelivePalette(
     theme = ThemeReference.InkLilac,
     label = "Original",
@@ -66,7 +90,7 @@ val InkLilacPalette = RelivePalette(
     ),
 )
 
-// 02 · Teal & Saffron — oceanic, calm, quietly premium.
+// 03 · Teal & Saffron — oceanic, calm, quietly premium.
 val TealSaffronPalette = RelivePalette(
     theme = ThemeReference.TealSaffron,
     label = "Evergreen",
@@ -90,7 +114,7 @@ val TealSaffronPalette = RelivePalette(
     ),
 )
 
-// 03 · Ember & Aqua — warm, nostalgic, with a cool spark.
+// 04 · Ember & Aqua — warm, nostalgic, with a cool spark.
 val EmberAquaPalette = RelivePalette(
     theme = ThemeReference.EmberAqua,
     label = "Ember & Aqua",
@@ -114,7 +138,7 @@ val EmberAquaPalette = RelivePalette(
     ),
 )
 
-// 04 · Plum & Gold — elegant, dusk, romantic.
+// 05 · Plum & Gold — elegant, dusk, romantic.
 val PlumGoldPalette = RelivePalette(
     theme = ThemeReference.PlumGold,
     label = "Plum & Gold",
@@ -138,7 +162,7 @@ val PlumGoldPalette = RelivePalette(
     ),
 )
 
-// 05 · Rose & Sage — gentle, botanical, warm nostalgia.
+// 06 · Rose & Sage — gentle, botanical, warm nostalgia.
 val RoseSagePalette = RelivePalette(
     theme = ThemeReference.RoseSage,
     label = "Rose & Sage",
@@ -162,7 +186,7 @@ val RoseSagePalette = RelivePalette(
     ),
 )
 
-// 06 · Sunrise — first light: pale gold sky, warm earth ink, an amber sun. Light mode is the
+// 07 · Sunrise — first light: pale gold sky, warm earth ink, an amber sun. Light mode is the
 // golden hour after dawn; dark mode is the violet pre-dawn sky waiting for it. The atmospheric
 // canvas gradient derives from these roles, so the whole app takes on the morning's light.
 val SunrisePalette = RelivePalette(
@@ -188,7 +212,7 @@ val SunrisePalette = RelivePalette(
     ),
 )
 
-// 07 · Sunset — dusk: rose-washed sky, deep plum ink, a low orange sun. Light mode is the warm
+// 08 · Sunset — dusk: rose-washed sky, deep plum ink, a low orange sun. Light mode is the warm
 // blush just before the light goes; dark mode is the burgundy afterglow once it has.
 val SunsetPalette = RelivePalette(
     theme = ThemeReference.Sunset,
@@ -214,13 +238,14 @@ val SunsetPalette = RelivePalette(
 )
 
 val RelivePaletteOptions: List<RelivePalette> = listOf(
+    WarmJournalPalette,
+    SunrisePalette,
+    SunsetPalette,
     InkLilacPalette,
     TealSaffronPalette,
     EmberAquaPalette,
     PlumGoldPalette,
     RoseSagePalette,
-    SunrisePalette,
-    SunsetPalette,
 )
 
 /** Palettes a person can choose in Appearance; Original remains resolvable for existing settings. */
@@ -228,7 +253,7 @@ val ReliveSelectablePaletteOptions: List<RelivePalette> =
     RelivePaletteOptions.filterNot { it.theme == ThemeReference.InkLilac }
 
 /** The app-wide default palette. */
-val DefaultRelivePalette: RelivePalette = InkLilacPalette
+val DefaultRelivePalette: RelivePalette = WarmJournalPalette
 
 fun paletteFor(theme: ThemeReference): RelivePalette =
     RelivePaletteOptions.first { it.theme == theme }

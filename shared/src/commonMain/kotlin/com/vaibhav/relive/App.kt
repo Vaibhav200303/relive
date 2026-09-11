@@ -97,6 +97,7 @@ import com.vaibhav.relive.presentation.profile.AppLockController
 import com.vaibhav.relive.presentation.profile.RediscoverReminderController
 import com.vaibhav.relive.platform.system.openAppSettings
 import com.vaibhav.relive.platform.system.ReliveBackHandler
+import com.vaibhav.relive.platform.system.toLauncherIcon
 import com.vaibhav.relive.platform.share.IncomingSharePayload
 import com.vaibhav.relive.platform.share.IncomingShareState
 import androidx.lifecycle.Lifecycle
@@ -212,6 +213,11 @@ fun App(
         mode = appearanceState.preferences.mode,
         systemDark = isSystemInDarkTheme(),
     )
+    LaunchedEffect(appearanceState.preferences.defaultTheme, container.launcherIconController) {
+        container.launcherIconController.synchronize(
+            appearanceState.preferences.defaultTheme.toLauncherIcon(),
+        )
+    }
     ReliveTheme(
         themeId = appearanceState.preferences.defaultTheme.toReliveThemeId(),
         darkMode = darkMode,

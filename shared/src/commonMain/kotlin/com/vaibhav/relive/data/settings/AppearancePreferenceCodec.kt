@@ -19,6 +19,7 @@ internal fun AppearanceMode.encodePreference(): String = when (this) {
 }
 
 internal fun ThemeReference.encodePreference(): String = when (this) {
+    ThemeReference.WarmJournal -> "warm_journal"
     ThemeReference.InkLilac -> "ink_lilac"
     ThemeReference.TealSaffron -> "teal_saffron"
     ThemeReference.EmberAqua -> "ember_aqua"
@@ -44,14 +45,16 @@ internal fun decodeAppearancePreferences(
             else -> AppearanceMode.System
         },
         defaultTheme = when (theme) {
+            "warm_journal" -> ThemeReference.WarmJournal
+            "ink_lilac" -> ThemeReference.InkLilac
             "teal_saffron" -> ThemeReference.TealSaffron
             "ember_aqua" -> ThemeReference.EmberAqua
             "plum_gold" -> ThemeReference.PlumGold
             "rose_sage" -> ThemeReference.RoseSage
             "sunrise" -> ThemeReference.Sunrise
             "sunset" -> ThemeReference.Sunset
-            // Retired palette keys and the default both resolve to Ink & Lilac.
-            else -> ThemeReference.InkLilac
+            // Retired palette keys and a missing preference resolve to the current default.
+            else -> ThemeReference.WarmJournal
         },
         allTimelineAppearance = TimelineAppearance(
             wallpaper = TimelineWallpaper.entries.firstOrNull { it.name == allTimelineWallpaper }

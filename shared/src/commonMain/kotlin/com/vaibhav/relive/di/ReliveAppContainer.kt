@@ -28,6 +28,8 @@ import com.vaibhav.relive.platform.share.UnavailableIncomingShareGateway
 import com.vaibhav.relive.domain.entitlement.EntitlementProvider
 import com.vaibhav.relive.domain.entitlement.UnavailableEntitlementProvider
 import com.vaibhav.relive.domain.entitlement.ReliveLegalLinks
+import com.vaibhav.relive.platform.system.LauncherIconController
+import com.vaibhav.relive.platform.system.UnavailableLauncherIconController
 
 /**
  * Shared app-level dependency container. Platform entry points construct this
@@ -70,4 +72,6 @@ class ReliveAppContainer(
     val legalLinks: ReliveLegalLinks = ReliveLegalLinks(),
     /** Release-configured address used solely by Help & Feedback mail actions. */
     val supportEmail: String = "",
+    /** Keeps the installed launcher artwork paired with the selected global app palette. */
+    val launcherIconController: LauncherIconController = UnavailableLauncherIconController,
 )

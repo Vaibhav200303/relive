@@ -12,6 +12,7 @@ object ReliveMonetization {
     const val freeCustomTimelineLimit = 3
 
     val freePalettes = setOf(
+        ThemeReference.WarmJournal,
         ThemeReference.Sunrise,
         ThemeReference.Sunset,
     )

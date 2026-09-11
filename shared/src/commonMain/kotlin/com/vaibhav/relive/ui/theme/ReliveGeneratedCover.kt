@@ -95,6 +95,6 @@ fun generatedCoverPaletteFor(
     )
 }
 
-/** The app-wide default cover palette (Ink &amp; Lilac, light). */
+/** The app-wide default cover palette (Warm Journal, light). */
 val DefaultGeneratedCoverPalette: ReliveGeneratedCoverPalette =
     generatedCoverPaletteFor(DefaultRelivePalette, isDark = false)
