@@ -112,7 +112,7 @@ data class ReliveRediscoverDimensions(
     val compactCardHeight: Dp = 272.dp,
     val heroInfoAreaMinHeight: Dp = 128.dp,
     val favoriteShelfCardHeight: Dp = 272.dp,
-    val compactCardWidth: Dp = 208.dp,
+    val compactCardWidth: Dp = 240.dp,
     val favoriteShelfCardWidthFraction: Float = 0.68f,
     val onThisDayShelfCardWidthFraction: Float = 0.82f,
     val waveformHeight: Dp = 44.dp,

@@ -85,6 +85,7 @@ fun MomentCard(
     onShowContextualActions: (() -> Unit)? = null,
     isContextuallySelected: Boolean = false,
     hasPreviousMoment: Boolean,
+    hasNextMoment: Boolean,
     showLocation: Boolean = true,
     showTags: Boolean = true,
     isActive: Boolean = false,
@@ -125,7 +126,10 @@ fun MomentCard(
                 drawLine(
                     color = colors.borderMuted,
                     start = androidx.compose.ui.geometry.Offset(axis, if (hasPreviousMoment) 0f else markerCenter),
-                    end = androidx.compose.ui.geometry.Offset(axis, size.height),
+                    end = androidx.compose.ui.geometry.Offset(
+                        axis,
+                        if (hasNextMoment) size.height else markerCenter,
+                    ),
                     strokeWidth = dims.timeline.railWidth.toPx(),
                 )
             }

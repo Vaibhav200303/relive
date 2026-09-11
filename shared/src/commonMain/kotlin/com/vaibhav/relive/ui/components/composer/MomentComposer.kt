@@ -128,6 +128,8 @@ fun MomentComposer(
      * rail instead leaves the marker downward toward the first moment's dot (ADR-0061).
      */
     railContinuesBelow: Boolean = false,
+    /** Whether an existing Moment is present for this marker's rail to connect to. */
+    hasConnectedMoment: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     // Bridge composer state → platform mic-permission prompt.
@@ -155,7 +157,15 @@ fun MomentComposer(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .drawBehind { drawComposerRail(colors.borderMuted, dims, dims.minTouchTarget, railContinuesBelow) }
+            .drawBehind {
+                drawComposerRail(
+                    colors.borderMuted,
+                    dims,
+                    dims.minTouchTarget,
+                    railContinuesBelow,
+                    hasConnectedMoment,
+                )
+            }
             .padding(vertical = dims.spacing.xl),
         verticalAlignment = Alignment.Top,
     ) {
@@ -368,6 +378,8 @@ fun CollapsedComposerMarker(
     onExpand: () -> Unit,
     /** See `MomentComposer`'s `railContinuesBelow`. */
     railContinuesBelow: Boolean = false,
+    /** See `MomentComposer`'s `hasConnectedMoment`. */
+    hasConnectedMoment: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val colors = ReliveTheme.colors
@@ -377,7 +389,15 @@ fun CollapsedComposerMarker(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .drawBehind { drawComposerRail(colors.borderMuted, dims, dims.minTouchTarget, railContinuesBelow) }
+            .drawBehind {
+                drawComposerRail(
+                    colors.borderMuted,
+                    dims,
+                    dims.minTouchTarget,
+                    railContinuesBelow,
+                    hasConnectedMoment,
+                )
+            }
             .padding(vertical = dims.spacing.xl),
         verticalAlignment = Alignment.Top,
     ) {
@@ -430,7 +450,9 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawComposerRail(
     dims: com.vaibhav.relive.ui.theme.ReliveDimensions,
     markerSize: androidx.compose.ui.unit.Dp,
     continuesBelow: Boolean,
+    hasConnectedMoment: Boolean,
 ) {
+    if (!hasConnectedMoment) return
     val axis = dims.timeline.contentInset.toPx() / 2f
     val markerCenter = (dims.spacing.xl.toPx() + markerSize.toPx() / 2f)
         .coerceAtMost(size.height)
