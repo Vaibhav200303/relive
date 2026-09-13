@@ -7,6 +7,7 @@ import com.vaibhav.relive.domain.exporting.ExportFormat
 import com.vaibhav.relive.domain.exporting.ExportOperationState
 import com.vaibhav.relive.domain.exporting.ExportScope
 import com.vaibhav.relive.domain.exporting.MagazineOptions
+import com.vaibhav.relive.domain.exporting.PdfImageQuality
 import com.vaibhav.relive.domain.exporting.PortableArchiveSnapshot
 import com.vaibhav.relive.domain.exporting.PortableTimelineIdentity
 import com.vaibhav.relive.domain.model.LocalCalendarDate
@@ -17,7 +18,10 @@ import com.vaibhav.relive.domain.repository.MomentRepository
 import com.vaibhav.relive.domain.repository.TimelineRepository
 import com.vaibhav.relive.domain.time.Clock
 import com.vaibhav.relive.platform.exporting.MagazineDocument
+import com.vaibhav.relive.platform.exporting.ExportCompletion
+import com.vaibhav.relive.platform.exporting.ExportCompletionNotifier
 import com.vaibhav.relive.platform.exporting.ReliveExportService
+import com.vaibhav.relive.platform.exporting.UnavailableExportCompletionNotifier
 import com.vaibhav.relive.presentation.date.RediscoverCalendar
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -40,6 +44,7 @@ data class ExportUiState(
     val subtitle: String = "",
     val coverPhotoPath: String? = null,
     val paper: DiaryPaper = DiaryPaper.WarmCream,
+    val imageQuality: PdfImageQuality = PdfImageQuality.Standard,
     val selectedMomentCount: Int = 0,
     val operation: ExportOperationState = ExportOperationState.Idle,
     val isPro: Boolean = false,
@@ -54,12 +59,16 @@ class ExportViewModel(
     private val exportService: ReliveExportService,
     private val clock: Clock,
     private val scope: CoroutineScope,
+    private val exportCompletionNotifier: ExportCompletionNotifier = UnavailableExportCompletionNotifier,
 ) {
     private val _state = MutableStateFlow(ExportUiState())
     val state: StateFlow<ExportUiState> = _state.asStateFlow()
     private var allMoments: List<Moment> = emptyList()
     private var generation: Job? = null
     private var generationId: Long = 0
+    private var terminalGenerationId: Long? = null
+    private var notifiedGenerationId: Long? = null
+    private var isScreenVisible = false
 
     init {
         scope.launch { reload() }
@@ -98,6 +107,14 @@ class ExportViewModel(
     fun setTitle(value: String) = _state.update { it.copy(title = value.take(100)) }
     fun setSubtitle(value: String) = _state.update { it.copy(subtitle = value.take(180)) }
     fun setPaper(value: DiaryPaper) = _state.update { it.copy(paper = value) }
+    fun setImageQuality(value: PdfImageQuality) = _state.update { it.copy(imageQuality = value) }
+
+    /** Tracks the Export screen only; leaving it never cancels an in-flight generation. */
+    fun setScreenVisible(visible: Boolean) {
+        isScreenVisible = visible
+        if (!visible) notifyTerminalCompletionIfNeeded()
+    }
+
     fun setCoverPhoto(path: String?) {
         _state.value.coverPhotoPath?.takeIf { it != path }?.let(exportService::deleteTemporaryFile)
         _state.update { it.copy(coverPhotoPath = path) }
@@ -118,6 +135,8 @@ class ExportViewModel(
         }
         if (generation?.isActive == true) return
         val activeGenerationId = ++generationId
+        terminalGenerationId = null
+        notifiedGenerationId = null
         generation = scope.launch {
             val coverToDelete = if (format == ExportFormat.KeepsakePdf) _state.value.coverPhotoPath else null
             updateOperation(activeGenerationId, ExportOperationState.Preparing(format))
@@ -138,6 +157,7 @@ class ExportViewModel(
                                     startDate = current.startDate,
                                     endDate = current.endDate,
                                     paper = current.paper,
+                                    imageQuality = current.imageQuality,
                                 ),
                                 scopeTitle = when (val selectedScope = current.scope) {
                                     ExportScope.All -> "All moments"
@@ -185,13 +205,14 @@ class ExportViewModel(
                     }
                 }
                 coroutineContext.ensureActive()
-                updateOperation(activeGenerationId, ExportOperationState.Ready(result))
+                updateOperationAndNotify(activeGenerationId, ExportOperationState.Ready(result), ExportCompletion.Ready)
             } catch (_: CancellationException) {
                 updateOperation(activeGenerationId, ExportOperationState.Idle)
             } catch (error: Throwable) {
-                updateOperation(
+                updateOperationAndNotify(
                     activeGenerationId,
                     ExportOperationState.Failed(error.message ?: "Export failed."),
+                    ExportCompletion.Failed,
                 )
             } finally {
                 coverToDelete?.let(exportService::deleteTemporaryFile)
@@ -212,6 +233,8 @@ class ExportViewModel(
         generationId++
         generation?.cancel()
         generation = null
+        terminalGenerationId = null
+        notifiedGenerationId = null
         _state.update {
             it.copy(
                 operation = ExportOperationState.Idle,
@@ -222,17 +245,61 @@ class ExportViewModel(
 
     fun clearOperation() {
         (_state.value.operation as? ExportOperationState.Ready)?.result?.path?.let(exportService::deleteTemporaryFile)
+        terminalGenerationId = null
+        notifiedGenerationId = null
         _state.update { it.copy(operation = ExportOperationState.Idle) }
     }
 
+    /** Leaves setup without affecting any generation owned by the app root. */
+    fun exitSetup() {
+        if (_state.value.operation.flowStage() != ExportFlowStage.Setup) return
+        _state.value.coverPhotoPath?.let(exportService::deleteTemporaryFile)
+        _state.update { it.copy(coverPhotoPath = null) }
+    }
+
     fun close() {
+        val readyPath = (_state.value.operation as? ExportOperationState.Ready)?.result?.path
         cancel()
+        readyPath?.let(exportService::deleteTemporaryFile)
         _state.value.coverPhotoPath?.let(exportService::deleteTemporaryFile)
         _state.update { it.copy(coverPhotoPath = null) }
     }
 
     private fun updateOperation(id: Long, operation: ExportOperationState) {
-        if (generationId == id) _state.update { it.copy(operation = operation) }
+        if (generationId == id) {
+            if (operation is ExportOperationState.Ready || operation is ExportOperationState.Failed) {
+                terminalGenerationId = id
+            } else if (operation is ExportOperationState.Idle) {
+                terminalGenerationId = null
+            }
+            _state.update { it.copy(operation = operation) }
+        }
+    }
+
+    private suspend fun updateOperationAndNotify(
+        id: Long,
+        operation: ExportOperationState,
+        completion: ExportCompletion,
+    ) {
+        updateOperation(id, operation)
+        notifyTerminalCompletionIfNeeded(id, completion)
+    }
+
+    private fun notifyTerminalCompletionIfNeeded() {
+        val completion = when (_state.value.operation) {
+            is ExportOperationState.Ready -> ExportCompletion.Ready
+            is ExportOperationState.Failed -> ExportCompletion.Failed
+            else -> null
+        } ?: return
+        terminalGenerationId?.let { notifyTerminalCompletionIfNeeded(it, completion) }
+    }
+
+    private fun notifyTerminalCompletionIfNeeded(id: Long, completion: ExportCompletion) {
+        if (isScreenVisible || terminalGenerationId != id || notifiedGenerationId == id) return
+        notifiedGenerationId = id
+        scope.launch {
+            runCatching { exportCompletionNotifier.notify(completion) }
+        }
     }
 
     private fun refreshSelection() {
@@ -261,4 +328,20 @@ class ExportViewModel(
             else -> "${years.min()} - ${years.max()}"
         }
     }
+}
+
+fun ExportUiState.profileExportStatus(): String? = when (val current = operation) {
+    ExportOperationState.Idle -> null
+    is ExportOperationState.Preparing -> current.format.profileExportCreationLabel()
+    is ExportOperationState.Working -> {
+        val label = current.format.profileExportCreationLabel()
+        current.progress.fraction?.let { "$label · ${(it * 100).toInt()}%" } ?: label
+    }
+    is ExportOperationState.Ready -> "Export ready"
+    is ExportOperationState.Failed -> "Export needs attention"
+}
+
+private fun ExportFormat.profileExportCreationLabel(): String = when (this) {
+    ExportFormat.KeepsakePdf -> "Creating PDF"
+    ExportFormat.ReliveArchive -> "Creating archive"
 }

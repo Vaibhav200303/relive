@@ -4,7 +4,7 @@ import com.vaibhav.relive.domain.exporting.ExportOperationState
 
 enum class ExportFlowStage { Setup, Processing, Result, Error }
 
-enum class ExportBackBehavior { ExitExport, CancelGeneration, ReturnToSetup }
+enum class ExportBackBehavior { ExitExport, LeaveRunning, ReturnToSetup }
 
 fun ExportOperationState.flowStage(): ExportFlowStage = when (this) {
     ExportOperationState.Idle -> ExportFlowStage.Setup
@@ -19,7 +19,7 @@ fun ExportOperationState.backBehavior(): ExportBackBehavior = when (this) {
     ExportOperationState.Idle -> ExportBackBehavior.ExitExport
     is ExportOperationState.Preparing,
     is ExportOperationState.Working,
-    -> ExportBackBehavior.CancelGeneration
+    -> ExportBackBehavior.LeaveRunning
     is ExportOperationState.Ready,
     is ExportOperationState.Failed,
     -> ExportBackBehavior.ReturnToSetup

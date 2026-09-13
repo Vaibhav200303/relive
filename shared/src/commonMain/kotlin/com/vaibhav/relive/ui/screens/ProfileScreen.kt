@@ -56,6 +56,8 @@ import com.vaibhav.relive.domain.model.AppearanceMode
 import com.vaibhav.relive.domain.model.ThemeReference
 import com.vaibhav.relive.presentation.date.ProfileSinceFormatter
 import com.vaibhav.relive.presentation.profile.ProfileViewModel
+import com.vaibhav.relive.presentation.exporting.ExportUiState
+import com.vaibhav.relive.presentation.exporting.profileExportStatus
 import com.vaibhav.relive.presentation.settings.AppearanceViewModel
 import com.vaibhav.relive.ui.components.settings.AppearanceModeControl
 import com.vaibhav.relive.ui.components.settings.RelivePalettePicker
@@ -98,6 +100,7 @@ fun ProfileScreen(
     mediaStore: MediaStore,
     mediaProcessor: MediaProcessor,
     entitlementProvider: EntitlementProvider,
+    exportState: ExportUiState = ExportUiState(),
 ) {
     val state by viewModel.state.collectAsState()
     val appearance by appearanceViewModel.state.collectAsState()
@@ -241,6 +244,7 @@ fun ProfileScreen(
                 ProfileSection(
                     title = "YOUR MEMORIES",
                     labels = listOf("Media & storage", "Backup", "Export", "Open Relive archive"),
+                    exportSupporting = exportState.profileExportStatus(),
                     onMediaStorage = { finishNameEdit(); onOpenMediaStorage() },
                     onBackup = {
                         finishNameEdit()
@@ -470,6 +474,7 @@ private fun ProfileSection(
     onMediaStorage: (() -> Unit)? = null,
     onBackup: (() -> Unit)? = null,
     onExport: (() -> Unit)? = null,
+    exportSupporting: String? = null,
     onOpenReliveArchive: (() -> Unit)? = null,
     onLocation: (() -> Unit)? = null,
     onNotifications: (() -> Unit)? = null,
@@ -492,6 +497,7 @@ private fun ProfileSection(
         labels.forEach { label ->
             ProfileSettingRow(
                 label = label,
+                supporting = if (label.trim() == "Export") exportSupporting else null,
                 icon = profileIconFor(label),
                 onClick = when (label.trim()) {
                     "Preferences" -> onPreferences
@@ -535,7 +541,12 @@ private fun ProfilePhotoDialog(hasPhoto: Boolean, onDismiss: () -> Unit, onPick:
 )
 
 @Composable
-private fun ProfileSettingRow(label: String, icon: ImageVector, onClick: (() -> Unit)? = null) {
+private fun ProfileSettingRow(
+    label: String,
+    supporting: String? = null,
+    icon: ImageVector,
+    onClick: (() -> Unit)? = null,
+) {
     val dims = ReliveTheme.dimensions
     Row(
         modifier = Modifier
@@ -546,12 +557,10 @@ private fun ProfileSettingRow(label: String, icon: ImageVector, onClick: (() -> 
         verticalAlignment = Alignment.CenterVertically,
     ) {
         androidx.compose.material3.Icon(icon, contentDescription = null, modifier = Modifier.size(dims.icon.md), tint = ReliveTheme.colors.accentMuted)
-        Text(
-            label,
-            style = ReliveTheme.typography.body,
-            color = ReliveTheme.colors.textPrimary,
-            modifier = Modifier.weight(1f).padding(start = dims.spacing.md),
-        )
+        Column(Modifier.weight(1f).padding(start = dims.spacing.md)) {
+            Text(label, style = ReliveTheme.typography.body, color = ReliveTheme.colors.textPrimary)
+            supporting?.let { Text(it, style = ReliveTheme.typography.tag, color = ReliveTheme.colors.textMuted) }
+        }
         ForwardGlyph(dims.icon.sm, ReliveTheme.colors.textMuted, dims.stroke.icon)
     }
 }

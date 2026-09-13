@@ -10,6 +10,7 @@ import com.vaibhav.relive.domain.exporting.ExportOperationState
 import com.vaibhav.relive.domain.exporting.ExportProgress
 import com.vaibhav.relive.domain.exporting.ExportResult
 import com.vaibhav.relive.domain.exporting.ExportScope
+import com.vaibhav.relive.domain.exporting.PdfImageQuality
 import com.vaibhav.relive.domain.exporting.PortableArchiveSnapshot
 import com.vaibhav.relive.domain.model.AppearanceMode
 import com.vaibhav.relive.domain.model.AppearancePreferences
@@ -27,8 +28,11 @@ import com.vaibhav.relive.domain.repository.TimelineRepository
 import com.vaibhav.relive.domain.time.Clock
 import com.vaibhav.relive.domain.time.Instant
 import com.vaibhav.relive.platform.exporting.MagazineDocument
+import com.vaibhav.relive.platform.exporting.ExportCompletion
+import com.vaibhav.relive.platform.exporting.ExportCompletionNotifier
 import com.vaibhav.relive.platform.exporting.OpenedPortableArchive
 import com.vaibhav.relive.platform.exporting.ReliveExportService
+import com.vaibhav.relive.platform.exporting.UnavailableExportCompletionNotifier
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.awaitCancellation
@@ -39,6 +43,8 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class ExportViewModelTest {
     @Test
@@ -88,6 +94,140 @@ class ExportViewModelTest {
     }
 
     @Test
+    fun selectedPdfImageQualityIsPassedToThePdfDocument() = runTest {
+        assertEquals(PdfImageQuality.Standard, ExportUiState().imageQuality)
+        assertEquals(1280, PdfImageQuality.Standard.maxLongEdgePx)
+        assertEquals(70, PdfImageQuality.Standard.jpegQualityPercent)
+        assertEquals(1920, PdfImageQuality.HD.maxLongEdgePx)
+        assertEquals(82, PdfImageQuality.HD.jpegQualityPercent)
+
+        val defaultService = ControllableExportService()
+        val defaultViewModel = exportViewModel(defaultService)
+        defaultViewModel.state.first { it.isPro && it.selectedMomentCount == 1 }
+        defaultViewModel.createSelectedFormat()
+        defaultService.started.await()
+        assertEquals(PdfImageQuality.Standard, defaultService.startedDocument?.options?.imageQuality)
+        defaultViewModel.cancel()
+
+        val service = ControllableExportService()
+        val viewModel = exportViewModel(service)
+        viewModel.state.first { it.isPro && it.selectedMomentCount == 1 }
+        viewModel.setImageQuality(PdfImageQuality.HD)
+
+        viewModel.createSelectedFormat()
+        service.started.await()
+
+        assertEquals(PdfImageQuality.HD, service.startedDocument?.options?.imageQuality)
+        viewModel.cancel()
+    }
+
+    @Test
+    fun hiddenCompletionNotifiesOnceAndLeavingProcessingDoesNotCancel() = runTest {
+        val service = CompletingExportService()
+        val notifier = RecordingExportCompletionNotifier()
+        val viewModel = exportViewModel(service, notifier)
+        viewModel.state.first { it.isPro && it.selectedMomentCount == 1 }
+        viewModel.setScreenVisible(true)
+        viewModel.createSelectedFormat()
+        service.started.await()
+        viewModel.state.first { it.operation is ExportOperationState.Ready }
+
+        assertTrue(viewModel.state.value.operation is ExportOperationState.Ready)
+        assertTrue(notifier.completions.isEmpty())
+        viewModel.setScreenVisible(false)
+        notifier.notified.await()
+        viewModel.setScreenVisible(false)
+
+        assertEquals(listOf(ExportCompletion.Ready), notifier.completions)
+    }
+
+    @Test
+    fun hidingProcessingLeavesGenerationRunningUntilExplicitCancel() = runTest {
+        val service = ControllableExportService()
+        val viewModel = exportViewModel(service)
+        viewModel.state.first { it.isPro && it.selectedMomentCount == 1 }
+        viewModel.setScreenVisible(true)
+        viewModel.createSelectedFormat()
+        service.started.await()
+
+        viewModel.setScreenVisible(false)
+
+        assertEquals(ExportFlowStage.Processing, viewModel.state.value.operation.flowStage())
+        assertFalse(service.cancelled.isCompleted)
+        viewModel.cancel()
+        service.cancelled.await()
+    }
+
+    @Test
+    fun failedHiddenCompletionNotifiesFailure() = runTest {
+        val notifier = RecordingExportCompletionNotifier()
+        val viewModel = exportViewModel(FailingExportService(), notifier)
+        viewModel.state.first { it.isPro && it.selectedMomentCount == 1 }
+        viewModel.setScreenVisible(false)
+        viewModel.createSelectedFormat()
+        viewModel.state.first { it.operation is ExportOperationState.Failed }
+        notifier.notified.await()
+
+        assertEquals(ExportOperationState.Failed("generation failed"), viewModel.state.value.operation)
+        assertEquals(listOf(ExportCompletion.Failed), notifier.completions)
+    }
+
+    @Test
+    fun leavingSetupDeletesAnUnusedCoverWithoutCancellingWork() = runTest {
+        val service = ControllableExportService()
+        val viewModel = exportViewModel(service)
+        viewModel.state.first { it.isPro && it.selectedMomentCount == 1 }
+        viewModel.setCoverPhoto("unused-cover.jpg")
+
+        viewModel.exitSetup()
+
+        assertEquals(null, viewModel.state.value.coverPhotoPath)
+        assertEquals(listOf("unused-cover.jpg"), service.deletedPaths)
+    }
+
+    @Test
+    fun completedGenerationDeletesItsCoverAndClearsTheSelection() = runTest {
+        val service = CompletingExportService()
+        val viewModel = exportViewModel(service)
+        viewModel.state.first { it.isPro && it.selectedMomentCount == 1 }
+        viewModel.setCoverPhoto("used-cover.jpg")
+
+        viewModel.createSelectedFormat()
+        viewModel.state.first { it.operation is ExportOperationState.Ready && it.coverPhotoPath == null }
+
+        assertEquals(listOf("used-cover.jpg"), service.deletedPaths)
+    }
+
+    @Test
+    fun profileStatusUsesProgressAndTerminalCopy() {
+        assertEquals(
+            "Creating PDF",
+            ExportUiState(operation = ExportOperationState.Preparing(ExportFormat.KeepsakePdf)).profileExportStatus(),
+        )
+        assertEquals(
+            "Creating PDF · 40%",
+            ExportUiState(
+                operation = ExportOperationState.Working(
+                    ExportFormat.KeepsakePdf,
+                    ExportProgress(2, 5, "Writing"),
+                ),
+            ).profileExportStatus(),
+        )
+        assertEquals(
+            "Export ready",
+            ExportUiState(
+                operation = ExportOperationState.Ready(
+                    ExportResult("path", "file.pdf", "application/pdf", ExportFormat.KeepsakePdf),
+                ),
+            ).profileExportStatus(),
+        )
+        assertEquals(
+            "Export needs attention",
+            ExportUiState(operation = ExportOperationState.Failed("failed")).profileExportStatus(),
+        )
+    }
+
+    @Test
     fun selectedTimelineMomentsAreTheOnlyMomentsPassedToThePdfDocument() = runTest {
         val selectedTimeline = Timeline.Custom(TimelineId("trip"), "Trip")
         val selectedMoment = Moment(MomentId("selected"), Instant(1), title = "Selected")
@@ -117,7 +257,10 @@ class ExportViewModelTest {
         viewModel.cancel()
     }
 
-    private fun kotlinx.coroutines.test.TestScope.exportViewModel(service: ReliveExportService) = ExportViewModel(
+    private fun kotlinx.coroutines.test.TestScope.exportViewModel(
+        service: ReliveExportService,
+        notifier: ExportCompletionNotifier = UnavailableExportCompletionNotifier,
+    ) = ExportViewModel(
         momentRepository = FakeMomentRepository(
             listOf(Moment(MomentId("moment"), Instant(1), title = "A memory")),
         ),
@@ -127,7 +270,42 @@ class ExportViewModelTest {
         exportService = service,
         clock = Clock { Instant(2) },
         scope = backgroundScope,
+        exportCompletionNotifier = notifier,
     )
+}
+
+private class CompletingExportService : ReliveExportService {
+    val started = CompletableDeferred<Unit>()
+    val deletedPaths = mutableListOf<String>()
+
+    override suspend fun createMagazinePdf(document: MagazineDocument, onProgress: (ExportProgress) -> Unit): ExportResult {
+        started.complete(Unit)
+        return ExportResult("output.pdf", "output.pdf", "application/pdf", ExportFormat.KeepsakePdf)
+    }
+
+    override suspend fun createPortableArchive(snapshot: PortableArchiveSnapshot, onProgress: (ExportProgress) -> Unit) = error("Not used")
+    override suspend fun openPortableArchive(path: String): OpenedPortableArchive = error("Not used")
+    override fun releasePortableArchive(archive: OpenedPortableArchive) = Unit
+    override fun deleteTemporaryFile(path: String) {
+        deletedPaths += path
+    }
+}
+
+private class FailingExportService : ReliveExportService {
+    override suspend fun createMagazinePdf(document: MagazineDocument, onProgress: (ExportProgress) -> Unit): ExportResult = error("generation failed")
+    override suspend fun createPortableArchive(snapshot: PortableArchiveSnapshot, onProgress: (ExportProgress) -> Unit) = error("Not used")
+    override suspend fun openPortableArchive(path: String): OpenedPortableArchive = error("Not used")
+    override fun releasePortableArchive(archive: OpenedPortableArchive) = Unit
+    override fun deleteTemporaryFile(path: String) = Unit
+}
+
+private class RecordingExportCompletionNotifier : ExportCompletionNotifier {
+    val completions = mutableListOf<ExportCompletion>()
+    val notified = CompletableDeferred<Unit>()
+    override suspend fun notify(completion: ExportCompletion) {
+        completions += completion
+        notified.complete(Unit)
+    }
 }
 
 private class ControllableExportService(

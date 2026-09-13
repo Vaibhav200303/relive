@@ -33,6 +33,8 @@ import com.vaibhav.relive.platform.system.LauncherIconController
 import com.vaibhav.relive.platform.system.UnavailableLauncherIconController
 import com.vaibhav.relive.platform.exporting.ReliveExportService
 import com.vaibhav.relive.platform.exporting.UnavailableReliveExportService
+import com.vaibhav.relive.platform.exporting.ExportCompletionNotifier
+import com.vaibhav.relive.platform.exporting.UnavailableExportCompletionNotifier
 import com.vaibhav.relive.platform.exporting.PortableArchiveRequestBus
 
 /**
@@ -62,6 +64,7 @@ class ReliveAppContainer(
     val mediaStore: MediaStore,
     val mediaProcessor: MediaProcessor,
     val exportService: ReliveExportService = UnavailableReliveExportService,
+    val exportCompletionNotifier: ExportCompletionNotifier = UnavailableExportCompletionNotifier,
     val portableArchiveRequestBus: PortableArchiveRequestBus = PortableArchiveRequestBus(),
     val backupPreferencesRepository: BackupPreferencesRepository = InMemoryBackupPreferencesRepository(),
     val googleDriveAccountManager: GoogleDriveAccountManager = object : GoogleDriveAccountManager {

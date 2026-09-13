@@ -11,6 +11,7 @@ import com.vaibhav.relive.data.exporting.validatePortableArchiveMetadata
 import com.vaibhav.relive.domain.exporting.ExportFormat
 import com.vaibhav.relive.domain.exporting.ExportProgress
 import com.vaibhav.relive.domain.exporting.ExportResult
+import com.vaibhav.relive.domain.exporting.PdfImageQuality
 import com.vaibhav.relive.domain.exporting.PortableArchiveEntry
 import com.vaibhav.relive.domain.exporting.PortableArchiveManifest
 import com.vaibhav.relive.domain.exporting.PortableArchiveSession
@@ -27,9 +28,14 @@ import com.vaibhav.relive.presentation.exporting.exportFilenameTitle
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.readBytes
+import kotlinx.cinterop.useContents
 import kotlinx.cinterop.usePinned
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
 import platform.CoreGraphics.CGRectMake
+import platform.CoreGraphics.CGSizeMake
 import platform.Foundation.NSData
 import platform.Foundation.NSBundle
 import platform.Foundation.NSDate
@@ -42,11 +48,16 @@ import platform.Foundation.NSURL
 import platform.Foundation.NSUUID
 import platform.UIKit.UIActivityViewController
 import platform.UIKit.UIApplication
+import platform.UIKit.UIGraphicsBeginImageContextWithOptions
 import platform.UIKit.UIDocumentPickerDelegateProtocol
 import platform.UIKit.UIDocumentPickerViewController
+import platform.UIKit.UIGraphicsEndImageContext
 import platform.UIKit.UIGraphicsBeginPDFContextToFile
 import platform.UIKit.UIGraphicsBeginPDFPage
 import platform.UIKit.UIGraphicsEndPDFContext
+import platform.UIKit.UIGraphicsGetImageFromCurrentImageContext
+import platform.UIKit.UIImage
+import platform.UIKit.UIImageJPEGRepresentation
 import platform.UIKit.UIMarkupTextPrintFormatter
 import platform.UIKit.UIPrintPageRenderer
 import platform.UniformTypeIdentifiers.UTType
@@ -54,6 +65,7 @@ import platform.darwin.NSObject
 import platform.posix.fclose
 import platform.posix.fopen
 import platform.posix.fwrite
+import kotlin.coroutines.coroutineContext
 
 @OptIn(ExperimentalForeignApi::class)
 class IosReliveExportService(private val mediaStore: MediaStore) : ReliveExportService {
@@ -69,31 +81,138 @@ class IosReliveExportService(private val mediaStore: MediaStore) : ReliveExportS
     }
 
     override suspend fun createMagazinePdf(document: MagazineDocument, onProgress: (ExportProgress) -> Unit): ExportResult {
-        val assets = linkedMapOf<String, MagazineMediaAsset>()
-        val attachments = document.moments.flatMap { it.attachments }
-            .filter { it.type == MediaType.Image }
-            .distinctBy { it.storageRef.value }
-        attachments.forEachIndexed { index, attachment ->
-            require(mediaStore.exists(attachment.storageRef)) { "A referenced media item is missing or inaccessible." }
-            assets[attachment.storageRef.value] = MagazineMediaAsset(mediaStore.resolveAbsolutePath(attachment.storageRef))
-            onProgress(ExportProgress((index + 1).toLong(), attachments.size.toLong().coerceAtLeast(1), "Preparing media"))
+        val temporaryAssets = newTemporaryPdfAssetsRoot()
+        val filename = pdfFilename(document.options.title)
+        // UIDocumentPicker uses the source URL's basename, so keep the user-facing filename
+        // clean. ExportViewModel prevents concurrent work and clears the previous result first.
+        val output = root.URLByAppendingPathComponent(filename)!!.path!!
+        return try {
+            val preparedDocument = withContext(Dispatchers.Default) {
+                val assets = linkedMapOf<String, MagazineMediaAsset>()
+                val attachments = document.moments.flatMap { it.attachments }
+                    .filter { it.type == MediaType.Image }
+                    .distinctBy { it.storageRef.value }
+                val coverSource = document.options.coverPhotoPath
+                val totalMedia = (attachments.size + if (coverSource == null) 0 else 1).toLong().coerceAtLeast(1)
+                var completedMedia = 0L
+                onProgress(ExportProgress(0, totalMedia, "Preparing media"))
+
+                val quality = document.options.imageQuality
+                val normalizedAssetPaths = mutableMapOf<String, String>()
+                attachments.forEach { attachment ->
+                    coroutineContext.ensureActive()
+                    require(mediaStore.exists(attachment.storageRef)) { "A referenced media item is missing or inaccessible." }
+                    val sourcePath = mediaStore.resolveAbsolutePath(attachment.storageRef)
+                    require(files.fileExistsAtPath(sourcePath)) { "A referenced media item is missing or inaccessible." }
+                    val printablePath = when (quality) {
+                        PdfImageQuality.Standard -> normalizedAssetPaths.getOrPut(sourcePath) {
+                            normalizeJpeg(sourcePath, temporaryAssets, quality)
+                        }
+                        PdfImageQuality.HD -> sourcePath
+                    }
+                    assets[attachment.storageRef.value] = MagazineMediaAsset(printablePath = printablePath)
+                    completedMedia++
+                    onProgress(ExportProgress(completedMedia, totalMedia, "Preparing media"))
+                }
+
+                val coverPath = coverSource?.let { sourcePath ->
+                    coroutineContext.ensureActive()
+                    require(files.fileExistsAtPath(sourcePath)) { "The selected cover photo is no longer available." }
+                    // A cover is user-selected input, so it is normalized even for an HD
+                    // export. This also guarantees that its embedded orientation is baked
+                    // into the pixels before the HTML renderer reads it.
+                    if (quality == PdfImageQuality.Standard) {
+                        normalizedAssetPaths.getOrPut(sourcePath) {
+                            normalizeJpeg(sourcePath, temporaryAssets, quality)
+                        }
+                    } else {
+                        normalizeJpeg(sourcePath, temporaryAssets, quality)
+                    }
+                }.also {
+                    if (coverSource != null) {
+                        completedMedia++
+                        onProgress(ExportProgress(completedMedia, totalMedia, "Preparing media"))
+                    }
+                }
+
+                document.copy(
+                    options = document.options.copy(coverPhotoPath = coverPath),
+                    mediaAssets = assets,
+                    fontCss = fontCss(),
+                )
+            }
+            onProgress(ExportProgress(0, 1, "Laying out diary"))
+            coroutineContext.ensureActive()
+            renderPdf(MagazineDocumentBuilder.html(preparedDocument), output)
+            coroutineContext.ensureActive()
+            onProgress(ExportProgress(1, 1, "Diary ready"))
+            ExportResult(output, filename, "application/pdf", ExportFormat.KeepsakePdf)
+        } catch (error: Throwable) {
+            // A failed renderer can leave a partial file behind; only a completed PDF is
+            // retained for the caller.
+            files.removeItemAtPath(output, error = null)
+            throw error
+        } finally {
+            // The generated JPEGs are only HTML renderer inputs. The final PDF is
+            // deliberately outside this directory and is retained for Save/Share.
+            files.removeItemAtPath(temporaryAssets, error = null)
         }
-        document.options.coverPhotoPath?.let { require(files.fileExistsAtPath(it)) { "The selected cover photo is no longer available." } }
-        val output = root.URLByAppendingPathComponent(pdfFilename(document.options.title))!!.path!!
-        onProgress(ExportProgress(0, 1, "Laying out diary"))
+    }
+
+    private fun fontCss(): String {
         val fraunces = NSBundle.mainBundle.pathForResource("fraunces_medium", "ttf")
         val inter = NSBundle.mainBundle.pathForResource("inter_regular", "ttf")
         val kalam = NSBundle.mainBundle.pathForResource("kalam_regular", "ttf")
         val kalamBold = NSBundle.mainBundle.pathForResource("kalam_bold", "ttf")
-        val fontCss = buildString {
+        return buildString {
             fraunces?.let { append("@font-face{font-family:Fraunces;src:url('file://$it')}") }
             inter?.let { append("@font-face{font-family:Inter;src:url('file://$it')}") }
             kalam?.let { append("@font-face{font-family:Kalam;src:url('file://$it');font-weight:400}") }
             kalamBold?.let { append("@font-face{font-family:Kalam;src:url('file://$it');font-weight:700}") }
         }
-        renderPdf(MagazineDocumentBuilder.html(document.copy(mediaAssets = assets, fontCss = fontCss)), output)
-        onProgress(ExportProgress(1, 1, "Diary ready"))
-        return ExportResult(output, output.substringAfterLast('/'), "application/pdf", ExportFormat.KeepsakePdf)
+    }
+
+    private fun newTemporaryPdfAssetsRoot(): String {
+        val path = temporaryRoot.URLByAppendingPathComponent(
+            "relive-pdf-assets-${NSUUID().UUIDString}",
+            isDirectory = true,
+        )!!.path!!
+        require(files.createDirectoryAtPath(path, withIntermediateDirectories = true, attributes = null, error = null)) {
+            "Could not prepare PDF media."
+        }
+        return path
+    }
+
+    private fun normalizeJpeg(
+        sourcePath: String,
+        destinationRoot: String,
+        quality: PdfImageQuality,
+    ): String {
+        val data = files.contentsAtPath(sourcePath) ?: error("Cannot read image")
+        val source = UIImage.imageWithData(data) ?: error("Cannot decode image")
+        val pixels = source.size.useContents {
+            width * source.scale to height * source.scale
+        }
+        require(pixels.first > 0.0 && pixels.second > 0.0) { "Cannot decode image dimensions" }
+        val longEdge = maxOf(pixels.first, pixels.second)
+        val scale = minOf(1.0, quality.maxLongEdgePx.toDouble() / longEdge)
+        val targetWidth = maxOf(1.0, kotlin.math.floor(pixels.first * scale))
+        val targetHeight = maxOf(1.0, kotlin.math.floor(pixels.second * scale))
+        val targetSize = CGSizeMake(targetWidth, targetHeight)
+        UIGraphicsBeginImageContextWithOptions(targetSize, false, 1.0)
+        val normalized = try {
+            source.drawInRect(CGRectMake(0.0, 0.0, targetWidth, targetHeight))
+            UIGraphicsGetImageFromCurrentImageContext() ?: error("Cannot normalize image")
+        } finally {
+            UIGraphicsEndImageContext()
+        }
+        val jpeg = UIImageJPEGRepresentation(normalized, quality.jpegQualityPercent / 100.0) ?: error("Cannot encode JPEG")
+        val destination = NSURL.fileURLWithPath(destinationRoot, isDirectory = true)
+            .URLByAppendingPathComponent("asset-${NSUUID().UUIDString}.jpg")!!.path!!
+        require(files.createFileAtPath(destination, contents = jpeg, attributes = null)) {
+            "Could not write PDF media."
+        }
+        return destination
     }
 
     override suspend fun createPortableArchive(snapshot: PortableArchiveSnapshot, onProgress: (ExportProgress) -> Unit): ExportResult {
@@ -187,6 +306,7 @@ class IosReliveExportService(private val mediaStore: MediaStore) : ReliveExportS
     private fun stamp(): String = NSDateFormatter().apply { dateFormat = "yyyy-MM-dd"; locale = NSLocale("en_US_POSIX") }.stringFromDate(NSDate())
     private fun archiveFilename() = "Relive-Archive-${stamp()}.relive"
     private fun pdfFilename(title: String) = "Relive-${exportFilenameTitle(title)}-${stamp()}.pdf"
+
 }
 
 @OptIn(ExperimentalForeignApi::class)

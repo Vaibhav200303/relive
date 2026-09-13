@@ -35,6 +35,7 @@ import com.vaibhav.relive.domain.entitlement.EntitlementProvider
 import com.vaibhav.relive.domain.entitlement.ReliveLegalLinks
 import com.vaibhav.relive.platform.system.AndroidLauncherIconController
 import com.vaibhav.relive.platform.exporting.AndroidReliveExportService
+import com.vaibhav.relive.platform.exporting.AndroidExportCompletionNotifier
 import com.vaibhav.relive.platform.exporting.PortableArchiveRequestBus
 
 fun createDefaultReliveAppContainer(
@@ -83,6 +84,7 @@ fun createDefaultReliveAppContainer(
         mediaStore = mediaStore,
         mediaProcessor = mediaProcessor,
         exportService = AndroidReliveExportService(app, mediaStore),
+        exportCompletionNotifier = AndroidExportCompletionNotifier(app),
         portableArchiveRequestBus = portableArchiveRequestBus ?: PortableArchiveRequestBus(),
         backupPreferencesRepository = backupPreferences,
         googleDriveAccountManager = googleDriveAccountManager ?: object : GoogleDriveAccountManager {

@@ -58,6 +58,7 @@ import com.vaibhav.relive.domain.exporting.ExportFormat
 import com.vaibhav.relive.domain.exporting.ExportOperationState
 import com.vaibhav.relive.domain.exporting.ExportResult
 import com.vaibhav.relive.domain.exporting.ExportScope
+import com.vaibhav.relive.domain.exporting.PdfImageQuality
 import com.vaibhav.relive.domain.model.LocalCalendarDate
 import com.vaibhav.relive.platform.exporting.rememberExportFileHandle
 import com.vaibhav.relive.platform.media.MediaStore
@@ -99,7 +100,10 @@ fun ExportScreen(
     var pickingStart by remember { mutableStateOf(false) }
     var pickingEnd by remember { mutableStateOf(false) }
 
-    DisposableEffect(viewModel) { onDispose(viewModel::close) }
+    DisposableEffect(viewModel) {
+        viewModel.setScreenVisible(true)
+        onDispose { viewModel.setScreenVisible(false) }
+    }
     LaunchedEffect(state.upgradeRequired) {
         if (state.upgradeRequired) {
             viewModel.clearUpgradeRequired()
@@ -123,7 +127,10 @@ fun ExportScreen(
         when (activeStage.stage) {
             ExportFlowStage.Setup -> ExportSetup(
                 state = state,
-                onBack = onBack,
+                onBack = {
+                    viewModel.exitSetup()
+                    onBack()
+                },
                 onSelectFormat = viewModel::selectFormat,
                 onSelectScope = viewModel::selectScope,
                 onPickStart = { pickingStart = true },
@@ -132,6 +139,7 @@ fun ExportScreen(
                 onSetTitle = viewModel::setTitle,
                 onSetSubtitle = viewModel::setSubtitle,
                 onSelectPaper = viewModel::setPaper,
+                onSelectImageQuality = viewModel::setImageQuality,
                 onChooseCover = {
                     scope.launch {
                         val picked = photos.pickImage()
@@ -146,6 +154,7 @@ fun ExportScreen(
 
             ExportFlowStage.Processing -> ExportProcessingScreen(
                 operation = state.operation,
+                onBack = onBack,
                 onCancel = viewModel::cancel,
             )
 
@@ -196,6 +205,7 @@ private fun ExportSetup(
     onSetTitle: (String) -> Unit,
     onSetSubtitle: (String) -> Unit,
     onSelectPaper: (DiaryPaper) -> Unit,
+    onSelectImageQuality: (PdfImageQuality) -> Unit,
     onChooseCover: () -> Unit,
     onRemoveCover: () -> Unit,
     onCreate: () -> Unit,
@@ -333,6 +343,15 @@ private fun ExportSetup(
                                 TextButton(onClick = onRemoveCover) { Text("Remove cover photo") }
                             }
                             Text(
+                                "Image quality",
+                                style = ReliveTheme.typography.subtitle,
+                                color = ReliveTheme.colors.textPrimary,
+                            )
+                            PdfImageQualityPicker(
+                                selected = state.imageQuality,
+                                onSelect = onSelectImageQuality,
+                            )
+                            Text(
                                 "Diary page color",
                                 style = ReliveTheme.typography.subtitle,
                                 color = ReliveTheme.colors.textPrimary,
@@ -358,6 +377,51 @@ private fun ExportSetup(
 
         ExportActionBar(state = state, onCreate = onCreate)
     }
+}
+
+@Composable
+private fun PdfImageQualityPicker(
+    selected: PdfImageQuality,
+    onSelect: (PdfImageQuality) -> Unit,
+) {
+    val dims = ReliveTheme.dimensions
+    val haptics = rememberReliveHaptics()
+    Column(verticalArrangement = Arrangement.spacedBy(dims.spacing.xs)) {
+        PdfImageQuality.entries.forEach { quality ->
+            val description = quality.description()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .selectable(
+                        selected = selected == quality,
+                        role = Role.RadioButton,
+                        onClick = {
+                            haptics.perform(ReliveHapticCue.Selection)
+                            onSelect(quality)
+                        },
+                    )
+                    .padding(vertical = dims.spacing.xs)
+                    .semantics { contentDescription = "${quality.label()}, $description" },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RadioButton(selected = selected == quality, onClick = null)
+                Column(Modifier.padding(start = dims.spacing.sm)) {
+                    Text(quality.label(), style = ReliveTheme.typography.body, color = ReliveTheme.colors.textPrimary)
+                    Text(description, style = ReliveTheme.typography.tag, color = ReliveTheme.colors.textSecondary)
+                }
+            }
+        }
+    }
+}
+
+private fun PdfImageQuality.label(): String = when (this) {
+    PdfImageQuality.Standard -> "Standard"
+    PdfImageQuality.HD -> "HD"
+}
+
+private fun PdfImageQuality.description(): String = when (this) {
+    PdfImageQuality.Standard -> "Smaller for sharing"
+    PdfImageQuality.HD -> "Sharper for printing"
 }
 
 @Composable
@@ -538,8 +602,8 @@ private fun PrivacyNotice(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun ExportProcessingScreen(operation: ExportOperationState, onCancel: () -> Unit) {
-    ReliveBackHandler(enabled = true, onBack = onCancel)
+private fun ExportProcessingScreen(operation: ExportOperationState, onBack: () -> Unit, onCancel: () -> Unit) {
+    ReliveBackHandler(enabled = true, onBack = onBack)
     val dims = ReliveTheme.dimensions
     val format = when (operation) {
         is ExportOperationState.Preparing -> operation.format
@@ -548,53 +612,56 @@ private fun ExportProcessingScreen(operation: ExportOperationState, onCancel: ()
     }
     val progress = (operation as? ExportOperationState.Working)?.progress
 
-    Box(Modifier.fillMaxSize().background(ReliveTheme.colors.canvasBrush())) {
-        Column(
-            modifier = Modifier.align(Alignment.Center).fillMaxWidth().padding(dims.spacing.xxl),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(dims.spacing.lg),
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                if (progress?.fraction != null) {
-                    CircularProgressIndicator(
-                        progress = { progress.fraction!! },
-                        modifier = Modifier.size(80.dp),
-                        strokeWidth = 7.dp,
-                    )
-                    Text(
-                        "${(progress.fraction!! * 100).toInt()}%",
-                        style = ReliveTheme.typography.subtitle,
-                        color = ReliveTheme.colors.textPrimary,
-                    )
-                } else {
-                    CircularProgressIndicator(modifier = Modifier.size(80.dp), strokeWidth = 7.dp)
+    Column(Modifier.fillMaxSize().background(ReliveTheme.colors.canvasBrush())) {
+        ProfilePageHeader("Export", onBack, backDescription = "Back to Profile")
+        Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(dims.spacing.xxl),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(dims.spacing.lg),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    if (progress?.fraction != null) {
+                        CircularProgressIndicator(
+                            progress = { progress.fraction!! },
+                            modifier = Modifier.size(80.dp),
+                            strokeWidth = 7.dp,
+                        )
+                        Text(
+                            "${(progress.fraction!! * 100).toInt()}%",
+                            style = ReliveTheme.typography.subtitle,
+                            color = ReliveTheme.colors.textPrimary,
+                        )
+                    } else {
+                        CircularProgressIndicator(modifier = Modifier.size(80.dp), strokeWidth = 7.dp)
+                    }
                 }
-            }
-            Text(
-                if (format == ExportFormat.KeepsakePdf) "Creating your keepsake" else "Packing your Relive archive",
-                style = ReliveTheme.typography.title,
-                color = ReliveTheme.colors.textPrimary,
-                textAlign = TextAlign.Center,
-            )
-            Text(
-                progress?.phase ?: "Preparing your moments…",
-                style = ReliveTheme.typography.body,
-                color = ReliveTheme.colors.textSecondary,
-                textAlign = TextAlign.Center,
-            )
-            if (progress?.fraction != null) {
                 Text(
-                    "${progress.completed} of ${progress.total}",
-                    style = ReliveTheme.typography.tag,
-                    color = ReliveTheme.colors.textSecondary,
+                    if (format == ExportFormat.KeepsakePdf) "Creating your keepsake" else "Packing your Relive archive",
+                    style = ReliveTheme.typography.title,
+                    color = ReliveTheme.colors.textPrimary,
+                    textAlign = TextAlign.Center,
                 )
+                Text(
+                    progress?.phase ?: "Preparing your moments…",
+                    style = ReliveTheme.typography.body,
+                    color = ReliveTheme.colors.textSecondary,
+                    textAlign = TextAlign.Center,
+                )
+                if (progress?.fraction != null) {
+                    Text(
+                        "${progress.completed} of ${progress.total}",
+                        style = ReliveTheme.typography.tag,
+                        color = ReliveTheme.colors.textSecondary,
+                    )
+                }
+                Text(
+                    "You can keep using Relive while this finishes.",
+                    style = ReliveTheme.typography.tag,
+                    color = ReliveTheme.colors.textMuted,
+                )
+                TextButton(onClick = onCancel) { Text("Cancel export") }
             }
-            Text(
-                "Keep Relive open while this finishes.",
-                style = ReliveTheme.typography.tag,
-                color = ReliveTheme.colors.textMuted,
-            )
-            TextButton(onClick = onCancel) { Text("Cancel export") }
         }
     }
 }

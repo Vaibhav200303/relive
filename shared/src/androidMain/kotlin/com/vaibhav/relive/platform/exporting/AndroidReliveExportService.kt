@@ -2,9 +2,13 @@ package com.vaibhav.relive.platform.exporting
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.pdf.PdfDocument
+import android.media.ExifInterface
 import android.net.Uri
 import android.view.View
 import android.webkit.WebView
@@ -21,6 +25,7 @@ import com.vaibhav.relive.data.exporting.validatePortableArchiveMetadata
 import com.vaibhav.relive.domain.exporting.ExportFormat
 import com.vaibhav.relive.domain.exporting.ExportProgress
 import com.vaibhav.relive.domain.exporting.ExportResult
+import com.vaibhav.relive.domain.exporting.PdfImageQuality
 import com.vaibhav.relive.domain.exporting.PortableArchiveEntry
 import com.vaibhav.relive.domain.exporting.PortableArchiveManifest
 import com.vaibhav.relive.domain.exporting.PortableArchiveSession
@@ -69,39 +74,176 @@ class AndroidReliveExportService(
         document: MagazineDocument,
         onProgress: (ExportProgress) -> Unit,
     ): ExportResult {
-        val work = withContext(Dispatchers.IO) {
-            val assets = linkedMapOf<String, MagazineMediaAsset>()
-            val attachments = document.moments.flatMap { it.attachments }
-                .filter { it.type == MediaType.Image }
-                .distinctBy { it.storageRef.value }
-            onProgress(ExportProgress(0, attachments.size.toLong().coerceAtLeast(1), "Preparing media"))
-            attachments.forEachIndexed { index, attachment ->
-                coroutineContext.ensureActive()
-                val source = managedFile(attachment.storageRef)
-                require(source.isFile && source.canRead()) { "A referenced media item is missing or inaccessible." }
-                assets[attachment.storageRef.value] = MagazineMediaAsset(printablePath = source.absolutePath)
-                onProgress(ExportProgress((index + 1).toLong(), attachments.size.toLong().coerceAtLeast(1), "Preparing media"))
-            }
-            document.options.coverPhotoPath?.let { require(File(it).isFile) { "The selected cover photo is no longer available." } }
-            val filename = "${pdfFilename(document.options.title)}.pdf"
-            Triple(
-                document.copy(mediaAssets = assets, fontCss = ANDROID_FONT_CSS),
-                File(exportRoot, "${UUID.randomUUID()}-$filename"),
-                filename,
-            )
-        }
+        val filename = "${pdfFilename(document.options.title)}.pdf"
+        val exportId = UUID.randomUUID().toString()
+        val assetRoot = File(exportRoot, "assets-$exportId")
+        val output = File(exportRoot, "$exportId-$filename")
         return try {
+            withContext(Dispatchers.IO) {
+                require(assetRoot.mkdirs() || assetRoot.isDirectory) { "Could not prepare export storage." }
+            }
+            val work = withContext(Dispatchers.IO) {
+                prepareMagazineWork(document, assetRoot, onProgress)
+            }
             onProgress(ExportProgress(0, 1, "Laying out diary"))
-            renderHtmlPdf(MagazineDocumentBuilder.html(work.first), work.second) { completed, total ->
+            renderHtmlPdf(MagazineDocumentBuilder.html(work), output) { completed, total ->
                 onProgress(ExportProgress(completed.toLong(), total.toLong(), "Building PDF pages"))
             }
             coroutineContext.ensureActive()
             onProgress(ExportProgress(1, 1, "Diary ready"))
-            ExportResult(work.second.absolutePath, work.third, "application/pdf", ExportFormat.KeepsakePdf)
+            ExportResult(output.absolutePath, filename, "application/pdf", ExportFormat.KeepsakePdf)
         } catch (error: Throwable) {
-            work.second.delete()
+            output.delete()
             throw error
+        } finally {
+            // All generated JPEGs are per-export inputs only. Never remove or rewrite a
+            // managed Moment image, and clean up on success, failure, and cancellation.
+            assetRoot.deleteRecursively()
         }
+    }
+
+    private suspend fun prepareMagazineWork(
+        document: MagazineDocument,
+        assetRoot: File,
+        onProgress: (ExportProgress) -> Unit,
+    ): MagazineDocument {
+        val attachments = document.moments.flatMap { it.attachments }
+            .filter { it.type == MediaType.Image }
+            .distinctBy { it.storageRef.value }
+        val hasCover = document.options.coverPhotoPath != null
+        val total = (attachments.size + if (hasCover) 1 else 0).toLong().coerceAtLeast(1)
+        val imageQuality = document.options.imageQuality
+        val standard = imageQuality == PdfImageQuality.Standard
+        val maxLongEdge = imageQuality.maxLongEdgePx
+        val jpegQuality = imageQuality.jpegQualityPercent
+        val assets = linkedMapOf<String, MagazineMediaAsset>()
+        val preparedPaths = mutableMapOf<String, String>()
+
+        onProgress(ExportProgress(0, total, "Preparing media"))
+        attachments.forEachIndexed { index, attachment ->
+            coroutineContext.ensureActive()
+            val source = managedFile(attachment.storageRef)
+            require(source.isFile && source.canRead()) { "A referenced media item is missing or inaccessible." }
+            val printablePath = if (standard) {
+                preparedPaths.getOrPut(source.absolutePath) {
+                    val destination = File(assetRoot, "attachment-$index.jpg")
+                    reencodePdfImage(source, destination, maxLongEdge, jpegQuality)
+                    destination.absolutePath
+                }
+            } else {
+                // Moment images have already been normalized by AndroidMediaProcessor. Keep this
+                // path unchanged in HD so the source remains untouched and no duplicate is made.
+                source.absolutePath
+            }
+            assets[attachment.storageRef.value] = MagazineMediaAsset(printablePath = printablePath)
+            onProgress(ExportProgress((index + 1).toLong(), total, "Preparing media"))
+        }
+
+        val coverPath = document.options.coverPhotoPath?.let { rawPath ->
+            coroutineContext.ensureActive()
+            val source = File(rawPath)
+            require(source.isFile && source.canRead()) { "The selected cover photo is no longer available." }
+            val prepared = if (standard) {
+                preparedPaths.getOrPut(source.absolutePath) {
+                    val destination = File(assetRoot, "cover.jpg")
+                    reencodePdfImage(source, destination, maxLongEdge, jpegQuality)
+                    destination.absolutePath
+                }
+            } else {
+                val destination = File(assetRoot, "cover.jpg")
+                reencodePdfImage(source, destination, maxLongEdge, jpegQuality)
+                destination.absolutePath
+            }
+            onProgress(ExportProgress(attachments.size.toLong() + 1, total, "Preparing cover"))
+            prepared
+        }
+
+        return document.copy(
+            options = document.options.copy(coverPhotoPath = coverPath),
+            mediaAssets = assets,
+            fontCss = ANDROID_FONT_CSS,
+        )
+    }
+
+    /**
+     * Reads only a sampled bitmap, applies all EXIF orientation transforms, and writes an
+     * orientation-baked JPEG into the export workspace. The source file is never opened for
+     * writing. Keeping the intermediate bitmaps short-lived is important for large camera files.
+     */
+    private fun reencodePdfImage(source: File, destination: File, maxLongEdge: Int, quality: Int) {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(source.absolutePath, bounds)
+        require(bounds.outWidth > 0 && bounds.outHeight > 0) { "Failed to decode image." }
+        val sample = sampleSizeFor(bounds.outWidth, bounds.outHeight, maxLongEdge)
+        val decoded = BitmapFactory.decodeFile(
+            source.absolutePath,
+            BitmapFactory.Options().apply {
+                inSampleSize = sample
+                inPreferredConfig = Bitmap.Config.ARGB_8888
+            },
+        ) ?: throw IllegalStateException("Failed to decode image.")
+        var oriented: Bitmap? = null
+        var scaled: Bitmap? = null
+        try {
+            oriented = applyExifOrientation(decoded, source)
+            scaled = downscaleIfNeeded(oriented, maxLongEdge)
+            destination.parentFile?.mkdirs()
+            FileOutputStream(destination).use { stream ->
+                require(scaled.compress(Bitmap.CompressFormat.JPEG, quality, stream)) {
+                    "Failed to encode image."
+                }
+            }
+        } catch (error: Throwable) {
+            destination.delete()
+            throw error
+        } finally {
+            scaled?.takeIf { it !== oriented && it !== decoded }?.recycle()
+            oriented?.takeIf { it !== decoded }?.recycle()
+            decoded.recycle()
+        }
+    }
+
+    private fun sampleSizeFor(width: Int, height: Int, maxLongEdge: Int): Int {
+        val longEdge = maxOf(width, height)
+        var sample = 1
+        while (longEdge / (sample * 2) >= maxLongEdge) sample *= 2
+        return sample
+    }
+
+    private fun applyExifOrientation(bitmap: Bitmap, source: File): Bitmap {
+        val orientation = runCatching {
+            ExifInterface(source.absolutePath).getAttributeInt(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL,
+            )
+        }.getOrDefault(ExifInterface.ORIENTATION_NORMAL)
+        val matrix = Matrix()
+        when (orientation) {
+            ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.postScale(-1f, 1f)
+            ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+            ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.postScale(1f, -1f)
+            ExifInterface.ORIENTATION_TRANSPOSE -> {
+                matrix.postRotate(90f)
+                matrix.postScale(-1f, 1f)
+            }
+            ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+            ExifInterface.ORIENTATION_TRANSVERSE -> {
+                matrix.postRotate(270f)
+                matrix.postScale(-1f, 1f)
+            }
+            ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+            else -> return bitmap
+        }
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    }
+
+    private fun downscaleIfNeeded(bitmap: Bitmap, maxLongEdge: Int): Bitmap {
+        val longEdge = maxOf(bitmap.width, bitmap.height)
+        if (longEdge <= maxLongEdge) return bitmap
+        val scale = maxLongEdge.toFloat() / longEdge
+        val width = (bitmap.width * scale).toInt().coerceAtLeast(1)
+        val height = (bitmap.height * scale).toInt().coerceAtLeast(1)
+        return Bitmap.createScaledBitmap(bitmap, width, height, true)
     }
 
     override suspend fun createPortableArchive(

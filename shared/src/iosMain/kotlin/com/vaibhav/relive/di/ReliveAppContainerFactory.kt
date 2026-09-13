@@ -22,6 +22,7 @@ import com.vaibhav.relive.domain.entitlement.entitlementProviderFor
 import com.vaibhav.relive.domain.entitlement.ReliveLegalLinks
 import com.vaibhav.relive.platform.system.IosLauncherIconController
 import com.vaibhav.relive.platform.exporting.IosReliveExportService
+import com.vaibhav.relive.platform.exporting.IosExportCompletionNotifier
 import com.vaibhav.relive.platform.exporting.IosPortableArchiveIngress
 
 fun createDefaultReliveAppContainer(
@@ -51,6 +52,7 @@ fun createDefaultReliveAppContainer(
         mediaStore = store,
         mediaProcessor = processor,
         exportService = IosReliveExportService(store),
+        exportCompletionNotifier = IosExportCompletionNotifier(),
         portableArchiveRequestBus = IosPortableArchiveIngress.requestBus,
         deviceAuthentication = IosDeviceAuthentication(),
         rediscoverReminderService = IosRediscoverReminderService(momentRepository),

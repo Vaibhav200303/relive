@@ -38,10 +38,10 @@ class ExportFlowTest {
 
         assertEquals(ExportBackBehavior.ExitExport, ExportOperationState.Idle.backBehavior())
         assertEquals(
-            ExportBackBehavior.CancelGeneration,
+            ExportBackBehavior.LeaveRunning,
             ExportOperationState.Preparing(ExportFormat.KeepsakePdf).backBehavior(),
         )
-        assertEquals(ExportBackBehavior.CancelGeneration, working.backBehavior())
+        assertEquals(ExportBackBehavior.LeaveRunning, working.backBehavior())
         assertEquals(ExportBackBehavior.ReturnToSetup, ready.backBehavior())
         assertEquals(
             ExportBackBehavior.ReturnToSetup,

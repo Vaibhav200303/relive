@@ -423,8 +423,11 @@ fun App(
                 container.exportService,
                 container.clock,
                 scope,
+                container.exportCompletionNotifier,
             )
         }
+        val exportState by exportViewModel.state.collectAsState()
+        DisposableEffect(exportViewModel) { onDispose(exportViewModel::close) }
         val exportFileHandle = rememberExportFileHandle()
         var portableArchive by remember(container) {
             mutableStateOf<com.vaibhav.relive.platform.exporting.OpenedPortableArchive?>(null)
@@ -660,6 +663,7 @@ fun App(
                 mediaStore = container.mediaStore,
                 mediaProcessor = container.mediaProcessor,
                 entitlementProvider = container.entitlementProvider,
+                exportState = exportState,
             )
             ProfileDestination.Preferences -> PreferencesScreen(
                 viewModel = behaviorPreferencesViewModel,
