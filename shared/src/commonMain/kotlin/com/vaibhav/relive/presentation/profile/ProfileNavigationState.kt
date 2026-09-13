@@ -11,6 +11,7 @@ data class ProfileNavigationState(
     fun openPreferences(): ProfileNavigationState = copy(destination = ProfileDestination.Preferences)
     fun openMediaStorage(): ProfileNavigationState = copy(destination = ProfileDestination.MediaStorage)
     fun openBackupRestore(): ProfileNavigationState = copy(destination = ProfileDestination.BackupRestore)
+    fun openExport(): ProfileNavigationState = copy(destination = ProfileDestination.Export)
     /** Opens Pro without losing the screen that presented the upgrade gate. */
     fun openUpgrade(
         returnTo: ProfileDestination = ProfileDestination.Profile,
@@ -29,4 +30,4 @@ data class ProfileNavigationState(
     fun returnToTimelineHome(): ProfileNavigationState = copy(destination = ProfileDestination.Closed)
 }
 
-enum class ProfileDestination { Closed, Profile, Preferences, MediaStorage, BackupRestore, Upgrade, Location, RediscoverNotifications, PrivacySecurity, HelpFeedback, AboutRelive, Licenses }
+enum class ProfileDestination { Closed, Profile, Preferences, MediaStorage, BackupRestore, Export, Upgrade, Location, RediscoverNotifications, PrivacySecurity, HelpFeedback, AboutRelive, Licenses }

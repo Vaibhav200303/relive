@@ -12,6 +12,11 @@ class EntitlementPolicyTest {
     private val free = EntitlementPolicy(EntitlementState())
     private val pro = EntitlementPolicy(EntitlementState(isPro = true))
 
+    @Test fun export_creation_requires_pro() {
+        assertFalse(free.mayExport())
+        assertTrue(pro.mayExport())
+    }
+
     @Test fun freeTierAllowsThreeCustomTimelinesButNotAFourth() {
         assertTrue(free.mayCreateCustomTimeline(2))
         assertFalse(free.mayCreateCustomTimeline(3))

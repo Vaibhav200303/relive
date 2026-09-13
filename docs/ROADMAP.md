@@ -103,7 +103,7 @@ Current implementation note: the dedicated autofocus screen, debounced SQL-backe
 - Timeline-owned appearance: editable All and custom timelines persist independent wallpaper selections and render the approved bundled wallpaper artwork without changing global appearance.
 - **Exit:** switching themes changes only presentation; navigation/structure/interaction unchanged; theme tests pass.
 
-Current implementation note: global appearance, Profile, Preferences, Media & Storage, Backup & Restore, Reminders, Privacy & Security/App Lock, Help, About/Licenses, custom-timeline themes, and All-timeline themes are present. Upgrade to Pro and Export remain entries/deferred behavior. Reminders is now the capture-focused set of two "add a moment" nudges and one eligibility-gated "revisit" nudge per day (ADR-0067). An additive Android home-screen **Quick Capture** widget (Jetpack Glance) opens the composer and shows no archive content (ADR-0068); it is net-new scope beyond this phase, added at explicit request.
+Current implementation note: global appearance, Profile, Preferences, Media & Storage, Backup & Restore, Export, Reminders, Privacy & Security/App Lock, Help, About/Licenses, custom-timeline themes, and All-timeline themes are present. Export provides Pro-created Keepsake PDF and `.relive` output plus free read-only archive opening (ADR-0075). Reminders is now the capture-focused set of two "add a moment" nudges and one eligibility-gated "revisit" nudge per day (ADR-0067). An additive Android home-screen **Quick Capture** widget (Jetpack Glance) opens the composer and shows no archive content (ADR-0068); it is net-new scope beyond this phase, added at explicit request.
 
 ### Approved Phase override — Profile foundation
 
@@ -126,7 +126,7 @@ Current implementation note: global appearance, Profile, Preferences, Media & St
 
 - Implement the `relive_pro` entitlement behind a swappable shared interface using RevenueCat; wire upgrade and store restore flows.
 - Offer monthly (`relive_pro_monthly`), annual (`relive_pro_annual`), and non-consumable lifetime (`relive_pro_lifetime`) billing choices. Configure annual trials store-side only.
-- Gate scheduled automatic backup, creation beyond three custom timelines, and premium appearance; retain manual backup, every restore operation, existing archive access, Warm Journal/Sunrise/Sunset palettes, and Warm Cream/Blush Pink wallpapers in Free.
+- Gate scheduled automatic backup, creation beyond three custom timelines, premium appearance, and PDF/portable-archive creation; retain manual backup, every restore operation, free opening of `.relive`, existing archive access, Warm Journal/Sunrise/Sunset palettes, and Warm Cream/Blush Pink wallpapers in Free.
 - Keep platform public API keys and product IDs configuration-driven. A missing key must degrade to Free without a crash.
 - (Later/optional) RevenueCat Funnels + Stripe for web subscription conversion — see [`RELEASE.md`](RELEASE.md).
 - **Exit:** Pro state drives the approved gates; entitlement is swappable; purchase/restore state is graceful when unavailable; monetization dependencies are isolated to this phase.

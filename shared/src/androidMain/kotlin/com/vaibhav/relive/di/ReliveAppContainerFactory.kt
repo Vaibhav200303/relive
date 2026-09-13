@@ -34,6 +34,8 @@ import com.vaibhav.relive.platform.share.IncomingShareGateway
 import com.vaibhav.relive.domain.entitlement.EntitlementProvider
 import com.vaibhav.relive.domain.entitlement.ReliveLegalLinks
 import com.vaibhav.relive.platform.system.AndroidLauncherIconController
+import com.vaibhav.relive.platform.exporting.AndroidReliveExportService
+import com.vaibhav.relive.platform.exporting.PortableArchiveRequestBus
 
 fun createDefaultReliveAppContainer(
     context: Context,
@@ -48,6 +50,7 @@ fun createDefaultReliveAppContainer(
     rediscoverReminderService: RediscoverReminderService? = null,
     incomingShareGateway: IncomingShareGateway? = null,
     quickCaptureRequestBus: QuickCaptureRequestBus? = null,
+    portableArchiveRequestBus: PortableArchiveRequestBus? = null,
     entitlementProvider: EntitlementProvider,
     termsOfServiceUrl: String = "",
     privacyPolicyUrl: String = "",
@@ -79,6 +82,8 @@ fun createDefaultReliveAppContainer(
         idGenerator = idGenerator,
         mediaStore = mediaStore,
         mediaProcessor = mediaProcessor,
+        exportService = AndroidReliveExportService(app, mediaStore),
+        portableArchiveRequestBus = portableArchiveRequestBus ?: PortableArchiveRequestBus(),
         backupPreferencesRepository = backupPreferences,
         googleDriveAccountManager = googleDriveAccountManager ?: object : GoogleDriveAccountManager {
             override suspend fun connect() = throw com.vaibhav.relive.domain.backup.GoogleDriveAuthorizationUnavailableException("Google account connection requires an Android activity.")

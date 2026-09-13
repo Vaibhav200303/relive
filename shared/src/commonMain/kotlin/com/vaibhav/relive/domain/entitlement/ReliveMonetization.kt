@@ -79,4 +79,5 @@ class EntitlementPolicy(private val state: EntitlementState) {
     fun maySelectPalette(value: ThemeReference): Boolean = state.isPro || value in ReliveMonetization.freePalettes
     fun maySelectWallpaper(value: TimelineWallpaper): Boolean = state.isPro || value in ReliveMonetization.freeWallpapers
     fun mayScheduleBackup(): Boolean = state.isPro
+    fun mayExport(): Boolean = state.isPro
 }
