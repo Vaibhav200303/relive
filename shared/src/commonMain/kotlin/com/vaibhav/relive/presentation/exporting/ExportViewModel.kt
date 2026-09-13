@@ -2,6 +2,7 @@ package com.vaibhav.relive.presentation.exporting
 
 import com.vaibhav.relive.domain.entitlement.EntitlementPolicy
 import com.vaibhav.relive.domain.entitlement.EntitlementProvider
+import com.vaibhav.relive.domain.exporting.DiaryPaper
 import com.vaibhav.relive.domain.exporting.ExportFormat
 import com.vaibhav.relive.domain.exporting.ExportOperationState
 import com.vaibhav.relive.domain.exporting.ExportScope
@@ -38,6 +39,7 @@ data class ExportUiState(
     val title: String = "My Relive",
     val subtitle: String = "",
     val coverPhotoPath: String? = null,
+    val paper: DiaryPaper = DiaryPaper.WarmCream,
     val selectedMomentCount: Int = 0,
     val operation: ExportOperationState = ExportOperationState.Idle,
     val isPro: Boolean = false,
@@ -95,6 +97,7 @@ class ExportViewModel(
 
     fun setTitle(value: String) = _state.update { it.copy(title = value.take(100)) }
     fun setSubtitle(value: String) = _state.update { it.copy(subtitle = value.take(180)) }
+    fun setPaper(value: DiaryPaper) = _state.update { it.copy(paper = value) }
     fun setCoverPhoto(path: String?) {
         _state.value.coverPhotoPath?.takeIf { it != path }?.let(exportService::deleteTemporaryFile)
         _state.update { it.copy(coverPhotoPath = path) }
@@ -134,6 +137,7 @@ class ExportViewModel(
                                     coverPhotoPath = current.coverPhotoPath,
                                     startDate = current.startDate,
                                     endDate = current.endDate,
+                                    paper = current.paper,
                                 ),
                                 scopeTitle = when (val selectedScope = current.scope) {
                                     ExportScope.All -> "All moments"

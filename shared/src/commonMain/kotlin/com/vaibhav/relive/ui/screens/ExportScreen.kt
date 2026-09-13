@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,7 +19,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -42,12 +45,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.vaibhav.relive.domain.exporting.DiaryPaper
 import com.vaibhav.relive.domain.exporting.ExportFormat
 import com.vaibhav.relive.domain.exporting.ExportOperationState
 import com.vaibhav.relive.domain.exporting.ExportResult
@@ -125,6 +131,7 @@ fun ExportScreen(
                 onUseAllTime = { viewModel.setDateRange(null, null) },
                 onSetTitle = viewModel::setTitle,
                 onSetSubtitle = viewModel::setSubtitle,
+                onSelectPaper = viewModel::setPaper,
                 onChooseCover = {
                     scope.launch {
                         val picked = photos.pickImage()
@@ -188,6 +195,7 @@ private fun ExportSetup(
     onUseAllTime: () -> Unit,
     onSetTitle: (String) -> Unit,
     onSetSubtitle: (String) -> Unit,
+    onSelectPaper: (DiaryPaper) -> Unit,
     onChooseCover: () -> Unit,
     onRemoveCover: () -> Unit,
     onCreate: () -> Unit,
@@ -298,7 +306,7 @@ private fun ExportSetup(
             item {
                 AnimatedVisibility(visible = state.format == ExportFormat.KeepsakePdf) {
                     Column(verticalArrangement = Arrangement.spacedBy(dims.spacing.lg)) {
-                        ExportSectionTitle("3  PERSONALIZE THE COVER")
+                        ExportSectionTitle("3  PERSONALIZE THE KEEPSAKE")
                         Column(
                             Modifier.padding(horizontal = dims.spacing.xl),
                             verticalArrangement = Arrangement.spacedBy(dims.spacing.md),
@@ -324,6 +332,20 @@ private fun ExportSetup(
                             if (state.coverPhotoPath != null) {
                                 TextButton(onClick = onRemoveCover) { Text("Remove cover photo") }
                             }
+                            Text(
+                                "Diary page color",
+                                style = ReliveTheme.typography.subtitle,
+                                color = ReliveTheme.colors.textPrimary,
+                            )
+                            Text(
+                                "Ink and doodle colors adjust automatically for comfortable reading.",
+                                style = ReliveTheme.typography.tag,
+                                color = ReliveTheme.colors.textSecondary,
+                            )
+                            DiaryPaperPicker(
+                                selected = state.paper,
+                                onSelect = onSelectPaper,
+                            )
                         }
                     }
                 }
@@ -337,6 +359,77 @@ private fun ExportSetup(
         ExportActionBar(state = state, onCreate = onCreate)
     }
 }
+
+@Composable
+private fun DiaryPaperPicker(
+    selected: DiaryPaper,
+    onSelect: (DiaryPaper) -> Unit,
+) {
+    val dims = ReliveTheme.dimensions
+    val haptics = rememberReliveHaptics()
+    Row(
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm),
+    ) {
+        DiaryPaper.entries.forEach { paper ->
+            val isSelected = paper == selected
+            Surface(
+                modifier = Modifier
+                    .size(68.dp)
+                    .semantics { contentDescription = paper.displayName }
+                    .selectable(
+                        selected = isSelected,
+                        role = Role.RadioButton,
+                        onClick = {
+                            haptics.perform(ReliveHapticCue.Selection)
+                            onSelect(paper)
+                        },
+                    ),
+                shape = CircleShape,
+                color = paper.previewColor(),
+                border = BorderStroke(
+                    if (isSelected) 3.dp else 1.dp,
+                    if (isSelected) ReliveTheme.colors.accent else ReliveTheme.colors.borderMuted,
+                ),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        "Aa",
+                        style = ReliveTheme.typography.subtitle,
+                        color = paper.previewInk(),
+                    )
+                }
+            }
+        }
+    }
+    Text(
+        selected.displayName,
+        style = ReliveTheme.typography.tag,
+        color = ReliveTheme.colors.textSecondary,
+    )
+}
+
+private fun DiaryPaper.previewColor() = Color(
+    when (this) {
+        DiaryPaper.WarmCream -> 0xFFF3EBDD
+        DiaryPaper.BlushPink -> 0xFFF8E8E8
+        DiaryPaper.SageGreen -> 0xFFE8EEE2
+        DiaryPaper.Lavender -> 0xFFEEE8F7
+        DiaryPaper.PowderBlue -> 0xFFE6F0F7
+        DiaryPaper.SoftPeach -> 0xFFFAE9DE
+    },
+)
+
+private fun DiaryPaper.previewInk() = Color(
+    when (this) {
+        DiaryPaper.WarmCream -> 0xFF2D2722
+        DiaryPaper.BlushPink -> 0xFF40262B
+        DiaryPaper.SageGreen -> 0xFF263125
+        DiaryPaper.Lavender -> 0xFF312943
+        DiaryPaper.PowderBlue -> 0xFF22323E
+        DiaryPaper.SoftPeach -> 0xFF3B2B24
+    },
+)
 
 @Composable
 private fun ExportActionBar(state: ExportUiState, onCreate: () -> Unit) {

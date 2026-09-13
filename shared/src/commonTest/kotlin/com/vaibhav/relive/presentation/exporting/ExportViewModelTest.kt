@@ -4,10 +4,12 @@ import com.vaibhav.relive.domain.entitlement.EntitlementProvider
 import com.vaibhav.relive.domain.entitlement.EntitlementState
 import com.vaibhav.relive.domain.entitlement.PurchaseOutcome
 import com.vaibhav.relive.domain.entitlement.RelivePurchaseOption
+import com.vaibhav.relive.domain.exporting.DiaryPaper
 import com.vaibhav.relive.domain.exporting.ExportFormat
 import com.vaibhav.relive.domain.exporting.ExportOperationState
 import com.vaibhav.relive.domain.exporting.ExportProgress
 import com.vaibhav.relive.domain.exporting.ExportResult
+import com.vaibhav.relive.domain.exporting.ExportScope
 import com.vaibhav.relive.domain.exporting.PortableArchiveSnapshot
 import com.vaibhav.relive.domain.model.AppearanceMode
 import com.vaibhav.relive.domain.model.AppearancePreferences
@@ -71,6 +73,50 @@ class ExportViewModelTest {
         assertEquals(ExportOperationState.Idle, viewModel.state.value.operation)
     }
 
+    @Test
+    fun selectedDiaryPaperIsPassedToThePdfDocument() = runTest {
+        val service = ControllableExportService()
+        val viewModel = exportViewModel(service)
+        viewModel.state.first { it.isPro && it.selectedMomentCount == 1 }
+        viewModel.setPaper(DiaryPaper.Lavender)
+
+        viewModel.createSelectedFormat()
+        service.started.await()
+
+        assertEquals(DiaryPaper.Lavender, service.startedDocument?.options?.paper)
+        viewModel.cancel()
+    }
+
+    @Test
+    fun selectedTimelineMomentsAreTheOnlyMomentsPassedToThePdfDocument() = runTest {
+        val selectedTimeline = Timeline.Custom(TimelineId("trip"), "Trip")
+        val selectedMoment = Moment(MomentId("selected"), Instant(1), title = "Selected")
+        val otherMoment = Moment(MomentId("other"), Instant(2), title = "Other")
+        val service = ControllableExportService()
+        val viewModel = ExportViewModel(
+            momentRepository = FakeMomentRepository(
+                moments = listOf(selectedMoment, otherMoment),
+                timelineMoments = listOf(selectedMoment),
+            ),
+            timelineRepository = FakeTimelineRepository(listOf(selectedTimeline)),
+            appearanceRepository = FakeAppearanceRepository(),
+            entitlementProvider = FakeProEntitlementProvider(),
+            exportService = service,
+            clock = Clock { Instant(3) },
+            scope = backgroundScope,
+        )
+        viewModel.state.first { it.isPro && it.selectedMomentCount == 2 }
+
+        viewModel.selectScope(ExportScope.Custom(selectedTimeline.id, selectedTimeline.name))
+        viewModel.state.first { it.selectedMomentCount == 1 }
+        viewModel.createSelectedFormat()
+        service.started.await()
+
+        assertEquals(listOf(selectedMoment), service.startedDocument?.moments)
+        assertEquals("Trip", service.startedDocument?.scopeTitle)
+        viewModel.cancel()
+    }
+
     private fun kotlinx.coroutines.test.TestScope.exportViewModel(service: ReliveExportService) = ExportViewModel(
         momentRepository = FakeMomentRepository(
             listOf(Moment(MomentId("moment"), Instant(1), title = "A memory")),
@@ -91,11 +137,13 @@ private class ControllableExportService(
     val cancelled = CompletableDeferred<Unit>()
     val allowCancelledExporterToReturn = CompletableDeferred<Unit>()
     val deletedPaths = mutableListOf<String>()
+    var startedDocument: MagazineDocument? = null
 
     override suspend fun createMagazinePdf(
         document: MagazineDocument,
         onProgress: (ExportProgress) -> Unit,
     ): ExportResult {
+        startedDocument = document
         started.complete(Unit)
         return try {
             awaitCancellation()
@@ -124,6 +172,7 @@ private class ControllableExportService(
 
 private class FakeMomentRepository(
     private val moments: List<Moment>,
+    private val timelineMoments: List<Moment> = moments,
 ) : MomentRepository {
     override suspend fun insert(moment: Moment, timelineIds: Set<TimelineId>) = Unit
     override suspend fun findById(id: MomentId): Moment? = moments.firstOrNull { it.id == id }
@@ -134,15 +183,17 @@ private class FakeMomentRepository(
     override suspend fun listAll(): List<Moment> = moments
     override fun observeAll(): Flow<List<Moment>> = MutableStateFlow(moments)
     override fun observeSearch(query: String): Flow<List<Moment>> = MutableStateFlow(emptyList())
-    override suspend fun listInTimeline(timelineId: TimelineId): List<Moment> = moments
-    override fun observeInTimeline(timelineId: TimelineId): Flow<List<Moment>> = MutableStateFlow(moments)
+    override suspend fun listInTimeline(timelineId: TimelineId): List<Moment> = timelineMoments
+    override fun observeInTimeline(timelineId: TimelineId): Flow<List<Moment>> = MutableStateFlow(timelineMoments)
 }
 
-private class FakeTimelineRepository : TimelineRepository {
+private class FakeTimelineRepository(
+    private val timelines: List<Timeline.Custom> = emptyList(),
+) : TimelineRepository {
     override suspend fun createCustom(timeline: Timeline.Custom, createdAt: Instant) = Unit
-    override suspend fun findCustom(id: TimelineId): Timeline.Custom? = null
-    override suspend fun listCustom(): List<Timeline.Custom> = emptyList()
-    override fun observeCustom(): Flow<List<Timeline.Custom>> = MutableStateFlow(emptyList())
+    override suspend fun findCustom(id: TimelineId): Timeline.Custom? = timelines.firstOrNull { it.id == id }
+    override suspend fun listCustom(): List<Timeline.Custom> = timelines
+    override fun observeCustom(): Flow<List<Timeline.Custom>> = MutableStateFlow(timelines)
     override suspend fun rename(id: TimelineId, newName: String) = Unit
     override suspend fun updateAppearance(id: TimelineId, appearance: TimelineAppearance) = Unit
     override suspend fun updateCoverPhoto(id: TimelineId, coverPhotoRef: MediaStorageRef?) = Unit
