@@ -1,24 +1,26 @@
 package com.vaibhav.relive.ui.screens
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.IconButton
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -28,9 +30,22 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.vaibhav.relive.domain.model.ArchiveInsights
 import com.vaibhav.relive.domain.model.ArchiveMediaCategory
 import com.vaibhav.relive.domain.model.ArchiveMediaCategorySummary
@@ -38,56 +53,55 @@ import com.vaibhav.relive.platform.system.ReliveBackHandler
 import com.vaibhav.relive.presentation.profile.MediaStorageState
 import com.vaibhav.relive.presentation.profile.MediaStorageViewModel
 import com.vaibhav.relive.presentation.profile.formatByteSize
-import com.vaibhav.relive.ui.components.timeline.BackGlyph
 import com.vaibhav.relive.ui.components.MediaStorageSkeleton
 import com.vaibhav.relive.ui.components.ReliveSkeletonContent
+import com.vaibhav.relive.ui.components.composer.ImageGlyph
+import com.vaibhav.relive.ui.components.composer.MicGlyph
+import com.vaibhav.relive.ui.components.composer.VideoGlyph
+import com.vaibhav.relive.ui.components.profile.ProfilePageHeader
+import com.vaibhav.relive.ui.icons.ProfileIcons
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.theme.canvasBrush
-import com.vaibhav.relive.ui.components.profile.ProfilePageHeader
+import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 @Composable
-fun MediaStorageScreen(
-    viewModel: MediaStorageViewModel,
-    onBack: () -> Unit,
-) {
+fun MediaStorageScreen(viewModel: MediaStorageViewModel, onBack: () -> Unit) {
     val state by viewModel.state.collectAsState()
     ReliveBackHandler(enabled = true, onBack = onBack)
     LaunchedEffect(Unit) { viewModel.loadOnEntry() }
 
-    Column(
-        modifier = Modifier.fillMaxSize().background(ReliveTheme.colors.canvasBrush()),
-    ) {
-        MediaStorageHeader(onBack)
+    Column(Modifier.fillMaxSize().background(ReliveTheme.colors.canvasBrush())) {
+        ProfilePageHeader("Media & Storage", onBack)
         ReliveSkeletonContent(
             isLoading = state == MediaStorageState.Loading,
             skeleton = {
                 MediaStorageSkeleton(
-                    modifier = Modifier.semantics { contentDescription = "Loading archive storage" },
+                    Modifier.semantics { contentDescription = "Loading archive storage" },
                 )
             },
         ) {
             when (val current = state) {
                 MediaStorageState.Loading -> Unit
                 is MediaStorageState.Loaded -> ArchiveInsightsContent(current.insights)
-                MediaStorageState.Error -> ArchiveInsightsError(onRetry = viewModel::refresh)
+                MediaStorageState.Error -> ArchiveInsightsError(viewModel::refresh)
             }
         }
     }
 }
 
 @Composable
-private fun MediaStorageHeader(onBack: () -> Unit) {
-    ProfilePageHeader("Media & Storage", onBack)
-}
-
-@Composable
 private fun ArchiveInsightsError(onRetry: () -> Unit) {
-    val dims = ReliveTheme.dimensions
+    val d = ReliveTheme.dimensions
     Column(
-        modifier = Modifier.fillMaxWidth().padding(dims.spacing.xl),
-        verticalArrangement = Arrangement.spacedBy(dims.spacing.md),
+        Modifier.fillMaxWidth().padding(d.spacing.xl),
+        verticalArrangement = Arrangement.spacedBy(d.spacing.md),
     ) {
-        Text("Couldn’t load archive storage.", style = ReliveTheme.typography.title, color = ReliveTheme.colors.textPrimary)
+        Text(
+            "Couldn’t load archive storage.",
+            style = ReliveTheme.typography.title,
+            color = ReliveTheme.colors.textPrimary,
+        )
         Text(
             "Your memories are unchanged. Try again when you’re ready.",
             style = ReliveTheme.typography.body,
@@ -101,13 +115,13 @@ private fun ArchiveInsightsError(onRetry: () -> Unit) {
 
 @Composable
 private fun ArchiveInsightsContent(insights: ArchiveInsights) {
-    val dims = ReliveTheme.dimensions
+    val d = ReliveTheme.dimensions
     Column(
-        modifier = Modifier
+        Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = dims.spacing.xl),
-        verticalArrangement = Arrangement.spacedBy(dims.spacing.xl),
+            .padding(horizontal = d.spacing.lg),
+        verticalArrangement = Arrangement.spacedBy(d.spacing.lg),
     ) {
         Text(
             "Your memories, stored on this device.",
@@ -115,141 +129,292 @@ private fun ArchiveInsightsContent(insights: ArchiveInsights) {
             color = ReliveTheme.colors.textSecondary,
         )
         ArchiveHero(insights)
-        ArchiveSection("STORAGE BREAKDOWN") {
-            ArchiveCategoryRow("Photos", insights.photo, insights.totalBytes, ArchiveMediaCategory.Photo)
-            ArchiveCategoryRow("Videos", insights.video, insights.totalBytes, ArchiveMediaCategory.Video)
-            ArchiveCategoryRow("Audio", insights.audio, insights.totalBytes, ArchiveMediaCategory.Audio)
-            if (insights.other.attachmentCount > 0L) {
-                ArchiveCategoryRow("Other", insights.other, insights.totalBytes, ArchiveMediaCategory.Other)
-            }
-        }
-        ArchiveSection("YOUR ARCHIVE") {
-            ArchiveCountRow("Photos", insights.photo.attachmentCount)
-            ArchiveCountRow("Videos", insights.video.attachmentCount)
-            ArchiveCountRow("Audio", insights.audio.attachmentCount)
-            if (insights.other.attachmentCount > 0L) ArchiveCountRow("Other", insights.other.attachmentCount)
-        }
+        StorageBreakdownCard(insights)
+        ArchiveCountCard(insights)
         if (insights.unavailableFileCount > 0L) {
+            val text = unavailableFilesText(insights.unavailableFileCount)
             Text(
-                text = unavailableFilesText(insights.unavailableFileCount),
-                style = ReliveTheme.typography.subtitle,
+                text,
+                Modifier.padding(horizontal = d.spacing.lg).semantics { contentDescription = text },
                 color = ReliveTheme.colors.textMuted,
-                modifier = Modifier.semantics { contentDescription = unavailableFilesText(insights.unavailableFileCount) },
+                style = ReliveTheme.typography.caption,
             )
         }
-        HorizontalDivider(color = ReliveTheme.colors.borderMuted, thickness = dims.stroke.hairline)
-        Column(verticalArrangement = Arrangement.spacedBy(dims.spacing.xs)) {
-            Text(
-                "Your memories stay yours",
-                style = ReliveTheme.typography.title,
-                color = ReliveTheme.colors.textPrimary,
-                modifier = Modifier.semantics { heading() },
-            )
-            Text(
-                "Your memories are stored locally on this device.",
-                style = ReliveTheme.typography.body,
-                color = ReliveTheme.colors.textSecondary,
-                modifier = Modifier.padding(bottom = dims.spacing.huge),
-            )
-        }
+        ArchivePrivacyCard()
+        Spacer(Modifier.height(d.spacing.huge))
     }
 }
 
 @Composable
 private fun ArchiveHero(insights: ArchiveInsights) {
-    val dims = ReliveTheme.dimensions
+    val d = ReliveTheme.dimensions
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(dims.radii.largeIncreased),
-        color = ReliveTheme.colors.surfaceCard,
-        contentColor = ReliveTheme.colors.textPrimary,
+        shape = RoundedCornerShape(d.radii.largeIncreased),
+        color = ReliveTheme.colors.surfaceCard.copy(alpha = 0.94f),
+        shadowElevation = 1.dp,
     ) {
-        Column(
-            modifier = Modifier.padding(dims.spacing.lg),
-            verticalArrangement = Arrangement.spacedBy(dims.spacing.md),
-        ) {
-            Text("YOUR RELIVE ARCHIVE", style = ReliveTheme.typography.eyebrow, color = ReliveTheme.colors.textSecondary)
-            Text(formatByteSize(insights.totalBytes), style = ReliveTheme.typography.title, color = ReliveTheme.colors.textPrimary)
-            Text("Total media stored", style = ReliveTheme.typography.subtitle, color = ReliveTheme.colors.textSecondary)
-            if (insights.totalBytes > 0L) ArchiveComposition(insights)
-            if (insights.momentCount == 0L && insights.attachmentCount == 0L) {
-                Text("Your archive is just getting started.", style = ReliveTheme.typography.subtitle, color = ReliveTheme.colors.textMuted)
+        BoxWithConstraints(Modifier.padding(d.spacing.xl)) {
+            val stacked = maxWidth < 330.dp || LocalDensity.current.fontScale > 1.3f
+            if (stacked) {
+                Column(verticalArrangement = Arrangement.spacedBy(d.spacing.lg)) {
+                    ArchiveHeroCopy(insights, Modifier.fillMaxWidth())
+                    if (insights.totalBytes > 0L) {
+                        StorageRing(insights.totalBytes, Modifier.align(Alignment.CenterHorizontally))
+                    }
+                }
+            } else {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(d.spacing.lg),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    ArchiveHeroCopy(insights, Modifier.weight(1f))
+                    if (insights.totalBytes > 0L) StorageRing(insights.totalBytes)
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun ArchiveHeroCopy(insights: ArchiveInsights, modifier: Modifier) {
+    val d = ReliveTheme.dimensions
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(d.spacing.xs)) {
+        Text("YOUR RELIVE ARCHIVE", style = ReliveTheme.typography.eyebrow, color = ReliveTheme.colors.textSecondary)
+        Text(
+            formatByteSize(insights.totalBytes),
+            style = ReliveTheme.typography.dateLarge,
+            color = ReliveTheme.colors.textPrimary,
+        )
+        Text("Total media stored", style = ReliveTheme.typography.subtitle, color = ReliveTheme.colors.textSecondary)
+        Spacer(Modifier.height(d.spacing.xs))
+        Text(
+            "${pluralize(insights.momentCount, "moment")} • ${pluralize(insights.attachmentCount, "file")}",
+            style = ReliveTheme.typography.caption,
+            color = ReliveTheme.colors.textSecondary,
+        )
+        if (insights.totalBytes == 0L && insights.momentCount == 0L && insights.attachmentCount == 0L) {
             Text(
-                text = "${pluralize(insights.momentCount, "moment")} • ${pluralize(insights.attachmentCount, "file")}",
-                style = ReliveTheme.typography.body,
-                color = ReliveTheme.colors.textSecondary,
+                "Your archive is just getting started.",
+                style = ReliveTheme.typography.caption,
+                color = ReliveTheme.colors.textMuted,
             )
         }
     }
 }
 
 @Composable
-private fun ArchiveComposition(insights: ArchiveInsights) {
-    val entries = listOf(
-        ArchiveMediaCategory.Photo to insights.photo,
-        ArchiveMediaCategory.Video to insights.video,
-        ArchiveMediaCategory.Audio to insights.audio,
-        ArchiveMediaCategory.Other to insights.other,
-    ).filter { it.second.bytes > 0L }
-    val description = entries.joinToString(", ") { (category, summary) ->
-        "${category.label()} ${formatByteSize(summary.bytes)}"
-    }
-    val visualWeights = archiveVisualWeights(
-        bytes = entries.map { it.second.bytes },
-        totalBytes = insights.totalBytes,
-    )
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(ReliveTheme.dimensions.spacing.sm)
-            .semantics(mergeDescendants = true) { contentDescription = "Storage composition: $description" },
+private fun StorageRing(totalBytes: Long, modifier: Modifier = Modifier) {
+    val colors = ReliveTheme.colors
+    Box(
+        modifier
+            .size(120.dp)
+            .semantics(mergeDescendants = true) { contentDescription = "${formatByteSize(totalBytes)} used" },
+        contentAlignment = Alignment.Center,
     ) {
-        entries.forEachIndexed { index, (category, _) ->
-            Box(
-                modifier = Modifier
-                    .weight(visualWeights[index])
-                    .height(ReliveTheme.dimensions.spacing.sm)
-                    .background(category.color()),
+        Canvas(Modifier.fillMaxSize()) {
+            val stroke = 14.dp.toPx()
+            drawCircle(
+                colors.borderMuted,
+                radius = (size.minDimension - stroke) / 2f,
+                style = Stroke(stroke),
             )
+            drawArc(
+                brush = Brush.sweepGradient(
+                    listOf(colors.accentMuted, colors.accent, colors.accentMuted),
+                    center = center,
+                ),
+                startAngle = -90f,
+                sweepAngle = 360f,
+                useCenter = false,
+                topLeft = Offset(stroke / 2f, stroke / 2f),
+                size = androidx.compose.ui.geometry.Size(size.width - stroke, size.height - stroke),
+                style = Stroke(stroke),
+            )
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                formatByteSize(totalBytes),
+                style = ReliveTheme.typography.action.copy(fontWeight = FontWeight.SemiBold),
+                color = colors.textPrimary,
+            )
+            Text("Used", style = ReliveTheme.typography.tag, color = colors.textSecondary)
         }
     }
 }
 
 @Composable
-private fun ArchiveSection(title: String, content: @Composable () -> Unit) {
-    val dims = ReliveTheme.dimensions
-    Column(verticalArrangement = Arrangement.spacedBy(dims.spacing.md)) {
-        Text(title, style = ReliveTheme.typography.eyebrow, color = ReliveTheme.colors.textSecondary, modifier = Modifier.semantics { heading() })
-        content()
+private fun StorageBreakdownCard(insights: ArchiveInsights) {
+    val items = buildList {
+        add(CategoryItem("Photos", insights.photo, ArchiveMediaCategory.Photo))
+        add(CategoryItem("Videos", insights.video, ArchiveMediaCategory.Video))
+        add(CategoryItem("Audio", insights.audio, ArchiveMediaCategory.Audio))
+        if (insights.other.attachmentCount > 0L) add(CategoryItem("Other", insights.other, ArchiveMediaCategory.Other))
+    }
+    ArchiveSectionCard("Storage breakdown", "See how your archive uses space.") {
+        items.forEach { ArchiveCategoryCard(it, insights.totalBytes) }
     }
 }
 
 @Composable
-private fun ArchiveCategoryRow(
-    label: String,
-    summary: ArchiveMediaCategorySummary,
-    totalBytes: Long,
-    category: ArchiveMediaCategory,
-) {
-    val dims = ReliveTheme.dimensions
-    Column(
+private fun ArchiveCategoryCard(item: CategoryItem, totalBytes: Long) {
+    val d = ReliveTheme.dimensions
+    val colors = ReliveTheme.colors
+    val percentage = archivePercentage(item.summary.bytes, totalBytes)
+    Surface(
         modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {
-            contentDescription = "$label, ${formatByteSize(summary.bytes)}"
+            contentDescription =
+                "${item.label}, ${pluralize(item.summary.attachmentCount, "file")}, " +
+                    "${formatByteSize(item.summary.bytes)}, $percentage percent"
         },
-        verticalArrangement = Arrangement.spacedBy(dims.spacing.xs),
+        shape = RoundedCornerShape(d.radii.medium),
+        color = colors.surfaceCardTranslucent,
     ) {
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(label, style = ReliveTheme.typography.body, color = ReliveTheme.colors.textPrimary, modifier = Modifier.weight(1f))
-            Text(formatByteSize(summary.bytes), style = ReliveTheme.typography.body, color = ReliveTheme.colors.textSecondary)
+        Column(Modifier.padding(d.spacing.sm), verticalArrangement = Arrangement.spacedBy(d.spacing.sm)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CategoryBadge(item.category, 46.dp)
+                Spacer(Modifier.width(d.spacing.lg))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        item.label,
+                        style = ReliveTheme.typography.action.copy(fontWeight = FontWeight.SemiBold),
+                        color = colors.textPrimary,
+                    )
+                    Text(
+                        pluralize(item.summary.attachmentCount, "file"),
+                        style = ReliveTheme.typography.caption,
+                        color = colors.textSecondary,
+                    )
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        formatByteSize(item.summary.bytes),
+                        style = ReliveTheme.typography.action.copy(fontWeight = FontWeight.SemiBold),
+                        color = colors.textPrimary,
+                    )
+                    Text("$percentage%", style = ReliveTheme.typography.caption, color = colors.textSecondary)
+                }
+            }
+            StorageProgress(item.summary.bytes, totalBytes, item.category.color())
         }
-        Box(modifier = Modifier.fillMaxWidth().height(dims.spacing.xs).background(ReliveTheme.colors.surfaceCardTranslucent)) {
-            if (summary.bytes > 0L && totalBytes > 0L) {
-                Box(
-                    modifier = Modifier
-                    .fillMaxWidth(archiveMeasuredFraction(summary.bytes, totalBytes))
-                        .height(dims.spacing.xs)
-                        .background(category.color()),
+    }
+}
+
+@Composable
+private fun StorageProgress(bytes: Long, totalBytes: Long, color: Color) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(6.dp)
+            .clip(CircleShape)
+            .background(ReliveTheme.colors.borderMuted),
+    ) {
+        if (bytes > 0L && totalBytes > 0L) {
+            Box(
+                Modifier
+                    .fillMaxWidth(archiveMeasuredFraction(bytes, totalBytes))
+                    .height(6.dp)
+                    .clip(CircleShape)
+                    .background(color),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ArchiveCountCard(insights: ArchiveInsights) {
+    val items = listOf(
+        CategoryItem("Photos", insights.photo, ArchiveMediaCategory.Photo),
+        CategoryItem("Videos", insights.video, ArchiveMediaCategory.Video),
+        CategoryItem("Audio", insights.audio, ArchiveMediaCategory.Audio),
+    )
+    ArchiveSectionCard("Your archive", "A quick count of everything you’ve saved.") {
+        if (LocalDensity.current.fontScale > 1.3f) {
+            items.forEach { ArchiveCountTile(it, Modifier.fillMaxWidth()) }
+        } else {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(ReliveTheme.dimensions.spacing.sm),
+            ) {
+                items.forEach { ArchiveCountTile(it, Modifier.weight(1f)) }
+            }
+        }
+        if (insights.other.attachmentCount > 0L) {
+            ArchiveCountTile(CategoryItem("Other", insights.other, ArchiveMediaCategory.Other), Modifier.fillMaxWidth())
+        }
+    }
+}
+
+@Composable
+private fun ArchiveCountTile(item: CategoryItem, modifier: Modifier) {
+    val d = ReliveTheme.dimensions
+    val colors = ReliveTheme.colors
+    Surface(
+        modifier = modifier.heightIn(min = 64.dp).semantics(mergeDescendants = true) {
+            contentDescription = "${item.label}, ${item.summary.attachmentCount}"
+        },
+        shape = RoundedCornerShape(d.radii.medium),
+        color = colors.surfaceCardTranslucent,
+    ) {
+        Row(Modifier.padding(d.spacing.sm), verticalAlignment = Alignment.CenterVertically) {
+            CategoryBadge(item.category, 38.dp)
+            Spacer(Modifier.width(d.spacing.sm))
+            Column {
+                Text(
+                    item.summary.attachmentCount.toString(),
+                    style = ReliveTheme.typography.action.copy(fontWeight = FontWeight.SemiBold),
+                    color = colors.textPrimary,
+                )
+                Text(item.label, style = ReliveTheme.typography.tag, color = colors.textSecondary)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ArchiveSectionCard(title: String, subtitle: String, content: @Composable ColumnScope.() -> Unit) {
+    val d = ReliveTheme.dimensions
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(d.radii.largeIncreased),
+        color = ReliveTheme.colors.surfaceCard.copy(alpha = 0.88f),
+        shadowElevation = 1.dp,
+    ) {
+        Column(Modifier.padding(d.spacing.lg), verticalArrangement = Arrangement.spacedBy(d.spacing.md)) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    title,
+                    style = ReliveTheme.typography.title.copy(fontSize = 18.sp, lineHeight = 23.sp),
+                    color = ReliveTheme.colors.textPrimary,
+                    modifier = Modifier.semantics { heading() },
+                )
+                Text(subtitle, style = ReliveTheme.typography.caption, color = ReliveTheme.colors.textSecondary)
+            }
+            content()
+        }
+    }
+}
+
+@Composable
+private fun CategoryBadge(category: ArchiveMediaCategory, size: Dp) {
+    val d = ReliveTheme.dimensions
+    val color = category.color()
+    Surface(
+        modifier = Modifier.size(size),
+        shape = RoundedCornerShape(d.radii.medium),
+        color = color.copy(alpha = 0.12f),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            when (category) {
+                ArchiveMediaCategory.Photo -> ImageGlyph(d.icon.md, color, d.stroke.icon)
+                ArchiveMediaCategory.Video -> VideoGlyph(d.icon.md, color, d.stroke.icon)
+                ArchiveMediaCategory.Audio -> MicGlyph(d.icon.md, color, d.stroke.icon)
+                ArchiveMediaCategory.Other -> Icon(
+                    ProfileIcons.Archive,
+                    null,
+                    Modifier.size(d.icon.md),
+                    tint = color,
                 )
             }
         }
@@ -257,66 +422,117 @@ private fun ArchiveCategoryRow(
 }
 
 @Composable
-private fun ArchiveCountRow(label: String, count: Long) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = ReliveTheme.dimensions.minTouchTarget)
-            .semantics(mergeDescendants = true) { contentDescription = "$label, $count" },
-        verticalAlignment = Alignment.CenterVertically,
+private fun ArchivePrivacyCard() {
+    val d = ReliveTheme.dimensions
+    val colors = ReliveTheme.colors
+    Surface(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(d.radii.largeIncreased),
+        color = colors.tint.copy(alpha = 0.58f),
     ) {
-        Text(label, style = ReliveTheme.typography.body, color = ReliveTheme.colors.textPrimary, modifier = Modifier.weight(1f))
-        Text(count.toString(), style = ReliveTheme.typography.body, color = ReliveTheme.colors.textSecondary)
+        Row(
+            Modifier.fillMaxWidth().padding(start = d.spacing.lg, top = d.spacing.lg, bottom = d.spacing.lg),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(ProfileIcons.Security, null, Modifier.size(28.dp), tint = colors.accentMuted)
+            Spacer(Modifier.width(d.spacing.lg))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(d.spacing.xs)) {
+                Text(
+                    "Your memories stay yours",
+                    style = ReliveTheme.typography.action.copy(fontWeight = FontWeight.SemiBold),
+                    color = colors.textPrimary,
+                    modifier = Modifier.semantics { heading() },
+                )
+                Text(
+                    "Your memories are stored locally on this device and are never uploaded without your permission.",
+                    style = ReliveTheme.typography.caption,
+                    color = colors.textSecondary,
+                )
+            }
+            if (LocalDensity.current.fontScale <= 1.3f) {
+                MemoryLeaves(Modifier.padding(start = d.spacing.sm).width(70.dp).height(84.dp))
+            } else {
+                Spacer(Modifier.width(d.spacing.lg))
+            }
+        }
     }
 }
 
 @Composable
-private fun ArchiveMediaCategory.color() = when (this) {
+private fun MemoryLeaves(modifier: Modifier) {
+    val color = ReliveTheme.colors.accentMuted
+    Canvas(modifier) {
+        val stem = Path().apply {
+            moveTo(size.width * 0.78f, size.height)
+            cubicTo(
+                size.width * 0.72f,
+                size.height * 0.68f,
+                size.width * 0.42f,
+                size.height * 0.52f,
+                size.width * 0.18f,
+                size.height * 0.18f,
+            )
+        }
+        drawPath(stem, color.copy(alpha = 0.28f), style = Stroke(1.5.dp.toPx(), cap = StrokeCap.Round))
+        drawLeaf(
+            color.copy(alpha = 0.11f),
+            Offset(size.width * 0.18f, size.height * 0.18f),
+            Offset(size.width * 0.48f, size.height * 0.50f),
+            size.width * 0.24f,
+        )
+        drawLeaf(
+            color.copy(alpha = 0.10f),
+            Offset(size.width * 0.84f, size.height * 0.33f),
+            Offset(size.width * 0.62f, size.height * 0.65f),
+            size.width * 0.22f,
+        )
+        drawLeaf(
+            color.copy(alpha = 0.13f),
+            Offset(size.width * 0.25f, size.height * 0.68f),
+            Offset(size.width * 0.74f, size.height * 0.94f),
+            size.width * 0.18f,
+        )
+    }
+}
+
+private fun DrawScope.drawLeaf(color: Color, tip: Offset, base: Offset, width: Float) {
+    val dx = base.x - tip.x
+    val dy = base.y - tip.y
+    val length = sqrt(dx * dx + dy * dy).coerceAtLeast(1f)
+    val normal = Offset(-dy / length * width, dx / length * width)
+    val middle = Offset((tip.x + base.x) / 2f, (tip.y + base.y) / 2f)
+    val path = Path().apply {
+        moveTo(tip.x, tip.y)
+        quadraticTo(middle.x + normal.x, middle.y + normal.y, base.x, base.y)
+        quadraticTo(middle.x - normal.x, middle.y - normal.y, tip.x, tip.y)
+        close()
+    }
+    drawPath(path, color)
+}
+
+@Composable
+private fun ArchiveMediaCategory.color(): Color = when (this) {
     ArchiveMediaCategory.Photo -> ReliveTheme.colors.accentMuted
     ArchiveMediaCategory.Video -> ReliveTheme.colors.accent
     ArchiveMediaCategory.Audio -> ReliveTheme.colors.surfaceAudio
     ArchiveMediaCategory.Other -> ReliveTheme.colors.border
 }
 
-private const val MinimumArchiveVisualWeight = 0.02f
-
-internal fun archiveVisualWeights(
-    bytes: List<Long>,
-    totalBytes: Long,
-    minimumWeight: Float = MinimumArchiveVisualWeight,
-): List<Float> {
-    require(minimumWeight >= 0f) { "Minimum visual weight must not be negative" }
-    if (bytes.isEmpty() || totalBytes <= 0L) return bytes.map { 0f }
-
-    val positiveCount = bytes.count { it > 0L }
-    if (positiveCount == 0) return bytes.map { 0f }
-
-    val minimumTotal = minimumWeight * positiveCount
-    val measuredSpace = (1f - minimumTotal).coerceAtLeast(0f)
-    val weights = bytes.map { byteCount ->
-        if (byteCount <= 0L) {
-            0f
-        } else {
-            minimumWeight + measuredSpace * (byteCount.toDouble() / totalBytes.toDouble()).toFloat()
-        }
-    }
-    val weightTotal = weights.sum()
-    return if (weightTotal > 0f) weights.map { it / weightTotal } else weights
-}
+private data class CategoryItem(
+    val label: String,
+    val summary: ArchiveMediaCategorySummary,
+    val category: ArchiveMediaCategory,
+)
 
 private fun archiveMeasuredFraction(bytes: Long, totalBytes: Long): Float =
     if (bytes > 0L && totalBytes > 0L) {
         (bytes.toDouble() / totalBytes.toDouble()).toFloat().coerceIn(0f, 1f)
-    } else {
-        0f
-    }
+    } else 0f
 
-private fun ArchiveMediaCategory.label(): String = when (this) {
-    ArchiveMediaCategory.Photo -> "Photos"
-    ArchiveMediaCategory.Video -> "Videos"
-    ArchiveMediaCategory.Audio -> "Audio"
-    ArchiveMediaCategory.Other -> "Other"
-}
+internal fun archivePercentage(bytes: Long, totalBytes: Long): Int =
+    if (bytes > 0L && totalBytes > 0L) {
+        ((bytes.toDouble() / totalBytes.toDouble()) * 100.0).roundToInt().coerceIn(0, 100)
+    } else 0
 
 private fun pluralize(count: Long, singular: String): String =
     "$count $singular${if (count == 1L) "" else "s"}"
