@@ -35,10 +35,12 @@ class ProfileNavigationStateTest {
             .openProfile()
             .openBackupRestore()
             .openUpgrade(ProfileDestination.BackupRestore)
+        val fromExport = ProfileNavigationState().openProfile().openExport().openUpgrade(ProfileDestination.Export)
 
         assertEquals(ProfileDestination.Profile, fromProfile.returnFromUpgrade().destination)
         assertEquals(ProfileDestination.Closed, fromTimelineHome.returnFromUpgrade().destination)
         assertEquals(ProfileDestination.BackupRestore, fromBackupRestore.returnFromUpgrade().destination)
+        assertEquals(ProfileDestination.Export, fromExport.returnFromUpgrade().destination)
     }
 
     @Test fun all_profile_destinations_return_to_profile() {

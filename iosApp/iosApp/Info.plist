@@ -18,5 +18,30 @@
 	<string>Relive uses the camera only when you capture a photo or video for a moment.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Relive imports selected photos and videos from your library into your local memory archive.</string>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.vaibhav.relive.archive</string>
+			<key>UTTypeDescription</key>
+			<string>Relive Portable Archive</string>
+			<key>UTTypeConformsTo</key>
+			<array><string>public.zip-archive</string><string>public.data</string></array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key><array><string>relive</string></array>
+				<key>public.mime-type</key><string>application/vnd.vaibhav.relive.archive</string>
+			</dict>
+		</dict>
+	</array>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key><string>Relive Portable Archive</string>
+			<key>LSHandlerRank</key><string>Owner</string>
+			<key>CFBundleTypeRole</key><string>Viewer</string>
+			<key>LSItemContentTypes</key><array><string>com.vaibhav.relive.archive</string></array>
+		</dict>
+	</array>
 </dict>
 </plist>

@@ -60,6 +60,7 @@ import com.vaibhav.relive.presentation.timelinehome.TimelineHomeViewModel
 import com.vaibhav.relive.presentation.profile.ProfileViewModel
 import com.vaibhav.relive.presentation.profile.ProfileNavigationState
 import com.vaibhav.relive.presentation.profile.ProfileDestination
+import com.vaibhav.relive.presentation.profile.ExternalActivityGuard
 import com.vaibhav.relive.presentation.profile.MediaStorageViewModel
 import com.vaibhav.relive.ui.components.navigation.ReliveFloatingBottomControls
 import com.vaibhav.relive.ui.components.navigation.ReliveTopLevelDestination
@@ -84,7 +85,11 @@ import com.vaibhav.relive.ui.screens.PrivacySecurityScreen
 import com.vaibhav.relive.ui.screens.HelpFeedbackScreen
 import com.vaibhav.relive.ui.screens.AboutReliveScreen
 import com.vaibhav.relive.ui.screens.LicensesScreen
+import com.vaibhav.relive.ui.screens.ExportScreen
+import com.vaibhav.relive.ui.screens.PortableArchiveScreen
+import com.vaibhav.relive.ui.screens.PortableArchiveErrorScreen
 import com.vaibhav.relive.presentation.profile.BackupRestoreViewModel
+import com.vaibhav.relive.presentation.exporting.ExportViewModel
 import com.vaibhav.relive.ui.screens.SearchScreen
 import com.vaibhav.relive.ui.screens.UpgradeToProScreen
 import com.vaibhav.relive.presentation.search.SearchViewModel
@@ -102,6 +107,7 @@ import com.vaibhav.relive.presentation.onboarding.resolveOnboarding
 import com.vaibhav.relive.platform.system.openAppSettings
 import com.vaibhav.relive.platform.system.ReliveBackHandler
 import com.vaibhav.relive.platform.system.toLauncherIcon
+import com.vaibhav.relive.platform.exporting.rememberExportFileHandle
 import com.vaibhav.relive.platform.share.IncomingSharePayload
 import com.vaibhav.relive.platform.share.IncomingShareState
 import androidx.lifecycle.Lifecycle
@@ -408,6 +414,34 @@ fun App(
         val backupRestoreViewModel = remember(container, scope) {
             BackupRestoreViewModel(container.backupPreferencesRepository, container.googleDriveAccountManager, container.backupCoordinator, scope, container.entitlementProvider)
         }
+        val exportViewModel = remember(container, scope) {
+            ExportViewModel(
+                container.momentRepository,
+                container.timelineRepository,
+                container.appearanceRepository,
+                container.entitlementProvider,
+                container.exportService,
+                container.clock,
+                scope,
+            )
+        }
+        val exportFileHandle = rememberExportFileHandle()
+        var portableArchive by remember(container) {
+            mutableStateOf<com.vaibhav.relive.platform.exporting.OpenedPortableArchive?>(null)
+        }
+        var portableArchiveError by remember(container) { mutableStateOf<String?>(null) }
+        val portableArchiveRequest by container.portableArchiveRequestBus.request.collectAsState()
+        LaunchedEffect(portableArchiveRequest, locked) {
+            val request = portableArchiveRequest ?: return@LaunchedEffect
+            if (!locked) {
+                onboardingBypassedForSession = true
+                runCatching { container.exportService.openPortableArchive(request.path) }
+                    .onSuccess { portableArchive = it }
+                    .onFailure { portableArchiveError = it.message ?: "Relive could not open this archive." }
+                container.exportService.deleteTemporaryFile(request.path)
+                container.portableArchiveRequestBus.consume(request.id)
+            }
+        }
         // Home's own sub-destination: Back closes the appearance screen onto the Home surface,
         // which keeps its scroll position because the list state is hoisted here.
         ReliveBackHandler(
@@ -476,6 +510,17 @@ fun App(
                 onUnlockWithDeviceCredential = { lockController.unlockWithDeviceCredential() },
             )
         } else {
+            if (portableArchiveError != null) {
+                PortableArchiveErrorScreen(portableArchiveError!!) { portableArchiveError = null }
+            } else if (portableArchive != null) {
+                PortableArchiveScreen(
+                    archive = portableArchive!!,
+                    onClose = {
+                        container.exportService.releasePortableArchive(portableArchive!!)
+                        portableArchive = null
+                    },
+                )
+            } else {
             val showIncomingSharePicker = incomingShareState !is IncomingShareState.Idle &&
                 (incomingShareState !is IncomingShareState.Ready ||
                     (incomingShareState as IncomingShareState.Ready).payload.requestId != selectedIncomingShareId)
@@ -582,6 +627,30 @@ fun App(
                 onOpenPreferences = { profileNavigation = profileNavigation.openPreferences() },
                 onOpenMediaStorage = { profileNavigation = profileNavigation.openMediaStorage() },
                 onOpenBackupRestore = { profileNavigation = profileNavigation.openBackupRestore() },
+                onOpenExport = { profileNavigation = profileNavigation.openExport() },
+                onOpenReliveArchive = {
+                    scope.launch {
+                        ExternalActivityGuard.active = true
+                        val path = try {
+                            exportFileHandle.choosePortableArchive()
+                        } catch (error: Throwable) {
+                            portableArchiveError = error.message ?: "Relive could not open this archive."
+                            null
+                        } finally {
+                            ExternalActivityGuard.active = false
+                        }
+                        if (path != null) {
+                            try {
+                                portableArchive = container.exportService.openPortableArchive(path)
+                                onboardingBypassedForSession = true
+                            } catch (error: Throwable) {
+                                portableArchiveError = error.message ?: "Relive could not open this archive."
+                            } finally {
+                                container.exportService.deleteTemporaryFile(path)
+                            }
+                        }
+                    }
+                },
                 onOpenUpgrade = { profileNavigation = profileNavigation.openUpgrade() },
                 onOpenLocation = { profileNavigation = profileNavigation.openLocation() },
                 onOpenNotifications = { profileNavigation = profileNavigation.openNotifications() },
@@ -606,6 +675,12 @@ fun App(
                 onUpgrade = {
                     profileNavigation = profileNavigation.openUpgrade(ProfileDestination.BackupRestore)
                 },
+            )
+            ProfileDestination.Export -> ExportScreen(
+                viewModel = exportViewModel,
+                mediaStore = container.mediaStore,
+                onBack = { profileNavigation = profileNavigation.returnToProfile() },
+                onUpgrade = { profileNavigation = profileNavigation.openUpgrade(ProfileDestination.Export) },
             )
             ProfileDestination.Upgrade -> UpgradeToProScreen(
                 entitlementProvider = container.entitlementProvider,
@@ -1152,6 +1227,7 @@ fun App(
         }
         }
         }
+        }
     }
 }
 
@@ -1162,6 +1238,7 @@ private fun profileDestinationDepth(destination: ProfileDestination): Int = when
     ProfileDestination.Preferences,
     ProfileDestination.MediaStorage,
     ProfileDestination.BackupRestore,
+    ProfileDestination.Export,
     ProfileDestination.Upgrade,
     ProfileDestination.Location,
     ProfileDestination.RediscoverNotifications,

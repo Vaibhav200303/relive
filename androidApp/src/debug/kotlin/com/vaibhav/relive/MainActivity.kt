@@ -10,6 +10,7 @@ import android.util.Log
 import android.content.Intent
 import androidx.glance.appwidget.updateAll
 import com.vaibhav.relive.platform.capture.QuickCaptureRequestBus
+import com.vaibhav.relive.platform.exporting.PortableArchiveRequestBus
 import com.vaibhav.relive.platform.share.AndroidIncomingShareGateway
 import com.vaibhav.relive.widget.ReliveQuickCaptureWidget
 import kotlinx.coroutines.MainScope
@@ -25,6 +26,7 @@ class MainActivity : ComponentActivity() {
     private val shareScope = MainScope()
     private lateinit var incomingShareGateway: AndroidIncomingShareGateway
     private val quickCaptureRequestBus = QuickCaptureRequestBus()
+    private val portableArchiveRequestBus = PortableArchiveRequestBus()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -36,7 +38,7 @@ class MainActivity : ComponentActivity() {
         deviceAuthentication = AndroidDeviceAuthentication(this)
         reminderService = AndroidRediscoverReminderService(this)
         incomingShareGateway = AndroidIncomingShareGateway(applicationContext, shareScope)
-        val container = createDefaultReliveAppContainer(applicationContext, googleDriveAccountManager = accountManager, backupPreferencesRepository = backupPreferences, backupCoordinatorFactory = { database, mediaStore, _ -> AndroidBackupCoordinator(applicationContext, database, mediaStore, accountManager) { recreate() } }, deviceAuthentication = deviceAuthentication, rediscoverReminderService = reminderService, incomingShareGateway = incomingShareGateway, quickCaptureRequestBus = quickCaptureRequestBus, entitlementProvider = (application as ReliveApplication).entitlementProvider, termsOfServiceUrl = BuildConfig.TERMS_OF_SERVICE_URL, privacyPolicyUrl = BuildConfig.PRIVACY_POLICY_URL, supportEmail = BuildConfig.SUPPORT_EMAIL)
+        val container = createDefaultReliveAppContainer(applicationContext, googleDriveAccountManager = accountManager, backupPreferencesRepository = backupPreferences, backupCoordinatorFactory = { database, mediaStore, _ -> AndroidBackupCoordinator(applicationContext, database, mediaStore, accountManager) { recreate() } }, deviceAuthentication = deviceAuthentication, rediscoverReminderService = reminderService, incomingShareGateway = incomingShareGateway, quickCaptureRequestBus = quickCaptureRequestBus, portableArchiveRequestBus = portableArchiveRequestBus, entitlementProvider = (application as ReliveApplication).entitlementProvider, termsOfServiceUrl = BuildConfig.TERMS_OF_SERVICE_URL, privacyPolicyUrl = BuildConfig.PRIVACY_POLICY_URL, supportEmail = BuildConfig.SUPPORT_EMAIL)
         android.util.Log.d("ReliveBackupAuth", "BackupCoordinator runtime=${container.backupCoordinator::class.java.name}")
         AndroidBackupDebugTrigger.scheduler = AndroidBackupScheduler(applicationContext)
         routeIntent(intent)
@@ -77,7 +79,13 @@ class MainActivity : ComponentActivity() {
 
     /** ADD_MOMENT (notification/widget) opens the composer; anything else is a share intent. */
     private fun routeIntent(incoming: Intent?) {
-        if (incoming?.action == ReliveIntents.ACTION_ADD_MOMENT) {
+        if (incoming?.action == Intent.ACTION_VIEW && incoming.data != null) {
+            val destination = java.io.File(cacheDir, "incoming-${java.util.UUID.randomUUID()}.relive")
+            runCatching {
+                contentResolver.openInputStream(incoming.data!!)?.use { input -> destination.outputStream().use { input.copyTo(it) } } ?: error("Unreadable archive")
+                portableArchiveRequestBus.open(destination.absolutePath)
+            }.onFailure { destination.delete() }
+        } else if (incoming?.action == ReliveIntents.ACTION_ADD_MOMENT) {
             quickCaptureRequestBus.request()
         } else {
             incomingShareGateway.accept(incoming)

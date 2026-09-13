@@ -87,6 +87,8 @@ fun ProfileScreen(
     onOpenPreferences: () -> Unit,
     onOpenMediaStorage: () -> Unit,
     onOpenBackupRestore: () -> Unit,
+    onOpenExport: () -> Unit,
+    onOpenReliveArchive: () -> Unit,
     onOpenUpgrade: () -> Unit,
     onOpenLocation: () -> Unit,
     onOpenNotifications: () -> Unit,
@@ -238,12 +240,14 @@ fun ProfileScreen(
             item(key = "your-memories") {
                 ProfileSection(
                     title = "YOUR MEMORIES",
-                    labels = listOf("Media & storage", "Backup"),
+                    labels = listOf("Media & storage", "Backup", "Export", "Open Relive archive"),
                     onMediaStorage = { finishNameEdit(); onOpenMediaStorage() },
                     onBackup = {
                         finishNameEdit()
                         if (entitlement.isPro) onOpenBackupRestore() else onOpenUpgrade()
                     },
+                    onExport = { finishNameEdit(); onOpenExport() },
+                    onOpenReliveArchive = { finishNameEdit(); onOpenReliveArchive() },
                 )
             }
             item(key = "preferences") {
@@ -465,6 +469,8 @@ private fun ProfileSection(
     onPreferences: (() -> Unit)? = null,
     onMediaStorage: (() -> Unit)? = null,
     onBackup: (() -> Unit)? = null,
+    onExport: (() -> Unit)? = null,
+    onOpenReliveArchive: (() -> Unit)? = null,
     onLocation: (() -> Unit)? = null,
     onNotifications: (() -> Unit)? = null,
     onPrivacy: (() -> Unit)? = null,
@@ -491,6 +497,8 @@ private fun ProfileSection(
                     "Preferences" -> onPreferences
                     "Media & storage" -> onMediaStorage
                     "Backup" -> onBackup
+                    "Export" -> onExport
+                    "Open Relive archive" -> onOpenReliveArchive
                     "Location" -> onLocation
                     "Reminders" -> onNotifications
                     "Privacy & security" -> onPrivacy
@@ -506,6 +514,8 @@ private fun ProfileSection(
 private fun profileIconFor(label: String): ImageVector = when (label.trim()) {
     "Media & storage" -> ProfileIcons.Media
     "Backup" -> ProfileIcons.Backup
+    "Export" -> ProfileIcons.Export
+    "Open Relive archive" -> ProfileIcons.Archive
     "Preferences" -> ProfileIcons.Preferences
     "Location" -> ProfileIcons.Location
     "Reminders" -> ProfileIcons.Notifications

@@ -21,6 +21,8 @@ import com.vaibhav.relive.presentation.time.SystemClock
 import com.vaibhav.relive.domain.entitlement.entitlementProviderFor
 import com.vaibhav.relive.domain.entitlement.ReliveLegalLinks
 import com.vaibhav.relive.platform.system.IosLauncherIconController
+import com.vaibhav.relive.platform.exporting.IosReliveExportService
+import com.vaibhav.relive.platform.exporting.IosPortableArchiveIngress
 
 fun createDefaultReliveAppContainer(
     revenueCatPublicApiKey: String = "",
@@ -48,6 +50,8 @@ fun createDefaultReliveAppContainer(
         idGenerator = UuidGenerator,
         mediaStore = store,
         mediaProcessor = processor,
+        exportService = IosReliveExportService(store),
+        portableArchiveRequestBus = IosPortableArchiveIngress.requestBus,
         deviceAuthentication = IosDeviceAuthentication(),
         rediscoverReminderService = IosRediscoverReminderService(momentRepository),
         entitlementProvider = entitlementProviderFor(revenueCatPublicApiKey),

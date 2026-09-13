@@ -60,7 +60,8 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 - ☐ Confirm local-first posture holds: no backend, no cloud sync, no login, no third-party analytics, no location history separate from moments, no background location tracking.
 - ☐ GPS usage strings / permission descriptions written once GPS capture is activated (Android manifest strings, iOS `Info.plist` usage descriptions) — moment-scoped, requested only when needed. The current manual location-label flow requests no location permission.
 - ☐ Store data-safety / privacy labels accurately reflect on-device-only data and optional location.
-- ☐ Export feature (Settings) privacy reviewed once its behavior is defined.
+- ☑ Export behavior is defined by ADR-0075: files are explicitly disclosed as unencrypted, contain only approved archive fields, never include account/security/entitlement/backup configuration, and use user-controlled native save/share destinations.
+- ☐ Physical-device verification completed for PDF save/share and `.relive` open-with routing on Android and iOS, including App Lock, onboarding bypass, corrupt/unsupported errors, and temporary-file cleanup.
 - ☐ Media and location data confirmed to remain local with the moment.
 
 ---
