@@ -3,6 +3,7 @@ package com.vaibhav.relive.platform.exporting
 import android.content.Context
 import android.content.Intent
 import android.graphics.Paint
+import android.graphics.RectF
 import android.graphics.pdf.PdfDocument
 import android.net.Uri
 import android.view.View
@@ -250,33 +251,66 @@ class AndroidReliveExportService(
             var physicalPageIndex = 0
             logicalPages.forEachIndexed { logicalIndex, pageHtml ->
                 coroutineContext.ensureActive()
+                val pagePalette = magazinePdfPalette(pageHtml)
+                webView.setBackgroundColor(pagePalette.paperColor)
+                // A previous long section can otherwise leave WebView measured to its old height
+                // while the next section loads, creating blank trailing slices for the new page.
+                webView.measure(
+                    View.MeasureSpec.makeMeasureSpec(PDF_RENDER_WIDTH, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(PDF_RENDER_HEIGHT, View.MeasureSpec.EXACTLY),
+                )
+                webView.layout(0, 0, PDF_RENDER_WIDTH, PDF_RENDER_HEIGHT)
                 webView.loadHtmlAndAwait(pageHtml.replace("width=device-width", "width=$PDF_RENDER_WIDTH"))
+                webView.awaitVisualState(logicalIndex.toLong() * 2 + 1)
                 webView.measure(
                     View.MeasureSpec.makeMeasureSpec(PDF_RENDER_WIDTH, View.MeasureSpec.EXACTLY),
                     View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
                 )
                 val contentHeight = maxOf(webView.contentHeight, webView.measuredHeight, PDF_RENDER_HEIGHT)
                 webView.layout(0, 0, PDF_RENDER_WIDTH, contentHeight)
-                webView.awaitVisualState(logicalIndex.toLong() + 1)
-                val physicalPageCount = (
-                    contentHeight - PDF_PAGE_ROUNDING_TOLERANCE + PDF_RENDER_HEIGHT - 1
-                ).coerceAtLeast(PDF_RENDER_HEIGHT) / PDF_RENDER_HEIGHT
+                webView.awaitVisualState(logicalIndex.toLong() * 2 + 2)
+                val physicalPageCount = magazinePhysicalPageCount(
+                    contentHeight = contentHeight,
+                    pageHeight = PDF_RENDER_HEIGHT,
+                    roundingTolerance = PDF_PAGE_ROUNDING_TOLERANCE,
+                )
                 repeat(physicalPageCount) { sectionPageIndex ->
                     coroutineContext.ensureActive()
                     val page = document.startPage(
                         PdfDocument.PageInfo.Builder(PDF_PAGE_WIDTH, PDF_PAGE_HEIGHT, physicalPageIndex + 1).create(),
                     )
+                    page.canvas.drawColor(pagePalette.paperColor)
+                    val contentScale = minOf(
+                        (PDF_PAGE_WIDTH - PDF_CONTENT_HORIZONTAL_INSET * 2) / PDF_RENDER_WIDTH.toFloat(),
+                        (PDF_PAGE_HEIGHT - PDF_CONTENT_VERTICAL_INSET * 2) / PDF_RENDER_HEIGHT.toFloat(),
+                    )
+                    val contentWidth = PDF_RENDER_WIDTH * contentScale
+                    val contentHeight = PDF_RENDER_HEIGHT * contentScale
+                    val contentLeft = (PDF_PAGE_WIDTH - contentWidth) / 2f
+                    val contentTop = (PDF_PAGE_HEIGHT - contentHeight) / 2f
                     page.canvas.save()
-                    page.canvas.scale(PDF_DRAW_SCALE, PDF_DRAW_SCALE)
+                    page.canvas.clipRect(
+                        contentLeft,
+                        contentTop,
+                        contentLeft + contentWidth,
+                        contentTop + contentHeight,
+                    )
+                    page.canvas.translate(contentLeft, contentTop)
+                    page.canvas.scale(contentScale, contentScale)
                     page.canvas.translate(0f, -(sectionPageIndex * PDF_RENDER_HEIGHT).toFloat())
                     webView.draw(page.canvas)
                     page.canvas.restore()
+                    drawMagazinePageFrame(
+                        canvas = page.canvas,
+                        paperColor = pagePalette.paperColor,
+                        accentColor = pagePalette.accentColor,
+                    )
                     page.canvas.drawText(
                         (physicalPageIndex + 1).toString(),
-                        (PDF_PAGE_WIDTH - 28).toFloat(),
-                        (PDF_PAGE_HEIGHT - 18).toFloat(),
+                        (PDF_PAGE_WIDTH - PDF_PAGE_NUMBER_INSET).toFloat(),
+                        (PDF_PAGE_HEIGHT - PDF_PAGE_NUMBER_INSET).toFloat(),
                         Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                            color = 0xff8b7462.toInt()
+                            color = pagePalette.accentColor
                             textSize = 9.5f
                             textAlign = Paint.Align.RIGHT
                         },
@@ -295,6 +329,50 @@ class AndroidReliveExportService(
             document.close()
             webView.stopLoading()
             webView.destroy()
+        }
+    }
+
+    private fun drawMagazinePageFrame(
+        canvas: android.graphics.Canvas,
+        paperColor: Int,
+        accentColor: Int,
+    ) {
+        val outerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = accentColor
+            style = Paint.Style.STROKE
+            strokeWidth = 2.6f
+            alpha = 220
+        }
+        val innerPaint = Paint(outerPaint).apply {
+            strokeWidth = 0.9f
+            alpha = 120
+        }
+        val paperPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = paperColor
+            style = Paint.Style.FILL
+        }
+        val outer = RectF(
+            PDF_FRAME_OUTER_INSET,
+            PDF_FRAME_OUTER_INSET,
+            PDF_PAGE_WIDTH - PDF_FRAME_OUTER_INSET,
+            PDF_PAGE_HEIGHT - PDF_FRAME_OUTER_INSET,
+        )
+        val inner = RectF(
+            PDF_FRAME_INNER_INSET,
+            PDF_FRAME_INNER_INSET,
+            PDF_PAGE_WIDTH - PDF_FRAME_INNER_INSET,
+            PDF_PAGE_HEIGHT - PDF_FRAME_INNER_INSET,
+        )
+        canvas.drawRoundRect(outer, 8f, 8f, outerPaint)
+        canvas.drawRoundRect(inner, 6f, 6f, innerPaint)
+
+        val centerX = PDF_PAGE_WIDTH / 2f
+        listOf(PDF_FRAME_OUTER_INSET, PDF_PAGE_HEIGHT - PDF_FRAME_OUTER_INSET).forEach { centerY ->
+            canvas.drawCircle(centerX, centerY, 5.2f, paperPaint)
+            canvas.save()
+            canvas.rotate(45f, centerX, centerY)
+            canvas.drawRect(centerX - 3.2f, centerY - 3.2f, centerX + 3.2f, centerY + 3.2f, innerPaint)
+            canvas.restore()
         }
     }
 
@@ -326,27 +404,6 @@ class AndroidReliveExportService(
         scrollTo(0, 0)
         loadDataWithBaseURL("file:///", html, "text/html", "UTF-8", null)
         loaded.await()
-    }
-
-    private fun splitMagazineHtml(html: String): List<String> {
-        val isolatedPageCss = """
-            <style>
-            .cover,.diary-day,.quiet-gap,.diary-photo-page {
-                break-before:auto!important;
-                page-break-before:auto!important;
-                break-after:auto!important;
-                page-break-after:auto!important;
-            }
-            </style>
-        """.trimIndent()
-        val head = html.substringBefore("<body>").replace("</head>", "$isolatedPageCss</head>") + "<body>"
-        val footer = "</body></html>"
-        val body = html.substringAfter("<body>").substringBeforeLast("</body>")
-        return Regex("<section\\b.*?</section>", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE))
-            .findAll(body)
-            .map { match -> "$head${match.value}$footer" }
-            .toList()
-            .ifEmpty { listOf(html) }
     }
 
     private fun readBounded(zip: ZipFile, name: String, limit: Long): ByteArray {
@@ -436,8 +493,12 @@ class AndroidReliveExportService(
         const val PDF_PAGE_HEIGHT = 842
         const val PDF_RENDER_WIDTH = 794
         const val PDF_RENDER_HEIGHT = 1123
-        const val PDF_PAGE_ROUNDING_TOLERANCE = 4
-        const val PDF_DRAW_SCALE = PDF_PAGE_WIDTH.toFloat() / PDF_RENDER_WIDTH
+        const val PDF_PAGE_ROUNDING_TOLERANCE = 36
+        const val PDF_CONTENT_HORIZONTAL_INSET = 22f
+        const val PDF_CONTENT_VERTICAL_INSET = 24f
+        const val PDF_FRAME_OUTER_INSET = 10f
+        const val PDF_FRAME_INNER_INSET = 15f
+        const val PDF_PAGE_NUMBER_INSET = 28
         const val ANDROID_FONT_CSS = """@font-face{font-family:Fraunces;src:url('file:///android_asset/composeResources/relive.shared.generated.resources/font/fraunces_medium.ttf')}@font-face{font-family:Inter;src:url('file:///android_asset/composeResources/relive.shared.generated.resources/font/inter_regular.ttf')}@font-face{font-family:Kalam;src:url('file:///android_asset/composeResources/relive.shared.generated.resources/font/kalam_regular.ttf');font-weight:400}@font-face{font-family:Kalam;src:url('file:///android_asset/composeResources/relive.shared.generated.resources/font/kalam_bold.ttf');font-weight:700}"""
         const val STALE_MILLIS = 24L * 60 * 60 * 1_000
         const val MAX_ENTRIES = 100_000
@@ -447,6 +508,58 @@ class AndroidReliveExportService(
         const val MAX_TOTAL_MEDIA_BYTES = 128L * 1024 * 1024 * 1024
         const val CANCELLATION_YIELD_BYTES = 1024 * 1024
     }
+}
+
+internal fun splitMagazineHtml(html: String): List<String> {
+    val isolatedPageCss = """
+        <style>
+        .cover,.diary-day,.diary-continuation,.quiet-gap,.diary-photo-page {
+            break-before:auto!important;
+            page-break-before:auto!important;
+            break-after:auto!important;
+            page-break-after:auto!important;
+        }
+        </style>
+    """.trimIndent()
+    val bodyTag = Regex("<body\\b[^>]*>", RegexOption.IGNORE_CASE).find(html) ?: return listOf(html)
+    val closingBody = Regex("</body\\s*>", RegexOption.IGNORE_CASE).findAll(html).lastOrNull()
+        ?: return listOf(html)
+    if (closingBody.range.first <= bodyTag.range.last) return listOf(html)
+
+    val head = html.substring(0, bodyTag.range.first)
+        .replace("</head>", "$isolatedPageCss</head>") + bodyTag.value
+    val body = html.substring(bodyTag.range.last + 1, closingBody.range.first)
+    val footer = "</body></html>"
+    return Regex("<section\\b.*?</section>", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE))
+        .findAll(body)
+        .map { match -> "$head${match.value}$footer" }
+        .toList()
+        .ifEmpty { listOf(html) }
+}
+
+internal fun magazinePhysicalPageCount(
+    contentHeight: Int,
+    pageHeight: Int,
+    roundingTolerance: Int,
+): Int {
+    require(contentHeight >= 0 && pageHeight > 0 && roundingTolerance >= 0)
+    val effectiveHeight = (contentHeight - roundingTolerance).coerceAtLeast(pageHeight)
+    return (effectiveHeight + pageHeight - 1) / pageHeight
+}
+
+internal data class MagazinePdfPalette(
+    val paperColor: Int,
+    val accentColor: Int,
+)
+
+internal fun magazinePdfPalette(html: String): MagazinePdfPalette = MagazinePdfPalette(
+    paperColor = cssHexColor(html, "paper") ?: 0xfff3ebdd.toInt(),
+    accentColor = cssHexColor(html, "accent") ?: 0xff744b31.toInt(),
+)
+
+private fun cssHexColor(html: String, variable: String): Int? {
+    val value = Regex("--${variable}:#([0-9a-fA-F]{6})").find(html)?.groupValues?.get(1) ?: return null
+    return (0xff000000L or value.toLong(16)).toInt()
 }
 
 private class AndroidPortableArchiveMediaStore(

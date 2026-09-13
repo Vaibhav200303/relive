@@ -9,6 +9,15 @@ import com.vaibhav.relive.domain.model.TimelineId
 
 enum class ExportFormat { KeepsakePdf, ReliveArchive }
 
+enum class DiaryPaper(val displayName: String) {
+    WarmCream("Warm cream"),
+    BlushPink("Blush pink"),
+    SageGreen("Sage green"),
+    Lavender("Lavender"),
+    PowderBlue("Powder blue"),
+    SoftPeach("Soft peach"),
+}
+
 sealed interface ExportScope {
     data object All : ExportScope
     data class Custom(val timelineId: TimelineId, val name: String) : ExportScope
@@ -20,6 +29,7 @@ data class MagazineOptions(
     val coverPhotoPath: String? = null,
     val startDate: LocalCalendarDate? = null,
     val endDate: LocalCalendarDate? = null,
+    val paper: DiaryPaper = DiaryPaper.WarmCream,
 )
 
 data class ExportRequest(

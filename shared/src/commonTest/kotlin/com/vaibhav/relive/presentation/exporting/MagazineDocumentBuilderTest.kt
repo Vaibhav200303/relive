@@ -1,8 +1,10 @@
 package com.vaibhav.relive.presentation.exporting
 
+import com.vaibhav.relive.domain.exporting.DiaryPaper
 import com.vaibhav.relive.domain.exporting.MagazineOptions
 import com.vaibhav.relive.domain.model.Moment
 import com.vaibhav.relive.domain.model.MomentId
+import com.vaibhav.relive.domain.model.MomentFeeling
 import com.vaibhav.relive.domain.model.MediaAttachment
 import com.vaibhav.relive.domain.model.MediaAttachmentId
 import com.vaibhav.relive.domain.model.MediaStorageRef
@@ -11,6 +13,7 @@ import com.vaibhav.relive.domain.time.Instant
 import com.vaibhav.relive.platform.exporting.MagazineDocument
 import com.vaibhav.relive.platform.exporting.MagazineMediaAsset
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -33,13 +36,45 @@ class MagazineDocumentBuilderTest {
         assertTrue("cover-doodle cover-journal" in html)
         assertTrue("class=\"page-doodles\"" in html)
         assertTrue("font-family:Kalam" in html)
-        assertTrue("color:#2D2722" in html)
-        assertTrue("color:rgba(139,94,60,.17)" in html)
+        assertTrue("--paper:#F3EBDD" in html)
+        assertTrue("--ink:#2D2722" in html)
+        assertTrue("--doodle:rgba(139,94,60,.22)" in html)
         assertTrue("background:transparent" in html)
         assertTrue("size:A4 portrait" in html)
-        assertTrue(".content{font-family:Kalam,Inter,sans-serif;font-size:15pt" in html)
-        assertTrue(".metadata{display:flex;flex-wrap:wrap;gap:3mm;color:#554A42;font-family:Kalam,Inter,sans-serif;font-size:10.5pt" in html)
-        assertTrue(".tags span,.feeling{" in html && "font-size:8.5pt" in html)
+        assertTrue(".content{font-family:Kalam,Inter,sans-serif;font-size:18pt" in html)
+        assertTrue(".metadata{display:flex;flex-wrap:wrap;gap:3mm;color:var(--ink-soft);font-family:Kalam,Inter,sans-serif;font-size:12pt" in html)
+        assertTrue(".feeling{display:block" in html && "font-size:30pt" in html)
+    }
+
+    @Test
+    fun renders_feeling_as_a_visible_emoji_without_printing_the_enum_as_copy() {
+        val html = MagazineDocumentBuilder.html(
+            MagazineDocument(
+                moments = listOf(Moment(MomentId("m"), Instant(0), feeling = MomentFeeling.Great)),
+                options = MagazineOptions("Title", "Subtitle"),
+                scopeTitle = "All moments",
+            ),
+        )
+
+        assertTrue(">😊</span>" in html)
+        assertTrue("aria-label=\"Feeling: Great\"" in html)
+        assertFalse(">Great</span>" in html)
+    }
+
+    @Test
+    fun selected_paper_changes_page_ink_rules_and_doodles_together() {
+        val html = MagazineDocumentBuilder.html(
+            MagazineDocument(
+                moments = listOf(Moment(MomentId("m"), Instant(0), content = "A blue-page memory")),
+                options = MagazineOptions("Title", "Subtitle", paper = DiaryPaper.PowderBlue),
+                scopeTitle = "All moments",
+            ),
+        )
+
+        assertTrue("--paper:#E6F0F7" in html)
+        assertTrue("--ink:#22323E" in html)
+        assertTrue("--accent:#41657C" in html)
+        assertTrue("--doodle:rgba(111,147,170,.23)" in html)
     }
 
     @Test
@@ -168,5 +203,113 @@ class MagazineDocumentBuilderTest {
         assertTrue("class=\"diary-photo-page\"" in html)
         assertTrue("class=\"photos photos-1\"" in html)
         assertFalse("continued" in html)
+    }
+
+    @Test
+    fun keeps_a_short_image_moment_visible_beside_its_feeling_on_a_multi_moment_day() {
+        val image = MediaAttachment(MediaAttachmentId("image"), MediaType.Image, MediaStorageRef("images/a.jpg"), 0)
+        val html = MagazineDocumentBuilder.html(
+            MagazineDocument(
+                moments = listOf(
+                    Moment(MomentId("image-moment"), Instant(0), feeling = MomentFeeling.Great, attachments = listOf(image)),
+                    Moment(MomentId("written-moment"), Instant(1), title = "A long entry", content = "A".repeat(500)),
+                ),
+                options = MagazineOptions("Title", "Subtitle"),
+                scopeTitle = "All moments",
+                mediaAssets = mapOf(image.storageRef.value to MagazineMediaAsset("/tmp/photo.jpg")),
+            ),
+        )
+
+        val firstMomentStart = html.indexOf("moment-0")
+        val secondMomentStart = html.indexOf("moment-1")
+        val photoStart = html.indexOf("class=\"photos photos-1\"")
+        assertTrue(firstMomentStart in 0..<photoStart)
+        assertTrue(photoStart in 0..<secondMomentStart)
+        assertFalse("class=\"diary-photo-page\"" in html)
+    }
+
+    @Test
+    fun keeps_every_photo_sheet_with_its_moment_before_rendering_the_next_moment() {
+        val firstMomentImages = (0..12).map { index ->
+            MediaAttachment(
+                id = MediaAttachmentId("first-$index"),
+                type = MediaType.Image,
+                storageRef = MediaStorageRef("images/first-$index.jpg"),
+                sortIndex = index,
+            )
+        }
+        val secondMomentImages = (0..1).map { index ->
+            MediaAttachment(
+                id = MediaAttachmentId("second-$index"),
+                type = MediaType.Image,
+                storageRef = MediaStorageRef("images/second-$index.jpg"),
+                sortIndex = index,
+            )
+        }
+        val allImages = firstMomentImages + secondMomentImages
+        val html = MagazineDocumentBuilder.html(
+            MagazineDocument(
+                moments = listOf(
+                    Moment(MomentId("first"), Instant(0), title = "First", attachments = firstMomentImages),
+                    Moment(MomentId("second"), Instant(1), title = "Second", attachments = secondMomentImages),
+                ),
+                options = MagazineOptions("Title", "Subtitle"),
+                scopeTitle = "All moments",
+                mediaAssets = allImages.associate { attachment ->
+                    attachment.storageRef.value to MagazineMediaAsset("/tmp/${attachment.id.value}.jpg")
+                },
+            ),
+        )
+
+        val secondMomentStart = html.indexOf("moment-1")
+        assertTrue(html.indexOf("first-12.jpg") in 0..<secondMomentStart)
+        assertTrue(html.indexOf("second-0.jpg") > secondMomentStart)
+        assertTrue(html.windowed("class=\"diary-photo-page\"".length).count { it == "class=\"diary-photo-page\"" } == 3)
+    }
+
+    @Test
+    fun long_writing_is_split_into_complete_page_sections_with_one_heading_and_one_feeling() {
+        val writing = List(250) { "memory" }.joinToString(" ")
+        val html = MagazineDocumentBuilder.html(
+            MagazineDocument(
+                moments = listOf(
+                    Moment(
+                        MomentId("long-moment"),
+                        Instant(0),
+                        title = "A long day",
+                        content = writing,
+                        feeling = MomentFeeling.Low,
+                    ),
+                ),
+                options = MagazineOptions("Title", "Subtitle"),
+                scopeTitle = "All moments",
+            ),
+        )
+
+        assertTrue("class=\"diary-continuation\"" in html)
+        assertTrue(html.windowed("A long day".length).count { it == "A long day" } == 1)
+        assertTrue(html.windowed("😔".length).count { it == "😔" } == 1)
+        assertTrue(html.windowed("memory".length).count { it == "memory" } == 250)
+    }
+
+    @Test
+    fun long_writing_balances_continuation_pages_instead_of_leaving_a_tiny_final_fragment() {
+        val writing = List(850) { "memory" }.joinToString(" ")
+        val html = MagazineDocumentBuilder.html(
+            MagazineDocument(
+                moments = listOf(Moment(MomentId("long-moment"), Instant(0), content = writing)),
+                options = MagazineOptions("Title", "Subtitle"),
+                scopeTitle = "All moments",
+            ),
+        )
+
+        val chunkLengths = Regex("<p class=\"content\">(.*?)</p>")
+            .findAll(html)
+            .map { it.groupValues[1].length }
+            .toList()
+        assertEquals(4, chunkLengths.size)
+        assertTrue(chunkLengths.min() >= chunkLengths.max() * 7 / 10)
+        assertTrue(chunkLengths.first() <= 1_200)
+        assertTrue(chunkLengths.drop(1).all { it <= 1_650 })
     }
 }
