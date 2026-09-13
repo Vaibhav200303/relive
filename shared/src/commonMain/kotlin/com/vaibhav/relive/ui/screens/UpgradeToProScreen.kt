@@ -2,9 +2,11 @@ package com.vaibhav.relive.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +16,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.rememberPagerState
@@ -23,7 +26,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,12 +40,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.Role
@@ -48,7 +55,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.vaibhav.relive.domain.entitlement.EntitlementProvider
 import com.vaibhav.relive.domain.entitlement.PurchaseOutcome
 import com.vaibhav.relive.domain.entitlement.ReliveLegalLinks
@@ -64,11 +71,8 @@ import com.vaibhav.relive.ui.icons.ProfileIcons
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.theme.canvasBrush
 import com.vaibhav.relive.ui.theme.reliveLateralPagerSnapSpec
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-
-private const val FeatureAdvanceDelayMillis = 5_000L
+import kotlin.math.absoluteValue
 
 @Composable
 fun UpgradeToProScreen(
@@ -102,9 +106,18 @@ fun UpgradeToProScreen(
                 .padding(bottom = ReliveTheme.dimensions.spacing.huge),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            ProHero()
             ProFeatureShowcase()
             if (state.isPro) {
                 ActiveProCard()
+                RestorePurchases(
+                    enabled = state.purchasingAvailable && !state.isLoading,
+                    onRestore = {
+                        scope.launch {
+                            purchaseMessage = entitlementProvider.restorePurchases().messageOrNull()
+                        }
+                    },
+                )
             } else {
                 PurchasePanel(
                     products = state.products,
@@ -123,17 +136,16 @@ fun UpgradeToProScreen(
                         }
                     },
                 )
-
-                Text(
-                    "Subscriptions renew automatically unless cancelled at least 24 hours before the end of the current period.",
-                    style = ReliveTheme.typography.tag,
-                    color = ReliveTheme.colors.textMuted,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(
-                        horizontal = ReliveTheme.dimensions.spacing.xl,
-                        vertical = ReliveTheme.dimensions.spacing.lg,
-                    ),
+                PurchaseAssurances()
+                RestorePurchases(
+                    enabled = state.purchasingAvailable && !state.isLoading,
+                    onRestore = {
+                        scope.launch {
+                            purchaseMessage = entitlementProvider.restorePurchases().messageOrNull()
+                        }
+                    },
                 )
+                RenewalCopy()
                 LegalLinks(legalLinks, uriHandler::openUri)
 
                 if (!state.isLoading && state.purchasingAvailable && state.message == null && state.products.isEmpty()) {
@@ -144,17 +156,6 @@ fun UpgradeToProScreen(
                 }
             }
 
-            TextButton(
-                enabled = state.purchasingAvailable && !state.isLoading,
-                onClick = {
-                    scope.launch {
-                        purchaseMessage = entitlementProvider.restorePurchases().messageOrNull()
-                    }
-                },
-                modifier = Modifier.heightIn(min = ReliveTheme.dimensions.minTouchTarget),
-            ) {
-                Text("Restore purchases")
-            }
             state.message?.let { ProStatusMessage(it) }
             purchaseMessage?.let { ProStatusMessage(it) }
             if (!state.purchasingAvailable) {
@@ -165,93 +166,220 @@ fun UpgradeToProScreen(
 }
 
 @Composable
+private fun ProHero() {
+    val dims = ReliveTheme.dimensions
+    val colors = ReliveTheme.colors
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = dims.spacing.xl, vertical = dims.spacing.md),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Row(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(colors.tint)
+                    .padding(horizontal = dims.spacing.md, vertical = dims.spacing.xs),
+                horizontalArrangement = Arrangement.spacedBy(dims.spacing.xs),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = ProfileIcons.Crown,
+                    contentDescription = null,
+                    tint = colors.accent,
+                    modifier = Modifier.size(dims.icon.sm),
+                )
+                Text("RELIVE PRO", style = ReliveTheme.typography.eyebrow, color = colors.accent)
+            }
+            Text(
+                text = "More room\nfor what matters",
+                style = ReliveTheme.typography.title,
+                color = colors.textPrimary,
+                modifier = Modifier
+                    .padding(top = dims.spacing.sm)
+                    .semantics { heading() },
+            )
+            Text(
+                text = "Unlock powerful features to make your memories safer, richer, and yours.",
+                style = ReliveTheme.typography.caption,
+                color = colors.textSecondary,
+                modifier = Modifier.padding(top = dims.spacing.xs),
+            )
+        }
+        Spacer(Modifier.width(dims.spacing.sm))
+        ProHeroArtwork()
+    }
+}
+
+@Composable
+private fun ProHeroArtwork() {
+    val dims = ReliveTheme.dimensions
+    val pro = dims.pro
+    val colors = ReliveTheme.colors
+    Box(
+        modifier = Modifier.size(pro.heroArtworkWidth, pro.heroArtworkHeight),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .offset(x = dims.spacing.sm, y = dims.spacing.md)
+                .rotate(8f)
+                .size(pro.heroPhotoWidth, pro.heroPhotoHeight)
+                .clip(RoundedCornerShape(dims.radii.small))
+                .background(colors.surfaceCard)
+                .border(dims.stroke.cardOuter, colors.borderMuted, RoundedCornerShape(dims.radii.small)),
+        )
+        Box(
+            modifier = Modifier
+                .offset(x = -dims.spacing.sm, y = dims.spacing.lg)
+                .rotate(-8f)
+                .size(pro.heroPhotoWidth, pro.heroPhotoHeight)
+                .clip(RoundedCornerShape(dims.radii.small))
+                .background(colors.surfaceCard)
+                .border(dims.stroke.cardOuter, colors.border, RoundedCornerShape(dims.radii.small))
+                .padding(dims.spacing.xs),
+            contentAlignment = Alignment.TopCenter,
+        ) {
+            ProLandscapeThumbnail(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(pro.heroPhotoImageHeight)
+                    .clip(RoundedCornerShape(dims.radii.xs)),
+            )
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(pro.crownBadgeSize)
+                .clip(CircleShape)
+                .background(colors.surfaceCard)
+                .border(dims.stroke.iconBold, colors.border, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = ProfileIcons.Crown,
+                contentDescription = null,
+                tint = colors.accent,
+                modifier = Modifier.size(dims.icon.md),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProLandscapeThumbnail(modifier: Modifier = Modifier) {
+    val colors = ReliveTheme.colors
+    Canvas(modifier = modifier.background(colors.tint)) {
+        drawCircle(
+            color = colors.spark.copy(alpha = 0.34f),
+            radius = size.minDimension * 0.10f,
+            center = Offset(size.width * 0.72f, size.height * 0.28f),
+        )
+        drawPath(
+            path = Path().apply {
+                moveTo(0f, size.height * 0.76f)
+                lineTo(size.width * 0.30f, size.height * 0.49f)
+                lineTo(size.width * 0.52f, size.height * 0.67f)
+                lineTo(size.width * 0.73f, size.height * 0.43f)
+                lineTo(size.width, size.height * 0.70f)
+                lineTo(size.width, size.height)
+                lineTo(0f, size.height)
+                close()
+            },
+            color = colors.accentMuted.copy(alpha = 0.42f),
+        )
+        drawPath(
+            path = Path().apply {
+                moveTo(0f, size.height * 0.88f)
+                lineTo(size.width * 0.23f, size.height * 0.68f)
+                lineTo(size.width * 0.45f, size.height * 0.80f)
+                lineTo(size.width * 0.68f, size.height * 0.59f)
+                lineTo(size.width, size.height * 0.82f)
+                lineTo(size.width, size.height)
+                lineTo(0f, size.height)
+                close()
+            },
+            color = colors.accentMuted.copy(alpha = 0.78f),
+        )
+    }
+}
+
+@Composable
 private fun ProFeatureShowcase() {
     val features = ReliveProFeature.entries
-    val pagerState = rememberPagerState(pageCount = { features.size })
+    val initialPage = features.indexOf(ReliveProFeature.AutomaticBackup)
+    val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { features.size })
     val reduceMotion = ReliveTheme.reduceMotion
     val motion = ReliveTheme.motion
-    val featureHeight = (292f * LocalDensity.current.fontScale.coerceAtLeast(1f)).dp
+    val dims = ReliveTheme.dimensions
+    val colors = ReliveTheme.colors
+    val featureHeight = dims.pro.featureStageHeight * LocalDensity.current.fontScale.coerceAtLeast(1f)
     val fling = PagerDefaults.flingBehavior(
         state = pagerState,
         snapAnimationSpec = motion.reliveLateralPagerSnapSpec(reduceMotion),
     )
-
-    LaunchedEffect(pagerState, reduceMotion) {
-        if (!reduceMotion) {
-            snapshotFlow { pagerState.currentPage to pagerState.isScrollInProgress }
-                .collectLatest { (page, isScrolling) ->
-                    if (!isScrolling) {
-                        delay(FeatureAdvanceDelayMillis)
-                        if (!pagerState.isScrollInProgress) {
-                            pagerState.animateScrollToPage((page + 1) % features.size)
-                        }
-                    }
-                }
+    LaunchedEffect(pagerState) {
+        if (pagerState.currentPage != initialPage) {
+            pagerState.scrollToPage(initialPage)
         }
     }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = ReliveTheme.dimensions.spacing.md),
+            .padding(top = dims.spacing.sm),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(
-            text = "YOUR MEMORIES, WITHOUT LIMITS",
-            style = ReliveTheme.typography.eyebrow,
-            color = ReliveTheme.colors.accent,
-            modifier = Modifier.semantics { heading() },
-        )
         HorizontalPager(
             state = pagerState,
             flingBehavior = fling,
+            contentPadding = PaddingValues(horizontal = dims.pro.featurePeekInset),
+            pageSpacing = dims.spacing.sm,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(featureHeight),
         ) { page ->
-            val feature = features[page]
-            Column(
+            val pageOffset = (
+                (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+                ).absoluteValue.coerceIn(0f, 1f)
+            val focus = 1f - pageOffset
+            ProFeatureCard(
+                feature = features[page],
+                focus = focus,
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = ReliveTheme.dimensions.spacing.xl),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                ProFeatureIllustration(feature)
-                Spacer(Modifier.height(ReliveTheme.dimensions.spacing.lg))
-                Text(
-                    text = feature.headline,
-                    style = ReliveTheme.typography.title,
-                    color = ReliveTheme.colors.textPrimary,
-                    textAlign = TextAlign.Center,
-                )
-                Text(
-                    text = feature.supportingText,
-                    style = ReliveTheme.typography.body,
-                    color = ReliveTheme.colors.textSecondary,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = ReliveTheme.dimensions.spacing.sm),
-                )
-            }
+                    .padding(vertical = dims.pro.featureFocusInset)
+                    .graphicsLayer {
+                        val focusedScale = dims.pro.featureRestingScale +
+                            ((1f - dims.pro.featureRestingScale) * focus)
+                        scaleX = focusedScale
+                        scaleY = focusedScale
+                        alpha = dims.pro.featureRestingAlpha +
+                            ((1f - dims.pro.featureRestingAlpha) * focus)
+                    }
+                    .zIndex(focus),
+            )
         }
         Row(
-            horizontalArrangement = Arrangement.spacedBy(ReliveTheme.dimensions.spacing.sm),
-            modifier = Modifier.semantics {
-                contentDescription = "Feature ${pagerState.currentPage + 1} of ${features.size}"
-            },
+            horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm),
+            modifier = Modifier
+                .padding(top = dims.spacing.md)
+                .semantics {
+                    contentDescription = "Feature ${pagerState.currentPage + 1} of ${features.size}"
+                },
         ) {
             features.indices.forEach { index ->
                 Box(
                     Modifier
-                        .size(if (index == pagerState.currentPage) 10.dp else 8.dp)
-                        .clip(CircleShape)
-                        .background(
+                        .size(
                             if (index == pagerState.currentPage) {
-                                ReliveTheme.colors.accent
+                                dims.timeline.dotSize
                             } else {
-                                ReliveTheme.colors.border
+                                dims.spacing.sm
                             },
-                        ),
+                        )
+                        .clip(CircleShape)
+                        .background(if (index == pagerState.currentPage) colors.accent else colors.border),
                 )
             }
         }
@@ -259,73 +387,194 @@ private fun ProFeatureShowcase() {
 }
 
 @Composable
-private fun ProFeatureIllustration(feature: ReliveProFeature) {
+private fun ProFeatureCard(
+    feature: ReliveProFeature,
+    focus: Float,
+    modifier: Modifier = Modifier,
+) {
+    val dims = ReliveTheme.dimensions
+    val colors = ReliveTheme.colors
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(dims.radii.largeIncreased))
+            .background(colors.surfaceCard)
+            .border(dims.stroke.cardOuter, colors.borderMuted, RoundedCornerShape(dims.radii.largeIncreased))
+            .padding(horizontal = dims.spacing.lg, vertical = dims.spacing.lg)
+            .semantics { contentDescription = "${feature.headline}. ${feature.supportingText}" },
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        FeatureIcon(feature.icon)
+        Spacer(Modifier.height(dims.spacing.md))
+        Text(
+            text = feature.headline,
+            style = ReliveTheme.typography.title,
+            color = colors.textPrimary,
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            text = feature.supportingText,
+            style = ReliveTheme.typography.caption,
+            color = colors.textSecondary,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = dims.spacing.xs),
+        )
+        Spacer(Modifier.weight(1f))
+        ProFeatureStory(
+            feature = feature,
+            modifier = Modifier.graphicsLayer {
+                alpha = ((focus - 0.32f) / 0.68f).coerceIn(0f, 1f)
+                translationY = (1f - focus) * dims.pro.featureStoryTravel.toPx()
+            },
+        )
+    }
+}
+
+@Composable
+private fun ProFeatureStory(
+    feature: ReliveProFeature,
+    modifier: Modifier = Modifier,
+) {
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .height(126.dp)
-            .semantics { contentDescription = feature.headline },
+            .height(dims.pro.featureStoryHeight),
         contentAlignment = Alignment.Center,
     ) {
         when (feature) {
             ReliveProFeature.AutomaticBackup -> {
-                Box(
-                    Modifier
-                        .size(116.dp, 82.dp)
-                        .clip(RoundedCornerShape(dims.radii.largeIncreased))
-                        .background(colors.surfaceCard)
-                        .border(dims.stroke.cardOuter, colors.border, RoundedCornerShape(dims.radii.largeIncreased)),
-                    contentAlignment = Alignment.Center,
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm),
                 ) {
-                    Icon(
-                        imageVector = ProfileIcons.Backup,
-                        contentDescription = null,
-                        tint = colors.accent,
-                        modifier = Modifier.size(44.dp),
-                    )
+                    StoryBubble(icon = ProfileIcons.Phone, small = true)
+                    Row(horizontalArrangement = Arrangement.spacedBy(dims.spacing.xs)) {
+                        repeat(5) { index ->
+                            Box(
+                                Modifier
+                                    .size(if (index == 2) dims.spacing.sm else dims.spacing.xs)
+                                    .clip(CircleShape)
+                                    .background(if (index == 2) colors.accent else colors.accentMuted),
+                            )
+                        }
+                    }
+                    StoryBubble(icon = ProfileIcons.CloudOutline)
                 }
-                Box(Modifier.offset(x = 50.dp, y = 32.dp).size(24.dp).clip(CircleShape).background(colors.spark))
             }
 
             ReliveProFeature.UnlimitedTimelines -> {
-                listOf(-42.dp to -7f, 0.dp to 0f, 42.dp to 7f).forEachIndexed { index, (offset, rotation) ->
-                    Column(
-                        modifier = Modifier
-                            .offset(x = offset)
-                            .rotate(rotation)
-                            .size(72.dp, 104.dp)
-                            .clip(RoundedCornerShape(dims.radii.medium))
-                            .background(if (index == 1) colors.surfaceCard else colors.tint)
-                            .border(dims.stroke.cardOuter, colors.border, RoundedCornerShape(dims.radii.medium))
-                            .padding(dims.spacing.sm),
-                        verticalArrangement = Arrangement.Bottom,
-                    ) {
-                        Box(Modifier.fillMaxWidth().height(5.dp).clip(CircleShape).background(colors.accentMuted))
-                        Spacer(Modifier.height(dims.spacing.xs))
-                        Box(Modifier.fillMaxWidth(0.7f).height(5.dp).clip(CircleShape).background(colors.border))
+                listOf(-dims.spacing.xl to -8f, dims.spacing.none to 0f, dims.spacing.xl to 8f)
+                    .forEachIndexed { index, (offset, rotation) ->
+                        Column(
+                            modifier = Modifier
+                                .offset(x = offset)
+                                .rotate(rotation)
+                                .size(dims.pro.featureStoryCardWidth, dims.pro.featureStoryHeight)
+                                .clip(RoundedCornerShape(dims.radii.medium))
+                                .background(if (index == 1) colors.surfaceCard else colors.tint)
+                                .border(dims.stroke.cardOuter, colors.border, RoundedCornerShape(dims.radii.medium))
+                                .padding(dims.spacing.sm),
+                            verticalArrangement = Arrangement.Bottom,
+                        ) {
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(dims.spacing.xs)
+                                    .clip(CircleShape)
+                                    .background(colors.accentMuted),
+                            )
+                            Spacer(Modifier.height(dims.spacing.xs))
+                            Box(
+                                Modifier
+                                    .fillMaxWidth(0.7f)
+                                    .height(dims.spacing.xs)
+                                    .clip(CircleShape)
+                                    .background(colors.border),
+                            )
+                        }
+                    }
+            }
+
+            ReliveProFeature.PremiumAppearance -> {
+                Row(horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm)) {
+                    listOf(colors.accent, colors.spark, colors.accentMuted, colors.tint).forEach { color ->
+                        Box(
+                            Modifier
+                                .size(dims.icon.lg)
+                                .clip(CircleShape)
+                                .background(color)
+                                .border(dims.stroke.hairline, colors.border, CircleShape),
+                        )
                     }
                 }
             }
 
-            ReliveProFeature.PremiumAppearance -> {
-                Box(
-                    Modifier
-                        .size(164.dp, 104.dp)
-                        .clip(RoundedCornerShape(dims.radii.largeIncreased))
-                        .background(colors.surfaceCard)
-                        .border(dims.stroke.cardOuter, colors.border, RoundedCornerShape(dims.radii.largeIncreased)),
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm)) {
-                    listOf(colors.accent, colors.spark, colors.accentMuted, colors.tint).forEach { color ->
-                        Box(Modifier.size(28.dp).clip(CircleShape).background(color).border(dims.stroke.hairline, colors.border, CircleShape))
-                    }
+            ReliveProFeature.KeepsakeExports -> {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(dims.spacing.md),
+                ) {
+                    StoryBubble(icon = ProfileIcons.Pdf, small = true)
+                    Icon(
+                        imageVector = ProfileIcons.Export,
+                        contentDescription = null,
+                        tint = colors.accentMuted,
+                        modifier = Modifier.size(dims.icon.md),
+                    )
+                    StoryBubble(icon = ProfileIcons.Archive)
                 }
             }
         }
     }
 }
+
+@Composable
+private fun StoryBubble(icon: ImageVector, small: Boolean = false) {
+    val dims = ReliveTheme.dimensions
+    Box(
+        modifier = Modifier
+            .size(if (small) dims.pro.featureStoryBubbleSmall else dims.pro.featureStoryBubble)
+            .clip(if (small) RoundedCornerShape(dims.radii.medium) else CircleShape)
+            .background(ReliveTheme.colors.tint),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = ReliveTheme.colors.accent,
+            modifier = Modifier.size(if (small) dims.icon.md else dims.icon.lg),
+        )
+    }
+}
+
+@Composable
+private fun FeatureIcon(icon: ImageVector) {
+    val dims = ReliveTheme.dimensions
+    Box(
+        modifier = Modifier
+            .size(dims.pro.featureIconSurfaceSize)
+            .clip(RoundedCornerShape(dims.radii.largeIncreased))
+            .background(ReliveTheme.colors.tint),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = ReliveTheme.colors.accent,
+            modifier = Modifier.size(dims.pro.featureIconSize),
+        )
+    }
+}
+
+private val ReliveProFeature.icon: ImageVector
+    get() = when (this) {
+        ReliveProFeature.UnlimitedTimelines -> ProfileIcons.Layers
+        ReliveProFeature.AutomaticBackup -> ProfileIcons.CloudOutline
+        ReliveProFeature.PremiumAppearance -> ProfileIcons.Palette
+        ReliveProFeature.KeepsakeExports -> ProfileIcons.Pdf
+    }
 
 @Composable
 private fun PurchasePanel(
@@ -341,17 +590,16 @@ private fun PurchasePanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = dims.spacing.lg, end = dims.spacing.lg, top = dims.spacing.xxl)
-            .clip(RoundedCornerShape(topStart = dims.radii.xl, topEnd = dims.radii.xl))
-            .background(ReliveTheme.colors.surfaceCard)
-            .padding(dims.spacing.lg),
-        verticalArrangement = Arrangement.spacedBy(dims.spacing.md),
+            .padding(horizontal = dims.spacing.xl, vertical = dims.spacing.xxl),
+        verticalArrangement = Arrangement.spacedBy(dims.spacing.sm),
     ) {
         Text(
             "Choose your plan",
-            style = ReliveTheme.typography.subtitle,
+            style = ReliveTheme.typography.title,
             color = ReliveTheme.colors.textPrimary,
-            modifier = Modifier.semantics { heading() },
+            modifier = Modifier
+                .padding(bottom = dims.spacing.xs)
+                .semantics { heading() },
         )
         RelivePurchaseOption.entries.forEach { option ->
             PlanCard(
@@ -361,12 +609,18 @@ private fun PurchasePanel(
                 onSelect = { onSelect(option) },
             )
         }
+        Spacer(Modifier.height(dims.spacing.xs))
         Button(
             enabled = canPurchase && selectedProduct != null,
             onClick = onPurchase,
+            shape = CircleShape,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = ReliveTheme.colors.accent,
+                contentColor = ReliveTheme.colors.textOnAccent,
+            ),
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 56.dp),
+                .heightIn(min = dims.pro.primaryActionHeight),
         ) {
             if (isLoading) {
                 CircularProgressIndicator(
@@ -404,16 +658,16 @@ private fun PlanCard(
 ) {
     val dims = ReliveTheme.dimensions
     val colors = ReliveTheme.colors
-    val shape = RoundedCornerShape(dims.radii.largeIncreased)
-    Column(
+    val shape = RoundedCornerShape(dims.radii.medium)
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 76.dp)
+            .heightIn(min = dims.pro.planRowMinHeight)
             .clip(shape)
-            .background(if (selected) colors.tint else Color.Transparent)
+            .background(if (selected) colors.tint else colors.surfaceCard)
             .border(
-                width = if (selected) dims.stroke.iconBold else dims.stroke.cardOuter,
-                color = if (selected) colors.accent else colors.border,
+                width = if (selected) dims.stroke.icon else dims.stroke.cardOuter,
+                color = if (selected) colors.accent else colors.borderMuted,
                 shape = shape,
             )
             .selectable(
@@ -422,32 +676,56 @@ private fun PlanCard(
                 role = Role.RadioButton,
                 onClick = onSelect,
             )
-            .padding(horizontal = dims.spacing.lg, vertical = dims.spacing.md),
+            .padding(horizontal = dims.spacing.lg, vertical = dims.spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(option.displayName, style = ReliveTheme.typography.subtitle, color = colors.textPrimary)
-                Text(
-                    product?.period ?: option.defaultPeriod,
-                    style = ReliveTheme.typography.tag,
-                    color = colors.textMuted,
-                )
+        SelectionIndicator(selected)
+        Spacer(Modifier.width(dims.spacing.lg))
+        Column(Modifier.weight(1f)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(option.displayName, style = ReliveTheme.typography.body, color = colors.textPrimary)
+                if (option == RelivePurchaseOption.Annual) PlanBadge("Best value")
             }
-            product?.price?.let { price ->
-                Text(price, style = ReliveTheme.typography.subtitle, color = colors.textPrimary)
+            Text(
+                product?.period ?: option.defaultPeriod,
+                style = ReliveTheme.typography.tag,
+                color = colors.textMuted,
+            )
+        }
+        product?.price?.let { price ->
+            Column(horizontalAlignment = Alignment.End) {
+                Text(price, style = ReliveTheme.typography.body, color = colors.textPrimary)
+                Text(option.billingCaption, style = ReliveTheme.typography.tag, color = colors.textMuted)
             }
         }
-        if (option == RelivePurchaseOption.Annual || !product?.introductoryOffer.isNullOrBlank()) {
-            Row(
-                modifier = Modifier.padding(top = dims.spacing.sm),
-                horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm),
-            ) {
-                if (option == RelivePurchaseOption.Annual) PlanBadge("Best value")
-                product?.introductoryOffer?.takeIf { it.isNotBlank() }?.let { PlanBadge("Free trial") }
-            }
+    }
+}
+
+@Composable
+private fun SelectionIndicator(selected: Boolean) {
+    val dims = ReliveTheme.dimensions
+    val colors = ReliveTheme.colors
+    Box(
+        modifier = Modifier
+            .size(dims.pro.selectionIndicatorSize)
+            .clip(CircleShape)
+            .border(
+                if (selected) dims.stroke.iconBold else dims.stroke.icon,
+                if (selected) colors.accent else colors.textMuted,
+                CircleShape,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (selected) {
+            Box(
+                Modifier
+                    .size(dims.pro.selectionIndicatorDotSize)
+                    .clip(CircleShape)
+                    .background(colors.accent),
+            )
         }
     }
 }
@@ -466,6 +744,78 @@ private fun PlanBadge(text: String) {
 }
 
 @Composable
+private fun PurchaseAssurances() {
+    val items = listOf(
+        ProfileIcons.Lock to "Secure purchase",
+        ProfileIcons.Security to "Cancel anytime",
+        ProfileIcons.Favorite to "Private by design",
+    )
+    val dims = ReliveTheme.dimensions
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = dims.spacing.lg),
+        horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm),
+    ) {
+        items.forEach { (icon, label) ->
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(dims.spacing.xs),
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = ReliveTheme.colors.accent,
+                    modifier = Modifier.size(dims.icon.md),
+                )
+                Text(
+                    label,
+                    style = ReliveTheme.typography.tag,
+                    color = ReliveTheme.colors.textSecondary,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RenewalCopy() {
+    Text(
+        "Subscriptions renew automatically unless cancelled at least 24 hours before the end of the current period.",
+        style = ReliveTheme.typography.tag,
+        color = ReliveTheme.colors.textMuted,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.padding(
+            horizontal = ReliveTheme.dimensions.spacing.xxl,
+            vertical = ReliveTheme.dimensions.spacing.lg,
+        ),
+    )
+}
+
+@Composable
+private fun RestorePurchases(enabled: Boolean, onRestore: () -> Unit) {
+    val dims = ReliveTheme.dimensions
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = dims.spacing.xl, vertical = dims.spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        HorizontalDivider(Modifier.weight(1f), color = ReliveTheme.colors.borderMuted)
+        TextButton(
+            enabled = enabled,
+            onClick = onRestore,
+            modifier = Modifier.heightIn(min = dims.minTouchTarget),
+        ) {
+            Text("Restore purchases", style = ReliveTheme.typography.tag)
+        }
+        HorizontalDivider(Modifier.weight(1f), color = ReliveTheme.colors.borderMuted)
+    }
+}
+
+@Composable
 private fun ActiveProCard() {
     val dims = ReliveTheme.dimensions
     Column(
@@ -481,7 +831,7 @@ private fun ActiveProCard() {
     ) {
         Text("Relive Pro is active", style = ReliveTheme.typography.title, color = ReliveTheme.colors.accent)
         Text(
-            "Automatic backup, unlimited timelines, and every appearance are unlocked.",
+            "Automatic backup, unlimited timelines, every premium appearance, and Keepsake exports are unlocked.",
             style = ReliveTheme.typography.body,
             color = ReliveTheme.colors.textSecondary,
             textAlign = TextAlign.Center,
@@ -491,21 +841,24 @@ private fun ActiveProCard() {
 
 @Composable
 private fun LegalLinks(links: ReliveLegalLinks, openUri: (String) -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = ReliveTheme.dimensions.spacing.lg),
-        horizontalAlignment = Alignment.CenterHorizontally,
+    val dims = ReliveTheme.dimensions
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = dims.spacing.lg),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         TextButton(
             enabled = links.termsOfServiceUrl.isNotBlank(),
             onClick = { openUri(links.termsOfServiceUrl) },
         ) {
-            Text("Terms of Service")
+            Text("Terms of Service", style = ReliveTheme.typography.tag)
         }
+        Text("•", style = ReliveTheme.typography.tag, color = ReliveTheme.colors.textMuted)
         TextButton(
             enabled = links.privacyPolicyUrl.isNotBlank(),
             onClick = { openUri(links.privacyPolicyUrl) },
         ) {
-            Text("Privacy Policy")
+            Text("Privacy Policy", style = ReliveTheme.typography.tag)
         }
     }
 }
@@ -517,7 +870,10 @@ private fun ProStatusMessage(message: String) {
         style = ReliveTheme.typography.tag,
         color = ReliveTheme.colors.textMuted,
         textAlign = TextAlign.Center,
-        modifier = Modifier.padding(horizontal = ReliveTheme.dimensions.spacing.xl, vertical = ReliveTheme.dimensions.spacing.xs),
+        modifier = Modifier.padding(
+            horizontal = ReliveTheme.dimensions.spacing.xl,
+            vertical = ReliveTheme.dimensions.spacing.xs,
+        ),
     )
 }
 
@@ -533,6 +889,13 @@ private val RelivePurchaseOption.defaultPeriod: String
         RelivePurchaseOption.Monthly -> "1 month"
         RelivePurchaseOption.Annual -> "1 year"
         RelivePurchaseOption.Lifetime -> "One-time purchase"
+    }
+
+private val RelivePurchaseOption.billingCaption: String
+    get() = when (this) {
+        RelivePurchaseOption.Monthly -> "per month"
+        RelivePurchaseOption.Annual -> "per year"
+        RelivePurchaseOption.Lifetime -> "One-time"
     }
 
 private fun PurchaseOutcome.messageOrNull(): String? = when (this) {

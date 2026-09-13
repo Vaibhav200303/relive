@@ -28,16 +28,20 @@ internal enum class ReliveProFeature(
     val headline: String,
     val supportingText: String,
 ) {
-    AutomaticBackup(
-        headline = "Keep your archive protected",
-        supportingText = "Schedule automatic backups and choose when your memories are secured.",
-    ),
     UnlimitedTimelines(
-        headline = "Create every chapter",
-        supportingText = "Build unlimited timelines for every season, person, place, and story.",
+        headline = "More timelines",
+        supportingText = "Create as many timelines as your stories need.",
+    ),
+    AutomaticBackup(
+        headline = "Automatic backups",
+        supportingText = "Keep your memories safe, without thinking about it.",
     ),
     PremiumAppearance(
-        headline = "Make every timeline yours",
-        supportingText = "Unlock every premium palette and wallpaper in your private archive.",
+        headline = "All appearances",
+        supportingText = "Unlock every premium palette and wallpaper.",
+    ),
+    KeepsakeExports(
+        headline = "Keepsake exports",
+        supportingText = "Create beautiful PDFs and portable Relive archives.",
     ),
 }

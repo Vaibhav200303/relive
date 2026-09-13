@@ -109,6 +109,16 @@ class ReliveTokensTest {
     }
 
     @Test
+    fun proPaywallKeepsCompactCardsAndAccessibleControls() {
+        val pro = DefaultReliveDimensions.pro
+        assertEquals(244.dp, pro.featureStageHeight)
+        assertEquals(64.dp, pro.planRowMinHeight)
+        assertTrue(pro.planRowMinHeight >= DefaultReliveDimensions.minTouchTarget)
+        assertTrue(pro.primaryActionHeight >= DefaultReliveDimensions.minTouchTarget)
+        assertTrue(pro.featurePeekInset > DefaultReliveDimensions.spacing.xxl)
+    }
+
+    @Test
     fun rediscoverShelfWidthsPreserveTheFeaturedHierarchy() {
         val rediscover = DefaultReliveDimensions.rediscover
         assertEquals(20.dp, rediscover.cardOuterRadius)

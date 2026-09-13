@@ -8,6 +8,19 @@ import kotlin.test.assertNull
 
 class ReliveProPresentationTest {
     @Test
+    fun showcaseCoversEveryProFeatureInItsEditorialOrder() {
+        assertEquals(
+            listOf(
+                "More timelines",
+                "Automatic backups",
+                "All appearances",
+                "Keepsake exports",
+            ),
+            ReliveProFeature.entries.map { it.headline },
+        )
+    }
+
+    @Test
     fun annualIsTheDefaultWhenItIsAvailable() {
         val products = mapOf(
             RelivePurchaseOption.Monthly to product("\$4.99", "1 month"),

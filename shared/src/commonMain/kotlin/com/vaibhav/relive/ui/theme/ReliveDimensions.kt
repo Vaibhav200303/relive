@@ -160,6 +160,33 @@ data class ReliveOnboardingDimensions(
     val pressedScale: Float = 0.96f,
 )
 
+/** Layout values unique to the Relive Pro editorial paywall. */
+@Immutable
+data class ReliveProDimensions(
+    val heroArtworkWidth: Dp = 112.dp,
+    val heroArtworkHeight: Dp = 136.dp,
+    val heroPhotoWidth: Dp = 72.dp,
+    val heroPhotoHeight: Dp = 88.dp,
+    val heroPhotoImageHeight: Dp = 60.dp,
+    val crownBadgeSize: Dp = 44.dp,
+    val featureStageHeight: Dp = 244.dp,
+    val featurePeekInset: Dp = 96.dp,
+    val featureFocusInset: Dp = 12.dp,
+    val featureRestingScale: Float = 0.86f,
+    val featureRestingAlpha: Float = 0.72f,
+    val featureStoryHeight: Dp = 58.dp,
+    val featureStoryTravel: Dp = 12.dp,
+    val featureStoryBubble: Dp = 52.dp,
+    val featureStoryBubbleSmall: Dp = 44.dp,
+    val featureStoryCardWidth: Dp = 48.dp,
+    val featureIconSurfaceSize: Dp = 56.dp,
+    val featureIconSize: Dp = 32.dp,
+    val planRowMinHeight: Dp = 64.dp,
+    val primaryActionHeight: Dp = 56.dp,
+    val selectionIndicatorSize: Dp = 20.dp,
+    val selectionIndicatorDotSize: Dp = 10.dp,
+)
+
 @Immutable
 data class ReliveFloatingToolbarDimensions(
     val height: Dp = 64.dp,
@@ -228,6 +255,7 @@ data class ReliveDimensions(
     val search: ReliveSearchDimensions = ReliveSearchDimensions(),
     val composer: ReliveComposerDimensions = ReliveComposerDimensions(),
     val onboarding: ReliveOnboardingDimensions = ReliveOnboardingDimensions(),
+    val pro: ReliveProDimensions = ReliveProDimensions(),
     val floatingToolbar: ReliveFloatingToolbarDimensions = ReliveFloatingToolbarDimensions(),
     val media: ReliveMediaDimensions = ReliveMediaDimensions(),
     val skeleton: ReliveSkeletonDimensions = ReliveSkeletonDimensions(),
