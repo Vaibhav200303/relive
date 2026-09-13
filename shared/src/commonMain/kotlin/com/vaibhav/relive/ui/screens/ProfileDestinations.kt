@@ -178,6 +178,26 @@ val aboutGuideSections = listOf(
         "Look back, find patterns, and appreciate your journey.",
         ProfileIcons.Favorite,
     ),
+    AboutGuideSection(
+        "Make Relive yours",
+        "Choose an appearance, tune preferences, and give your archive its own visual character.",
+        ProfileIcons.Preferences,
+    ),
+    AboutGuideSection(
+        "Backup on your terms",
+        "Keep your archive safe with manual backup and restore, separate from your local Moments.",
+        ProfileIcons.Backup,
+    ),
+    AboutGuideSection(
+        "Export your keepsakes",
+        "Create a paper-diary PDF or a portable Relive archive from the memories you choose.",
+        ProfileIcons.Export,
+    ),
+    AboutGuideSection(
+        "Grow with Relive Pro",
+        "Unlock automatic backup, more custom timelines, and every appearance while your archive stays yours.",
+        ProfileIcons.Info,
+    ),
 )
 
 val aboutPrivacySection = AboutGuideSection(

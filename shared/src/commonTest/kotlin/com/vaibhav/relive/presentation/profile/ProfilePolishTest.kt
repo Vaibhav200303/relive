@@ -55,7 +55,10 @@ class ProfilePolishTest {
         assertContains(titles, "Capture what matters")
         assertContains(titles, "Rediscover your archive")
         assertContains(titles, "Notice how life feels")
-        assertEquals(5, aboutGuideSections.size)
+        assertContains(titles, "Backup on your terms")
+        assertContains(titles, "Export your keepsakes")
+        assertContains(titles, "Grow with Relive Pro")
+        assertEquals(9, aboutGuideSections.size)
         assertEquals("Your memories stay with you.", aboutPrivacySection.title)
         assertFalse(aboutGuideSections.any { it.body.contains("search saved titles and writing", ignoreCase = true) && it.body.contains("tag", ignoreCase = true) })
     }
