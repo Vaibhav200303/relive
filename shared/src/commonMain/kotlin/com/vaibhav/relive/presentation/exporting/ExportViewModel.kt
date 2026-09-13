@@ -13,6 +13,7 @@ import com.vaibhav.relive.domain.exporting.PortableTimelineIdentity
 import com.vaibhav.relive.domain.model.LocalCalendarDate
 import com.vaibhav.relive.domain.model.Moment
 import com.vaibhav.relive.domain.model.Timeline
+import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.repository.AppearanceRepository
 import com.vaibhav.relive.domain.repository.MomentRepository
 import com.vaibhav.relive.domain.repository.TimelineRepository
@@ -36,6 +37,8 @@ import kotlin.coroutines.coroutineContext
 
 data class ExportUiState(
     val timelines: List<Timeline.Custom> = emptyList(),
+    val allMomentCount: Int = 0,
+    val timelineMomentCounts: Map<TimelineId, Int> = emptyMap(),
     val format: ExportFormat = ExportFormat.KeepsakePdf,
     val scope: ExportScope = ExportScope.All,
     val startDate: LocalCalendarDate? = null,
@@ -82,7 +85,18 @@ class ExportViewModel(
     suspend fun reload() {
         val timelines = timelineRepository.listCustom()
         allMoments = momentRepository.listAll()
-        _state.update { it.copy(timelines = timelines) }
+        val timelineMomentCounts = timelines.associate { timeline ->
+            timeline.id to runCatching {
+                momentRepository.listInTimeline(timeline.id).size
+            }.getOrDefault(0)
+        }
+        _state.update {
+            it.copy(
+                timelines = timelines,
+                allMomentCount = allMoments.size,
+                timelineMomentCounts = timelineMomentCounts,
+            )
+        }
         refreshSelection()
     }
 

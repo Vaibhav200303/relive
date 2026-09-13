@@ -245,7 +245,9 @@ class ExportViewModelTest {
             clock = Clock { Instant(3) },
             scope = backgroundScope,
         )
-        viewModel.state.first { it.isPro && it.selectedMomentCount == 2 }
+        val loadedState = viewModel.state.first { it.isPro && it.selectedMomentCount == 2 }
+        assertEquals(2, loadedState.allMomentCount)
+        assertEquals(1, loadedState.timelineMomentCounts[selectedTimeline.id])
 
         viewModel.selectScope(ExportScope.Custom(selectedTimeline.id, selectedTimeline.name))
         viewModel.state.first { it.selectedMomentCount == 1 }
