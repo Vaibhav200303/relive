@@ -2,19 +2,33 @@ package com.vaibhav.relive.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.vaibhav.relive.domain.entitlement.ReliveLegalLinks
 import com.vaibhav.relive.domain.model.LockAfter
 import com.vaibhav.relive.domain.model.ProfileSettings
@@ -26,6 +40,7 @@ import com.vaibhav.relive.platform.system.PlatformAppInfo
 import com.vaibhav.relive.ui.components.profile.*
 import com.vaibhav.relive.ui.icons.ProfileIcons
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.theme.rememberReliveHandwritingFamily
 
 @Composable
 fun LocationScreen(showLocation: Boolean, onShowLocationChange: (Boolean) -> Unit, onBack: () -> Unit) = ProfileScaffold("Location", "Choose whether saved locations appear on moments.", onBack) {
@@ -145,44 +160,30 @@ val aboutGuideSections = listOf(
     ),
     AboutGuideSection(
         "Make chapters of your life",
-        "Create custom timelines for the people, places, and seasons that belong together. Every Moment also stays in All moments.",
+        "Create custom timelines for the people, places, and seasons that belong together.",
         ProfileIcons.Person,
     ),
     AboutGuideSection(
         "Rediscover your archive",
-        "Return to Favourites, On This Day, From Your Past, and All Photos whenever a memory deserves another look.",
-        ProfileIcons.Info,
+        "Return to Favourites, On This Day, From Your Past, and more.",
+        ProfileIcons.Calendar,
     ),
     AboutGuideSection(
         "Find your way back",
-        "Search saved titles and writing, or use Calendar to move directly to a day in your archive.",
-        ProfileIcons.Help,
+        "Search saved titles and writing, or use Calendar to jump to any day.",
+        ProfileIcons.Search,
     ),
     AboutGuideSection(
         "Notice how life feels",
-        "Optionally mark a new Moment as Great, Good, or Low, then explore gentle mood reflections over time.",
-        ProfileIcons.Info,
+        "Look back, find patterns, and appreciate your journey.",
+        ProfileIcons.Favorite,
     ),
-    AboutGuideSection(
-        "Make Relive yours",
-        "Choose an appearance, tune preferences, and give All moments and each custom timeline its own visual character.",
-        ProfileIcons.Preferences,
-    ),
-    AboutGuideSection(
-        "Private by design",
-        "Relive is local-first: your archive lives on your device, is never a social profile, and is never used for advertising.",
-        ProfileIcons.Security,
-    ),
-    AboutGuideSection(
-        "Backup on your terms",
-        "Backup and restore are managed separately from the local archive. Relive Pro adds scheduled automatic backup where available.",
-        ProfileIcons.Backup,
-    ),
-    AboutGuideSection(
-        "Grow with Relive Pro",
-        "Relive Pro unlocks automatic backup, more custom timelines, and every appearance while your existing archive remains yours.",
-        ProfileIcons.Info,
-    ),
+)
+
+val aboutPrivacySection = AboutGuideSection(
+    "Your memories stay with you.",
+    "Relive is local-first, never a social profile, and never used for advertising.",
+    ProfileIcons.Security,
 )
 
 @Composable
@@ -190,35 +191,286 @@ fun AboutReliveScreen(legalLinks: ReliveLegalLinks, onOpenLicenses: () -> Unit, 
     val info = remember { platformAppInfo() }
     val uriHandler = LocalUriHandler.current
     ProfileScaffold("About Relive", onBack = onBack) {
-        DestinationHero(
-            eyebrow = "CAPTURE MOMENTS. RELIVE THEM LATER.",
-            title = "A home for your life.",
-            body = "Relive is a private, local-first archive for the thoughts, places, people, and small details you want to hold on to.",
-            icon = ProfileIcons.Info,
-        )
+        AboutReliveHero()
         ProfileSectionHeading("WHAT RELIVE HELPS YOU KEEP")
-        aboutGuideSections.forEach { section ->
-            FeatureGuideCard(section)
+        AboutFeaturePanel()
+        Spacer(Modifier.height(ReliveTheme.dimensions.spacing.md))
+        AboutPrivacyCard(aboutPrivacySection)
+        ProfileSectionHeading("APP INFORMATION")
+        AboutSettingsPanel {
+            ProfileSettingRow("Version", info.versionAndBuild, icon = ProfileIcons.Info)
         }
-        ProfileSectionHeading("APP")
-        ProfileSettingRow("Version", info.versionAndBuild)
         ProfileSectionHeading("LEGAL")
-        ProfileSettingRow(
-            "Privacy Policy",
-            if (legalLinks.privacyPolicyUrl.isBlank()) "Not configured for this build" else null,
-            enabled = legalLinks.privacyPolicyUrl.isNotBlank(),
-            onClick = if (legalLinks.privacyPolicyUrl.isNotBlank()) ({ uriHandler.openUri(legalLinks.privacyPolicyUrl) }) else null,
-        )
-        ProfileDivider()
-        ProfileSettingRow(
-            "Terms of Service",
-            if (legalLinks.termsOfServiceUrl.isBlank()) "Not configured for this build" else null,
-            enabled = legalLinks.termsOfServiceUrl.isNotBlank(),
-            onClick = if (legalLinks.termsOfServiceUrl.isNotBlank()) ({ uriHandler.openUri(legalLinks.termsOfServiceUrl) }) else null,
-        )
-        ProfileDivider()
-        ProfileSettingRow("Open-source licenses", onClick = onOpenLicenses)
+        AboutSettingsPanel {
+            ProfileSettingRow(
+                "Privacy Policy",
+                if (legalLinks.privacyPolicyUrl.isBlank()) "Not configured for this build" else null,
+                enabled = legalLinks.privacyPolicyUrl.isNotBlank(),
+                icon = ProfileIcons.Export,
+                onClick = if (legalLinks.privacyPolicyUrl.isNotBlank()) ({ uriHandler.openUri(legalLinks.privacyPolicyUrl) }) else null,
+            )
+            ProfileDivider()
+            ProfileSettingRow(
+                "Terms of Service",
+                if (legalLinks.termsOfServiceUrl.isBlank()) "Not configured for this build" else null,
+                enabled = legalLinks.termsOfServiceUrl.isNotBlank(),
+                icon = ProfileIcons.Export,
+                onClick = if (legalLinks.termsOfServiceUrl.isNotBlank()) ({ uriHandler.openUri(legalLinks.termsOfServiceUrl) }) else null,
+            )
+            ProfileDivider()
+            ProfileSettingRow("Open-source licenses", icon = ProfileIcons.Archive, onClick = onOpenLicenses)
+        }
+        AboutClosingNote()
     }
+}
+
+@Composable
+private fun AboutReliveHero() {
+    val d = ReliveTheme.dimensions
+    val colors = ReliveTheme.colors
+    val handwriting = rememberReliveHandwritingFamily()
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 196.dp)
+            .semantics(mergeDescendants = true) {
+                contentDescription = "Relive. Capture moments. Relive them later. A private, local-first archive for the thoughts, places, people, and small details you want to hold on to."
+            },
+    ) {
+        AboutLandscape(Modifier.matchParentSize())
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = d.spacing.xl, vertical = d.spacing.lg),
+            horizontalArrangement = Arrangement.spacedBy(d.spacing.lg),
+            verticalAlignment = Alignment.Top,
+        ) {
+            AboutJournalMark()
+            Column(Modifier.weight(1f)) {
+                Text("Relive", color = colors.textPrimary, style = ReliveTheme.typography.display)
+                Text(
+                    "CAPTURE MOMENTS. RELIVE THEM LATER.",
+                    modifier = Modifier.padding(top = d.spacing.xs),
+                    color = colors.textSecondary,
+                    style = ReliveTheme.typography.eyebrow.copy(fontSize = 9.sp, letterSpacing = 1.4.sp),
+                )
+                Text(
+                    "A private, local-first archive for the thoughts, places, people, and small details you want to hold on to.",
+                    modifier = Modifier.padding(top = d.spacing.sm),
+                    color = colors.textSecondary,
+                    style = ReliveTheme.typography.caption,
+                )
+                Text(
+                    "A kinder you, for later  ♡",
+                    modifier = Modifier.padding(top = d.spacing.md),
+                    color = colors.accentMuted,
+                    style = TextStyle(fontFamily = handwriting, fontSize = 18.sp, lineHeight = 24.sp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AboutJournalMark() {
+    val d = ReliveTheme.dimensions
+    val colors = ReliveTheme.colors
+    val shape = RoundedCornerShape(d.radii.largeIncreased)
+    Box(
+        Modifier
+            .size(84.dp)
+            .shadow(
+                10.dp,
+                shape,
+                ambientColor = colors.shadow.copy(alpha = 0.22f),
+                spotColor = colors.shadow.copy(alpha = 0.22f),
+            )
+            .clip(shape)
+            .background(Brush.linearGradient(listOf(colors.accentMuted, colors.accent))),
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(Modifier.size(56.dp)) {
+            val paper = colors.textOnAccent
+            val ink = colors.accent
+            drawRoundRect(
+                paper,
+                topLeft = Offset(size.width * .25f, size.height * .12f),
+                size = androidx.compose.ui.geometry.Size(size.width * .56f, size.height * .72f),
+                cornerRadius = CornerRadius(size.width * .05f),
+            )
+            drawLine(ink, Offset(size.width * .40f, size.height * .12f), Offset(size.width * .40f, size.height * .84f), 2.dp.toPx(), StrokeCap.Round)
+            drawLine(ink, Offset(size.width * .43f, size.height * .34f), Offset(size.width * .72f, size.height * .34f), 2.dp.toPx(), StrokeCap.Round)
+            drawCircle(paper, size.width * .055f, Offset(size.width * .18f, size.height * .42f))
+            drawLine(paper, Offset(size.width * .18f, size.height * .42f), Offset(size.width * .40f, size.height * .42f), 2.dp.toPx(), StrokeCap.Round)
+        }
+    }
+}
+
+@Composable
+private fun AboutLandscape(modifier: Modifier = Modifier) {
+    val colors = ReliveTheme.colors
+    Canvas(modifier) {
+        drawCircle(
+            colors.tint.copy(alpha = .72f),
+            radius = size.width * .055f,
+            center = Offset(size.width * .83f, size.height * .14f),
+        )
+        val far = Path().apply {
+            moveTo(size.width * .50f, size.height)
+            lineTo(size.width * .72f, size.height * .67f)
+            lineTo(size.width * .78f, size.height * .76f)
+            lineTo(size.width * .92f, size.height * .43f)
+            lineTo(size.width, size.height * .53f)
+            lineTo(size.width, size.height)
+            close()
+        }
+        drawPath(far, colors.tint.copy(alpha = .68f))
+        val near = Path().apply {
+            moveTo(size.width * .58f, size.height)
+            lineTo(size.width * .78f, size.height * .78f)
+            lineTo(size.width * .84f, size.height * .86f)
+            lineTo(size.width, size.height * .65f)
+            lineTo(size.width, size.height)
+            close()
+        }
+        drawPath(near, colors.accentMuted.copy(alpha = .24f))
+        drawPath(
+            Path().apply {
+                moveTo(size.width * .76f, size.height)
+                quadraticTo(size.width * .73f, size.height * .86f, size.width * .86f, size.height * .82f)
+                quadraticTo(size.width * .97f, size.height * .79f, size.width * .88f, size.height * .70f)
+            },
+            color = colors.surfaceCard.copy(alpha = .82f),
+            style = Stroke(width = size.width * .035f, cap = StrokeCap.Round),
+        )
+    }
+}
+
+@Composable
+private fun AboutFeaturePanel() {
+    val d = ReliveTheme.dimensions
+    val shape = RoundedCornerShape(d.radii.largeIncreased)
+    Column(
+        Modifier
+            .padding(horizontal = d.spacing.xl)
+            .clip(shape)
+            .background(ReliveTheme.colors.surfaceCard)
+            .border(d.stroke.hairline, ReliveTheme.colors.borderMuted, shape),
+    ) {
+        aboutGuideSections.forEachIndexed { index, section ->
+            FeatureGuideRow(section, index)
+            if (index != aboutGuideSections.lastIndex) {
+                HorizontalDivider(
+                    Modifier.padding(start = 72.dp, end = d.spacing.lg),
+                    thickness = d.stroke.hairline,
+                    color = ReliveTheme.colors.borderMuted,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FeatureGuideRow(section: AboutGuideSection, index: Int) {
+    val d = ReliveTheme.dimensions
+    val colors = ReliveTheme.colors
+    val chip = when (index % 3) {
+        0 -> colors.accent.copy(alpha = .10f)
+        1 -> colors.spark.copy(alpha = .10f)
+        else -> colors.tint.copy(alpha = .82f)
+    }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = d.spacing.lg, vertical = d.spacing.md)
+            .semantics(mergeDescendants = true) { contentDescription = "${section.title}. ${section.body}" },
+        horizontalArrangement = Arrangement.spacedBy(d.spacing.md),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier.size(40.dp).clip(RoundedCornerShape(d.radii.medium)).background(chip),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(section.icon, contentDescription = null, tint = colors.accentMuted, modifier = Modifier.size(d.icon.md))
+        }
+        Column(Modifier.weight(1f)) {
+            Text(
+                section.title,
+                color = colors.textPrimary,
+                style = ReliveTheme.typography.action.copy(fontWeight = FontWeight.SemiBold),
+            )
+            Text(section.body, color = colors.textSecondary, style = ReliveTheme.typography.caption)
+        }
+    }
+}
+
+@Composable
+private fun AboutPrivacyCard(section: AboutGuideSection) {
+    val d = ReliveTheme.dimensions
+    val colors = ReliveTheme.colors
+    val shape = RoundedCornerShape(d.radii.largeIncreased)
+    Row(
+        Modifier
+            .padding(horizontal = d.spacing.xl)
+            .fillMaxWidth()
+            .clip(shape)
+            .background(colors.tint.copy(alpha = .68f))
+            .border(d.stroke.hairline, colors.borderMuted, shape)
+            .padding(d.spacing.lg)
+            .semantics(mergeDescendants = true) {
+                contentDescription = "Private by design. ${section.title} ${section.body}"
+            },
+        horizontalArrangement = Arrangement.spacedBy(d.spacing.md),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier.size(40.dp).clip(RoundedCornerShape(d.radii.medium)).background(colors.accent.copy(alpha = .10f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(section.icon, null, tint = colors.accentMuted, modifier = Modifier.size(d.icon.md))
+        }
+        Column(Modifier.weight(1f)) {
+            Text("PRIVATE BY DESIGN", color = colors.textSecondary, style = ReliveTheme.typography.eyebrow.copy(fontSize = 9.sp))
+            Text(
+                section.title,
+                color = colors.textPrimary,
+                style = ReliveTheme.typography.title.copy(fontSize = 19.sp, lineHeight = 24.sp),
+            )
+            Text(section.body, color = colors.textSecondary, style = ReliveTheme.typography.caption)
+        }
+    }
+}
+
+@Composable
+private fun AboutSettingsPanel(content: @Composable ColumnScope.() -> Unit) {
+    val d = ReliveTheme.dimensions
+    val shape = RoundedCornerShape(d.radii.largeIncreased)
+    Column(
+        Modifier
+            .padding(horizontal = d.spacing.xl)
+            .fillMaxWidth()
+            .clip(shape)
+            .background(ReliveTheme.colors.surfaceCard)
+            .border(d.stroke.hairline, ReliveTheme.colors.borderMuted, shape),
+        content = content,
+    )
+}
+
+@Composable
+private fun AboutClosingNote() {
+    val d = ReliveTheme.dimensions
+    Text(
+        "Thanks for being here  ♡",
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = d.spacing.xl)
+            .semantics { contentDescription = "Thanks for being here" },
+        color = ReliveTheme.colors.accentMuted,
+        textAlign = TextAlign.Center,
+        style = TextStyle(
+            fontFamily = rememberReliveHandwritingFamily(),
+            fontSize = 17.sp,
+            lineHeight = 24.sp,
+        ),
+    )
 }
 
 @Composable
@@ -252,40 +504,6 @@ private fun DestinationHero(eyebrow: String, title: String, body: String, icon: 
                 style = ReliveTheme.typography.title,
             )
             Text(body, modifier = Modifier.padding(top = d.spacing.sm), color = ReliveTheme.colors.textSecondary, style = ReliveTheme.typography.body)
-        }
-    }
-}
-
-@Composable
-private fun FeatureGuideCard(section: AboutGuideSection) {
-    val d = ReliveTheme.dimensions
-    val shape = RoundedCornerShape(d.radii.large)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = d.spacing.xl, vertical = d.spacing.xs)
-            .clip(shape)
-            .background(ReliveTheme.colors.surfaceCard)
-            .border(d.stroke.hairline, ReliveTheme.colors.borderMuted, shape)
-            .padding(d.spacing.lg)
-            .semantics(mergeDescendants = true) { contentDescription = "${section.title}. ${section.body}" },
-        horizontalArrangement = Arrangement.spacedBy(d.spacing.md),
-        verticalAlignment = Alignment.Top,
-    ) {
-        Icon(
-            section.icon,
-            contentDescription = null,
-            tint = ReliveTheme.colors.accentMuted,
-            modifier = Modifier.size(d.icon.md),
-        )
-        Column(Modifier.weight(1f)) {
-            Text(section.title, color = ReliveTheme.colors.textPrimary, style = ReliveTheme.typography.subtitle)
-            Text(
-                section.body,
-                modifier = Modifier.padding(top = d.spacing.xs),
-                color = ReliveTheme.colors.textSecondary,
-                style = ReliveTheme.typography.body,
-            )
         }
     }
 }

@@ -7,6 +7,7 @@ import com.vaibhav.relive.domain.repository.ProfileSettingsRepository
 import com.vaibhav.relive.platform.notifications.*
 import com.vaibhav.relive.platform.system.*
 import com.vaibhav.relive.ui.screens.aboutGuideSections
+import com.vaibhav.relive.ui.screens.aboutPrivacySection
 import com.vaibhav.relive.ui.screens.supportMailRequest
 import com.vaibhav.relive.ui.screens.HelpTopic
 import com.vaibhav.relive.domain.entitlement.ReliveLegalLinks
@@ -54,7 +55,8 @@ class ProfilePolishTest {
         assertContains(titles, "Capture what matters")
         assertContains(titles, "Rediscover your archive")
         assertContains(titles, "Notice how life feels")
-        assertContains(titles, "Private by design")
+        assertEquals(5, aboutGuideSections.size)
+        assertEquals("Your memories stay with you.", aboutPrivacySection.title)
         assertFalse(aboutGuideSections.any { it.body.contains("search saved titles and writing", ignoreCase = true) && it.body.contains("tag", ignoreCase = true) })
     }
 

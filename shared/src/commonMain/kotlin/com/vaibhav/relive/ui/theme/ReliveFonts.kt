@@ -13,6 +13,7 @@ import relive.shared.generated.resources.inter_italic
 import relive.shared.generated.resources.inter_medium
 import relive.shared.generated.resources.inter_regular
 import relive.shared.generated.resources.inter_semibold
+import relive.shared.generated.resources.kalam_regular
 
 /**
  * Locally bundled serif family. Fraunces, licensed under SIL Open Font License 1.1
@@ -46,6 +47,13 @@ internal fun rememberReliveSansFamily(): FontFamily {
     return remember(regular, italic, medium, semibold) {
         FontFamily(regular, italic, medium, semibold)
     }
+}
+
+/** A restrained handwritten accent for small, personal sign-offs and keepsake copy. */
+@Composable
+internal fun rememberReliveHandwritingFamily(): FontFamily {
+    val regular = Font(Res.font.kalam_regular, FontWeight.Normal, FontStyle.Normal)
+    return remember(regular) { FontFamily(regular) }
 }
 
 @Composable
