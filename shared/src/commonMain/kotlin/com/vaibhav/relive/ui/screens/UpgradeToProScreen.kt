@@ -86,6 +86,14 @@ fun UpgradeToProScreen(
     var purchaseMessage by remember { mutableStateOf<String?>(null) }
     var selectedOption by remember { mutableStateOf<RelivePurchaseOption?>(null) }
 
+    fun restorePurchases() {
+        if (!state.purchasingAvailable || state.isLoading) return
+        purchaseMessage = "Restoring purchases…"
+        scope.launch {
+            purchaseMessage = entitlementProvider.restorePurchases().restoreMessageOrNull()
+        }
+    }
+
     LaunchedEffect(state.products) {
         if (selectedOption !in state.products) {
             selectedOption = defaultRelivePurchaseOption(state.products)
@@ -112,11 +120,7 @@ fun UpgradeToProScreen(
                 ActiveProCard()
                 RestorePurchases(
                     enabled = state.purchasingAvailable && !state.isLoading,
-                    onRestore = {
-                        scope.launch {
-                            purchaseMessage = entitlementProvider.restorePurchases().messageOrNull()
-                        }
-                    },
+                    onRestore = ::restorePurchases,
                 )
             } else {
                 PurchasePanel(
@@ -139,11 +143,7 @@ fun UpgradeToProScreen(
                 PurchaseAssurances()
                 RestorePurchases(
                     enabled = state.purchasingAvailable && !state.isLoading,
-                    onRestore = {
-                        scope.launch {
-                            purchaseMessage = entitlementProvider.restorePurchases().messageOrNull()
-                        }
-                    },
+                    onRestore = ::restorePurchases,
                 )
                 RenewalCopy()
                 LegalLinks(legalLinks, uriHandler::openUri)
@@ -900,6 +900,13 @@ private val RelivePurchaseOption.billingCaption: String
 
 private fun PurchaseOutcome.messageOrNull(): String? = when (this) {
     PurchaseOutcome.Succeeded -> null
+    PurchaseOutcome.Cancelled -> null
+    is PurchaseOutcome.Unavailable -> message
+    is PurchaseOutcome.Failed -> message
+}
+
+private fun PurchaseOutcome.restoreMessageOrNull(): String? = when (this) {
+    PurchaseOutcome.Succeeded -> "Purchases restored successfully."
     PurchaseOutcome.Cancelled -> null
     is PurchaseOutcome.Unavailable -> message
     is PurchaseOutcome.Failed -> message

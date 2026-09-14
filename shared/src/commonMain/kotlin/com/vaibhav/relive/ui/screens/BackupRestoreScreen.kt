@@ -35,6 +35,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 import com.vaibhav.relive.domain.backup.*
 import com.vaibhav.relive.platform.backup.backupAuthLog
+import com.vaibhav.relive.platform.system.ReliveBackHandler
 import com.vaibhav.relive.presentation.date.BackupTimestampFormatter
 import com.vaibhav.relive.presentation.profile.BackupRestoreViewModel
 import com.vaibhav.relive.presentation.profile.formatByteSize
@@ -65,6 +66,7 @@ fun BackupRestoreScreen(
     var sheet by remember { mutableStateOf<String?>(null) }
     var disconnectDialog by remember { mutableStateOf(false) }
     val dims = ReliveTheme.dimensions
+    ReliveBackHandler(enabled = true, onBack = onBack)
 
     Box(Modifier.fillMaxSize().background(ReliveTheme.colors.canvasBrush())) {
         Scaffold(

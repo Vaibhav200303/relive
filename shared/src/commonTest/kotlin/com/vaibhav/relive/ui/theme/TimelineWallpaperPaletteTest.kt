@@ -82,6 +82,27 @@ class TimelineWallpaperPaletteTest {
     }
 
     @Test
+    fun momentForegroundResolutionFollowsTheSelectedWallpaper() {
+        val colors = reliveColorsFor(DefaultRelivePalette.light, isDark = false)
+        val warmCream = timelineMomentForegroundColors(
+            colors,
+            timelineWallpaperPalette(TimelineWallpaper.WarmCream, isDark = false),
+        )
+        val midnightNavy = timelineMomentForegroundColors(
+            colors,
+            timelineWallpaperPalette(TimelineWallpaper.MidnightNavy, isDark = false),
+        )
+
+        assertNotEquals(warmCream, midnightNavy)
+        assertTrue(
+            contrastRatio(
+                midnightNavy.textPrimary,
+                timelineWallpaperPalette(TimelineWallpaper.MidnightNavy, isDark = false).backgroundColor,
+            ) >= 4.5f,
+        )
+    }
+
+    @Test
     fun wallpaperPreviewCardsShareOneStableDoodlePattern() {
         val first = timelineWallpaperVisual(TimelineWallpaper.WarmCream, false)
         val repeated = timelineWallpaperVisual(TimelineWallpaper.WarmCream, false)

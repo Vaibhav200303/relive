@@ -51,11 +51,13 @@ import com.vaibhav.relive.presentation.timeline.TimelineThemeViewModel
 import com.vaibhav.relive.ui.components.timeline.BackGlyph
 import com.vaibhav.relive.ui.components.timeline.ForwardGlyph
 import com.vaibhav.relive.ui.components.timeline.HeartGlyph
+import com.vaibhav.relive.ui.components.timeline.LocalTimelineWallpaperPalette
 import com.vaibhav.relive.ui.components.timeline.TimelineWallpaperSurface
 import com.vaibhav.relive.ui.icons.ProfileIcons
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.theme.canvasBrush
 import com.vaibhav.relive.ui.theme.rememberReliveHandwritingFamily
+import com.vaibhav.relive.ui.theme.timelineMomentForegroundColors
 import com.vaibhav.relive.ui.theme.timelineThemePickerPalette
 
 private val FeaturedTimelineWallpapers = listOf(
@@ -150,10 +152,12 @@ fun TimelineThemeScreen(
                 modifier = Modifier.padding(top = dims.spacing.lg),
             )
 
-            ReliveProThemeBanner(
-                onClick = onUpgrade,
-                modifier = Modifier.padding(top = dims.spacing.lg),
-            )
+            if (!entitlement.isPro) {
+                ReliveProThemeBanner(
+                    onClick = onUpgrade,
+                    modifier = Modifier.padding(top = dims.spacing.lg),
+                )
+            }
         }
     }
 }
@@ -218,7 +222,6 @@ private fun TimelineThemePreview(
     modifier: Modifier = Modifier,
 ) {
     val dims = ReliveTheme.dimensions
-    val colors = ReliveTheme.colors
     val shape = RoundedCornerShape(dims.radii.largeIncreased)
 
     TimelineWallpaperSurface(
@@ -228,30 +231,33 @@ private fun TimelineThemePreview(
             .height(dims.timelineTheme.previewHeight)
             .clip(shape),
     ) {
+        val momentColors = timelineMomentForegroundColors(
+            colors = ReliveTheme.colors,
+            wallpaper = LocalTimelineWallpaperPalette.current,
+        )
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .background(colors.surfaceCardTranslucent)
                 .padding(dims.spacing.lg),
         ) {
             Column(
                 modifier = Modifier.fillMaxHeight(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text("14", style = ReliveTheme.typography.title, color = colors.textPrimary)
-                Text("JUN", style = ReliveTheme.typography.eyebrow, color = colors.textMuted)
+                Text("14", style = ReliveTheme.typography.title, color = momentColors.textPrimary)
+                Text("JUN", style = ReliveTheme.typography.eyebrow, color = momentColors.textMuted)
                 Box(
                     modifier = Modifier
                         .padding(top = dims.spacing.sm)
                         .size(dims.timeline.dotSize)
-                        .background(colors.accent, RoundedCornerShape(dims.radii.full)),
+                        .background(momentColors.accent, RoundedCornerShape(dims.radii.full)),
                 )
                 Box(
                     modifier = Modifier
                         .padding(top = dims.spacing.xs)
                         .weight(1f)
                         .width(dims.timeline.railWidth)
-                        .background(colors.border),
+                        .background(momentColors.textMuted),
                 )
             }
 
@@ -264,12 +270,12 @@ private fun TimelineThemePreview(
                 Text(
                     text = "An unhurried afternoon",
                     style = ReliveTheme.typography.subtitle,
-                    color = colors.textPrimary,
+                    color = momentColors.textPrimary,
                 )
                 Text(
                     text = "A quiet walk, a little sunlight,\nand a moment worth keeping.",
                     style = ReliveTheme.typography.body,
-                    color = colors.textPrimary,
+                    color = momentColors.textSecondary,
                 )
                 PreviewLandscape(
                     modifier = Modifier
@@ -280,14 +286,14 @@ private fun TimelineThemePreview(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     HeartGlyph(
                         size = dims.icon.sm,
-                        color = colors.accent,
+                        color = momentColors.accent,
                         strokeWidth = dims.stroke.icon,
                         filled = true,
                     )
                     Text(
                         text = "  Favourite · 2:40 PM",
                         style = ReliveTheme.typography.eyebrow,
-                        color = colors.textMuted,
+                        color = momentColors.textMuted,
                     )
                 }
             }
