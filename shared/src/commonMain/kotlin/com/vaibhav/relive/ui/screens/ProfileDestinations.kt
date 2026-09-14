@@ -3,6 +3,8 @@ package com.vaibhav.relive.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
@@ -15,14 +17,19 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -39,39 +46,440 @@ import com.vaibhav.relive.platform.system.platformMailComposer
 import com.vaibhav.relive.platform.system.PlatformAppInfo
 import com.vaibhav.relive.ui.components.profile.*
 import com.vaibhav.relive.ui.icons.ProfileIcons
+import com.vaibhav.relive.ui.theme.ReliveColors
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.theme.rememberReliveHandwritingFamily
 
 @Composable
-fun LocationScreen(showLocation: Boolean, onShowLocationChange: (Boolean) -> Unit, onBack: () -> Unit) = ProfileScaffold("Location", "Choose whether saved locations appear on moments.", onBack) {
-    ProfileSectionHeading("LOCATION")
-    ProfileSwitchRow("Show location on moments", checked = showLocation, onCheckedChange = onShowLocationChange)
-    ProfileSupportingText("Turning this off hides saved locations from presentation only. Manual location entry and existing Moment data remain unchanged.")
+fun LocationScreen(showLocation: Boolean, onShowLocationChange: (Boolean) -> Unit, onBack: () -> Unit) = ProfileScaffold("Location", onBack = onBack) {
+    SettingsReferenceIllustration(SettingsIllustration.Location)
+    SettingsReferenceTitle("Show where it happened", "Add places to your moments and relive your journey on the map.")
+    SettingsReferencePanel {
+        SettingsReferenceSwitchRow(
+            "Show location on moments",
+            "Saved locations appear on moments.",
+            showLocation,
+            onShowLocationChange,
+        )
+    }
+    SettingsReferenceNotice(
+        ProfileIcons.Location,
+        "You're in control",
+        "Turning this off hides saved locations from presentation only. Manual location entry and existing Moment data remain unchanged.",
+    )
 }
 
 @Composable
-fun RediscoverNotificationsScreen(settings: ProfileSettings, permission: NotificationPermissionState, onEnabledChange: (Boolean) -> Unit, onOpenSettings: () -> Unit, onBack: () -> Unit) = ProfileScaffold("Reminders", "A gentle daily nudge to capture today, and a look back when a memory resurfaces.", onBack) {
-    ProfileSectionHeading("REMINDERS")
-    ProfileSwitchRow("Daily reminders", "No memory titles, text, media, or locations appear in notifications.", settings.rediscoverRemindersEnabled, permission != NotificationPermissionState.Unavailable, onEnabledChange)
-    if (permission == NotificationPermissionState.Denied) ProfileSettingRow("Notifications are off in system settings", "Open settings to allow reminders", onClick = onOpenSettings)
+fun RediscoverNotificationsScreen(settings: ProfileSettings, permission: NotificationPermissionState, onEnabledChange: (Boolean) -> Unit, onOpenSettings: () -> Unit, onBack: () -> Unit) = ProfileScaffold("Reminders", onBack = onBack) {
+    SettingsReferenceIllustration(SettingsIllustration.Reminder)
+    SettingsReferenceTitle("Don't let moments slip away", "A gentle daily nudge to capture today, and a look back when a memory resurfaces.")
+    SettingsReferencePanel {
+        SettingsReferenceSwitchRow(
+            "Daily reminders",
+            "Get a friendly reminder to capture your day.",
+            settings.rediscoverRemindersEnabled,
+            onEnabledChange,
+            permission != NotificationPermissionState.Unavailable,
+        )
+        if (permission == NotificationPermissionState.Denied) {
+            SettingsReferenceDivider()
+            SettingsReferenceActionRow("Notifications are off", "Open system settings to allow reminders", onOpenSettings)
+        }
+    }
+    SettingsReferenceNotice(
+        ProfileIcons.Notifications,
+        "Your privacy matters",
+        "No memory titles, text, media, or locations appear in notifications.",
+    )
 }
 
 @Composable
 fun PrivacySecurityScreen(settings: ProfileSettings, deviceAuthAvailable: Boolean, biometricsAvailable: Boolean, biometricExplanation: String?, onAppLockChange: (Boolean) -> Unit, onBiometricsChange: (Boolean) -> Unit, onLockAfterChange: (LockAfter) -> Unit, onBack: () -> Unit) {
     var selectTimeout by remember { mutableStateOf(false) }
-    ProfileScaffold("Privacy & Security", "Protect access to your private archive.", onBack) {
-        ProfileSectionHeading("APP LOCK")
-        ProfileSwitchRow("App Lock", if (deviceAuthAvailable) "Require device authentication when Relive locks." else "Set a secure device lock to use App Lock.", settings.appLockEnabled, deviceAuthAvailable, onAppLockChange)
-        ProfileDivider()
-        ProfileSwitchRow("Biometric Unlock", biometricExplanation, settings.biometricUnlockEnabled, settings.appLockEnabled && biometricsAvailable, onBiometricsChange)
-        ProfileDivider()
-        ProfileSettingRow("Lock after", settings.lockAfter.label, enabled = settings.appLockEnabled, onClick = { selectTimeout = true })
-        ProfileSectionHeading("YOUR DATA")
-        ProfileSupportingText("Your Relive archive is stored locally on this device.")
-        ProfileSupportingText("Location is stored with a Moment only when you add it.")
-        ProfileSupportingText("Backup is managed separately through Backup & Restore.")
+    ProfileScaffold("Privacy & Security", onBack = onBack) {
+        SettingsReferenceIllustration(SettingsIllustration.Privacy)
+        SettingsReferenceTitle("Your memories, your space", "Keep your archive private and secure.")
+        SettingsReferenceSectionLabel("APP LOCK")
+        SettingsReferencePanel {
+            SettingsReferenceSwitchRow("App Lock", if (deviceAuthAvailable) "Require device authentication when Relive locks." else "Set a secure device lock to use App Lock.", settings.appLockEnabled, onAppLockChange, deviceAuthAvailable, SettingsOptionIcon.Lock)
+            SettingsReferenceDivider()
+            SettingsReferenceSwitchRow("Biometric Unlock", biometricExplanation ?: "Use your fingerprint or face ID to open the app.", settings.biometricUnlockEnabled, onBiometricsChange, settings.appLockEnabled && biometricsAvailable, SettingsOptionIcon.Fingerprint)
+            SettingsReferenceDivider()
+            SettingsReferenceActionRow("Lock after", settings.lockAfter.label, { selectTimeout = true }, settings.appLockEnabled, SettingsOptionIcon.Clock)
+        }
+        SettingsReferenceSectionLabel("YOUR DATA")
+        SettingsReferencePanel {
+            SettingsReferenceStaticRow("Stored on this device", "Your Relive archive is stored locally on this device.", SettingsOptionIcon.Phone)
+            SettingsReferenceDivider()
+            SettingsReferenceStaticRow("Location privacy", "Location is stored with a Moment only when you add it.", SettingsOptionIcon.Location)
+            SettingsReferenceDivider()
+            SettingsReferenceStaticRow("Backups", "Backup is managed separately through Backup & Restore.", SettingsOptionIcon.Cloud)
+        }
+        SettingsReferenceNotice(ProfileIcons.Security, "You're in control", "Relive is local-first, never a social profile, and is never used for advertising.")
     }
     if (selectTimeout) ProfileSelectionDialog("Lock Relive", LockAfter.entries.map { it.label }, settings.lockAfter.label, { selectTimeout = false }) { label -> onLockAfterChange(LockAfter.entries.first { it.label == label }); selectTimeout = false }
+}
+
+private enum class SettingsIllustration { Reminder, Location, Privacy }
+
+private enum class SettingsOptionIcon { Lock, Fingerprint, Clock, Phone, Location, Cloud }
+
+@Composable
+private fun SettingsReferenceIllustration(kind: SettingsIllustration) {
+    val colors = ReliveTheme.colors
+    Canvas(
+        Modifier
+            .fillMaxWidth()
+            .height(142.dp)
+            .padding(horizontal = ReliveTheme.dimensions.spacing.xxl),
+    ) {
+        when (kind) {
+            SettingsIllustration.Reminder -> drawReminderHero(colors)
+            SettingsIllustration.Location -> drawLocationHero(colors)
+            SettingsIllustration.Privacy -> drawPrivacyHero(colors)
+        }
+    }
+}
+
+private fun DrawScope.drawReminderHero(colors: ReliveColors) {
+    val ink = colors.accentMuted
+    val page = colors.surfaceCard
+    drawOval(colors.tint.copy(alpha = .86f), Offset(size.width * .20f, size.height * .10f), Size(size.width * .42f, size.height * .57f))
+    drawOval(colors.accent.copy(alpha = .10f), Offset(size.width * .31f, size.height * .65f), Size(size.width * .48f, size.height * .17f))
+    val back = Path().apply {
+        moveTo(size.width * .36f, size.height * .38f)
+        lineTo(size.width * .31f, size.height * .75f)
+        lineTo(size.width * .46f, size.height * .78f)
+        lineTo(size.width * .43f, size.height * .37f)
+        close()
+    }
+    drawPath(back, ink.copy(alpha = .72f))
+    rotate(-5f, Offset(size.width * .52f, size.height * .51f)) {
+        drawRoundRect(
+            page,
+            Offset(size.width * .37f, size.height * .31f),
+            Size(size.width * .35f, size.height * .43f),
+            CornerRadius(7.dp.toPx()),
+        )
+        drawLine(
+            ink.copy(alpha = .55f),
+            Offset(size.width * .37f, size.height * .40f),
+            Offset(size.width * .71f, size.height * .40f),
+            1.dp.toPx(),
+        )
+        repeat(5) { index ->
+            val x = size.width * (.405f + index * .061f)
+            drawArc(
+                ink,
+                180f,
+                180f,
+                false,
+                Offset(x - 4.dp.toPx(), size.height * .275f),
+                Size(8.dp.toPx(), 15.dp.toPx()),
+                style = Stroke(1.7.dp.toPx(), cap = StrokeCap.Round),
+            )
+            drawLine(
+                ink,
+                Offset(x + 4.dp.toPx(), size.height * .325f),
+                Offset(x + 4.dp.toPx(), size.height * .36f),
+                1.7.dp.toPx(),
+                StrokeCap.Round,
+            )
+        }
+        val bell = Path().apply {
+            moveTo(size.width * .495f, size.height * .60f)
+            quadraticTo(size.width * .515f, size.height * .56f, size.width * .515f, size.height * .50f)
+            quadraticTo(size.width * .515f, size.height * .445f, size.width * .55f, size.height * .435f)
+            quadraticTo(size.width * .585f, size.height * .445f, size.width * .585f, size.height * .50f)
+            quadraticTo(size.width * .585f, size.height * .56f, size.width * .605f, size.height * .60f)
+            close()
+        }
+        drawPath(bell, ink.copy(alpha = .82f))
+        drawCircle(ink.copy(alpha = .82f), 2.dp.toPx(), Offset(size.width * .55f, size.height * .425f))
+        drawCircle(ink, 2.4.dp.toPx(), Offset(size.width * .55f, size.height * .625f))
+    }
+    drawLine(ink, Offset(size.width * .72f, size.height * .28f), Offset(size.width * .75f, size.height * .18f), 2.dp.toPx(), StrokeCap.Round)
+    drawLine(ink, Offset(size.width * .76f, size.height * .36f), Offset(size.width * .82f, size.height * .31f), 2.dp.toPx(), StrokeCap.Round)
+    drawLine(ink, Offset(size.width * .77f, size.height * .45f), Offset(size.width * .84f, size.height * .45f), 2.dp.toPx(), StrokeCap.Round)
+}
+
+private fun DrawScope.drawLocationHero(colors: ReliveColors) {
+    val ink = colors.accentMuted
+    val haze = Path().apply {
+        moveTo(size.width * .22f, size.height * .57f)
+        quadraticTo(size.width * .18f, size.height * .32f, size.width * .35f, size.height * .29f)
+        quadraticTo(size.width * .47f, size.height * .27f, size.width * .51f, size.height * .17f)
+        quadraticTo(size.width * .66f, size.height * .08f, size.width * .76f, size.height * .31f)
+        quadraticTo(size.width * .86f, size.height * .53f, size.width * .72f, size.height * .69f)
+        close()
+    }
+    drawPath(haze, colors.tint.copy(alpha = .82f))
+    val map = Path().apply {
+        moveTo(size.width * .14f, size.height * .63f)
+        lineTo(size.width * .36f, size.height * .42f)
+        lineTo(size.width * .55f, size.height * .53f)
+        lineTo(size.width * .74f, size.height * .38f)
+        lineTo(size.width * .86f, size.height * .61f)
+        lineTo(size.width * .66f, size.height * .82f)
+        lineTo(size.width * .46f, size.height * .72f)
+        lineTo(size.width * .28f, size.height * .83f)
+        close()
+    }
+    drawPath(map, ink.copy(alpha = .42f))
+    drawPath(
+        Path().apply {
+            moveTo(size.width * .36f, size.height * .42f)
+            lineTo(size.width * .46f, size.height * .72f)
+            lineTo(size.width * .55f, size.height * .53f)
+            close()
+        },
+        colors.surfaceCard.copy(alpha = .76f),
+    )
+    drawPath(
+        Path().apply {
+            moveTo(size.width * .55f, size.height * .53f)
+            lineTo(size.width * .66f, size.height * .82f)
+            lineTo(size.width * .86f, size.height * .61f)
+            lineTo(size.width * .74f, size.height * .38f)
+            close()
+        },
+        colors.tint.copy(alpha = .92f),
+    )
+    val road = colors.surfaceCard.copy(alpha = .93f)
+    drawLine(road, Offset(size.width * .20f, size.height * .68f), Offset(size.width * .63f, size.height * .47f), 5.dp.toPx())
+    drawLine(road, Offset(size.width * .34f, size.height * .79f), Offset(size.width * .69f, size.height * .49f), 4.dp.toPx())
+    drawLine(road, Offset(size.width * .56f, size.height * .55f), Offset(size.width * .72f, size.height * .77f), 4.dp.toPx())
+    drawMapTree(Offset(size.width * .27f, size.height * .56f), ink)
+    drawMapTree(Offset(size.width * .76f, size.height * .48f), ink.copy(alpha = .92f), 1.15f)
+    val pinCenter = Offset(size.width * .51f, size.height * .22f)
+    val pin = Path().apply {
+        moveTo(pinCenter.x, size.height * .48f)
+        cubicTo(size.width * .43f, size.height * .35f, size.width * .43f, size.height * .12f, pinCenter.x, size.height * .12f)
+        cubicTo(size.width * .59f, size.height * .12f, size.width * .59f, size.height * .35f, pinCenter.x, size.height * .48f)
+        close()
+    }
+    drawPath(pin, ink)
+    drawCircle(colors.surfaceCard, 7.dp.toPx(), pinCenter)
+}
+
+private fun DrawScope.drawMapTree(center: Offset, color: androidx.compose.ui.graphics.Color, scale: Float = 1f) {
+    drawLine(color, center, Offset(center.x, center.y + 25.dp.toPx() * scale), 2.dp.toPx(), StrokeCap.Round)
+    drawPath(
+        Path().apply {
+            moveTo(center.x, center.y - 18.dp.toPx() * scale)
+            lineTo(center.x - 9.dp.toPx() * scale, center.y + 11.dp.toPx() * scale)
+            lineTo(center.x + 9.dp.toPx() * scale, center.y + 11.dp.toPx() * scale)
+            close()
+        },
+        color,
+    )
+    drawPath(
+        Path().apply {
+            moveTo(center.x, center.y - 10.dp.toPx() * scale)
+            lineTo(center.x - 12.dp.toPx() * scale, center.y + 17.dp.toPx() * scale)
+            lineTo(center.x + 12.dp.toPx() * scale, center.y + 17.dp.toPx() * scale)
+            close()
+        },
+        color.copy(alpha = .50f),
+    )
+}
+
+private fun DrawScope.drawPrivacyHero(colors: ReliveColors) {
+    val ink = colors.accentMuted
+    drawOval(colors.tint.copy(alpha = .82f), Offset(size.width * .20f, size.height * .13f), Size(size.width * .47f, size.height * .63f))
+    drawOval(colors.accent.copy(alpha = .08f), Offset(size.width * .29f, size.height * .57f), Size(size.width * .49f, size.height * .21f))
+    drawLeaf(Offset(size.width * .66f, size.height * .43f), Size(size.width * .18f, size.height * .28f), -17f, ink.copy(alpha = .28f))
+    drawLeaf(Offset(size.width * .65f, size.height * .58f), Size(size.width * .21f, size.height * .23f), 15f, ink.copy(alpha = .43f))
+    drawLeaf(Offset(size.width * .57f, size.height * .64f), Size(size.width * .16f, size.height * .18f), 43f, ink.copy(alpha = .22f))
+    val lockCenter = Offset(size.width * .49f, size.height * .46f)
+    rotate(-5f, lockCenter) {
+        val centerX = lockCenter.x
+        val bodyTop = size.height * .36f
+        drawArc(
+            ink,
+            180f,
+            180f,
+            false,
+            Offset(centerX - 20.dp.toPx(), size.height * .12f),
+            Size(40.dp.toPx(), 50.dp.toPx()),
+            style = Stroke(7.dp.toPx(), cap = StrokeCap.Round),
+        )
+        drawRoundRect(
+            ink.copy(alpha = .27f),
+            Offset(centerX - 31.dp.toPx(), bodyTop - 4.dp.toPx()),
+            Size(62.dp.toPx(), 60.dp.toPx()),
+            CornerRadius(9.dp.toPx()),
+        )
+        drawRoundRect(
+            ink.copy(alpha = .66f),
+            Offset(centerX - 25.dp.toPx(), bodyTop),
+            Size(50.dp.toPx(), 52.dp.toPx()),
+            CornerRadius(8.dp.toPx()),
+        )
+        val innerShield = Path().apply {
+            moveTo(centerX - 18.dp.toPx(), bodyTop + 8.dp.toPx())
+            quadraticTo(centerX, bodyTop + 3.dp.toPx(), centerX + 18.dp.toPx(), bodyTop + 8.dp.toPx())
+            lineTo(centerX + 15.dp.toPx(), bodyTop + 29.dp.toPx())
+            quadraticTo(centerX, bodyTop + 45.dp.toPx(), centerX - 15.dp.toPx(), bodyTop + 29.dp.toPx())
+            close()
+        }
+        drawPath(innerShield, colors.surfaceCard.copy(alpha = .22f))
+        drawPath(innerShield, ink.copy(alpha = .55f), style = Stroke(1.2.dp.toPx()))
+        drawCircle(colors.textPrimary.copy(alpha = .55f), 7.dp.toPx(), Offset(centerX, bodyTop + 22.dp.toPx()))
+        drawPath(
+            Path().apply {
+                moveTo(centerX - 3.dp.toPx(), bodyTop + 26.dp.toPx())
+                lineTo(centerX - 5.dp.toPx(), bodyTop + 37.dp.toPx())
+                lineTo(centerX + 5.dp.toPx(), bodyTop + 37.dp.toPx())
+                lineTo(centerX + 3.dp.toPx(), bodyTop + 26.dp.toPx())
+                close()
+            },
+            colors.textPrimary.copy(alpha = .55f),
+        )
+    }
+}
+
+private fun DrawScope.drawLeaf(center: Offset, leafSize: Size, rotation: Float, color: androidx.compose.ui.graphics.Color) {
+    rotate(rotation, center) {
+        val leaf = Path().apply {
+            moveTo(center.x - leafSize.width / 2f, center.y)
+            quadraticTo(center.x, center.y - leafSize.height / 2f, center.x + leafSize.width / 2f, center.y)
+            quadraticTo(center.x, center.y + leafSize.height / 2f, center.x - leafSize.width / 2f, center.y)
+            close()
+        }
+        drawPath(leaf, color)
+        drawLine(
+            color = color.copy(alpha = .8f),
+            start = Offset(center.x - leafSize.width * .35f, center.y),
+            end = Offset(center.x + leafSize.width * .35f, center.y),
+            strokeWidth = 1.dp.toPx(),
+        )
+    }
+}
+
+@Composable
+private fun SettingsReferenceTitle(title: String, body: String) {
+    val d = ReliveTheme.dimensions
+    Column(Modifier.fillMaxWidth().padding(horizontal = d.spacing.xl), horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(title, color = ReliveTheme.colors.textPrimary, style = ReliveTheme.typography.title, textAlign = TextAlign.Center)
+        Text(body, modifier = Modifier.padding(top = d.spacing.xs), color = ReliveTheme.colors.textSecondary, style = ReliveTheme.typography.caption, textAlign = TextAlign.Center)
+    }
+}
+
+@Composable
+private fun SettingsReferenceSectionLabel(label: String) = Text(label, Modifier.fillMaxWidth().padding(start = ReliveTheme.dimensions.spacing.xl, top = ReliveTheme.dimensions.spacing.xl, bottom = ReliveTheme.dimensions.spacing.sm), color = ReliveTheme.colors.accentMuted, style = ReliveTheme.typography.eyebrow)
+
+@Composable
+private fun SettingsReferencePanel(content: @Composable ColumnScope.() -> Unit) = Column(Modifier.fillMaxWidth().padding(horizontal = ReliveTheme.dimensions.spacing.lg, vertical = ReliveTheme.dimensions.spacing.xl).clip(RoundedCornerShape(ReliveTheme.dimensions.radii.largeIncreased)).background(ReliveTheme.colors.surfaceCard).border(ReliveTheme.dimensions.stroke.hairline, ReliveTheme.colors.borderMuted, RoundedCornerShape(ReliveTheme.dimensions.radii.largeIncreased)), content = content)
+
+@Composable
+private fun SettingsReferenceSwitchRow(label: String, supporting: String?, checked: Boolean, onCheckedChange: (Boolean) -> Unit, enabled: Boolean = true, icon: SettingsOptionIcon? = null) {
+    val d = ReliveTheme.dimensions
+    Row(Modifier.fillMaxWidth().heightIn(min = d.minTouchTarget).toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange).padding(horizontal = d.spacing.md, vertical = d.spacing.sm).semantics(mergeDescendants = true) { contentDescription = "$label, ${if (checked) "on" else "off"}" }, verticalAlignment = Alignment.CenterVertically) {
+        icon?.let { SettingsOptionIcon(it, enabled); Spacer(Modifier.width(d.spacing.sm)) }
+        Column(Modifier.weight(1f)) { Text(label, color = if (enabled) ReliveTheme.colors.textPrimary else ReliveTheme.colors.textMuted, style = ReliveTheme.typography.action); supporting?.let { Text(it, color = ReliveTheme.colors.textSecondary, style = ReliveTheme.typography.tag) } }
+        androidx.compose.material3.Switch(checked, null, enabled = enabled)
+    }
+}
+
+@Composable
+private fun SettingsReferenceActionRow(label: String, supporting: String?, onClick: () -> Unit, enabled: Boolean = true, icon: SettingsOptionIcon? = null) = SettingsReferenceStaticRow(label, supporting, icon, enabled, onClick)
+
+@Composable
+private fun SettingsReferenceStaticRow(label: String, supporting: String?, icon: SettingsOptionIcon? = null, enabled: Boolean = true, onClick: (() -> Unit)? = null, showChevron: Boolean = onClick != null) {
+    val d = ReliveTheme.dimensions
+    Row(Modifier.fillMaxWidth().heightIn(min = d.minTouchTarget).then(if (onClick != null && enabled) Modifier.clickable(onClick = onClick) else Modifier).padding(horizontal = d.spacing.md, vertical = d.spacing.sm), verticalAlignment = Alignment.CenterVertically) {
+        icon?.let { SettingsOptionIcon(it, enabled); Spacer(Modifier.width(d.spacing.sm)) }
+        Column(Modifier.weight(1f)) { Text(label, color = if (enabled) ReliveTheme.colors.textPrimary else ReliveTheme.colors.textMuted, style = ReliveTheme.typography.action); supporting?.let { Text(it, color = ReliveTheme.colors.textSecondary, style = ReliveTheme.typography.tag) } }
+        if (showChevron && enabled) SettingsChevron()
+    }
+}
+
+@Composable
+private fun SettingsOptionIcon(icon: SettingsOptionIcon, enabled: Boolean) {
+    val d = ReliveTheme.dimensions
+    val colors = ReliveTheme.colors
+    val glyph = if (enabled) colors.accentMuted else colors.textMuted
+    val tile = when (icon) {
+        SettingsOptionIcon.Cloud -> colors.spark.copy(alpha = .10f)
+        SettingsOptionIcon.Fingerprint -> colors.accent.copy(alpha = .08f)
+        else -> colors.tint.copy(alpha = .70f)
+    }
+    Box(
+        Modifier.size(36.dp).clip(RoundedCornerShape(d.radii.medium)).background(tile),
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(Modifier.size(21.dp)) {
+            val stroke = 1.5.dp.toPx()
+            val outline = Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            when (icon) {
+                SettingsOptionIcon.Lock -> {
+                    drawArc(glyph, 180f, 180f, false, Offset(size.width * .25f, size.height * .04f), Size(size.width * .50f, size.height * .58f), style = outline)
+                    drawRoundRect(glyph, Offset(size.width * .18f, size.height * .39f), Size(size.width * .64f, size.height * .54f), CornerRadius(2.5.dp.toPx()), style = outline)
+                    drawCircle(glyph, 1.5.dp.toPx(), Offset(size.width * .50f, size.height * .65f))
+                }
+                SettingsOptionIcon.Fingerprint -> {
+                    drawArc(glyph, 205f, 225f, false, Offset(size.width * .16f, size.height * .13f), Size(size.width * .68f, size.height * .76f), style = outline)
+                    drawArc(glyph, 205f, 225f, false, Offset(size.width * .27f, size.height * .24f), Size(size.width * .46f, size.height * .58f), style = outline)
+                    drawArc(glyph, 205f, 190f, false, Offset(size.width * .38f, size.height * .35f), Size(size.width * .24f, size.height * .37f), style = outline)
+                    drawArc(glyph, 135f, 90f, false, Offset(size.width * .08f, size.height * .28f), Size(size.width * .84f, size.height * .70f), style = outline)
+                }
+                SettingsOptionIcon.Clock -> {
+                    drawCircle(glyph, size.minDimension * .38f, center, style = outline)
+                    drawLine(glyph, center, Offset(center.x, size.height * .27f), stroke, StrokeCap.Round)
+                    drawLine(glyph, center, Offset(size.width * .68f, size.height * .57f), stroke, StrokeCap.Round)
+                }
+                SettingsOptionIcon.Phone -> {
+                    drawRoundRect(glyph, Offset(size.width * .25f, size.height * .05f), Size(size.width * .50f, size.height * .90f), CornerRadius(2.5.dp.toPx()), style = outline)
+                    drawLine(glyph, Offset(size.width * .34f, size.height * .18f), Offset(size.width * .66f, size.height * .18f), stroke * .75f, StrokeCap.Round)
+                    drawCircle(glyph, 1.2.dp.toPx(), Offset(center.x, size.height * .82f))
+                }
+                SettingsOptionIcon.Location -> {
+                    val pin = Path().apply {
+                        moveTo(center.x, size.height * .95f)
+                        cubicTo(size.width * .33f, size.height * .72f, size.width * .21f, size.height * .46f, size.width * .21f, size.height * .34f)
+                        cubicTo(size.width * .21f, size.height * .02f, size.width * .79f, size.height * .02f, size.width * .79f, size.height * .34f)
+                        cubicTo(size.width * .79f, size.height * .48f, size.width * .67f, size.height * .72f, center.x, size.height * .95f)
+                    }
+                    drawPath(pin, glyph, style = outline)
+                    drawCircle(glyph, size.width * .10f, Offset(center.x, size.height * .34f), style = Stroke(stroke))
+                }
+                SettingsOptionIcon.Cloud -> {
+                    val cloud = Path().apply {
+                        moveTo(size.width * .24f, size.height * .77f)
+                        cubicTo(size.width * .04f, size.height * .77f, size.width * .04f, size.height * .44f, size.width * .27f, size.height * .42f)
+                        cubicTo(size.width * .34f, size.height * .10f, size.width * .72f, size.height * .12f, size.width * .77f, size.height * .43f)
+                        cubicTo(size.width * .98f, size.height * .46f, size.width * .96f, size.height * .77f, size.width * .76f, size.height * .77f)
+                        close()
+                    }
+                    drawPath(cloud, glyph, style = outline)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsChevron() {
+    val d = ReliveTheme.dimensions
+    val color = ReliveTheme.colors.textSecondary
+    Canvas(Modifier.size(d.icon.sm)) {
+        val stroke = d.stroke.icon.toPx()
+        drawLine(color, Offset(size.width * .34f, size.height * .18f), Offset(size.width * .70f, size.height * .50f), stroke, StrokeCap.Round)
+        drawLine(color, Offset(size.width * .70f, size.height * .50f), Offset(size.width * .34f, size.height * .82f), stroke, StrokeCap.Round)
+    }
+}
+
+@Composable
+private fun SettingsReferenceDivider() = HorizontalDivider(Modifier.padding(start = ReliveTheme.dimensions.spacing.md), ReliveTheme.dimensions.stroke.hairline, ReliveTheme.colors.borderMuted)
+
+@Composable
+private fun SettingsReferenceNotice(icon: ImageVector, title: String, body: String) {
+    val d = ReliveTheme.dimensions
+    Row(Modifier.fillMaxWidth().padding(horizontal = d.spacing.lg).clip(RoundedCornerShape(d.radii.large)).background(ReliveTheme.colors.tint.copy(alpha = .65f)).padding(d.spacing.lg), horizontalArrangement = Arrangement.spacedBy(d.spacing.md), verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, Modifier.size(d.icon.lg), ReliveTheme.colors.accentMuted)
+        Column(Modifier.weight(1f)) { Text(title, color = ReliveTheme.colors.textPrimary, style = ReliveTheme.typography.action); Text(body, color = ReliveTheme.colors.textSecondary, style = ReliveTheme.typography.tag) }
+    }
 }
 
 internal enum class HelpTopic(val title: String, val copy: String) {
@@ -228,6 +636,7 @@ fun AboutReliveScreen(legalLinks: ReliveLegalLinks, onOpenLicenses: () -> Unit, 
                 enabled = legalLinks.privacyPolicyUrl.isNotBlank(),
                 icon = ProfileIcons.Export,
                 onClick = if (legalLinks.privacyPolicyUrl.isNotBlank()) ({ uriHandler.openUri(legalLinks.privacyPolicyUrl) }) else null,
+                trailingChevron = true,
             )
             ProfileDivider()
             ProfileSettingRow(
@@ -236,9 +645,10 @@ fun AboutReliveScreen(legalLinks: ReliveLegalLinks, onOpenLicenses: () -> Unit, 
                 enabled = legalLinks.termsOfServiceUrl.isNotBlank(),
                 icon = ProfileIcons.Export,
                 onClick = if (legalLinks.termsOfServiceUrl.isNotBlank()) ({ uriHandler.openUri(legalLinks.termsOfServiceUrl) }) else null,
+                trailingChevron = true,
             )
             ProfileDivider()
-            ProfileSettingRow("Open-source licenses", icon = ProfileIcons.Archive, onClick = onOpenLicenses)
+            ProfileSettingRow("Open-source licenses", icon = ProfileIcons.Archive, onClick = onOpenLicenses, trailingChevron = true)
         }
         AboutClosingNote()
     }

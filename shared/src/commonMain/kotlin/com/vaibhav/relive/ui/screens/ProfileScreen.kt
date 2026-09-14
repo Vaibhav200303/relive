@@ -62,7 +62,7 @@ import com.vaibhav.relive.presentation.settings.AppearanceViewModel
 import com.vaibhav.relive.ui.components.settings.AppearanceModeControl
 import com.vaibhav.relive.ui.components.settings.RelivePalettePicker
 import com.vaibhav.relive.ui.components.timeline.BackGlyph
-import com.vaibhav.relive.ui.components.timeline.ForwardGlyph
+import com.vaibhav.relive.ui.components.profile.ProfileChevronGlyph
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.theme.canvasBrush
 import com.vaibhav.relive.platform.media.MediaStore
@@ -461,7 +461,7 @@ private fun ProfileProCard(isPro: Boolean, onClick: () -> Unit) {
                 color = colors.textSecondary,
             )
         }
-        ForwardGlyph(dims.icon.sm, colors.textMuted, dims.stroke.icon)
+        ProfileChevronGlyph()
     }
 }
 
@@ -561,6 +561,6 @@ private fun ProfileSettingRow(
             Text(label, style = ReliveTheme.typography.body, color = ReliveTheme.colors.textPrimary)
             supporting?.let { Text(it, style = ReliveTheme.typography.tag, color = ReliveTheme.colors.textMuted) }
         }
-        ForwardGlyph(dims.icon.sm, ReliveTheme.colors.textMuted, dims.stroke.icon)
+        ProfileChevronGlyph()
     }
 }

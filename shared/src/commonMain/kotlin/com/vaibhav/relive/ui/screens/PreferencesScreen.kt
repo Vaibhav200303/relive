@@ -1,6 +1,7 @@
 package com.vaibhav.relive.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,6 +19,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import com.vaibhav.relive.ui.components.ReliveAlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
@@ -37,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -92,37 +96,23 @@ fun PreferencesScreen(
                     ),
                 )
                 PreferenceSectionHeading("GENERAL")
-                PreferenceSwitchRow(
-                    label = "Confirm before discarding",
-                    checked = preferences.confirmBeforeDiscarding,
-                    onCheckedChange = viewModel::setConfirmBeforeDiscarding,
-                )
+                PreferencePanel {
+                    PreferenceSwitchRow("Confirm before discarding", "Show a reminder before permanently deleting a moment.", preferences.confirmBeforeDiscarding, viewModel::setConfirmBeforeDiscarding)
+                }
 
                 PreferenceSectionHeading("TIMELINE")
-                PreferenceSwitchRow(
-                    label = "Show locations",
-                    checked = preferences.showLocations,
-                    onCheckedChange = viewModel::setShowLocations,
-                )
-                PreferenceDivider()
-                PreferenceSwitchRow(
-                    label = "Show tags",
-                    checked = preferences.showTags,
-                    onCheckedChange = viewModel::setShowTags,
-                )
+                PreferencePanel {
+                    PreferenceSwitchRow("Show locations", "Display saved locations on moments.", preferences.showLocations, viewModel::setShowLocations)
+                    PreferenceDivider()
+                    PreferenceSwitchRow("Show tags", "Display tags on moments.", preferences.showTags, viewModel::setShowTags)
+                }
 
                 PreferenceSectionHeading("REDISCOVER")
-                PreferenceSwitchRow(
-                    label = "On This Day",
-                    checked = preferences.showOnThisDay,
-                    onCheckedChange = viewModel::setShowOnThisDay,
-                )
-                PreferenceDivider()
-                PreferenceSwitchRow(
-                    label = "Favorites",
-                    checked = preferences.showFavorites,
-                    onCheckedChange = viewModel::setShowFavorites,
-                )
+                PreferencePanel {
+                    PreferenceSwitchRow("On This Day", "Show memories from the same date in previous years.", preferences.showOnThisDay, viewModel::setShowOnThisDay)
+                    PreferenceDivider()
+                    PreferenceSwitchRow("Favorites", "Show favorites in Rediscover.", preferences.showFavorites, viewModel::setShowFavorites)
+                }
             }
         }
         ReliveSnackbarHost(
@@ -166,6 +156,7 @@ private fun PreferenceSectionHeading(label: String) {
 @Composable
 private fun PreferenceSwitchRow(
     label: String,
+    supporting: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
@@ -189,12 +180,10 @@ private fun PreferenceSwitchRow(
             .semantics(mergeDescendants = true) {},
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = label,
-            style = ReliveTheme.typography.body,
-            color = ReliveTheme.colors.textPrimary,
-            modifier = Modifier.weight(1f),
-        )
+        Column(Modifier.weight(1f)) {
+            Text(text = label, style = ReliveTheme.typography.action, color = ReliveTheme.colors.textPrimary)
+            Text(text = supporting, style = ReliveTheme.typography.tag, color = ReliveTheme.colors.textSecondary)
+        }
         Switch(checked = checked, onCheckedChange = null)
     }
 }
@@ -202,8 +191,23 @@ private fun PreferenceSwitchRow(
 @Composable
 private fun PreferenceDivider() {
     HorizontalDivider(
-        modifier = Modifier.padding(horizontal = ReliveTheme.dimensions.spacing.xl),
+        modifier = Modifier.padding(start = ReliveTheme.dimensions.spacing.md),
         thickness = ReliveTheme.dimensions.stroke.hairline,
         color = ReliveTheme.colors.borderMuted,
+    )
+}
+
+@Composable
+private fun PreferencePanel(content: @Composable ColumnScope.() -> Unit) {
+    val d = ReliveTheme.dimensions
+    val shape = RoundedCornerShape(d.radii.largeIncreased)
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = d.spacing.lg)
+            .clip(shape)
+            .background(ReliveTheme.colors.surfaceCard)
+            .border(d.stroke.hairline, ReliveTheme.colors.borderMuted, shape),
+        content = content,
     )
 }

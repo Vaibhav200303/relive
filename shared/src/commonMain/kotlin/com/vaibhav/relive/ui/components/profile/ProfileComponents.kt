@@ -1,6 +1,7 @@
 package com.vaibhav.relive.ui.components.profile
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,6 +12,8 @@ import com.vaibhav.relive.ui.components.ReliveAlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.*
 import com.vaibhav.relive.platform.system.ReliveBackHandler
@@ -62,7 +65,7 @@ fun ProfileSupportingText(text: String, modifier: Modifier = Modifier) {
 fun ProfileDivider() = HorizontalDivider(Modifier.padding(horizontal = ReliveTheme.dimensions.spacing.xl), color = ReliveTheme.colors.borderMuted, thickness = ReliveTheme.dimensions.stroke.hairline)
 
 @Composable
-fun ProfileSettingRow(label: String, supporting: String? = null, enabled: Boolean = true, icon: ImageVector? = null, onClick: (() -> Unit)? = null) {
+fun ProfileSettingRow(label: String, supporting: String? = null, enabled: Boolean = true, icon: ImageVector? = null, onClick: (() -> Unit)? = null, trailingChevron: Boolean = false) {
     val d = ReliveTheme.dimensions
     val haptics = rememberReliveHaptics()
     Row(
@@ -80,7 +83,20 @@ fun ProfileSettingRow(label: String, supporting: String? = null, enabled: Boolea
             Text(label, color = if (enabled) ReliveTheme.colors.textPrimary else ReliveTheme.colors.textMuted, style = ReliveTheme.typography.body)
             supporting?.let { Text(it, color = ReliveTheme.colors.textMuted, style = ReliveTheme.typography.tag) }
         }
-        if (enabled && onClick != null) ForwardGlyph(d.icon.sm, ReliveTheme.colors.textMuted, d.stroke.icon)
+        if (enabled && onClick != null) {
+            if (trailingChevron) ProfileChevronGlyph() else ForwardGlyph(d.icon.sm, ReliveTheme.colors.textMuted, d.stroke.icon)
+        }
+    }
+}
+
+@Composable
+fun ProfileChevronGlyph(modifier: Modifier = Modifier) {
+    val d = ReliveTheme.dimensions
+    val color = ReliveTheme.colors.textMuted
+    Canvas(modifier.size(d.icon.sm)) {
+        val stroke = d.stroke.icon.toPx()
+        drawLine(color, Offset(size.width * .34f, size.height * .18f), Offset(size.width * .70f, size.height * .50f), stroke, StrokeCap.Round)
+        drawLine(color, Offset(size.width * .70f, size.height * .50f), Offset(size.width * .34f, size.height * .82f), stroke, StrokeCap.Round)
     }
 }
 
