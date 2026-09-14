@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,6 +36,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vaibhav.relive.domain.entitlement.ReliveLegalLinks
@@ -45,10 +48,13 @@ import com.vaibhav.relive.platform.system.platformAppInfo
 import com.vaibhav.relive.platform.system.platformMailComposer
 import com.vaibhav.relive.platform.system.PlatformAppInfo
 import com.vaibhav.relive.ui.components.profile.*
+import com.vaibhav.relive.ui.components.timeline.BackGlyph
 import com.vaibhav.relive.ui.icons.ProfileIcons
 import com.vaibhav.relive.ui.theme.ReliveColors
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import com.vaibhav.relive.ui.theme.canvasBrush
 import com.vaibhav.relive.ui.theme.rememberReliveHandwritingFamily
+import com.vaibhav.relive.platform.system.ReliveBackHandler
 
 @Composable
 fun LocationScreen(showLocation: Boolean, onShowLocationChange: (Boolean) -> Unit, onBack: () -> Unit) = ProfileScaffold("Location", onBack = onBack) {
@@ -527,14 +533,54 @@ private fun SettingsReferenceNotice(icon: ImageVector, title: String, body: Stri
     }
 }
 
-internal enum class HelpTopic(val title: String, val copy: String) {
-    CreatingMoments("Create a Moment", "Tap New, add a title or note, and keep it when it feels complete. A Moment can be text-only or include media."),
-    AddingMedia("Add photos, video, or voice", "Open Add Media in the composer to attach photos, videos, or a voice recording. You can remove any attachment before keeping the Moment."),
-    OrganizingTimelines("Organize timelines", "Custom timelines gather related Moments into chapters. Every Moment still remains safely in your All moments archive."),
-    FindingMemories("Find a memory", "Search saved titles and writing, browse a timeline by date, or return to Favourites, On This Day, From Your Past, and All Photos."),
-    BackupRestore("Backup & restore", "Backup and restore are separate from your local archive. Connect Google Drive from Backup & Restore when it is available to your plan."),
-    PrivacySecurity("Privacy & App Lock", "Your archive stays on this device. Add App Lock in Privacy & Security to require your device authentication before opening Relive."),
-    RelivePro("Relive Pro", "Relive Pro unlocks automatic backup, more timelines, and additional appearances. Use Restore purchases after reinstalling or changing devices."),
+internal enum class HelpTopic(
+    val title: String,
+    val summary: String,
+    val copy: String,
+    val icon: ImageVector,
+) {
+    CreatingMoments(
+        "Create a Moment",
+        "Capture your thoughts, photos, and more",
+        "Tap New, add a title or note, and keep it when it feels complete. A Moment can be text-only or include media.",
+        ProfileIcons.Plus,
+    ),
+    AddingMedia(
+        "Add Media",
+        "Photos, videos or voice notes",
+        "Open Add Media in the composer to attach photos, videos, or a voice recording. You can remove any attachment before keeping the Moment.",
+        ProfileIcons.Media,
+    ),
+    OrganizingTimelines(
+        "Organize Timelines",
+        "Create and manage your timelines",
+        "Custom timelines gather related Moments into chapters. Every Moment still remains safely in your All moments archive.",
+        ProfileIcons.Folder,
+    ),
+    FindingMemories(
+        "Find a Memory",
+        "Search, filter and rediscover",
+        "Search saved titles and writing, browse a timeline by date, or return to Favourites, On This Day, From Your Past, and All Photos.",
+        ProfileIcons.Search,
+    ),
+    BackupRestore(
+        "Backup & Restore",
+        "Keep your memories safe",
+        "Backup and restore are separate from your local archive. Connect Google Drive from Backup & Restore when it is available to your plan.",
+        ProfileIcons.CloudOutline,
+    ),
+    PrivacySecurity(
+        "Privacy & App Lock",
+        "Secure your archive",
+        "Your archive stays on this device. Add App Lock in Privacy & Security to require your device authentication before opening Relive.",
+        ProfileIcons.ShieldOutline,
+    ),
+    RelivePro(
+        "Relive Pro",
+        "Learn about premium features and benefits",
+        "Relive Pro unlocks automatic backup, more timelines, and additional appearances. Use Restore purchases after reinstalling or changing devices.",
+        ProfileIcons.Crown,
+    ),
 }
 
 @Composable
@@ -543,11 +589,13 @@ fun HelpFeedbackScreen(
     onBack: () -> Unit,
     onMessage: (String) -> Unit,
 ) {
-    var expanded by remember { mutableStateOf<HelpTopic?>(HelpTopic.CreatingMoments) }
+    var query by remember { mutableStateOf("") }
+    var expanded by remember { mutableStateOf<HelpTopic?>(null) }
     var notice by remember { mutableStateOf<String?>(null) }
     val mail = remember { platformMailComposer() }
     val info = remember { platformAppInfo() }
     val supportAvailable = supportEmail.isNotBlank()
+    val visibleTopics = filterHelpTopics(query)
     fun send(subject: String) {
         val request = supportMailRequest(subject, info, supportEmail) ?: return
         if (!mail.open(request)) {
@@ -555,48 +603,494 @@ fun HelpFeedbackScreen(
             onMessage(notice!!)
         }
     }
-    ProfileScaffold("Help & Feedback", onBack = onBack) {
-        DestinationHero(
-            eyebrow = "SUPPORT CENTER",
-            title = "How can we help?",
-            body = "Find a quick answer, learn how a feature works, or send the Relive team a note.",
-            icon = ProfileIcons.Help,
-        )
-        ProfileSectionHeading("QUICK ANSWERS")
-        HelpTopic.entries.forEach { topic ->
-            ProfileSettingRow(
-                topic.title,
-                if (expanded == topic) topic.copy else null,
-                onClick = { expanded = if (expanded == topic) null else topic },
-            )
-            if (topic != HelpTopic.entries.last()) ProfileDivider()
+    val d = ReliveTheme.dimensions
+    ReliveBackHandler(true, onBack)
+    Column(Modifier.fillMaxSize().background(ReliveTheme.colors.canvasBrush())) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(start = d.spacing.md, top = d.spacing.xs),
+        ) {
+            androidx.compose.material3.IconButton(
+                onClick = onBack,
+                modifier = Modifier.size(d.minTouchTarget).semantics { contentDescription = "Back to Profile" },
+            ) {
+                BackGlyph(d.icon.lg, ReliveTheme.colors.textSecondary, d.stroke.icon)
+            }
         }
-        ProfileSectionHeading("CONTACT SUPPORT")
-        if (supportAvailable) {
-            ProfileSettingRow(
-                "Email support",
-                supportEmail,
-                onClick = { send("Relive support request") },
-            )
-        } else {
-            ProfileSupportingText("Support email is not configured for this build yet.")
+        Column(
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(androidx.compose.foundation.rememberScrollState())
+                .padding(horizontal = d.spacing.lg)
+                .padding(bottom = d.spacing.huge),
+            verticalArrangement = Arrangement.spacedBy(d.spacing.lg),
+        ) {
+            HelpHeader()
+            HelpSearchField(query, onQueryChange = { query = it })
+            HelpSectionHeader("Popular topics", "See all", onAction = {
+                query = ""
+                expanded = null
+            })
+            if (visibleTopics.isEmpty()) {
+                Text(
+                    "No help topics match “$query”.",
+                    modifier = Modifier.fillMaxWidth().padding(vertical = d.spacing.xl),
+                    color = ReliveTheme.colors.textSecondary,
+                    style = ReliveTheme.typography.body,
+                    textAlign = TextAlign.Center,
+                )
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(d.spacing.sm)) {
+                    visibleTopics.chunked(2).forEach { rowTopics ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(d.spacing.sm)) {
+                            rowTopics.forEach { topic ->
+                                HelpTopicCard(
+                                    topic = topic,
+                                    expanded = expanded == topic,
+                                    onClick = { expanded = if (expanded == topic) null else topic },
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                            if (rowTopics.size == 1) Spacer(Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+            if (query.isBlank() || HelpTopic.RelivePro.title.contains(query, ignoreCase = true)) {
+                HelpProCard(
+                    expanded = expanded == HelpTopic.RelivePro,
+                    onClick = {
+                        expanded = if (expanded == HelpTopic.RelivePro) null else HelpTopic.RelivePro
+                    },
+                )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(d.spacing.xs)) {
+                Text(
+                    "Contact us",
+                    color = ReliveTheme.colors.textPrimary,
+                    style = ReliveTheme.typography.title.copy(fontSize = 18.sp, lineHeight = 24.sp),
+                )
+                Text(
+                    "Have a question, found a bug, or just want to say hi?",
+                    color = ReliveTheme.colors.textSecondary,
+                    style = ReliveTheme.typography.caption,
+                )
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(d.spacing.sm)) {
+                HelpContactCard(
+                    title = "Send feedback",
+                    body = "Share an idea or tell us what you enjoy",
+                    icon = ProfileIcons.Send,
+                    enabled = supportAvailable,
+                    onClick = { send("Relive feedback") },
+                    modifier = Modifier.weight(1f),
+                )
+                HelpContactCard(
+                    title = "Report a problem",
+                    body = "Tell us what happened so we can help",
+                    icon = ProfileIcons.Bug,
+                    enabled = supportAvailable,
+                    onClick = { send("Relive problem report") },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            if (!supportAvailable) {
+                Text(
+                    "Support email is not configured for this build yet.",
+                    color = ReliveTheme.colors.textMuted,
+                    style = ReliveTheme.typography.tag,
+                )
+            }
+            HelpPrivacyNotice()
+            notice?.let {
+                Text(it, color = ReliveTheme.colors.textSecondary, style = ReliveTheme.typography.caption)
+            }
         }
-        ProfileDivider()
-        ProfileSettingRow(
-            "Send feedback",
-            "Share an idea or tell us what you enjoy.",
-            enabled = supportAvailable,
-            onClick = if (supportAvailable) ({ send("Relive feedback") }) else null,
+    }
+}
+
+internal fun filterHelpTopics(query: String): List<HelpTopic> = HelpTopic.entries
+    .filter { it != HelpTopic.RelivePro }
+    .filter {
+        query.isBlank() || it.title.contains(query, ignoreCase = true) ||
+            it.summary.contains(query, ignoreCase = true) || it.copy.contains(query, ignoreCase = true)
+    }
+
+@Composable
+private fun HelpHeader() {
+    val d = ReliveTheme.dimensions
+    Row(Modifier.fillMaxWidth().heightIn(min = 112.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1.35f)) {
+            Text(
+                "Help & Feedback",
+                modifier = Modifier.semantics { heading() },
+                color = ReliveTheme.colors.textPrimary,
+                style = ReliveTheme.typography.title.copy(fontSize = 26.sp, lineHeight = 32.sp),
+            )
+            Text(
+                "We’re here for you.",
+                modifier = Modifier.padding(top = d.spacing.xs),
+                color = ReliveTheme.colors.textSecondary,
+                style = ReliveTheme.typography.body,
+            )
+            Text(
+                "Find answers, learn how things work, or tell us what you think.",
+                color = ReliveTheme.colors.textSecondary,
+                style = ReliveTheme.typography.caption,
+            )
+        }
+        HelpEnvelopeArt(Modifier.weight(.85f).height(112.dp))
+    }
+}
+
+@Composable
+private fun HelpEnvelopeArt(modifier: Modifier = Modifier) {
+    val colors = ReliveTheme.colors
+    val handwriting = rememberReliveHandwritingFamily()
+    Box(modifier, contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize()) {
+            val envelopeLeft = size.width * .10f
+            val envelopeTop = size.height * .27f
+            val envelopeWidth = size.width * .66f
+            val envelopeHeight = size.height * .46f
+            val center = Offset(envelopeLeft + envelopeWidth / 2f, envelopeTop + envelopeHeight / 2f)
+            val blushLight = colors.tint.copy(alpha = .94f)
+            val blush = colors.accentMuted.copy(alpha = .48f)
+            val blushDeep = colors.accentMuted.copy(alpha = .72f)
+            rotate(-6f, center) {
+                drawRoundRect(
+                    color = colors.shadow.copy(alpha = .10f),
+                    topLeft = Offset(envelopeLeft + 2.dp.toPx(), envelopeTop + 4.dp.toPx()),
+                    size = Size(envelopeWidth, envelopeHeight),
+                    cornerRadius = CornerRadius(8.dp.toPx()),
+                )
+                drawRoundRect(
+                    color = blushLight,
+                    topLeft = Offset(envelopeLeft, envelopeTop),
+                    size = Size(envelopeWidth, envelopeHeight),
+                    cornerRadius = CornerRadius(8.dp.toPx()),
+                )
+                val backFlap = Path().apply {
+                    moveTo(envelopeLeft, envelopeTop)
+                    lineTo(envelopeLeft + envelopeWidth / 2f, envelopeTop + envelopeHeight * .53f)
+                    lineTo(envelopeLeft + envelopeWidth, envelopeTop)
+                    close()
+                }
+                drawPath(backFlap, blushDeep)
+                drawRoundRect(
+                    color = colors.surfaceCard,
+                    topLeft = Offset(envelopeLeft + envelopeWidth * .20f, envelopeTop - envelopeHeight * .38f),
+                    size = Size(envelopeWidth * .64f, envelopeHeight * .86f),
+                    cornerRadius = CornerRadius(4.dp.toPx()),
+                )
+                drawLine(
+                    colors.accentMuted.copy(alpha = .22f),
+                    Offset(envelopeLeft + envelopeWidth * .28f, envelopeTop - envelopeHeight * .18f),
+                    Offset(envelopeLeft + envelopeWidth * .73f, envelopeTop - envelopeHeight * .18f),
+                    1.2.dp.toPx(),
+                    StrokeCap.Round,
+                )
+                repeat(3) { index ->
+                    val y = envelopeTop - envelopeHeight * .02f + index * 7.dp.toPx()
+                    drawLine(
+                        colors.accentMuted.copy(alpha = .18f),
+                        Offset(envelopeLeft + envelopeWidth * .28f, y),
+                        Offset(envelopeLeft + envelopeWidth * (.73f - index * .05f), y),
+                        1.dp.toPx(),
+                        StrokeCap.Round,
+                    )
+                }
+                val leftFold = Path().apply {
+                    moveTo(envelopeLeft, envelopeTop)
+                    lineTo(envelopeLeft + envelopeWidth * .48f, envelopeTop + envelopeHeight * .55f)
+                    lineTo(envelopeLeft, envelopeTop + envelopeHeight)
+                    close()
+                }
+                drawPath(leftFold, blush)
+                val rightFold = Path().apply {
+                    moveTo(envelopeLeft + envelopeWidth, envelopeTop)
+                    lineTo(envelopeLeft + envelopeWidth * .52f, envelopeTop + envelopeHeight * .55f)
+                    lineTo(envelopeLeft + envelopeWidth, envelopeTop + envelopeHeight)
+                    close()
+                }
+                drawPath(rightFold, blushDeep.copy(alpha = .54f))
+                val frontFold = Path().apply {
+                    moveTo(envelopeLeft, envelopeTop + envelopeHeight)
+                    lineTo(envelopeLeft + envelopeWidth * .40f, envelopeTop + envelopeHeight * .54f)
+                    quadraticTo(
+                        envelopeLeft + envelopeWidth / 2f,
+                        envelopeTop + envelopeHeight * .47f,
+                        envelopeLeft + envelopeWidth * .60f,
+                        envelopeTop + envelopeHeight * .54f,
+                    )
+                    lineTo(envelopeLeft + envelopeWidth, envelopeTop + envelopeHeight)
+                    close()
+                }
+                drawPath(frontFold, blushLight)
+                drawCircle(
+                    color = colors.accentMuted.copy(alpha = .76f),
+                    radius = 7.dp.toPx(),
+                    center = Offset(envelopeLeft + envelopeWidth / 2f, envelopeTop + envelopeHeight * .57f),
+                )
+                val heart = Path().apply {
+                    val heartCenter = Offset(envelopeLeft + envelopeWidth / 2f, envelopeTop + envelopeHeight * .57f)
+                    moveTo(heartCenter.x, heartCenter.y + 3.dp.toPx())
+                    cubicTo(
+                        heartCenter.x - 7.dp.toPx(),
+                        heartCenter.y - 1.dp.toPx(),
+                        heartCenter.x - 4.dp.toPx(),
+                        heartCenter.y - 5.dp.toPx(),
+                        heartCenter.x,
+                        heartCenter.y - 1.dp.toPx(),
+                    )
+                    cubicTo(
+                        heartCenter.x + 4.dp.toPx(),
+                        heartCenter.y - 5.dp.toPx(),
+                        heartCenter.x + 7.dp.toPx(),
+                        heartCenter.y - 1.dp.toPx(),
+                        heartCenter.x,
+                        heartCenter.y + 3.dp.toPx(),
+                    )
+                    close()
+                }
+                drawPath(heart, colors.surfaceCard.copy(alpha = .92f))
+            }
+            val rayColor = colors.accentMuted.copy(alpha = .85f)
+            drawLine(rayColor, Offset(size.width * .78f, size.height * .17f), Offset(size.width * .80f, size.height * .05f), 2.dp.toPx(), StrokeCap.Round)
+            drawLine(rayColor, Offset(size.width * .85f, size.height * .21f), Offset(size.width * .94f, size.height * .13f), 2.dp.toPx(), StrokeCap.Round)
+            drawLine(rayColor, Offset(size.width * .88f, size.height * .30f), Offset(size.width * .99f, size.height * .31f), 2.dp.toPx(), StrokeCap.Round)
+        }
+        Text(
+            "Your thoughts\nmake Relive better  ♡",
+            modifier = Modifier.align(Alignment.BottomEnd),
+            color = colors.accentMuted,
+            style = TextStyle(fontFamily = handwriting, fontSize = 11.sp, lineHeight = 13.sp),
+            textAlign = TextAlign.Center,
         )
-        ProfileDivider()
-        ProfileSettingRow(
-            "Report a problem",
-            "Tell us what happened so we can help.",
-            enabled = supportAvailable,
-            onClick = if (supportAvailable) ({ send("Relive problem report") }) else null,
+    }
+}
+
+@Composable
+private fun HelpSearchField(query: String, onQueryChange: (String) -> Unit) {
+    val d = ReliveTheme.dimensions
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .clip(RoundedCornerShape(d.radii.large))
+            .background(ReliveTheme.colors.surfaceCardTranslucent)
+            .padding(horizontal = d.spacing.md),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(ProfileIcons.Search, null, Modifier.size(d.icon.md), ReliveTheme.colors.textSecondary)
+        BasicTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            modifier = Modifier.weight(1f).padding(horizontal = d.spacing.md),
+            singleLine = true,
+            textStyle = ReliveTheme.typography.caption.copy(color = ReliveTheme.colors.textPrimary),
+            decorationBox = { field ->
+                Box {
+                    if (query.isEmpty()) {
+                        Text("Search for help...", color = ReliveTheme.colors.textMuted, style = ReliveTheme.typography.caption)
+                    }
+                    field()
+                }
+            },
         )
-        ProfileSupportingText("Messages include only the app version, platform, and OS version. No archive data is attached.")
-        notice?.let { ProfileSupportingText(it) }
+        Box(
+            Modifier.clip(RoundedCornerShape(d.radii.small)).background(ReliveTheme.colors.tint.copy(alpha = .7f)).padding(horizontal = d.spacing.sm, vertical = 3.dp),
+        ) {
+            Text("Ctrl K", color = ReliveTheme.colors.textMuted, style = ReliveTheme.typography.tag)
+        }
+    }
+}
+
+@Composable
+private fun HelpSectionHeader(title: String, action: String, onAction: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            title,
+            modifier = Modifier.weight(1f).semantics { heading() },
+            color = ReliveTheme.colors.textPrimary,
+            style = ReliveTheme.typography.title.copy(fontSize = 17.sp, lineHeight = 22.sp),
+        )
+        Text(
+            "$action  >",
+            modifier = Modifier.clickable(onClick = onAction).padding(8.dp),
+            color = ReliveTheme.colors.accentMuted,
+            style = ReliveTheme.typography.tag,
+        )
+    }
+}
+
+@Composable
+private fun HelpTopicCard(topic: HelpTopic, expanded: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val d = ReliveTheme.dimensions
+    val accent = when (topic) {
+        HelpTopic.CreatingMoments -> ReliveTheme.colors.accentMuted
+        HelpTopic.AddingMedia -> ReliveTheme.colors.spark
+        HelpTopic.OrganizingTimelines -> ReliveTheme.colors.accent
+        HelpTopic.FindingMemories -> ReliveTheme.colors.spark
+        HelpTopic.BackupRestore -> ReliveTheme.colors.accentMuted
+        HelpTopic.PrivacySecurity -> ReliveTheme.colors.accent
+        HelpTopic.RelivePro -> ReliveTheme.colors.spark
+    }
+    Row(
+        modifier
+            .heightIn(min = 80.dp)
+            .clip(RoundedCornerShape(d.radii.large))
+            .background(ReliveTheme.colors.surfaceCardTranslucent)
+            .clickable(onClick = onClick)
+            .padding(d.spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        HelpIconTile(topic.icon, accent)
+        Column(Modifier.weight(1f).padding(start = d.spacing.sm)) {
+            Text(topic.title, color = ReliveTheme.colors.textPrimary, style = ReliveTheme.typography.action, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                if (expanded) topic.copy else topic.summary,
+                modifier = Modifier.padding(top = 2.dp),
+                color = ReliveTheme.colors.textSecondary,
+                style = ReliveTheme.typography.tag,
+                maxLines = if (expanded) 8 else 3,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        HelpArrow()
+    }
+}
+
+@Composable
+private fun HelpIconTile(icon: ImageVector, accent: androidx.compose.ui.graphics.Color) {
+    Box(
+        Modifier.size(38.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, null, Modifier.size(23.dp), accent)
+    }
+}
+
+@Composable
+private fun HelpArrow() {
+    Text(
+        ">",
+        modifier = Modifier.padding(start = 3.dp),
+        color = ReliveTheme.colors.accentMuted,
+        style = ReliveTheme.typography.action,
+    )
+}
+
+@Composable
+private fun HelpProCard(expanded: Boolean, onClick: () -> Unit) {
+    val d = ReliveTheme.dimensions
+    val topic = HelpTopic.RelivePro
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 88.dp)
+            .clip(RoundedCornerShape(d.radii.large))
+            .background(ReliveTheme.colors.surfaceCardTranslucent)
+            .clickable(onClick = onClick),
+    ) {
+        HelpProLandscape(Modifier.matchParentSize().align(Alignment.CenterEnd))
+        Row(Modifier.fillMaxWidth().padding(d.spacing.md), verticalAlignment = Alignment.CenterVertically) {
+            HelpIconTile(topic.icon, ReliveTheme.colors.accentMuted)
+            Column(Modifier.weight(1f).padding(horizontal = d.spacing.sm)) {
+                Text(topic.title, color = ReliveTheme.colors.textPrimary, style = ReliveTheme.typography.title.copy(fontSize = 17.sp, lineHeight = 22.sp))
+                Text(
+                    if (expanded) topic.copy else topic.summary,
+                    color = ReliveTheme.colors.textSecondary,
+                    style = ReliveTheme.typography.tag,
+                    maxLines = if (expanded) 5 else 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            HelpArrow()
+        }
+    }
+}
+
+@Composable
+private fun HelpProLandscape(modifier: Modifier = Modifier) {
+    val colors = ReliveTheme.colors
+    Canvas(modifier) {
+        val ground = size.height
+        val mountain = Path().apply {
+            moveTo(size.width * .57f, ground)
+            quadraticTo(size.width * .70f, ground * .55f, size.width * .79f, ground * .82f)
+            quadraticTo(size.width * .88f, ground * .33f, size.width, ground * .78f)
+            lineTo(size.width, ground)
+            close()
+        }
+        drawPath(mountain, colors.accentMuted.copy(alpha = .15f))
+        drawCircle(colors.spark.copy(alpha = .24f), 10.dp.toPx(), Offset(size.width * .76f, size.height * .28f))
+        repeat(3) { index ->
+            val x = size.width * (.76f + index * .09f)
+            drawLine(colors.accentMuted.copy(alpha = .62f), Offset(x, ground), Offset(x, ground * (.72f - index * .08f)), 2.dp.toPx(), StrokeCap.Round)
+            val tree = Path().apply {
+                moveTo(x, ground * (.53f - index * .08f))
+                lineTo(x - 7.dp.toPx(), ground * (.82f - index * .05f))
+                lineTo(x + 7.dp.toPx(), ground * (.82f - index * .05f))
+                close()
+            }
+            drawPath(tree, colors.accentMuted.copy(alpha = .62f))
+        }
+    }
+}
+
+@Composable
+private fun HelpContactCard(
+    title: String,
+    body: String,
+    icon: ImageVector,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val d = ReliveTheme.dimensions
+    val accent = if (enabled) ReliveTheme.colors.accentMuted else ReliveTheme.colors.textMuted
+    Row(
+        modifier
+            .heightIn(min = 78.dp)
+            .clip(RoundedCornerShape(d.radii.large))
+            .background(ReliveTheme.colors.surfaceCardTranslucent)
+            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(d.spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        HelpIconTile(icon, accent)
+        Column(Modifier.weight(1f).padding(start = d.spacing.sm)) {
+            Text(title, color = if (enabled) ReliveTheme.colors.textPrimary else ReliveTheme.colors.textMuted, style = ReliveTheme.typography.action)
+            Text(body, color = ReliveTheme.colors.textSecondary, style = ReliveTheme.typography.tag, maxLines = 3, overflow = TextOverflow.Ellipsis)
+        }
+        if (enabled) HelpArrow()
+    }
+}
+
+@Composable
+private fun HelpPrivacyNotice() {
+    val d = ReliveTheme.dimensions
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(d.radii.large))
+            .background(ReliveTheme.colors.tint.copy(alpha = .56f))
+            .padding(d.spacing.md),
+        horizontalArrangement = Arrangement.spacedBy(d.spacing.md),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(ProfileIcons.Info, null, Modifier.size(20.dp), ReliveTheme.colors.textSecondary)
+        Column(Modifier.weight(1f)) {
+            Text("Your privacy matters", color = ReliveTheme.colors.textPrimary, style = ReliveTheme.typography.action)
+            Text(
+                "Messages include only the app version, platform, and OS version. No archive data is attached.",
+                color = ReliveTheme.colors.textSecondary,
+                style = ReliveTheme.typography.tag,
+            )
+        }
     }
 }
 

@@ -10,6 +10,7 @@ import com.vaibhav.relive.ui.screens.aboutGuideSections
 import com.vaibhav.relive.ui.screens.aboutPrivacySection
 import com.vaibhav.relive.ui.screens.supportMailRequest
 import com.vaibhav.relive.ui.screens.HelpTopic
+import com.vaibhav.relive.ui.screens.filterHelpTopics
 import com.vaibhav.relive.domain.entitlement.ReliveLegalLinks
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
@@ -67,6 +68,13 @@ class ProfilePolishTest {
         assertContains(HelpTopic.entries.map { it.title }, "Create a Moment")
         assertContains(HelpTopic.entries.map { it.title }, "Relive Pro")
         assertTrue(HelpTopic.entries.all { it.copy.isNotBlank() })
+    }
+
+    @Test fun `help search matches topic labels summaries and answers`() {
+        assertEquals(listOf(HelpTopic.AddingMedia), filterHelpTopics("voice notes"))
+        assertEquals(listOf(HelpTopic.FindingMemories), filterHelpTopics("favourites"))
+        assertEquals(6, filterHelpTopics("").size)
+        assertTrue(filterHelpTopics("not a relive help topic").isEmpty())
     }
 
     @Test fun `support mail is unavailable until a release address is configured`() {
