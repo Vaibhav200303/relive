@@ -144,122 +144,167 @@ private fun SettingsReferenceIllustration(kind: SettingsIllustration) {
 private fun DrawScope.drawReminderHero(colors: ReliveColors) {
     val ink = colors.accentMuted
     val page = colors.surfaceCard
-    drawOval(colors.tint.copy(alpha = .86f), Offset(size.width * .20f, size.height * .10f), Size(size.width * .42f, size.height * .57f))
-    drawOval(colors.accent.copy(alpha = .10f), Offset(size.width * .31f, size.height * .65f), Size(size.width * .48f, size.height * .17f))
-    val back = Path().apply {
-        moveTo(size.width * .36f, size.height * .38f)
-        lineTo(size.width * .31f, size.height * .75f)
-        lineTo(size.width * .46f, size.height * .78f)
-        lineTo(size.width * .43f, size.height * .37f)
+    drawCircle(
+        colors.tint.copy(alpha = .86f),
+        39.dp.toPx(),
+        Offset(size.width * .34f, size.height * .35f),
+    )
+    drawOval(
+        colors.accent.copy(alpha = .10f),
+        Offset(size.width * .42f, size.height * .64f),
+        Size(size.width * .37f, size.height * .13f),
+    )
+
+    // The dark folded stand remains visible beneath the loose calendar page.
+    drawPath(
+        Path().apply {
+            moveTo(size.width * .43f, size.height * .33f)
+            lineTo(size.width * .35f, size.height * .73f)
+            quadraticTo(size.width * .35f, size.height * .76f, size.width * .39f, size.height * .77f)
+            lineTo(size.width * .48f, size.height * .78f)
+            lineTo(size.width * .47f, size.height * .34f)
+            close()
+        },
+        ink.copy(alpha = .75f),
+    )
+    drawPath(
+        Path().apply {
+            moveTo(size.width * .43f, size.height * .33f)
+            lineTo(size.width * .47f, size.height * .35f)
+            lineTo(size.width * .48f, size.height * .78f)
+            close()
+        },
+        ink.copy(alpha = .92f),
+    )
+
+    val sheet = Path().apply {
+        moveTo(size.width * .43f, size.height * .32f)
+        quadraticTo(size.width * .435f, size.height * .29f, size.width * .46f, size.height * .29f)
+        lineTo(size.width * .65f, size.height * .26f)
+        quadraticTo(size.width * .675f, size.height * .26f, size.width * .68f, size.height * .29f)
+        lineTo(size.width * .70f, size.height * .65f)
+        quadraticTo(size.width * .705f, size.height * .68f, size.width * .675f, size.height * .69f)
+        lineTo(size.width * .48f, size.height * .77f)
+        quadraticTo(size.width * .455f, size.height * .77f, size.width * .45f, size.height * .73f)
         close()
     }
-    drawPath(back, ink.copy(alpha = .72f))
-    rotate(-5f, Offset(size.width * .52f, size.height * .51f)) {
-        drawRoundRect(
-            page,
-            Offset(size.width * .37f, size.height * .31f),
-            Size(size.width * .35f, size.height * .43f),
-            CornerRadius(7.dp.toPx()),
+    drawPath(sheet, page)
+
+    repeat(6) { index ->
+        val x = size.width * (.455f + index * .039f)
+        drawArc(
+            color = ink,
+            startAngle = 180f,
+            sweepAngle = 180f,
+            useCenter = false,
+            topLeft = Offset(x - 3.25.dp.toPx(), size.height * .235f - index * .006f * size.height),
+            size = Size(7.dp.toPx(), 14.dp.toPx()),
+            style = Stroke(1.55.dp.toPx(), cap = StrokeCap.Round),
         )
         drawLine(
-            ink.copy(alpha = .55f),
-            Offset(size.width * .37f, size.height * .40f),
-            Offset(size.width * .71f, size.height * .40f),
-            1.dp.toPx(),
+            ink,
+            Offset(x + 3.25.dp.toPx(), size.height * (.284f - index * .006f)),
+            Offset(x + 3.25.dp.toPx(), size.height * (.325f - index * .006f)),
+            1.55.dp.toPx(),
+            StrokeCap.Round,
         )
-        repeat(5) { index ->
-            val x = size.width * (.405f + index * .061f)
-            drawArc(
-                ink,
-                180f,
-                180f,
-                false,
-                Offset(x - 4.dp.toPx(), size.height * .275f),
-                Size(8.dp.toPx(), 15.dp.toPx()),
-                style = Stroke(1.7.dp.toPx(), cap = StrokeCap.Round),
-            )
-            drawLine(
-                ink,
-                Offset(x + 4.dp.toPx(), size.height * .325f),
-                Offset(x + 4.dp.toPx(), size.height * .36f),
-                1.7.dp.toPx(),
-                StrokeCap.Round,
-            )
-        }
-        val bell = Path().apply {
-            moveTo(size.width * .495f, size.height * .60f)
-            quadraticTo(size.width * .515f, size.height * .56f, size.width * .515f, size.height * .50f)
-            quadraticTo(size.width * .515f, size.height * .445f, size.width * .55f, size.height * .435f)
-            quadraticTo(size.width * .585f, size.height * .445f, size.width * .585f, size.height * .50f)
-            quadraticTo(size.width * .585f, size.height * .56f, size.width * .605f, size.height * .60f)
-            close()
-        }
-        drawPath(bell, ink.copy(alpha = .82f))
-        drawCircle(ink.copy(alpha = .82f), 2.dp.toPx(), Offset(size.width * .55f, size.height * .425f))
-        drawCircle(ink, 2.4.dp.toPx(), Offset(size.width * .55f, size.height * .625f))
     }
-    drawLine(ink, Offset(size.width * .72f, size.height * .28f), Offset(size.width * .75f, size.height * .18f), 2.dp.toPx(), StrokeCap.Round)
-    drawLine(ink, Offset(size.width * .76f, size.height * .36f), Offset(size.width * .82f, size.height * .31f), 2.dp.toPx(), StrokeCap.Round)
-    drawLine(ink, Offset(size.width * .77f, size.height * .45f), Offset(size.width * .84f, size.height * .45f), 2.dp.toPx(), StrokeCap.Round)
+
+    val bellCenterX = size.width * .565f
+    val bell = Path().apply {
+        moveTo(bellCenterX - 10.dp.toPx(), size.height * .61f)
+        quadraticTo(bellCenterX - 6.dp.toPx(), size.height * .57f, bellCenterX - 6.dp.toPx(), size.height * .49f)
+        quadraticTo(bellCenterX - 6.dp.toPx(), size.height * .44f, bellCenterX, size.height * .425f)
+        quadraticTo(bellCenterX + 6.dp.toPx(), size.height * .44f, bellCenterX + 6.dp.toPx(), size.height * .49f)
+        quadraticTo(bellCenterX + 6.dp.toPx(), size.height * .57f, bellCenterX + 10.dp.toPx(), size.height * .61f)
+        quadraticTo(bellCenterX, size.height * .64f, bellCenterX - 10.dp.toPx(), size.height * .61f)
+        close()
+    }
+    drawPath(bell, colors.accent.copy(alpha = .68f))
+    drawCircle(colors.accent.copy(alpha = .74f), 1.5.dp.toPx(), Offset(bellCenterX, size.height * .415f))
+    drawCircle(ink, 1.9.dp.toPx(), Offset(bellCenterX, size.height * .655f))
+
+    drawLine(ink, Offset(size.width * .70f, size.height * .28f), Offset(size.width * .73f, size.height * .18f), 1.6.dp.toPx(), StrokeCap.Round)
+    drawLine(ink, Offset(size.width * .74f, size.height * .36f), Offset(size.width * .79f, size.height * .31f), 1.6.dp.toPx(), StrokeCap.Round)
+    drawLine(ink, Offset(size.width * .75f, size.height * .45f), Offset(size.width * .81f, size.height * .45f), 1.6.dp.toPx(), StrokeCap.Round)
 }
 
 private fun DrawScope.drawLocationHero(colors: ReliveColors) {
-    val ink = colors.accentMuted
+    val ink = colors.accent
     val haze = Path().apply {
-        moveTo(size.width * .22f, size.height * .57f)
-        quadraticTo(size.width * .18f, size.height * .32f, size.width * .35f, size.height * .29f)
-        quadraticTo(size.width * .47f, size.height * .27f, size.width * .51f, size.height * .17f)
-        quadraticTo(size.width * .66f, size.height * .08f, size.width * .76f, size.height * .31f)
-        quadraticTo(size.width * .86f, size.height * .53f, size.width * .72f, size.height * .69f)
+        moveTo(size.width * .16f, size.height * .64f)
+        quadraticTo(size.width * .14f, size.height * .34f, size.width * .31f, size.height * .31f)
+        quadraticTo(size.width * .43f, size.height * .30f, size.width * .48f, size.height * .20f)
+        quadraticTo(size.width * .65f, size.height * .08f, size.width * .77f, size.height * .31f)
+        quadraticTo(size.width * .87f, size.height * .55f, size.width * .76f, size.height * .72f)
         close()
     }
-    drawPath(haze, colors.tint.copy(alpha = .82f))
+    drawPath(haze, colors.tint.copy(alpha = .74f))
     val map = Path().apply {
-        moveTo(size.width * .14f, size.height * .63f)
-        lineTo(size.width * .36f, size.height * .42f)
-        lineTo(size.width * .55f, size.height * .53f)
-        lineTo(size.width * .74f, size.height * .38f)
-        lineTo(size.width * .86f, size.height * .61f)
-        lineTo(size.width * .66f, size.height * .82f)
-        lineTo(size.width * .46f, size.height * .72f)
-        lineTo(size.width * .28f, size.height * .83f)
+        moveTo(size.width * .13f, size.height * .62f)
+        lineTo(size.width * .33f, size.height * .40f)
+        lineTo(size.width * .50f, size.height * .53f)
+        lineTo(size.width * .70f, size.height * .36f)
+        lineTo(size.width * .87f, size.height * .61f)
+        lineTo(size.width * .68f, size.height * .87f)
+        lineTo(size.width * .49f, size.height * .73f)
+        lineTo(size.width * .29f, size.height * .88f)
         close()
     }
-    drawPath(map, ink.copy(alpha = .42f))
+    drawPath(map, ink.copy(alpha = .35f))
     drawPath(
         Path().apply {
-            moveTo(size.width * .36f, size.height * .42f)
-            lineTo(size.width * .46f, size.height * .72f)
-            lineTo(size.width * .55f, size.height * .53f)
+            moveTo(size.width * .33f, size.height * .40f)
+            lineTo(size.width * .49f, size.height * .73f)
+            lineTo(size.width * .50f, size.height * .53f)
             close()
         },
-        colors.surfaceCard.copy(alpha = .76f),
+        colors.surfaceCard.copy(alpha = .68f),
     )
     drawPath(
         Path().apply {
-            moveTo(size.width * .55f, size.height * .53f)
-            lineTo(size.width * .66f, size.height * .82f)
-            lineTo(size.width * .86f, size.height * .61f)
-            lineTo(size.width * .74f, size.height * .38f)
+            moveTo(size.width * .50f, size.height * .53f)
+            lineTo(size.width * .68f, size.height * .87f)
+            lineTo(size.width * .87f, size.height * .61f)
+            lineTo(size.width * .70f, size.height * .36f)
             close()
         },
-        colors.tint.copy(alpha = .92f),
+        colors.tint.copy(alpha = .88f),
     )
-    val road = colors.surfaceCard.copy(alpha = .93f)
-    drawLine(road, Offset(size.width * .20f, size.height * .68f), Offset(size.width * .63f, size.height * .47f), 5.dp.toPx())
-    drawLine(road, Offset(size.width * .34f, size.height * .79f), Offset(size.width * .69f, size.height * .49f), 4.dp.toPx())
-    drawLine(road, Offset(size.width * .56f, size.height * .55f), Offset(size.width * .72f, size.height * .77f), 4.dp.toPx())
-    drawMapTree(Offset(size.width * .27f, size.height * .56f), ink)
-    drawMapTree(Offset(size.width * .76f, size.height * .48f), ink.copy(alpha = .92f), 1.15f)
-    val pinCenter = Offset(size.width * .51f, size.height * .22f)
+    val road = colors.surfaceCard.copy(alpha = .94f)
+    drawPath(
+        Path().apply {
+            moveTo(size.width * .18f, size.height * .68f)
+            lineTo(size.width * .38f, size.height * .54f)
+            lineTo(size.width * .51f, size.height * .58f)
+            lineTo(size.width * .68f, size.height * .44f)
+        },
+        road,
+        style = Stroke(3.dp.toPx(), cap = StrokeCap.Round),
+    )
+    drawPath(
+        Path().apply {
+            moveTo(size.width * .30f, size.height * .82f)
+            lineTo(size.width * .44f, size.height * .69f)
+            lineTo(size.width * .57f, size.height * .73f)
+            lineTo(size.width * .76f, size.height * .57f)
+        },
+        road,
+        style = Stroke(3.dp.toPx(), cap = StrokeCap.Round),
+    )
+    drawLine(road, Offset(size.width * .42f, size.height * .47f), Offset(size.width * .46f, size.height * .70f), 2.6.dp.toPx(), StrokeCap.Round)
+    drawLine(road, Offset(size.width * .60f, size.height * .49f), Offset(size.width * .70f, size.height * .79f), 2.6.dp.toPx(), StrokeCap.Round)
+    drawMapTree(Offset(size.width * .24f, size.height * .57f), ink.copy(alpha = .88f), .75f)
+    drawMapTree(Offset(size.width * .77f, size.height * .47f), ink.copy(alpha = .92f), .84f)
+    val pinCenter = Offset(size.width * .51f, size.height * .23f)
     val pin = Path().apply {
-        moveTo(pinCenter.x, size.height * .48f)
-        cubicTo(size.width * .43f, size.height * .35f, size.width * .43f, size.height * .12f, pinCenter.x, size.height * .12f)
-        cubicTo(size.width * .59f, size.height * .12f, size.width * .59f, size.height * .35f, pinCenter.x, size.height * .48f)
+        moveTo(pinCenter.x, size.height * .49f)
+        cubicTo(size.width * .46f, size.height * .36f, size.width * .455f, size.height * .13f, pinCenter.x, size.height * .13f)
+        cubicTo(size.width * .565f, size.height * .13f, size.width * .56f, size.height * .36f, pinCenter.x, size.height * .49f)
         close()
     }
     drawPath(pin, ink)
-    drawCircle(colors.surfaceCard, 7.dp.toPx(), pinCenter)
+    drawCircle(colors.surfaceCard, 5.5.dp.toPx(), pinCenter)
 }
 
 private fun DrawScope.drawMapTree(center: Offset, color: androidx.compose.ui.graphics.Color, scale: Float = 1f) {
