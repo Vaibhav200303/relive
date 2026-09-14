@@ -15,6 +15,7 @@ data class RestorePreview(val summary: BackupSummary, val requiresEmptyArchive: 
 sealed interface BackupOperationState {
     data object Idle : BackupOperationState
     data object Preparing : BackupOperationState
+    data object DiscoveringRestore : BackupOperationState
     data object PreparingRestore : BackupOperationState
     data class Uploading(val progress: BackupProgress) : BackupOperationState
     data class Downloading(val progress: BackupProgress) : BackupOperationState

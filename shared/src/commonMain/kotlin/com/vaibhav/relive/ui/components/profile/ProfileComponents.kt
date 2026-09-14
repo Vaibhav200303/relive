@@ -16,6 +16,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.*
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.Dp
 import com.vaibhav.relive.platform.system.ReliveBackHandler
 import com.vaibhav.relive.ui.components.timeline.BackGlyph
 import com.vaibhav.relive.ui.components.timeline.ForwardGlyph
@@ -38,14 +40,25 @@ fun ProfileScaffold(title: String, intro: String? = null, onBack: () -> Unit, co
 }
 
 @Composable
-fun ProfilePageHeader(title: String, onBack: () -> Unit, backDescription: String = "Back to Profile", icon: ImageVector? = null) {
+fun ProfilePageHeader(
+    title: String,
+    onBack: () -> Unit,
+    backDescription: String = "Back to Profile",
+    icon: ImageVector? = null,
+    titleStyle: TextStyle? = null,
+    titleStartPadding: Dp? = null,
+    verticalPadding: Dp? = null,
+) {
     val d = ReliveTheme.dimensions
+    val resolvedTitleStyle = titleStyle ?: ReliveTheme.typography.title
+    val resolvedTitleStartPadding = titleStartPadding ?: d.spacing.sm
+    val resolvedVerticalPadding = verticalPadding ?: d.spacing.sm
     // No band fill: nothing scrolls beneath this header, so back and title sit directly on the
     // canvas gradient the scaffold paints.
-    Row(Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.statusBars).padding(horizontal = d.spacing.md, vertical = d.spacing.sm), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.statusBars).padding(horizontal = d.spacing.md, vertical = resolvedVerticalPadding), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onBack, Modifier.size(d.minTouchTarget).semantics { contentDescription = backDescription }) { BackGlyph(d.icon.lg, ReliveTheme.colors.textSecondary, d.stroke.icon) }
         icon?.let { Icon(it, contentDescription = null, modifier = Modifier.size(d.icon.md), tint = ReliveTheme.colors.accentMuted) }
-        Text(title, modifier = Modifier.padding(start = d.spacing.sm).semantics { heading() }, color = ReliveTheme.colors.textPrimary, style = ReliveTheme.typography.title)
+        Text(title, modifier = Modifier.padding(start = resolvedTitleStartPadding).semantics { heading() }, color = ReliveTheme.colors.textPrimary, style = resolvedTitleStyle)
     }
 }
 

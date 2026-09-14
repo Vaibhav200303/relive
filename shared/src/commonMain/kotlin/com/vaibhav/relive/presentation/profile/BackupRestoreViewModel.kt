@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.joinAll
 import com.vaibhav.relive.platform.backup.backupAuthLog
 import com.vaibhav.relive.domain.entitlement.EntitlementProvider
 import com.vaibhav.relive.domain.entitlement.EntitlementPolicy
@@ -46,7 +47,11 @@ class BackupRestoreViewModel(private val preferences: BackupPreferencesRepositor
         restorePreview.value = null
         preferences.setOperation(BackupOperationState.PreparingRestore)
         try {
-            coordinator.restore(preview) { progress -> scope.launch { preferences.setOperation(BackupOperationState.Downloading(progress)) } }
+            val progressUpdates = mutableListOf<kotlinx.coroutines.Job>()
+            coordinator.restore(preview) { progress ->
+                progressUpdates += scope.launch { preferences.setOperation(BackupOperationState.Downloading(progress)) }
+            }
+            progressUpdates.joinAll()
             preferences.setOperation(BackupOperationState.Succeeded(preview.summary))
         } catch (error: Exception) {
             preferences.setOperation(BackupOperationState.Failed(error.message ?: "Restore failed."))
@@ -94,7 +99,7 @@ class BackupRestoreViewModel(private val preferences: BackupPreferencesRepositor
     }
 
     private suspend fun runRestoreDiscovery() {
-        preferences.setOperation(BackupOperationState.PreparingRestore)
+        preferences.setOperation(BackupOperationState.DiscoveringRestore)
         try {
             val preview = coordinator.discoverRestore()
             if (preview == null) preferences.setOperation(BackupOperationState.Failed("No Relive backup was found for this Google account."))
