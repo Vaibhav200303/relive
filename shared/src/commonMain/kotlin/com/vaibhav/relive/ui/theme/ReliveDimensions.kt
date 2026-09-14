@@ -126,6 +126,21 @@ data class ReliveProfileDimensions(
     val appearanceItemWidth: Dp = 80.dp,
 )
 
+/** Layout tokens for the compact, editorial timeline appearance picker. */
+@Immutable
+data class ReliveTimelineThemeDimensions(
+    val previewHeight: Dp = 220.dp,
+    val previewMediaHeight: Dp = 76.dp,
+    val optionHeight: Dp = 132.dp,
+    val optionArtworkHeight: Dp = 84.dp,
+    val selectionBadgeSize: Dp = 28.dp,
+    val lockBadgeSize: Dp = 28.dp,
+    val proBadgeHeight: Dp = 20.dp,
+    val promoIconSize: Dp = 40.dp,
+    val promoMinHeight: Dp = 72.dp,
+    val noteRotationDegrees: Float = -7f,
+)
+
 @Immutable
 data class ReliveSearchDimensions(
     val containerHeight: Dp = 56.dp,
@@ -252,6 +267,7 @@ data class ReliveDimensions(
     val timelineHome: ReliveTimelineHomeDimensions = ReliveTimelineHomeDimensions(),
     val rediscover: ReliveRediscoverDimensions = ReliveRediscoverDimensions(),
     val profile: ReliveProfileDimensions = ReliveProfileDimensions(),
+    val timelineTheme: ReliveTimelineThemeDimensions = ReliveTimelineThemeDimensions(),
     val search: ReliveSearchDimensions = ReliveSearchDimensions(),
     val composer: ReliveComposerDimensions = ReliveComposerDimensions(),
     val onboarding: ReliveOnboardingDimensions = ReliveOnboardingDimensions(),
