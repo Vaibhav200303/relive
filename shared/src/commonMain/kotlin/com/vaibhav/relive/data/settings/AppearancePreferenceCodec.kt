@@ -53,8 +53,8 @@ internal fun decodeAppearancePreferences(
             "rose_sage" -> ThemeReference.RoseSage
             "sunrise" -> ThemeReference.Sunrise
             "sunset" -> ThemeReference.Sunset
-            // Retired palette keys and a missing preference resolve to the current default.
-            else -> ThemeReference.WarmJournal
+            // Retired palette keys and a missing preference resolve to the install-time default.
+            else -> ThemeReference.Sunset
         },
         allTimelineAppearance = TimelineAppearance(
             wallpaper = TimelineWallpaper.entries.firstOrNull { it.name == allTimelineWallpaper }

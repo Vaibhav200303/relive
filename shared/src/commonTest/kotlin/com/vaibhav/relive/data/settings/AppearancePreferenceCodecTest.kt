@@ -8,12 +8,12 @@ import kotlin.test.assertEquals
 
 class AppearancePreferenceCodecTest {
     @Test
-    fun missingAndInvalidValuesUseSystemWarmJournal() {
+    fun missingAndInvalidValuesUseSystemSunset() {
         val missing = decodeAppearancePreferences(null, null)
         val invalid = decodeAppearancePreferences("unexpected", "unknown")
 
         assertEquals(AppearanceMode.System, missing.mode)
-        assertEquals(ThemeReference.WarmJournal, missing.defaultTheme)
+        assertEquals(ThemeReference.Sunset, missing.defaultTheme)
         assertEquals(missing, invalid)
     }
 

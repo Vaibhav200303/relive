@@ -101,11 +101,16 @@ class ReliveTokensTest {
         val onboarding = DefaultReliveDimensions.onboarding
         val typography = DefaultReliveTypography
 
-        assertEquals(388.dp, onboarding.heroLarge)
-        assertEquals(292.dp, onboarding.heroCompact)
+        assertEquals(74.sp, typography.onboardingWelcomeTitle.fontSize)
         assertEquals(32.sp, typography.onboardingTitle.fontSize)
         assertEquals(18.sp, typography.onboardingBody.fontSize)
         assertEquals(17.sp, typography.onboardingAction.fontSize)
+        assertEquals(19.sp, typography.onboardingHandwritten.fontSize)
+        assertEquals(96.dp, onboarding.captureFeatureHeight)
+        assertEquals(48.dp, onboarding.captureIconMedallionSize)
+        assertEquals(24.dp, onboarding.captureIconSize)
+        assertTrue(onboarding.primaryActionHeight >= DefaultReliveDimensions.minTouchTarget)
+        assertTrue(onboarding.arrowActionSize >= DefaultReliveDimensions.minTouchTarget)
     }
 
     @Test
@@ -206,18 +211,24 @@ class ReliveTokensTest {
     fun typographyFactoryAssignsSerifAndSansToTheCorrectRoles() {
         val serif = FontFamily.Cursive
         val sans = FontFamily.Monospace
-        val t = reliveTypography(serif = serif, sans = sans)
+        val handwriting = FontFamily.Serif
+        val t = reliveTypography(serif = serif, sans = sans, handwriting = handwriting)
         assertEquals(serif, t.display.fontFamily)
         assertEquals(serif, t.wordmark.fontFamily)
         assertEquals(serif, t.coverTitle.fontFamily)
         assertEquals(serif, t.title.fontFamily)
         assertEquals(serif, t.dateLarge.fontFamily)
+        assertEquals(serif, t.onboardingWelcomeTitle.fontFamily)
+        assertEquals(serif, t.onboardingTitle.fontFamily)
         assertEquals(sans, t.subtitle.fontFamily)
         assertEquals(sans, t.body.fontFamily)
         assertEquals(sans, t.caption.fontFamily)
         assertEquals(sans, t.eyebrow.fontFamily)
         assertEquals(sans, t.tag.fontFamily)
         assertEquals(sans, t.action.fontFamily)
+        assertEquals(sans, t.onboardingBody.fontFamily)
+        assertEquals(sans, t.onboardingAction.fontFamily)
+        assertEquals(handwriting, t.onboardingHandwritten.fontFamily)
     }
 
     @Test

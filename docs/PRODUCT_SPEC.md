@@ -26,13 +26,13 @@ The product must feel like a **beautiful personal life archive**, never a notes/
 
 ## 1A. First-launch onboarding
 
-On a fresh, empty installation, Relive opens with one short four-page introduction before revealing Home. It is an install-level introduction, not a destination, account flow, permission wizard, or archive surface. Its four ideas are fixed and truthful: capture thoughts and media in one archive; understand All moments and custom timelines; understand that the archive stays on device and App Lock is optional; and understand that Favourites, On This Day, and From Your Past can resurface memories.
+On a fresh, empty installation, Relive opens with a short, screenshot-matched introduction before revealing Home. It is an install-level introduction, not a destination, account flow, permission wizard, or archive surface. It uses a branded welcome screen followed by five numbered pages matching the approved visual reference: Capture easily; Organize beautifully; Relive your moments; Private by design; and You’re all set. The composition follows the supplied reference: generous pale canvas, editorial serif headings, compact progress/Skip affordances, flat scenic and photographic collage artwork, rounded primary actions, and quiet page-position dots.
 
-The pages use Relive's current app palette, atmospheric canvas, Fraunces/Inter typography, and original tactile keepsake artwork. `Begin`, `Next`, and `Start your archive` advance; a quiet `Skip` completes the introduction from the first three pages. Back returns to the prior page, and Back from the first page follows the platform's root behavior. Completion or Skip records a versioned native preference outside the archive database and reveals Home at scroll offset zero. An interrupted introduction stores no partial page and starts again from page one.
+The introduction always uses the light Sunset palette, even when the saved app appearance or system appearance is dark, so its first-launch composition remains faithful to the approved reference. It uses Fraunces/Inter typography, Kalam handwritten accents, original scenic watercolor backgrounds, photographic collages, and code-rendered cards and privacy symbols. `Get started` and the circular arrow actions advance exactly one screen; `Create my first timeline` and `Not now` complete from the final page. A quiet `Skip` completes the introduction from numbered pages one through four. Back returns to the prior page, and Back from the welcome page follows the platform's root behavior. Completion or Skip records a versioned native preference outside the archive database and reveals Home at scroll offset zero. An interrupted introduction stores no partial page and starts again from the welcome page.
 
 App Lock remains the outer privacy gate. An authoritative incoming share or deep-link entry takes priority over onboarding and leaves it pending for the next ordinary launch. When this capability first ships, an installation that already contains a Moment or custom timeline is marked complete through the existing bounded Profile counts and is never interrupted by onboarding; an existing but still-empty installation may receive the introduction.
 
-Onboarding requests no system permission, creates no account, offers no passcode keypad, and makes no cloud-sync claim. Reminder permission stays contextual to Profile → Reminders, and App Lock setup stays in Privacy & Security. The experience adds no backend, analytics, archive hydration, or new runtime dependency.
+Onboarding requests no system permission, creates no account, and offers no passcode keypad. The Private page's `Optional cloud backup` label describes the separate optional backup capability; it is not a sync, account, or availability claim and adds no backend. Reminder permission stays contextual to Profile → Reminders, and App Lock setup stays in Privacy & Security. The experience adds no analytics, archive hydration, or new runtime dependency.
 
 ---
 
@@ -651,12 +651,15 @@ The Appearance row presents palettes in entitlement order. The three Free choice
 **Warm Journal**, **Sunrise**, and **Sunset**. Premium choices follow in their existing order:
 **Evergreen**, **Ember & Aqua**, **Plum & Gold**, and **Rose & Sage**. The retired **Original**
 palette remains resolvable for an existing saved preference but is not offered for new selection.
-Warm Journal matches the launcher icon's cream paper, leather brown, and quiet tan details and is
-the default for a fresh install.
+Warm Journal matches the former primary launcher's cream paper, leather brown, and quiet tan
+details. The appearance and launcher default for a fresh install is **Sunset**. Sunset is the
+primary launcher icon on both platforms; Warm Journal remains selectable and is retained as the former
+primary icon through the `AppIconWarmJournal` iOS alternate and Android launcher alias.
 
 Each global palette owns one matching launcher icon that remains the same in Light and Dark mode.
 Changing the selected palette changes the installed app icon through the platform's supported
-alternate-icon mechanism. Warm Journal keeps the primary cream-diary-on-brown icon; the retired
+alternate-icon mechanism. Sunset keeps the primary icon; Warm Journal keeps its cream-diary-on-brown
+alternate icon; the retired
 Original palette keeps a matching legacy icon for an existing saved preference.
 
 The global appearance mode is **System**, **Light**, or **Dark**. System follows the live platform appearance. The selected palette is the app default. All moments and each custom timeline own independent `TimelineAppearance` values; All's appearance is stored in native local preferences because All is logical, while custom timeline appearances are archive data. On Home, All's `TimelineAppearance` governs the **All moments band only**: the welcome block, the `Relive your memories` heading, and the Rediscover row always render on the plain canvas. Profile, Search, the Rediscover row, and read-only system collections use the app default. A timeline's mode always remains global.

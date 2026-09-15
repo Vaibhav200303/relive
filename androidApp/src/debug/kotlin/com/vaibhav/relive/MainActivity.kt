@@ -12,6 +12,7 @@ import androidx.glance.appwidget.updateAll
 import com.vaibhav.relive.platform.capture.QuickCaptureRequestBus
 import com.vaibhav.relive.platform.exporting.PortableArchiveRequestBus
 import com.vaibhav.relive.platform.share.AndroidIncomingShareGateway
+import com.vaibhav.relive.platform.system.LauncherIconController
 import com.vaibhav.relive.widget.ReliveQuickCaptureWidget
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
@@ -27,6 +28,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var incomingShareGateway: AndroidIncomingShareGateway
     private val quickCaptureRequestBus = QuickCaptureRequestBus()
     private val portableArchiveRequestBus = PortableArchiveRequestBus()
+    private var launcherIconController: LauncherIconController? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -39,6 +41,7 @@ class MainActivity : ComponentActivity() {
         reminderService = AndroidRediscoverReminderService(this)
         incomingShareGateway = AndroidIncomingShareGateway(applicationContext, shareScope)
         val container = createDefaultReliveAppContainer(applicationContext, googleDriveAccountManager = accountManager, backupPreferencesRepository = backupPreferences, backupCoordinatorFactory = { database, mediaStore, _ -> AndroidBackupCoordinator(applicationContext, database, mediaStore, accountManager) { recreate() } }, deviceAuthentication = deviceAuthentication, rediscoverReminderService = reminderService, incomingShareGateway = incomingShareGateway, quickCaptureRequestBus = quickCaptureRequestBus, portableArchiveRequestBus = portableArchiveRequestBus, entitlementProvider = (application as ReliveApplication).entitlementProvider, termsOfServiceUrl = BuildConfig.TERMS_OF_SERVICE_URL, privacyPolicyUrl = BuildConfig.PRIVACY_POLICY_URL, supportEmail = BuildConfig.SUPPORT_EMAIL)
+        launcherIconController = container.launcherIconController
         android.util.Log.d("ReliveBackupAuth", "BackupCoordinator runtime=${container.backupCoordinator::class.java.name}")
         AndroidBackupDebugTrigger.scheduler = AndroidBackupScheduler(applicationContext)
         routeIntent(intent)
@@ -75,6 +78,13 @@ class MainActivity : ComponentActivity() {
         shareScope.launch {
             (application as ReliveApplication).entitlementProvider.refresh()
         }
+    }
+
+    override fun onStop() {
+        // Alias changes are deferred until the activity is no longer visible so launchers cannot
+        // tear down the running process while a person is changing the palette.
+        super.onStop()
+        launcherIconController?.applyPending()
     }
 
     /** ADD_MOMENT (notification/widget) opens the composer; anything else is a share intent. */

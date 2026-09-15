@@ -599,6 +599,7 @@ fun App(
                     )
                 } else if (!onboardingBypassedForSession && onboardingVisible == true) {
                     OnboardingScreen(
+                        mediaStore = container.mediaStore,
                         onFinish = {
                             container.onboardingPreferencesRepository
                                 .complete(CURRENT_ONBOARDING_VERSION)

@@ -21,9 +21,11 @@ data class ReliveTypography(
     val tag: TextStyle,
     val action: TextStyle,
     val prominentAction: TextStyle,
+    val onboardingWelcomeTitle: TextStyle,
     val onboardingTitle: TextStyle,
     val onboardingBody: TextStyle,
     val onboardingAction: TextStyle,
+    val onboardingHandwritten: TextStyle,
 )
 
 /**
@@ -56,6 +58,7 @@ data class ReliveTypography(
 fun reliveTypography(
     serif: FontFamily,
     sans: FontFamily,
+    handwriting: FontFamily = sans,
     isDark: Boolean = false,
 ): ReliveTypography {
     val labelWeight = labelWeightFor(isDark)
@@ -146,6 +149,13 @@ fun reliveTypography(
             lineHeight = 22.sp,
             letterSpacing = 0.1.sp,
         ),
+        onboardingWelcomeTitle = TextStyle(
+            fontFamily = serif,
+            fontWeight = FontWeight.Medium,
+            fontSize = 74.sp,
+            lineHeight = 78.sp,
+            letterSpacing = (-0.8).sp,
+        ),
         onboardingTitle = TextStyle(
             fontFamily = serif,
             fontWeight = FontWeight.SemiBold,
@@ -166,6 +176,13 @@ fun reliveTypography(
             fontSize = 17.sp,
             lineHeight = 24.sp,
             letterSpacing = 0.1.sp,
+        ),
+        onboardingHandwritten = TextStyle(
+            fontFamily = handwriting,
+            fontWeight = FontWeight.Normal,
+            fontSize = 19.sp,
+            lineHeight = 24.sp,
+            letterSpacing = 0.sp,
         ),
     )
 }
@@ -204,4 +221,8 @@ fun prominentLabelWeightFor(isDark: Boolean): FontWeight =
  * bundled Fraunces + Inter families during composition.
  */
 val DefaultReliveTypography: ReliveTypography =
-    reliveTypography(serif = FontFamily.Serif, sans = FontFamily.SansSerif)
+    reliveTypography(
+        serif = FontFamily.Serif,
+        sans = FontFamily.SansSerif,
+        handwriting = FontFamily.Cursive,
+    )

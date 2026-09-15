@@ -1,7 +1,21 @@
 package com.vaibhav.relive.presentation.onboarding
 
-const val CURRENT_ONBOARDING_VERSION = 1
-const val ONBOARDING_PAGE_COUNT = 4
+const val CURRENT_ONBOARDING_VERSION = 2
+const val ONBOARDING_PAGE_COUNT = 6
+
+enum class OnboardingPage {
+    Welcome,
+    Capture,
+    Organize,
+    ReliveMoments,
+    Private,
+    Final,
+}
+
+enum class OnboardingCommand {
+    Advance,
+    Complete,
+}
 
 data class OnboardingState(
     val pageIndex: Int = 0,
@@ -12,6 +26,10 @@ data class OnboardingState(
 
     val isFirstPage: Boolean get() = pageIndex == 0
     val isLastPage: Boolean get() = pageIndex == ONBOARDING_PAGE_COUNT - 1
+    val page: OnboardingPage get() = OnboardingPage.entries[pageIndex]
+    val primaryCommand: OnboardingCommand
+        get() = if (isLastPage) OnboardingCommand.Complete else OnboardingCommand.Advance
+    val canSkip: Boolean get() = pageIndex in 1 until ONBOARDING_PAGE_COUNT - 1
 
     fun next(): OnboardingState = copy(
         pageIndex = (pageIndex + 1).coerceAtMost(ONBOARDING_PAGE_COUNT - 1),

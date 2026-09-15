@@ -373,15 +373,18 @@ Opacity variants for colors come from this scale rather than one-off alpha value
 
 Themes are presentation-only token sets resolved by palette plus global appearance mode. The legacy Original palette preserves its approved light tokens exactly. Evergreen, Lilac Dusk, Crimson Keepsake, Blue Hour, and Rosewood use these ordered light/mid/strong/dark anchors:
 
-Warm Journal is the fresh-install default and mirrors the launcher icon: cream paper (`#F5EFE9`),
+Sunset is the fresh-install default and mirrors the primary launcher icon. Warm Journal remains a
+selectable retained palette and mirrors its `AppIconWarmJournal`/Android alias artwork: cream paper (`#F5EFE9`),
 leather brown (`#5A3E2F`), deep brown ink (`#3B251B`), and a restrained tan spark (`#C99455`).
 Its dark variant uses chocolate canvases with cream text. In the Appearance row, the Free palettes
-are grouped first as Warm Journal, Sunrise, and Sunset; premium palettes follow.
+are grouped first as Warm Journal, Sunrise, and Sunset; premium palettes follow. Sunset is the
+fallback whenever no native palette preference exists.
 
 The launcher icon is palette-aware, not mode-aware. Every selectable palette uses one full-bleed
 theme-gradient variant of the same safe-zone diary composition in both Light and Dark mode.
-Warm Journal retains the primary brown icon. Palette changes synchronize the corresponding Android
-launcher alias or iOS alternate icon; mode-only changes never replace the icon. The retired
+Sunset owns the primary icon. Warm Journal retains its matching Android alias and iOS alternate.
+Palette changes synchronize the corresponding Android launcher alias or iOS alternate icon;
+mode-only changes never replace the icon. The retired
 Original palette retains an icon only for compatibility with an existing saved selection.
 
 | Palette | Light | Mid | Strong | Dark |
@@ -426,11 +429,13 @@ The bottom controls are a matched Material 3 `HorizontalFloatingToolbar` pair: n
 
 ## 20A. First-launch onboarding
 
-Onboarding is a full-canvas first-launch gate wearing the active app palette and the same atmospheric gradient and film grain as the rest of Relive. The wordmark and a thin four-stop memory thread stay fixed at the top; one large hero, one serif heading, one short sans paragraph, and one primary pill form a centered page composition. Layout remains open rather than carded. Hero art is original soft-rendered keepsake material — ivory linen, aged paper, muted lilac cloth, sepia photography, and restrained brushed brass — on transparent backgrounds so every palette and appearance mode remains truthful. Layer thickness, three-quarter perspective, edge highlights, ambient occlusion, and a restrained grounding shadow provide premium dimensionality without becoming glossy emoji, generic cybersecurity art, or another product's illustration system.
+Onboarding is a screenshot-matched, full-canvas first-launch gate that always uses light Sunset semantic tokens with its approved localized ivory paper brush. This is a deliberate exception to the app's saved palette and mode: the approved reference's pale ivory canvas, editorial serif hierarchy, compact progress/Skip affordances, rounded berry actions, and quiet page dots must remain visually stable in either system appearance. A branded welcome screen is followed by five numbered pages (`N / 5`) with one focused idea each. Numbered pages one through four end with quiet position dots and a circular forward action; page five ends with the full-width `Create my first timeline` pill and `Not now` on a curved pale action surface. Layout remains open rather than carded.
 
-Each page changes one idea only. Outgoing content fades fully over `short4` on `emphasizedAccelerate`; incoming content then fades over `medium2`, while its hero settles from a small scale/vertical offset over `medium4` on `emphasizedDecelerate`. Supporting decoration may use one `short2` stagger. The progress thread advances over `medium2`. A page may have one restrained idle breath or tilt, but no simultaneous ambient loops. Reduced motion removes scale, travel, rotation, rail drawing, and idle motion and uses the shared `short3` fade-only path. No old and new page may remain partially visible together.
+Artwork follows the reference directly: scenic watercolor welcome art, an airy photographic capture collage, layered timeline cards with photographic thumbnails, a warm scrollable Moment-card composition, a softly translucent privacy pouch containing archival cards and a berry lock, and a full-canvas golden-hour mountain-lake photograph for the final page. It is original and project-owned, and is decorative to accessibility services. Interface copy, privacy feature cards, feature icons, handwritten annotations, and navigation remain native, except that lettering physically written on photographed objects belongs to the artwork itself. Page three places three safe sample Moments with project-owned preview photos inside a clipped, card-height vertical viewport using the production `MomentCard`, rail, dot, and media placement; only that viewport scrolls while the rest of the onboarding composition stays fixed. Preview photos are bundled decoration, not persisted attachments, and do not open the viewer. Page four uses one full-canvas ivory paper artwork so its pouch, concentric rings, scattered leaves, and edge botanicals blend into the canvas; native content is layered above it. Page five grounds an enamel mug lettered `Good Memories Live On ♡`, a leather journal lettered `Relive ♡`, and instant prints in the photographic foreground, keeps readable sky behind the native completion copy, and ends on a curved pale action sheet. The earlier dimensional brass/linen keepsake direction does not apply to onboarding.
 
-The heading uses the onboarding serif role at `32sp`, body uses the onboarding sans role at `18sp`, wordmark uses `type.wordmark`, primary action uses the onboarding action role at `17sp`, and Skip uses `type.action`. Controls use existing accent/on-accent and full-round semantic tokens, retain the global `48dp` target, and expose page position and action semantics to accessibility services. Artwork is decorative (`contentDescription = null`); the adjacent copy carries its meaning. Large text may reduce hero height but must never clip copy or actions.
+Each page changes one idea only. Outgoing content fades fully over `short4` on `emphasizedAccelerate`; incoming content then fades over `medium2` on `emphasizedDecelerate`. The flat reference artwork has no perspective tilt, entrance travel, or idle loop. Reduced motion uses the shared `short3` fade-only path. No old and new page may remain partially visible together.
+
+The heading uses the onboarding serif role at `32sp`, body uses the onboarding sans role at `18sp`, the welcome wordmark uses the dedicated `74sp` onboarding role, handwritten accents use bundled Kalam at `19sp`, primary action uses the onboarding action role at `17sp`, and Skip uses `type.action`. Controls use Sunset accent/on-accent and full-round semantic tokens, retain the global `48dp` target, and expose page position and action semantics to accessibility services. Artwork is decorative (`contentDescription = null`); adjacent native copy carries its meaning. Large text and compact heights reduce decorative artwork first and may scroll the content region, but must never clip fixed actions.
 
 ## 21. Behavior preferences
 

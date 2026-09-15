@@ -60,7 +60,13 @@ internal fun rememberReliveHandwritingFamily(): FontFamily {
 internal fun rememberReliveTypography(isDark: Boolean): ReliveTypography {
     val serif = rememberReliveSerifFamily()
     val sans = rememberReliveSansFamily()
-    return remember(serif, sans, isDark) {
-        reliveTypography(serif = serif, sans = sans, isDark = isDark)
+    val handwriting = rememberReliveHandwritingFamily()
+    return remember(serif, sans, handwriting, isDark) {
+        reliveTypography(
+            serif = serif,
+            sans = sans,
+            handwriting = handwriting,
+            isDark = isDark,
+        )
     }
 }

@@ -94,6 +94,8 @@ fun MomentCard(
     onChooseFeeling: ((MomentFeeling) -> Unit)? = null,
     onDismissFeelingPrompt: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    /** Non-persisted visual media used by isolated previews such as onboarding. */
+    previewMediaContent: (@Composable () -> Unit)? = null,
 ) {
     val colors = ReliveTheme.colors
     val momentColors = timelineMomentForegroundColors(
@@ -264,6 +266,7 @@ fun MomentCard(
                 onOpenMedia = onOpenMedia,
                 sharedTransition = sharedTransition,
                 showTags = showTags,
+                previewMediaContent = previewMediaContent,
             )
 
             // The reflection prompt rides under the card it belongs to, inside the same
@@ -343,6 +346,7 @@ private fun PinnedMomentCard(
     onOpenMedia: (List<MomentAttachmentPresentation>, Int) -> Unit,
     sharedTransition: TimelineMediaSharedTransition?,
     showTags: Boolean,
+    previewMediaContent: (@Composable () -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val colors = ReliveTheme.colors
@@ -400,7 +404,10 @@ private fun PinnedMomentCard(
                 precededByText = true
             }
 
-            if (moment.hasAttachments) {
+            if (previewMediaContent != null) {
+                if (precededByText) Spacer(Modifier.height(dims.spacing.lg))
+                previewMediaContent()
+            } else if (moment.hasAttachments) {
                 if (precededByText) Spacer(Modifier.height(dims.spacing.lg))
                 TimelineMediaSection(
                     attachments = moment.attachments,

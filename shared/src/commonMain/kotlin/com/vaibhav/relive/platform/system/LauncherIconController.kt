@@ -28,6 +28,13 @@ fun ThemeReference.toLauncherIcon(): LauncherIcon = when (this) {
 /** Platform edge for keeping the launcher icon paired with the selected global palette. */
 fun interface LauncherIconController {
     fun synchronize(icon: LauncherIcon)
+
+    /**
+     * Applies a queued icon change at a safe lifecycle boundary. Platforms that can update their
+     * icon without affecting the running process may apply [synchronize] immediately and keep
+     * this as a no-op.
+     */
+    fun applyPending() = Unit
 }
 
 object UnavailableLauncherIconController : LauncherIconController {

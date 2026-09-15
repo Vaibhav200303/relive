@@ -10,10 +10,10 @@ class IosLauncherIconController(
 
 private val LauncherIcon.assetName: String?
     get() = when (this) {
-        LauncherIcon.WarmJournal -> null
+        LauncherIcon.WarmJournal -> "AppIconWarmJournal"
         LauncherIcon.Original -> "AppIconOriginal"
         LauncherIcon.Sunrise -> "AppIconSunrise"
-        LauncherIcon.Sunset -> "AppIconSunset"
+        LauncherIcon.Sunset -> null
         LauncherIcon.Evergreen -> "AppIconEvergreen"
         LauncherIcon.EmberAqua -> "AppIconEmberAqua"
         LauncherIcon.PlumGold -> "AppIconPlumGold"
