@@ -87,11 +87,11 @@ class ProfilePolishTest {
     }
 
     @Test fun `legal links retain the same configured availability used by pro`() {
-        assertFalse(ReliveLegalLinks(termsOfServiceUrl = "https://example.com/terms").areConfigured)
+        assertFalse(ReliveLegalLinks(termsOfServiceUrl = "https://relivemoments.app/terms").areConfigured)
         assertTrue(
             ReliveLegalLinks(
-                termsOfServiceUrl = "https://example.com/terms",
-                privacyPolicyUrl = "https://example.com/privacy",
+                termsOfServiceUrl = "https://relivemoments.app/terms",
+                privacyPolicyUrl = "https://relivemoments.app/privacy",
             ).areConfigured,
         )
     }

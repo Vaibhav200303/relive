@@ -45,11 +45,11 @@ class EntitlementPolicyTest {
 
     @Test fun purchasesRequireBothConfiguredLegalLinks() {
         assertFalse(ReliveLegalLinks().areConfigured)
-        assertFalse(ReliveLegalLinks(termsOfServiceUrl = "https://example.com/terms").areConfigured)
+        assertFalse(ReliveLegalLinks(termsOfServiceUrl = "https://relivemoments.app/terms").areConfigured)
         assertTrue(
             ReliveLegalLinks(
-                termsOfServiceUrl = "https://example.com/terms",
-                privacyPolicyUrl = "https://example.com/privacy",
+                termsOfServiceUrl = "https://relivemoments.app/terms",
+                privacyPolicyUrl = "https://relivemoments.app/privacy",
             ).areConfigured,
         )
     }
@@ -95,6 +95,8 @@ class EntitlementPolicyTest {
         assertTrue(isRevenueCatKeyUsable("test_public", allowTestStore = true))
         assertFalse(isRevenueCatKeyUsable("test_public", allowTestStore = false))
         assertTrue(isRevenueCatKeyUsable("goog_public", allowTestStore = false))
+        assertFalse(isRevenueCatKeyUsable("sk_secret", allowTestStore = true))
+        assertFalse(isRevenueCatKeyUsable("unknown_key", allowTestStore = true))
         assertFalse(isRevenueCatKeyUsable("RELIVE_REVENUECAT_ANDROID_PUBLIC_API_KEY", allowTestStore = false))
     }
 }

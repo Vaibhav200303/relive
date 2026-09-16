@@ -6,7 +6,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.vaibhav.relive.di.createDefaultReliveAppContainer
 import com.vaibhav.relive.platform.backup.AndroidBackupPreferencesRepository
-import android.util.Log
 import android.content.Intent
 import androidx.glance.appwidget.updateAll
 import com.vaibhav.relive.platform.capture.QuickCaptureRequestBus
@@ -34,15 +33,14 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         AndroidRestoreRecovery.recover(applicationContext)
-        Log.d("ReliveBackupAuth", "MainActivity constructing AndroidGoogleDriveAccountManager")
         val backupPreferences = AndroidBackupPreferencesRepository(applicationContext)
         val accountManager = AndroidGoogleDriveAccountManager(this, backupPreferences)
         deviceAuthentication = AndroidDeviceAuthentication(this)
         reminderService = AndroidRediscoverReminderService(this)
         incomingShareGateway = AndroidIncomingShareGateway(applicationContext, shareScope)
         val container = createDefaultReliveAppContainer(applicationContext, googleDriveAccountManager = accountManager, backupPreferencesRepository = backupPreferences, backupCoordinatorFactory = { database, mediaStore, _ -> AndroidBackupCoordinator(applicationContext, database, mediaStore, accountManager) { recreate() } }, deviceAuthentication = deviceAuthentication, rediscoverReminderService = reminderService, incomingShareGateway = incomingShareGateway, quickCaptureRequestBus = quickCaptureRequestBus, portableArchiveRequestBus = portableArchiveRequestBus, entitlementProvider = (application as ReliveApplication).entitlementProvider, termsOfServiceUrl = BuildConfig.TERMS_OF_SERVICE_URL, privacyPolicyUrl = BuildConfig.PRIVACY_POLICY_URL, supportEmail = BuildConfig.SUPPORT_EMAIL)
+        DemoArchiveBootstrap.prepare(applicationContext, container, shareScope)
         launcherIconController = container.launcherIconController
-        android.util.Log.d("ReliveBackupAuth", "BackupCoordinator runtime=${container.backupCoordinator::class.java.name}")
         routeIntent(intent)
         setIntent(Intent(this, MainActivity::class.java))
         setContent { App(container, onIncomingShareCancelled = ::finish) }

@@ -22,8 +22,8 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.json.JSONObject
-import android.util.Log
 import com.vaibhav.relive.platform.backup.AndroidBackupPreferencesRepository
+import com.vaibhav.relive.platform.backup.backupAuthLog
 import kotlinx.coroutines.flow.first
 
 /** Activity-owned implementation: Credential Manager chooses identity, GIS grants Drive access. */
@@ -51,23 +51,26 @@ class AndroidGoogleDriveAccountManager(
 
     override suspend fun connect(): GoogleDriveAccount? {
         val clientId = BuildConfig.GOOGLE_WEB_CLIENT_ID
-        Log.d("ReliveBackupAuth", "Android provider entered; implementation=${this::class.java.name}")
-        Log.d("ReliveBackupAuth", "webClientId configured=${clientId.isNotBlank()}")
+        backupAuthLog("Android provider entered; implementation=${this::class.java.name}")
+        backupAuthLog("webClientId configured=${clientId.isNotBlank()}")
         if (clientId.isBlank()) throw GoogleDriveAuthorizationUnavailableException(
             "Google Drive is not configured. Add RELIVE_GOOGLE_WEB_CLIENT_ID and Android OAuth clients.",
         )
-        Log.d("ReliveBackupAuth", "Credential Manager request launching")
-        val credential = selectGoogleAccount(clientId) ?: run { Log.d("ReliveBackupAuth", "account selection cancelled or unavailable"); return null }
-        Log.d("ReliveBackupAuth", "account result returned")
+        backupAuthLog("Credential Manager request launching")
+        val credential = selectGoogleAccount(clientId) ?: run { backupAuthLog("account selection cancelled or unavailable"); return null }
+        backupAuthLog("account result returned")
         val email = credential.id
         selectedAccount = Account(email, "com.google")
-        Log.d("ReliveBackupAuth", "Drive authorization request launching")
+        backupAuthLog("Drive authorization request launching")
         authorizeDrive()
-        Log.d("ReliveBackupAuth", "Drive authorization result returned")
+        backupAuthLog("Drive authorization result returned")
         return GoogleDriveAccount(subjectId = subjectFrom(credential.idToken) ?: email, email = email)
     }
 
     override suspend fun accessToken(): String? {
+        if (selectedAccount == null) {
+            selectedAccount = preferences.account.first()?.let { Account(it.email, "com.google") }
+        }
         authorizeDrive()
         return lastAccessToken
     }
@@ -108,11 +111,10 @@ class AndroidGoogleDriveAccountManager(
     }
 
     private suspend fun authorizeDrive() = suspendCancellableCoroutine<Unit> { continuation ->
-        Identity.getAuthorizationClient(activity).authorize(
-            AuthorizationRequest.builder()
-                .setRequestedScopes(listOf(Scope("https://www.googleapis.com/auth/drive.appdata")))
-                .build(),
-        ).addOnSuccessListener { result ->
+        val request = AuthorizationRequest.builder()
+            .setRequestedScopes(listOf(Scope("https://www.googleapis.com/auth/drive.appdata")))
+        selectedAccount?.let(request::setAccount)
+        Identity.getAuthorizationClient(activity).authorize(request.build()).addOnSuccessListener { result ->
             if (result.hasResolution()) {
                 authorizationContinuation = { outcome -> outcome.fold(continuation::resume, continuation::resumeWithException) }
                 authorizationLauncher.launch(IntentSenderRequest.Builder(result.pendingIntent!!.intentSender).build())

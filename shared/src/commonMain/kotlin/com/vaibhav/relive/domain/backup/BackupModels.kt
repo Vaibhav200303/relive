@@ -39,6 +39,7 @@ interface BackupPreferencesRepository {
     suspend fun setAccount(value: GoogleDriveAccount?)
     suspend fun setOperation(value: BackupOperationState)
     suspend fun setRemoteSummary(value: BackupSummary)
+    suspend fun clearRemoteSummary() {}
 }
 
 interface GoogleDriveAccountManager {

@@ -77,6 +77,19 @@ class BackupRestoreViewModelTest {
         assertTrue(viewModel.state.first { it.upgradeRequired }.upgradeRequired)
     }
 
+    @Test
+    fun disconnect_clears_account_scoped_remote_summary() = runTest {
+        val preferences = FakePreferences(GoogleDriveAccount("subject", "user@example.com"))
+        preferences.remoteSummary.value = BackupSummary(BackupManifest(1, "generation", 1, 1, 1, "hash"), "bundle")
+        val viewModel = BackupRestoreViewModel(preferences, FakeAccountManager(), FakeCoordinator(), backgroundScope)
+
+        viewModel.disconnectAccount()
+        runCurrent()
+
+        assertEquals(null, preferences.account.value)
+        assertEquals(null, preferences.remoteSummary.value)
+    }
+
     private class FakePreferences(
         initialAccount: GoogleDriveAccount?,
         initialCadence: BackupCadence = BackupCadence.Weekly,
@@ -94,6 +107,7 @@ class BackupRestoreViewModelTest {
         override suspend fun setAccount(value: GoogleDriveAccount?) { accountState.value = value }
         override suspend fun setOperation(value: BackupOperationState) { operation.value = value }
         override suspend fun setRemoteSummary(value: BackupSummary) { remoteSummary.value = value }
+        override suspend fun clearRemoteSummary() { remoteSummary.value = null }
     }
 
     private class FakeEntitlementProvider(initialState: EntitlementState) : EntitlementProvider {

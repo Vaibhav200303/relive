@@ -12,6 +12,8 @@
     <application
         android:name=".ReliveApplication"
         android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="false"
         android:icon="@mipmap/ic_launcher_sunset"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_sunset_round"

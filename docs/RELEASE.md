@@ -9,10 +9,10 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 ## 1. Android release  ☐
 
 - ☐ Release signing config (keystore, key alias) kept out of version control; injected securely.
-- ☐ Application id confirmed (`com.vaibhav.relive`), version code/name strategy defined.
+- ☑ Application ids confirmed: production `com.vaibhav.relive`, judge demo `com.vaibhav.relive.demo`, and friends `com.vaibhav.relive.friends`.
 - ☐ `minSdk 24` / `targetSdk 36` / `compileSdk 36` reviewed against store requirements at submission time.
-- ☐ ProGuard/R8 rules validated if minification is enabled (currently `isMinifyEnabled = false`).
-- ☐ Release build produced and smoke-tested: `./gradlew :androidApp:assembleRelease` (and/or `bundleRelease`).
+- ◐ R8 is deliberately disabled because the current Kotlin 2.4/AGP toolchain reports metadata-compatibility warnings; release builds and lint pass, with physical-device smoke testing still required.
+- ◐ Judge `demoDebug`, friends `friendsShare`, production release APK, and production AAB are produced; release signing and physical smoke testing remain required. RevenueCat Test Store cannot run in non-debuggable APKs, so the shareable friends artifact is the debuggable, debug-signed `friendsShare` APK unless a separate production-key release is intended.
 - ☐ Google Play listing: title, description, category, content rating, data-safety form.
 
 ## 2. iOS build & signing  ☐
@@ -27,9 +27,9 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 
 - ☐ RevenueCat project + API keys (Android/iOS) provisioned.
 - ☐ Products/entitlements configured in App Store Connect and Google Play; mapped in RevenueCat.
-- ☐ Production Terms of Service and Privacy Policy URLs configured: `RELIVE_TERMS_OF_SERVICE_URL` and `RELIVE_PRIVACY_POLICY_URL`. Purchases remain disabled until both links are present.
+- ☑ Production Terms of Service and Privacy Policy URLs default to the live pages on `https://relivemoments.app`; `RELIVE_TERMS_OF_SERVICE_URL` and `RELIVE_PRIVACY_POLICY_URL` remain available as local overrides.
 - ☐ Deliverable support address configured: `RELIVE_SUPPORT_EMAIL`. Help & Feedback mail actions remain unavailable until it is present.
-- ☐ RevenueCat SDK integrated behind the existing entitlement interface (Phase 9, [`ROADMAP.md`](ROADMAP.md)).
+- ☑ RevenueCat SDK integrated behind the existing entitlement interface; demo/production public-key types are compile-time separated.
 - ☐ Purchase, restore, and entitlement-gating flows tested on both platforms.
 
 ## 4. RevenueCat Funnels  ☐

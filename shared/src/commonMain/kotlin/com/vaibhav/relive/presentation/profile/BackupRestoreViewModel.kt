@@ -37,7 +37,13 @@ class BackupRestoreViewModel(private val preferences: BackupPreferencesRepositor
     fun clearUpgradeRequired() { upgradeRequired.value = false }
     fun setNetworkPolicy(value: BackupNetworkPolicy) = scope.launch { preferences.setNetworkPolicy(value) }
     fun connectAccount() = scope.launch { backupAuthLog("viewModel connect event"); connectThen(null) }
-    fun disconnectAccount() = scope.launch { accountManager.disconnect(); preferences.setAccount(null); preferences.setOperation(BackupOperationState.Idle) }
+    fun disconnectAccount() = scope.launch {
+        accountManager.disconnect()
+        restorePreview.value = null
+        preferences.setAccount(null)
+        preferences.clearRemoteSummary()
+        preferences.setOperation(BackupOperationState.Idle)
+    }
     fun backUpNow() = scope.launch { ensureConnectedThen { runBackup() } }
     fun restore() = scope.launch { ensureConnectedThen { runRestoreDiscovery() } }
     fun confirmRestore() = scope.launch {
@@ -62,6 +68,10 @@ class BackupRestoreViewModel(private val preferences: BackupPreferencesRepositor
         try {
             backupAuthLog("account manager connect entered; implementation=${accountManager::class.simpleName}")
             val account = accountManager.connect() ?: return
+            if (preferences.account.first()?.subjectId != account.subjectId) {
+                restorePreview.value = null
+                preferences.clearRemoteSummary()
+            }
             preferences.setAccount(account)
             preferences.setOperation(BackupOperationState.Idle)
             next?.invoke()

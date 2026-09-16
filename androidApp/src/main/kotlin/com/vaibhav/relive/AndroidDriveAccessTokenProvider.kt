@@ -1,14 +1,17 @@
 package com.vaibhav.relive
 
 import android.content.Context
+import android.accounts.Account
 import com.google.android.gms.auth.api.identity.AuthorizationRequest
 import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.common.api.Scope
 import com.vaibhav.relive.domain.backup.GoogleDriveAuthorizationUnavailableException
 import com.vaibhav.relive.platform.backup.backupAuthLog
+import com.vaibhav.relive.platform.backup.AndroidBackupPreferencesRepository
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.flow.first
 
 /** Obtains short-lived Drive tokens without persisting them in Relive. */
 interface AndroidDriveAccessTokenProvider {
@@ -21,14 +24,16 @@ interface AndroidDriveAccessTokenProvider {
  */
 class AndroidBackgroundDriveAccessTokenProvider(context: Context) : AndroidDriveAccessTokenProvider {
     private val appContext = context.applicationContext
+    private val preferences = AndroidBackupPreferencesRepository(appContext)
 
-    override suspend fun accessToken(): String? = suspendCancellableCoroutine { continuation ->
+    override suspend fun accessToken(): String? {
+        val account = preferences.account.first()?.let { Account(it.email, "com.google") }
+        return suspendCancellableCoroutine { continuation ->
         backupAuthLog("background Drive authorization requested")
-        Identity.getAuthorizationClient(appContext).authorize(
-            AuthorizationRequest.builder()
-                .setRequestedScopes(listOf(Scope(DRIVE_APPDATA_SCOPE)))
-                .build(),
-        ).addOnSuccessListener { result ->
+        val request = AuthorizationRequest.builder()
+            .setRequestedScopes(listOf(Scope(DRIVE_APPDATA_SCOPE)))
+        account?.let(request::setAccount)
+        Identity.getAuthorizationClient(appContext).authorize(request.build()).addOnSuccessListener { result ->
             if (result.hasResolution()) {
                 backupAuthLog("background Drive authorization requires interactive resolution")
                 continuation.resumeWithException(
@@ -43,6 +48,7 @@ class AndroidBackgroundDriveAccessTokenProvider(context: Context) : AndroidDrive
             continuation.resumeWithException(
                 GoogleDriveAuthorizationUnavailableException("Google Drive authorization requires reconnecting your Google account."),
             )
+        }
         }
     }
 

@@ -44,6 +44,6 @@ object AndroidRestoreRecovery {
     }
 
     private fun logDebug(message: String) {
-        runCatching { Log.d(TAG, message) }
+        if (BuildConfig.DEBUG) runCatching { Log.d(TAG, message) }
     }
 }

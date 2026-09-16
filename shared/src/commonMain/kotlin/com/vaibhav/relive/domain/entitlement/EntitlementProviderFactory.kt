@@ -18,4 +18,6 @@ fun entitlementProviderFor(
 internal fun isRevenueCatKeyUsable(key: String, allowTestStore: Boolean): Boolean =
     key.isNotBlank() &&
         !key.startsWith("RELIVE_REVENUECAT_") &&
+        !key.startsWith("sk_") &&
+        key.substringBefore('_') in setOf("test", "goog", "appl", "amzn", "rcb") &&
         (allowTestStore || !key.startsWith("test_"))

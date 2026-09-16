@@ -274,7 +274,7 @@ fun ProfileScreen(
                     onMediaStorage = { finishNameEdit(); onOpenMediaStorage() },
                     onBackup = {
                         finishNameEdit()
-                        if (entitlement.isPro) onOpenBackupRestore() else onOpenUpgrade()
+                        onOpenBackupRestore()
                     },
                     onExport = { finishNameEdit(); onOpenExport() },
                     onOpenReliveArchive = { finishNameEdit(); onOpenReliveArchive() },

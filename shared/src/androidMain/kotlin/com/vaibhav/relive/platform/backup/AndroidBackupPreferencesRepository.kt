@@ -70,4 +70,16 @@ class AndroidBackupPreferencesRepository(context: Context) : BackupPreferencesRe
             .putString("summary_remote_bundle_id", value.remoteBundleId)
             .apply()
     }
+    override suspend fun clearRemoteSummary() {
+        summaryState.value = null
+        prefs.edit()
+            .remove("summary_format_version")
+            .remove("summary_generation")
+            .remove("summary_created_at")
+            .remove("summary_moment_count")
+            .remove("summary_logical_bytes")
+            .remove("summary_bundle_sha256")
+            .remove("summary_remote_bundle_id")
+            .apply()
+    }
 }
