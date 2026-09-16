@@ -6,6 +6,14 @@ Relive is a private, **local-first** personal memory timeline for Android and iO
 
 Relive is designed to feel like a personal life archive, not a notes app or database.
 
+<p align="center">
+  <a href="shipaton/screenshots/01-timeline.png"><img src="shipaton/screenshots/01-timeline.png" alt="Relive home timeline with a photo moment, place, tags, and feeling" width="23%"></a>
+  <a href="shipaton/screenshots/03-rediscover.png"><img src="shipaton/screenshots/03-rediscover.png" alt="Relive On This Day rediscovery timeline" width="23%"></a>
+  <a href="shipaton/screenshots/04-mood-insights.png"><img src="shipaton/screenshots/04-mood-insights.png" alt="Relive Mood Insights charts and weekly mood view" width="23%"></a>
+  <a href="shipaton/screenshots/06-relive-pro.png"><img src="shipaton/screenshots/06-relive-pro.png" alt="Relive Pro feature and plan selection screen" width="23%"></a>
+</p>
+<p align="center"><sub>Timeline · Rediscover · Mood Insights · Relive Pro</sub></p>
+
 ---
 
 ## Tech stack
