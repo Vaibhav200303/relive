@@ -147,6 +147,22 @@ class ReliveTokensTest {
     }
 
     @Test
+    fun timelineCreationDimensionsMatchReferenceAndAccessibilityMinimums() {
+        val creation = DefaultReliveDimensions.timelineCreation
+        assertEquals(560.dp, creation.maxWidth)
+        assertEquals(760.dp, creation.maxHeight)
+        assertEquals(32.dp, creation.contentInset)
+        assertEquals(70.dp, creation.fieldHeight)
+        assertEquals(212.dp, creation.coverZoneHeight)
+        assertEquals(80.dp, creation.emptyIconSurfaceSize)
+        assertEquals(32.dp, creation.emptyIconSize)
+        assertEquals(64.dp, creation.primaryActionHeight)
+        assertEquals(240.dp, creation.primaryActionMaxWidth)
+        assertTrue(creation.headerCloseSize >= DefaultReliveDimensions.minTouchTarget)
+        assertTrue(creation.primaryActionHeight >= DefaultReliveDimensions.minTouchTarget)
+    }
+
+    @Test
     fun mediaTokensMatchDesignSystem() {
         val m = DefaultReliveDimensions.media
         assertEquals(2f, m.ratioWide)

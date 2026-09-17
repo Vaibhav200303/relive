@@ -152,6 +152,21 @@ data class ReliveComposerDimensions(
     val tagVisibleHeight: Dp = 36.dp,
 )
 
+/** Layout tokens for the custom-timeline creation dialog. */
+@Immutable
+data class ReliveTimelineCreationDimensions(
+    val maxWidth: Dp = 560.dp,
+    val maxHeight: Dp = 760.dp,
+    val contentInset: Dp = 32.dp,
+    val headerCloseSize: Dp = 56.dp,
+    val fieldHeight: Dp = 70.dp,
+    val coverZoneHeight: Dp = 212.dp,
+    val emptyIconSurfaceSize: Dp = 80.dp,
+    val emptyIconSize: Dp = 32.dp,
+    val primaryActionHeight: Dp = 64.dp,
+    val primaryActionMaxWidth: Dp = 240.dp,
+)
+
 @Immutable
 data class ReliveOnboardingDimensions(
     val pageHorizontalPadding: Dp = 24.dp,
@@ -275,6 +290,7 @@ data class ReliveDimensions(
     val timelineTheme: ReliveTimelineThemeDimensions = ReliveTimelineThemeDimensions(),
     val search: ReliveSearchDimensions = ReliveSearchDimensions(),
     val composer: ReliveComposerDimensions = ReliveComposerDimensions(),
+    val timelineCreation: ReliveTimelineCreationDimensions = ReliveTimelineCreationDimensions(),
     val onboarding: ReliveOnboardingDimensions = ReliveOnboardingDimensions(),
     val pro: ReliveProDimensions = ReliveProDimensions(),
     val floatingToolbar: ReliveFloatingToolbarDimensions = ReliveFloatingToolbarDimensions(),
