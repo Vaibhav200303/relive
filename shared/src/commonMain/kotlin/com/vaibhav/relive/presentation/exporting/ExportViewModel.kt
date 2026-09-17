@@ -26,6 +26,7 @@ import com.vaibhav.relive.platform.exporting.UnavailableExportCompletionNotifier
 import com.vaibhav.relive.presentation.date.RediscoverCalendar
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -72,14 +73,36 @@ class ExportViewModel(
     private var terminalGenerationId: Long? = null
     private var notifiedGenerationId: Long? = null
     private var isScreenVisible = false
+    private var preparationJob: Job? = null
+    private var preparationSucceeded = false
 
     init {
-        scope.launch { reload() }
         scope.launch {
             entitlementProvider.state.collect { entitlement ->
                 _state.update { it.copy(isPro = entitlement.isPro) }
             }
         }
+    }
+
+    /** Starts the one-time archive load needed by the Export setup screen. */
+    fun prepareForEntry(): Job? {
+        if (preparationSucceeded) return null
+        preparationJob?.takeIf { it.isActive }?.let { return it }
+
+        val job = scope.launch(start = CoroutineStart.LAZY) {
+            try {
+                reload()
+                preparationSucceeded = true
+            } catch (error: Throwable) {
+                if (error is CancellationException) throw error
+                // Keep the gate open so a later Profile → Export entry can retry a failed load.
+            } finally {
+                preparationJob = null
+            }
+        }
+        preparationJob = job
+        job.start()
+        return job
     }
 
     suspend fun reload() {
@@ -273,6 +296,8 @@ class ExportViewModel(
 
     fun close() {
         val readyPath = (_state.value.operation as? ExportOperationState.Ready)?.result?.path
+        preparationJob?.cancel()
+        preparationJob = null
         cancel()
         readyPath?.let(exportService::deleteTemporaryFile)
         _state.value.coverPhotoPath?.let(exportService::deleteTemporaryFile)

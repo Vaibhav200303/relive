@@ -34,12 +34,14 @@ import com.vaibhav.relive.platform.exporting.OpenedPortableArchive
 import com.vaibhav.relive.platform.exporting.ReliveExportService
 import com.vaibhav.relive.platform.exporting.UnavailableExportCompletionNotifier
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.withContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -47,6 +49,85 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ExportViewModelTest {
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun constructionDoesNotLoadArchive() = runTest {
+        val moments = CountingMomentRepository()
+        val timelines = CountingTimelineRepository()
+        exportViewModel(
+            service = CompletingExportService(),
+            momentRepository = moments,
+            timelineRepository = timelines,
+            prepare = false,
+        )
+        runCurrent()
+
+        assertEquals(0, moments.listAllCalls)
+        assertEquals(0, moments.listInTimelineCalls)
+        assertEquals(0, timelines.listCustomCalls)
+    }
+
+    @Test
+    fun firstPreparationLoadsArchiveOnce() = runTest {
+        val moments = CountingMomentRepository()
+        val timelines = CountingTimelineRepository()
+        val viewModel = exportViewModel(
+            service = CompletingExportService(),
+            momentRepository = moments,
+            timelineRepository = timelines,
+            prepare = false,
+        )
+
+        viewModel.prepareForEntry()?.join()
+
+        assertEquals(1, moments.listAllCalls)
+        assertEquals(1, moments.listInTimelineCalls)
+        assertEquals(1, timelines.listCustomCalls)
+    }
+
+    @Test
+    fun repeatedPreparationDoesNotDuplicateSuccessfulLoad() = runTest {
+        val moments = CountingMomentRepository()
+        val timelines = CountingTimelineRepository()
+        val viewModel = exportViewModel(
+            service = CompletingExportService(),
+            momentRepository = moments,
+            timelineRepository = timelines,
+            prepare = false,
+        )
+
+        val preparation = viewModel.prepareForEntry()
+        assertEquals(preparation, viewModel.prepareForEntry())
+        preparation?.join()
+        viewModel.prepareForEntry()?.join()
+
+        assertEquals(1, moments.listAllCalls)
+        assertEquals(1, moments.listInTimelineCalls)
+        assertEquals(1, timelines.listCustomCalls)
+    }
+
+    @Test
+    fun failedPreparationCanRetry() = runTest {
+        val moments = CountingMomentRepository(listAllFailuresRemaining = 1)
+        val timelines = CountingTimelineRepository()
+        val viewModel = exportViewModel(
+            service = CompletingExportService(),
+            momentRepository = moments,
+            timelineRepository = timelines,
+            prepare = false,
+        )
+
+        viewModel.prepareForEntry()?.join()
+        assertEquals(1, moments.listAllCalls)
+
+        viewModel.prepareForEntry()?.join()
+
+        assertEquals(2, moments.listAllCalls)
+        assertEquals(2, timelines.listCustomCalls)
+        assertEquals(1, moments.listInTimelineCalls)
+        assertEquals(1, viewModel.state.value.allMomentCount)
+    }
+
     @Test
     fun cancelReturnsToSetupAndCancelsTheActiveExporter() = runTest {
         val service = ControllableExportService()
@@ -245,6 +326,7 @@ class ExportViewModelTest {
             clock = Clock { Instant(3) },
             scope = backgroundScope,
         )
+        viewModel.prepareForEntry()
         val loadedState = viewModel.state.first { it.isPro && it.selectedMomentCount == 2 }
         assertEquals(2, loadedState.allMomentCount)
         assertEquals(1, loadedState.timelineMomentCounts[selectedTimeline.id])
@@ -262,18 +344,21 @@ class ExportViewModelTest {
     private fun kotlinx.coroutines.test.TestScope.exportViewModel(
         service: ReliveExportService,
         notifier: ExportCompletionNotifier = UnavailableExportCompletionNotifier,
-    ) = ExportViewModel(
-        momentRepository = FakeMomentRepository(
+        momentRepository: MomentRepository = FakeMomentRepository(
             listOf(Moment(MomentId("moment"), Instant(1), title = "A memory")),
         ),
-        timelineRepository = FakeTimelineRepository(),
+        timelineRepository: TimelineRepository = FakeTimelineRepository(),
+        prepare: Boolean = true,
+    ) = ExportViewModel(
+        momentRepository = momentRepository,
+        timelineRepository = timelineRepository,
         appearanceRepository = FakeAppearanceRepository(),
         entitlementProvider = FakeProEntitlementProvider(),
         exportService = service,
         clock = Clock { Instant(2) },
         scope = backgroundScope,
         exportCompletionNotifier = notifier,
-    )
+    ).also { if (prepare) it.prepareForEntry() }
 }
 
 private class CompletingExportService : ReliveExportService {
@@ -367,6 +452,31 @@ private class FakeMomentRepository(
     override fun observeInTimeline(timelineId: TimelineId): Flow<List<Moment>> = MutableStateFlow(timelineMoments)
 }
 
+private class CountingMomentRepository(
+    private val moments: List<Moment> = listOf(Moment(MomentId("counted"), Instant(1), title = "A memory")),
+    listAllFailuresRemaining: Int = 0,
+) : MomentRepository by FakeMomentRepository(moments) {
+    private var remainingFailures = listAllFailuresRemaining
+    var listAllCalls = 0
+        private set
+    var listInTimelineCalls = 0
+        private set
+
+    override suspend fun listAll(): List<Moment> {
+        listAllCalls += 1
+        if (remainingFailures > 0) {
+            remainingFailures -= 1
+            error("archive load failed")
+        }
+        return moments
+    }
+
+    override suspend fun listInTimeline(timelineId: TimelineId): List<Moment> {
+        listInTimelineCalls += 1
+        return moments
+    }
+}
+
 private class FakeTimelineRepository(
     private val timelines: List<Timeline.Custom> = emptyList(),
 ) : TimelineRepository {
@@ -381,6 +491,18 @@ private class FakeTimelineRepository(
     override suspend fun addMembership(momentId: MomentId, timelineId: TimelineId) = Unit
     override suspend fun removeMembership(momentId: MomentId, timelineId: TimelineId) = Unit
     override suspend fun timelinesFor(momentId: MomentId): List<TimelineId> = emptyList()
+}
+
+private class CountingTimelineRepository(
+    private val timelines: List<Timeline.Custom> = listOf(Timeline.Custom(TimelineId("counted"), "Counted")),
+) : TimelineRepository by FakeTimelineRepository(timelines) {
+    var listCustomCalls = 0
+        private set
+
+    override suspend fun listCustom(): List<Timeline.Custom> {
+        listCustomCalls += 1
+        return timelines
+    }
 }
 
 private class FakeAppearanceRepository : AppearanceRepository {

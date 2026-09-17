@@ -22,7 +22,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
@@ -57,8 +56,10 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -273,7 +274,10 @@ fun HomeScreen(
     // the strip's lower edge, never the top of the screen.
     val headerHeightPx = surfaceState.headerHeightPx
     val homeControlsInset = homeControlsInset()
-    val scrolledIntoHeader by rememberScrolledIntoBackdrop(listState) { surfaceState.headerHeightPx }
+    // Keep the scroll-derived value as a stable provider. Reading it here would subscribe this
+    // whole surface to every scroll pixel; the backdrop consumes the numeric value in its graphics
+    // and offset phases instead.
+    val scrolledIntoHeader = rememberScrolledIntoBackdrop(listState) { surfaceState.headerHeightPx }
 
     // Put the surface back before anything starts recording a new position, so the clamped-to-top
     // frames of a rebuild are never mistaken for somewhere the person actually scrolled to.
@@ -313,7 +317,9 @@ fun HomeScreen(
                 surfaceState.anchorScrollOffset = offset
             }
     }
-    val isFocused = headerHeightPx > 0 && scrolledIntoHeader >= headerHeightPx
+    val isFocused by remember(scrolledIntoHeader, headerHeightPx) {
+        derivedStateOf { headerHeightPx > 0 && scrolledIntoHeader.value >= headerHeightPx }
+    }
 
     // Home is the reference implementation of the three-position sliding backdrop described in
     // [BackdropExpansionState]: the welcome block and Rediscover row are the backdrop, All moments
@@ -328,14 +334,16 @@ fun HomeScreen(
     BackdropSettleEffect(
         listState = listState,
         backdropHeightPx = headerHeightPx,
-        scrolledIntoBackdrop = { scrolledIntoHeader },
+        scrolledIntoBackdrop = { scrolledIntoHeader.value },
     )
 
     // The mood bar is disclosed by the backdrop's expanded position rather than living on Home
     // at rest (PRODUCT_SPEC §10A.3). The threshold is the room the bar and its slot need, so the
     // space exists before the bar occupies it and the sheet has already begun leaving.
     val moodRevealThresholdPx = with(density) { MoodRevealThreshold.toPx() }
-    val isMoodRevealed = expansion.expansionPx >= moodRevealThresholdPx
+    val isMoodRevealed by remember(expansion, moodRevealThresholdPx) {
+        derivedStateOf { expansion.expansionPx >= moodRevealThresholdPx }
+    }
     var isMoodInsightsOpen by remember { mutableStateOf(false) }
     val updateMoodInsightsOpen: (Boolean) -> Unit = { isOpen ->
         isMoodInsightsOpen = isOpen
@@ -573,7 +581,7 @@ fun HomeScreen(
                 mediaStore = mediaStore,
                 scrolledIntoHeader = scrolledIntoHeader,
                 headerHeightPx = headerHeightPx,
-                expansionPx = expansion.expansionPx,
+                expansionState = expansion,
                 wallpaper = wallpaper,
                 moodInsights = moodInsights,
                 isMoodRevealed = isMoodRevealed,
@@ -595,7 +603,7 @@ fun HomeScreen(
             // the same line throughout. The window also owns the hit test over the backdrop, so
             // it forwards horizontal drags to the Rediscover carousel and taps to the card under
             // them; vertical drags pass to the list around it as always.
-            item(key = "home-backdrop-window") {
+            item(key = "home-backdrop-window", contentType = "home-backdrop-window") {
                 var windowCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
                 Spacer(
                     Modifier
@@ -617,7 +625,7 @@ fun HomeScreen(
                         ),
                 )
             }
-            item(key = "home-all-moments-heading") {
+            item(key = "home-all-moments-heading", contentType = "home-all-moments-heading") {
                 // This heading is the first thing on the All moments sheet, and that sheet keeps
                 // its own wallpaper whatever the app's appearance mode is. So it takes its colour
                 // from the wallpaper the way the timeline's own content does — the app palette
@@ -781,9 +789,9 @@ private fun HomeBackdrop(
     hitTester: RediscoverRowHitTester,
     cardContainerModifier: @Composable (RediscoverCollectionCardModel) -> Modifier,
     mediaStore: MediaStore,
-    scrolledIntoHeader: Int,
+    scrolledIntoHeader: State<Int>,
     headerHeightPx: Int,
-    expansionPx: Float,
+    expansionState: BackdropExpansionState,
     wallpaper: TimelineWallpaper,
     moodInsights: MoodInsights?,
     isMoodRevealed: Boolean,
@@ -801,11 +809,7 @@ private fun HomeBackdrop(
         topStart = dims.radii.xl,
         topEnd = dims.radii.xl,
     )
-    val covered = if (headerHeightPx > 0) {
-        (scrolledIntoHeader.toFloat() / headerHeightPx).coerceIn(0f, 1f)
-    } else {
-        0f
-    }
+    val shadowElevationPx = with(LocalDensity.current) { dims.timelineHome.cardElevation.toPx() }
 
     Box(
         modifier = Modifier
@@ -845,10 +849,16 @@ private fun HomeBackdrop(
                         if (!isMoodRevealed) onHeaderMeasured(it.size.height)
                     }
                     .graphicsLayer {
+                        val scrolled = scrolledIntoHeader.value
+                        val covered = if (headerHeightPx > 0) {
+                            (scrolled.toFloat() / headerHeightPx).coerceIn(0f, 1f)
+                        } else {
+                            0f
+                        }
                         // Trails the sheet instead of matching it, which is what makes the timeline
                         // read as passing in front rather than pushing.
-                        translationY = -scrolledIntoHeader * BACKDROP_PARALLAX +
-                            expansionPx * HOME_WELCOME_EXPAND_DRIFT
+                        translationY = -scrolled * BACKDROP_PARALLAX +
+                            expansionState.expansionPx * HOME_WELCOME_EXPAND_DRIFT
                         alpha = 1f - covered * 0.4f
                     },
             ) {
@@ -897,20 +907,26 @@ private fun HomeBackdrop(
             modifier = Modifier
                 .fillMaxSize()
                 .offset {
+                    val scrolled = scrolledIntoHeader.value
                     IntOffset(
                         0,
                         controlsInsetPx +
-                            (headerHeightPx - scrolledIntoHeader).coerceAtLeast(0) +
-                            expansionPx.roundToInt(),
+                            (headerHeightPx - scrolled).coerceAtLeast(0) +
+                            expansionState.expansionPx.roundToInt(),
                     )
                 }
-                .shadow(
-                    elevation = dims.timelineHome.cardElevation * covered,
-                    shape = sheetShape,
-                    clip = false,
-                    ambientColor = colors.shadow,
-                    spotColor = colors.shadow,
-                )
+                .graphicsLayer {
+                    val covered = if (headerHeightPx > 0) {
+                        (scrolledIntoHeader.value.toFloat() / headerHeightPx).coerceIn(0f, 1f)
+                    } else {
+                        0f
+                    }
+                    shadowElevation = shadowElevationPx * covered
+                    shape = sheetShape
+                    clip = false
+                    ambientShadowColor = colors.shadow
+                    spotShadowColor = colors.shadow
+                }
                 .background(colors.bgCanvas, sheetShape)
                 .clip(sheetShape),
         ) {
