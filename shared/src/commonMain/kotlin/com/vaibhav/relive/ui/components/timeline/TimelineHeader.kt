@@ -24,6 +24,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -40,6 +41,7 @@ import com.vaibhav.relive.ui.screens.NoCoverPhotoPlaceholder
 import com.vaibhav.relive.ui.theme.ReliveOpacity
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import kotlin.math.roundToInt
 
 /** Timeline detail header with optional back navigation and a centered wordmark. */
 @Composable
@@ -197,6 +199,12 @@ fun TimelineCoverHero(
     /** Extra height beyond the resting cover: an elastic overpull, or the expanded state's growth. */
     stretchPx: Float = 0f,
     /**
+     * Deferred equivalent of [stretchPx] for sliding surfaces. The provider is read during layout
+     * and graphics-layer updates, keeping the owning timeline composition out of the per-pixel
+     * expansion animation.
+     */
+    stretchPxProvider: (() -> Float)? = null,
+    /**
      * Whether [stretchPx] also zooms the photo. True for the elastic overpull, which springs back;
      * false when the cover is growing to fill the viewport, where the photo is reaching its full
      * size rather than being pulled out of shape.
@@ -214,10 +222,15 @@ fun TimelineCoverHero(
     } else {
         1f
     }
+    val heroHeightModifier = if (stretchPxProvider == null) {
+        Modifier.height(dims.timeline.coverHeroHeight + stretchHeight)
+    } else {
+        Modifier.deferredHeight(dims.timeline.coverHeroHeight, stretchPxProvider)
+    }
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(dims.timeline.coverHeroHeight + stretchHeight)
+            .then(heroHeightModifier)
             .clipToBounds()
             .background(colors.bgCanvas)
             .then(
@@ -238,8 +251,18 @@ fun TimelineCoverHero(
                 coverPhotoRef,
                 mediaStore,
                 Modifier.fillMaxSize().graphicsLayer {
-                    scaleX = zoom
-                    scaleY = zoom
+                    val currentZoom = if (stretchPxProvider == null) {
+                        zoom
+                    } else if (stretchZoom) {
+                        1f + (
+                            stretchPxProvider.invoke() /
+                                with(density) { dims.timeline.coverHeroHeight.toPx() }
+                            ) * .65f
+                    } else {
+                        1f
+                    }
+                    scaleX = currentZoom
+                    scaleY = currentZoom
                 },
             )
         } else NoCoverPhotoPlaceholder(Modifier.fillMaxSize())
@@ -265,6 +288,24 @@ fun TimelineCoverHero(
             onChangeTheme = onChangeTheme,
         )
         Text(name, style = ReliveTheme.typography.coverTitle, color = colors.textPrimary, modifier = Modifier.align(Alignment.BottomStart).padding(dims.spacing.xl))
+    }
+}
+
+/**
+ * Adds a provider-backed amount to a fixed height without reading that amount in composition.
+ * State reads in this layout block invalidate measurement only, which is the appropriate phase
+ * for the sliding cover's continuously changing height.
+ */
+private fun Modifier.deferredHeight(
+    baseHeight: androidx.compose.ui.unit.Dp,
+    extraHeightPx: () -> Float,
+): Modifier = layout { measurable, constraints ->
+    val height = (baseHeight.toPx() + extraHeightPx().coerceAtLeast(0f))
+        .roundToInt()
+        .coerceIn(constraints.minHeight, constraints.maxHeight)
+    val placeable = measurable.measure(constraints.copy(minHeight = height, maxHeight = height))
+    layout(placeable.width, placeable.height) {
+        placeable.place(0, 0)
     }
 }
 

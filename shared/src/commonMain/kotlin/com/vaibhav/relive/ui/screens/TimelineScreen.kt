@@ -40,7 +40,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.IntOffset
 import com.vaibhav.relive.domain.model.MediaStorageRef
@@ -62,6 +61,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -1390,12 +1390,15 @@ private fun TimelineContent(
                 val expansion = rememberBackdropExpansionState()
                 LaunchedEffect(coverHeightPx) { expansion.backdropHeightPx = coverHeightPx }
                 val expansionConnection = rememberBackdropExpansionConnection(expansion)
-                val scrolledIntoCover by rememberScrolledIntoBackdrop(listState) { coverTravelPx }
+                // Keep scroll-derived cover position behind a stable provider. The surrounding
+                // timeline must not recompose for every scroll pixel; the backdrop consumes the
+                // value in graphics/offset phases.
+                val scrolledIntoCover = rememberScrolledIntoBackdrop(listState) { coverTravelPx }
                 if (isSlidingCoverSurface) {
                     BackdropSettleEffect(
                         listState = listState,
                         backdropHeightPx = coverTravelPx,
-                        scrolledIntoBackdrop = { scrolledIntoCover },
+                        scrolledIntoBackdrop = { scrolledIntoCover.value },
                     )
                     val custom = (timelineState.currentTimeline as? CurrentTimeline.Custom)?.let { current ->
                         timelineState.customTimelines.firstOrNull { it.id == current.id }
@@ -1409,7 +1412,7 @@ private fun TimelineContent(
                             coverHeightPx = coverHeightPx,
                             coverTravelPx = coverTravelPx,
                             scrolledIntoCover = scrolledIntoCover,
-                            expansionPx = expansion.expansionPx,
+                            expansionState = expansion,
                             wallpaper = timelineState.appearance.wallpaper,
                             onViewportMeasured = { expansion.viewportHeightPx = it },
                         )
@@ -1427,7 +1430,7 @@ private fun TimelineContent(
                             coverHeightPx = coverHeightPx,
                             coverTravelPx = coverTravelPx,
                             scrolledIntoCover = scrolledIntoCover,
-                            expansionPx = expansion.expansionPx,
+                            expansionState = expansion,
                             wallpaper = timelineState.appearance.wallpaper,
                             onViewportMeasured = { expansion.viewportHeightPx = it },
                             coverContent = { coverModifier ->
@@ -1459,7 +1462,7 @@ private fun TimelineContent(
                 // The composer is one item emitted at whichever end of the feed is the
                 // chronological end: the head on Home (newest-first), the tail everywhere else.
                 val composerItem: LazyListScope.() -> Unit = {
-                    if (mode.allowsMutations) item(key = "composer") {
+                    if (mode.allowsMutations) item(key = "composer", contentType = "composer") {
                         AnimatedContent(
                             targetState = isComposerExpanded,
                             transitionSpec = {
@@ -1725,7 +1728,7 @@ private fun TimelineContent(
                         // target while the sheet is on screen. The window is exactly as tall as the
                         // cover and its bottom edge is the sheet's top edge at every position, so
                         // the target is always precisely the part of the cover still showing.
-                        item(key = "cover-backdrop-window") {
+                        item(key = "cover-backdrop-window", contentType = "cover-backdrop-window") {
                             Spacer(
                                 Modifier
                                     .fillMaxWidth()
@@ -1747,14 +1750,20 @@ private fun TimelineContent(
                         // does not sit hard against the sheet's own top edge. It is sheet content
                         // rather than list padding, which is what keeps the window above it aligned
                         // with the cover.
-                        item(key = "cover-sheet-lead") {
+                        item(key = "cover-sheet-lead", contentType = "cover-sheet-lead") {
                             Spacer(Modifier.height(dims.spacing.lg))
                         }
                     }
                     // On a newest-first feed the chronological end of the timeline is its head, so
                     // the composer is emitted before the moments rather than after them.
                     if (isNewestFirst) composerItem()
-                    itemsIndexed(items = moments, key = { _, moment -> moment.id.value }) { index, moment ->
+                    itemsIndexed(
+                        items = moments,
+                        key = { _, moment -> moment.id.value },
+                        contentType = { _, moment ->
+                            if (composerState.editingMoment?.id == moment.id) "moment-editor" else "moment"
+                        },
+                    ) { index, moment ->
                         if (composerState.editingMoment?.id == moment.id) {
                             MomentComposer(
                                 state = composerState,
@@ -1831,15 +1840,15 @@ private fun TimelineContent(
                         }
                     }
                     if (mode is TimelineMode.ReadOnlySystemCollection && timelineState.moments == TimelineMomentsState.Empty) {
-                        item(key = "system-collection-empty") {
+                        item(key = "system-collection-empty", contentType = "system-collection-empty") {
                             SystemCollectionEmptyState(timelineState.currentTimeline)
                         }
                     } else if (customName != null && timelineState.moments == TimelineMomentsState.Empty) {
-                        item(key = "custom-empty") {
+                        item(key = "custom-empty", contentType = "custom-empty") {
                             EmptyCustomTimelinePlaceholder(timelineName = customName)
                         }
                     } else if (isHomeSurface && timelineState.moments == TimelineMomentsState.Empty) {
-                        item(key = "all-moments-empty") {
+                        item(key = "all-moments-empty", contentType = "all-moments-empty") {
                             EmptyTimelinePlaceholder()
                         }
                     }
@@ -2100,8 +2109,8 @@ private fun TimelineCoverBackdrop(
     onUpdateCover: (() -> Unit)?,
     coverHeightPx: Int,
     coverTravelPx: Int,
-    scrolledIntoCover: Int,
-    expansionPx: Float,
+    scrolledIntoCover: State<Int>,
+    expansionState: BackdropExpansionState,
     wallpaper: com.vaibhav.relive.domain.model.TimelineWallpaper,
     onViewportMeasured: (Int) -> Unit,
     /** Custom cover imagery: a read-only collection's resolved card cover (ADR-0065). */
@@ -2110,11 +2119,7 @@ private fun TimelineCoverBackdrop(
     val dims = ReliveTheme.dimensions
     val colors = ReliveTheme.colors
     val sheetShape = RoundedCornerShape(topStart = dims.radii.xl, topEnd = dims.radii.xl)
-    val covered = if (coverTravelPx > 0) {
-        (scrolledIntoCover.toFloat() / coverTravelPx).coerceIn(0f, 1f)
-    } else {
-        0f
-    }
+    val shadowElevationPx = with(LocalDensity.current) { dims.timelineHome.cardElevation.toPx() }
 
     Box(
         modifier = Modifier
@@ -2136,13 +2141,19 @@ private fun TimelineCoverBackdrop(
             // only its photo and its name.
             onBack = null,
             onUpdateCover = onUpdateCover,
-            stretchPx = expansionPx,
+            stretchPxProvider = { expansionState.expansionPx },
             stretchZoom = false,
             coverContent = coverContent,
             modifier = Modifier.graphicsLayer {
+                val scrolled = scrolledIntoCover.value
+                val covered = if (coverTravelPx > 0) {
+                    (scrolled.toFloat() / coverTravelPx).coerceIn(0f, 1f)
+                } else {
+                    0f
+                }
                 // Trails the sheet instead of matching it, which is what makes the timeline read
                 // as passing in front of the photo rather than pushing it.
-                translationY = -scrolledIntoCover * BACKDROP_PARALLAX
+                translationY = -scrolled * BACKDROP_PARALLAX
                 alpha = 1f - covered * 0.4f
             },
         )
@@ -2151,19 +2162,25 @@ private fun TimelineCoverBackdrop(
             modifier = Modifier
                 .fillMaxSize()
                 .offset {
+                    val scrolled = scrolledIntoCover.value
                     IntOffset(
                         0,
-                        (coverHeightPx - scrolledIntoCover).coerceAtLeast(0) +
-                            expansionPx.roundToInt(),
+                        (coverHeightPx - scrolled).coerceAtLeast(0) +
+                            expansionState.expansionPx.roundToInt(),
                     )
                 }
-                .shadow(
-                    elevation = dims.timelineHome.cardElevation * covered,
-                    shape = sheetShape,
-                    clip = false,
-                    ambientColor = colors.shadow,
-                    spotColor = colors.shadow,
-                )
+                .graphicsLayer {
+                    val covered = if (coverTravelPx > 0) {
+                        (scrolledIntoCover.value.toFloat() / coverTravelPx).coerceIn(0f, 1f)
+                    } else {
+                        0f
+                    }
+                    shadowElevation = shadowElevationPx * covered
+                    shape = sheetShape
+                    clip = false
+                    ambientShadowColor = colors.shadow
+                    spotShadowColor = colors.shadow
+                }
                 .background(colors.bgCanvas, sheetShape)
                 .clip(sheetShape),
         ) {

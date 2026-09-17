@@ -426,7 +426,6 @@ fun App(
                 container.exportCompletionNotifier,
             )
         }
-        val exportState by exportViewModel.state.collectAsState()
         DisposableEffect(exportViewModel) { onDispose(exportViewModel::close) }
         val exportFileHandle = rememberExportFileHandle()
         var portableArchive by remember(container) {
@@ -631,7 +630,10 @@ fun App(
                 onOpenPreferences = { profileNavigation = profileNavigation.openPreferences() },
                 onOpenMediaStorage = { profileNavigation = profileNavigation.openMediaStorage() },
                 onOpenBackupRestore = { profileNavigation = profileNavigation.openBackupRestore() },
-                onOpenExport = { profileNavigation = profileNavigation.openExport() },
+                onOpenExport = {
+                    exportViewModel.prepareForEntry()
+                    profileNavigation = profileNavigation.openExport()
+                },
                 onOpenReliveArchive = {
                     scope.launch {
                         ExternalActivityGuard.active = true
@@ -664,7 +666,7 @@ fun App(
                 mediaStore = container.mediaStore,
                 mediaProcessor = container.mediaProcessor,
                 entitlementProvider = container.entitlementProvider,
-                exportState = exportState,
+                exportState = exportViewModel.state.collectAsState().value,
             )
             ProfileDestination.Preferences -> PreferencesScreen(
                 viewModel = behaviorPreferencesViewModel,
