@@ -12,6 +12,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -94,8 +96,20 @@ fun MomentCard(
     onChooseFeeling: ((MomentFeeling) -> Unit)? = null,
     onDismissFeelingPrompt: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    /** Optional treatment for the physical print only; metadata and timeline rail stay unchanged. */
+    printCardModifier: Modifier = Modifier,
     /** Non-persisted visual media used by isolated previews such as onboarding. */
     previewMediaContent: (@Composable () -> Unit)? = null,
+    /** Read-only previews retain the production card without exposing archive actions. */
+    interactive: Boolean = true,
+    /** Preview-only control for scenes that present a print before its timeline is formed. */
+    showTimelineChrome: Boolean = true,
+    /** Preview-only accent for a rail, dot, and push-pin that belong to a themed scene. */
+    timelineChromeColor: Color? = null,
+    /** Preview-only metadata tone selected against a themed scene background. */
+    timelineMetadataColor: Color? = null,
+    /** Preview-only fixed print ratio; production Moment cards continue to wrap natural content. */
+    previewPrintAspectRatio: Float? = null,
 ) {
     val colors = ReliveTheme.colors
     val momentColors = timelineMomentForegroundColors(
@@ -106,6 +120,10 @@ fun MomentCard(
     val dims = ReliveTheme.dimensions
     val haptics = rememberReliveHaptics()
     val motion = ReliveTheme.motion
+    val chromeColor = timelineChromeColor ?: colors.accent
+    val railColor = timelineChromeColor?.copy(alpha = 0.46f) ?: colors.borderMuted
+    val metadataAccent = timelineMetadataColor ?: momentColors.accentMuted
+    val metadataSecondary = timelineMetadataColor ?: momentColors.textSecondary
     val selectionColor by animateColorAsState(
         targetValue = if (isContextuallySelected) {
             colors.accent.copy(alpha = com.vaibhav.relive.ui.theme.ReliveOpacity.Low)
@@ -122,70 +140,86 @@ fun MomentCard(
         modifier = modifier
             .fillMaxWidth()
             .background(selectionColor)
-            .drawBehind {
-                val axis = dims.timeline.contentInset.toPx() / 2f
-                val markerCenter = dims.spacing.xl.toPx() + dims.minTouchTarget.toPx() / 2f
-                drawLine(
-                    color = colors.borderMuted,
-                    start = androidx.compose.ui.geometry.Offset(axis, if (hasPreviousMoment) 0f else markerCenter),
-                    end = androidx.compose.ui.geometry.Offset(
-                        axis,
-                        if (hasNextMoment) size.height else markerCenter,
-                    ),
-                    strokeWidth = dims.timeline.railWidth.toPx(),
-                )
-            }
-            .padding(vertical = dims.spacing.xl)
-            .combinedClickable(
-                onClick = {},
-                onLongClick = {
-                    if (onShowContextualActions != null) {
-                        haptics.perform(ReliveHapticCue.Context)
-                        onShowContextualActions()
-                    } else if (canEditOrForget) {
-                        haptics.perform(ReliveHapticCue.Context)
-                        actionsOpen = true
+            .then(
+                if (showTimelineChrome) {
+                    Modifier.drawBehind {
+                        val axis = dims.timeline.contentInset.toPx() / 2f
+                        val markerCenter = dims.spacing.xl.toPx() + dims.minTouchTarget.toPx() / 2f
+                        drawLine(
+                            color = railColor,
+                            start = androidx.compose.ui.geometry.Offset(
+                                axis,
+                                if (hasPreviousMoment) 0f else markerCenter,
+                            ),
+                            end = androidx.compose.ui.geometry.Offset(
+                                axis,
+                                if (hasNextMoment) size.height else markerCenter,
+                            ),
+                            strokeWidth = dims.timeline.railWidth.toPx(),
+                        )
                     }
+                } else {
+                    Modifier
                 },
             )
-            .semantics {
-                if (onShowContextualActions != null) {
-                    customActions = listOf(
-                        CustomAccessibilityAction("Show moment actions") {
-                            haptics.perform(ReliveHapticCue.Action)
-                            onShowContextualActions()
-                            true
-                        },
-                    )
-                } else if (canEditOrForget) {
-                    customActions = listOf(
-                        CustomAccessibilityAction("Edit moment") {
-                            haptics.perform(ReliveHapticCue.Action)
-                            onEdit()
-                            true
-                        },
-                        CustomAccessibilityAction("Forget moment") {
-                            haptics.perform(ReliveHapticCue.Action)
-                            onForget()
-                            true
-                        },
-                    )
-                }
-            },
+            .padding(vertical = dims.spacing.xl)
+            .then(
+                if (interactive) {
+                    Modifier
+                        .combinedClickable(
+                            onClick = {},
+                            onLongClick = {
+                                if (onShowContextualActions != null) {
+                                    haptics.perform(ReliveHapticCue.Context)
+                                    onShowContextualActions()
+                                } else if (canEditOrForget) {
+                                    haptics.perform(ReliveHapticCue.Context)
+                                    actionsOpen = true
+                                }
+                            },
+                        )
+                        .semantics {
+                            if (onShowContextualActions != null) {
+                                customActions = listOf(
+                                    CustomAccessibilityAction("Show moment actions") {
+                                        haptics.perform(ReliveHapticCue.Action)
+                                        onShowContextualActions()
+                                        true
+                                    },
+                                )
+                            } else if (canEditOrForget) {
+                                customActions = listOf(
+                                    CustomAccessibilityAction("Edit moment") {
+                                        haptics.perform(ReliveHapticCue.Action)
+                                        onEdit()
+                                        true
+                                    },
+                                    CustomAccessibilityAction("Forget moment") {
+                                        haptics.perform(ReliveHapticCue.Action)
+                                        onForget()
+                                        true
+                                    },
+                                )
+                            }
+                        }
+                } else {
+                    Modifier
+                },
+            ),
         verticalAlignment = Alignment.Top,
     ) {
         Box(
-            modifier = Modifier
-                .width(dims.timeline.contentInset)
-                .heightIn(min = dims.minTouchTarget),
+            modifier = Modifier.width(dims.timeline.contentInset).heightIn(min = dims.minTouchTarget),
             contentAlignment = Alignment.Center,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(dims.timeline.dotSize)
-                    .clip(CircleShape)
-                    .background(colors.accent),
-            )
+            if (showTimelineChrome) {
+                Box(
+                    modifier = Modifier
+                        .size(dims.timeline.dotSize)
+                        .clip(CircleShape)
+                        .background(chromeColor),
+                )
+            }
         }
         Spacer(Modifier.width(dims.spacing.none))
         Column(
@@ -210,18 +244,18 @@ fun MomentCard(
                         Text(
                             text = moment.formattedDate,
                             style = type.eyebrow,
-                            color = momentColors.accentMuted,
+                            color = metadataAccent,
                         )
                         Box(
                             modifier = Modifier
                                 .size(3.dp)
                                 .clip(CircleShape)
-                                .background(momentColors.accentMuted),
+                                .background(metadataAccent),
                         )
                         Text(
                             text = moment.formattedTime,
                             style = type.eyebrow,
-                            color = momentColors.accentMuted,
+                            color = metadataAccent,
                         )
                     }
                     if (showLocation && moment.locationLabel != null) {
@@ -235,13 +269,13 @@ fun MomentCard(
                             // what a location looks like.
                             PinGlyph(
                                 size = dims.icon.sm,
-                                color = momentColors.textSecondary,
+                                color = metadataSecondary,
                                 strokeWidth = dims.stroke.icon,
                             )
                             Text(
                                 text = moment.locationLabel,
                                 style = type.eyebrow,
-                                color = momentColors.textSecondary,
+                                color = metadataSecondary,
                             )
                         }
                     }
@@ -267,6 +301,9 @@ fun MomentCard(
                 sharedTransition = sharedTransition,
                 showTags = showTags,
                 previewMediaContent = previewMediaContent,
+                pinColor = timelineChromeColor,
+                previewPrintAspectRatio = previewPrintAspectRatio,
+                modifier = printCardModifier,
             )
 
             // The reflection prompt rides under the card it belongs to, inside the same
@@ -347,6 +384,8 @@ private fun PinnedMomentCard(
     sharedTransition: TimelineMediaSharedTransition?,
     showTags: Boolean,
     previewMediaContent: (@Composable () -> Unit)?,
+    pinColor: Color?,
+    previewPrintAspectRatio: Float?,
     modifier: Modifier = Modifier,
 ) {
     val colors = ReliveTheme.colors
@@ -365,6 +404,13 @@ private fun PinnedMomentCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .then(
+                    if (previewPrintAspectRatio != null) {
+                        Modifier.aspectRatio(previewPrintAspectRatio)
+                    } else {
+                        Modifier
+                    },
+                )
                 // Reserve the pin's upper half so it overhangs the top edge.
                 .padding(top = pinSize / 2)
                 .shadow(
@@ -375,6 +421,9 @@ private fun PinnedMomentCard(
                 )
                 .clip(cardShape)
                 .background(printSurface)
+                .then(
+                    if (previewPrintAspectRatio != null) Modifier.fillMaxSize() else Modifier,
+                )
                 .padding(
                     start = dims.spacing.lg,
                     end = dims.spacing.lg,
@@ -457,7 +506,7 @@ private fun PinnedMomentCard(
 
         MomentPin(
             // Matches the floating navigation bar's surface colour.
-            color = colors.surfaceFloating,
+            color = pinColor ?: colors.surfaceFloating,
             shadowColor = colors.shadow,
             size = pinSize,
             modifier = Modifier.align(Alignment.TopCenter),

@@ -324,7 +324,6 @@ private fun ComposerTimelineAssignments(
     val colors = ReliveTheme.colors
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
-    val haptics = rememberReliveHaptics()
     Column(verticalArrangement = Arrangement.spacedBy(dims.spacing.xs)) {
         Text(
             text = "TIMELINES · OPTIONAL",
@@ -337,34 +336,52 @@ private fun ComposerTimelineAssignments(
         ) {
             timelines.forEach { timeline ->
                 val selected = timeline.id in selectedIds
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .heightIn(min = dims.minTouchTarget)
-                        .clip(CircleShape)
-                        .background(if (selected) colors.surfaceCard else colors.bgCanvas)
-                        .border(dims.stroke.hairline, colors.border, CircleShape)
-                        .toggleable(
-                            value = selected,
-                            enabled = enabled,
-                            role = Role.Checkbox,
-                            onValueChange = {
-                                haptics.perform(
-                                    if (selected) ReliveHapticCue.ToggleOff else ReliveHapticCue.ToggleOn,
-                                )
-                                onToggle(timeline.id)
-                            },
-                        )
-                        .padding(horizontal = dims.spacing.md),
-                ) {
-                    Text(
-                        text = if (selected) "✓ ${timeline.name}" else timeline.name,
-                        style = type.tag,
-                        color = if (selected) colors.accent else colors.textSecondary,
-                    )
-                }
+                TimelineAssignmentChip(
+                    label = timeline.name,
+                    selected = selected,
+                    enabled = enabled,
+                    onToggle = { onToggle(timeline.id) },
+                )
             }
         }
+    }
+}
+
+/** The production composer chip, also used by read-only product previews. */
+@Composable
+internal fun TimelineAssignmentChip(
+    label: String,
+    selected: Boolean,
+    enabled: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = ReliveTheme.colors
+    val dims = ReliveTheme.dimensions
+    val haptics = rememberReliveHaptics()
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .heightIn(min = dims.minTouchTarget)
+            .clip(CircleShape)
+            .background(if (selected) colors.surfaceCard else colors.bgCanvas)
+            .border(dims.stroke.hairline, colors.border, CircleShape)
+            .toggleable(
+                value = selected,
+                enabled = enabled,
+                role = Role.Checkbox,
+                onValueChange = {
+                    haptics.perform(if (selected) ReliveHapticCue.ToggleOff else ReliveHapticCue.ToggleOn)
+                    onToggle()
+                },
+            )
+            .padding(horizontal = dims.spacing.md),
+    ) {
+        Text(
+            text = if (selected) "✓ $label" else label,
+            style = ReliveTheme.typography.tag,
+            color = if (selected) colors.accent else colors.textSecondary,
+        )
     }
 }
 

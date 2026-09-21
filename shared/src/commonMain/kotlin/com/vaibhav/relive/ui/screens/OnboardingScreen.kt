@@ -1,1305 +1,2089 @@
 package com.vaibhav.relive.ui.screens
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.semantics.ProgressBarRangeInfo
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.progressBarRangeInfo
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.vaibhav.relive.domain.model.MomentFeeling
 import com.vaibhav.relive.domain.model.MomentId
-import com.vaibhav.relive.domain.model.Tag
+import com.vaibhav.relive.domain.model.Timeline
+import com.vaibhav.relive.domain.model.TimelineHomeSummary
+import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.time.Instant
 import com.vaibhav.relive.platform.media.MediaStore
-import com.vaibhav.relive.platform.system.ReliveBackHandler
-import com.vaibhav.relive.presentation.onboarding.ONBOARDING_PAGE_COUNT
-import com.vaibhav.relive.presentation.onboarding.OnboardingCommand
-import com.vaibhav.relive.presentation.onboarding.OnboardingPage
-import com.vaibhav.relive.presentation.onboarding.OnboardingState
 import com.vaibhav.relive.presentation.timeline.MomentPresentation
+import com.vaibhav.relive.ui.components.composer.ImageGlyph
+import com.vaibhav.relive.ui.components.composer.MicGlyph
+import com.vaibhav.relive.ui.components.composer.VideoGlyph
+import com.vaibhav.relive.ui.components.timeline.LocalTimelineWallpaperPalette
 import com.vaibhav.relive.ui.components.timeline.MomentCard
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
-import com.vaibhav.relive.ui.icons.CameraIcons
 import com.vaibhav.relive.ui.icons.OnboardingIcons
-import com.vaibhav.relive.ui.icons.ProfileIcons
-import com.vaibhav.relive.ui.theme.ReliveTheme
-import com.vaibhav.relive.ui.theme.ReliveThemeId
-import com.vaibhav.relive.ui.theme.rememberGrainBrush
-import com.vaibhav.relive.ui.theme.spec
+import com.vaibhav.relive.ui.theme.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import org.jetbrains.compose.resources.DrawableResource
-import org.jetbrains.compose.resources.painterResource
-import relive.shared.generated.resources.Res
-import relive.shared.generated.resources.onboarding_capture_fullscreen_v3
-import relive.shared.generated.resources.onboarding_final_fullscreen_v3
-import relive.shared.generated.resources.onboarding_organize_fullscreen_v2
-import relive.shared.generated.resources.onboarding_organize_coffee
-import relive.shared.generated.resources.onboarding_organize_mountains
-import relive.shared.generated.resources.onboarding_organize_spring
-import relive.shared.generated.resources.onboarding_private_fullscreen_v1
-import relive.shared.generated.resources.onboarding_relive_moments_scroll_background_v1
-import relive.shared.generated.resources.onboarding_welcome_reference_v2
+import kotlin.math.abs
+import kotlin.math.min
+import kotlin.math.pow
+import kotlin.math.roundToInt
 
-private const val FEATURE_PAGE_COUNT = ONBOARDING_PAGE_COUNT - 1
-internal val ONBOARDING_THEME_ID = ReliveThemeId.Sunset
-internal const val ONBOARDING_DARK_MODE = false
-
-/**
- * The supplied onboarding reference uses a quiet ivory paper canvas rather than Sunset's blush
- * canvas. Keep this exception local to onboarding so the selected app palette remains unchanged
- * everywhere else.
- */
-internal val ONBOARDING_REFERENCE_CANVAS = Color(0xFFF7F4F1)
-private val OnboardingReferenceCanvasBrush = Brush.linearGradient(
-    0f to Color(0xFFFBF9F6),
-    0.58f to ONBOARDING_REFERENCE_CANVAS,
-    1f to Color(0xFFF4F1EE),
-)
-
-private data class FeatureCopy(
-    val number: Int,
-    val title: String,
-    val body: String,
-)
-
-private val FeatureCopyByPage = mapOf(
-    OnboardingPage.Capture to FeatureCopy(
-        number = 1,
-        title = "Capture\neasily",
-        body = "Save photos, videos, notes and\nmore — whenever life happens.",
-    ),
-    OnboardingPage.Organize to FeatureCopy(
-        number = 2,
-        title = "Organize\nbeautifully",
-        body = "Turn moments into timelines.\nGroup, tag, and relive them your way.",
-    ),
-    OnboardingPage.ReliveMoments to FeatureCopy(
-        number = 3,
-        title = "Relive your\nmoments",
-        body = "Every memory becomes a warm card\nyou can scroll later to revisit what\nmattered.",
-    ),
-    OnboardingPage.Private to FeatureCopy(
-        number = 4,
-        title = "Private\nby design",
-        body = "Your memories are stored locally\non your device. You’re always in control.",
-    ),
+internal const val ONBOARDING_DARK_MODE = true
+internal val ONBOARDING_CHAPTER_THEME_IDS = listOf(
+    ReliveThemeId.TealSaffron,
+    ReliveThemeId.InkLilac,
+    ReliveThemeId.PlumGold,
+    ReliveThemeId.Sunrise,
+    ReliveThemeId.Sunset,
 )
 
 internal val ONBOARDING_RELIVE_MOMENT_PREVIEWS = listOf(
     MomentPresentation(
-        id = MomentId("onboarding-sunday-breakfast"),
-        createdAt = Instant(0L),
+        id = MomentId("onboarding-quiet-morning"),
+        createdAt = Instant(0),
         updatedAt = null,
-        formattedDate = "7 MAY 2022",
-        formattedTime = "9:12 AM",
-        title = "Sunday breakfast",
-        content = "A slow morning, warm coffee, and nowhere to rush.",
-        locationLabel = "At home",
-        location = null,
-        isFavorite = true,
-        feeling = MomentFeeling.Great,
-        tags = listOf(Tag.of("family"), Tag.of("food")),
-        attachments = emptyList(),
-    ),
-    MomentPresentation(
-        id = MomentId("onboarding-weekend-hike"),
-        createdAt = Instant(1L),
-        updatedAt = null,
-        formattedDate = "21 AUG 2023",
-        formattedTime = "4:40 PM",
-        title = "Weekend hike",
-        content = "Fresh air, good company, and views that made everything feel lighter.",
-        locationLabel = "Mountain trail",
+        formattedDate = "12 AUG 2026",
+        formattedTime = "8:24 AM",
+        title = "A quiet morning",
+        content = "",
+        locationLabel = "Mountain lake",
         location = null,
         isFavorite = false,
-        feeling = MomentFeeling.Good,
-        tags = listOf(Tag.of("outdoors"), Tag.of("life")),
-        attachments = emptyList(),
-    ),
-    MomentPresentation(
-        id = MomentId("onboarding-golden-hour"),
-        createdAt = Instant(2L),
-        updatedAt = null,
-        formattedDate = "2 MAR 2025",
-        formattedTime = "6:18 PM",
-        title = "Spring light",
-        content = "The blossoms arrived all at once, softening the whole afternoon.",
-        locationLabel = "In the garden",
-        location = null,
-        isFavorite = true,
-        feeling = MomentFeeling.Great,
-        tags = listOf(Tag.of("spring")),
+        feeling = null,
+        tags = emptyList(),
         attachments = emptyList(),
     ),
 )
 
-private val OnboardingReliveMomentMedia = listOf(
-    Res.drawable.onboarding_organize_coffee,
-    Res.drawable.onboarding_organize_mountains,
-    Res.drawable.onboarding_organize_spring,
+internal val ONBOARDING_TIMELINE_MOMENT_PREVIEWS = listOf(
+    ONBOARDING_RELIVE_MOMENT_PREVIEWS.single(),
+    MomentPresentation(
+        id = MomentId("onboarding-forest-trails"),
+        createdAt = Instant(0),
+        updatedAt = null,
+        formattedDate = "16 AUG 2026",
+        formattedTime = "9:08 AM",
+        title = "Forest trails",
+        content = "",
+        locationLabel = "North woods",
+        location = null,
+        isFavorite = false,
+        feeling = null,
+        tags = emptyList(),
+        attachments = emptyList(),
+    ),
+    MomentPresentation(
+        id = MomentId("onboarding-coastal-escape"),
+        createdAt = Instant(0),
+        updatedAt = null,
+        formattedDate = "18 AUG 2026",
+        formattedTime = "6:42 PM",
+        title = "A coastal escape",
+        content = "",
+        locationLabel = "West coast",
+        location = null,
+        isFavorite = false,
+        feeling = null,
+        tags = emptyList(),
+        attachments = emptyList(),
+    ),
+    MomentPresentation(
+        id = MomentId("onboarding-slow-afternoon"),
+        createdAt = Instant(0),
+        updatedAt = null,
+        formattedDate = "14 AUG 2026",
+        formattedTime = "3:17 PM",
+        title = "Slow afternoons",
+        content = "",
+        locationLabel = "At home",
+        location = null,
+        isFavorite = false,
+        feeling = null,
+        tags = emptyList(),
+        attachments = emptyList(),
+    ),
 )
+
+internal val ONBOARDING_READY_MOMENT_PREVIEWS = ONBOARDING_TIMELINE_MOMENT_PREVIEWS +
+    MomentPresentation(
+        id = MomentId("onboarding-evening-glow"),
+        createdAt = Instant(0),
+        updatedAt = null,
+        formattedDate = "21 AUG 2026",
+        formattedTime = "7:16 PM",
+        title = "Evening glow",
+        content = "",
+        locationLabel = "Old town",
+        location = null,
+        isFavorite = false,
+        feeling = null,
+        tags = emptyList(),
+        attachments = emptyList(),
+    )
+
+private val CaptureThemeId = ONBOARDING_CHAPTER_THEME_IDS.first()
+internal const val ONBOARDING_FOCUSED_MOMENT_SCALE = .76f
+internal const val ONBOARDING_RESTING_MOMENT_SCALE = .57f
+
+internal fun onboardingMomentFocus(itemCenterY: Float, focusCenterY: Float, focusHeight: Float): Float {
+    val distance = abs(itemCenterY - focusCenterY)
+    return (1f - distance / (focusHeight * 1.15f).coerceAtLeast(1f)).coerceIn(0f, 1f)
+}
+
+internal fun onboardingMomentScale(focus: Float): Float =
+    ONBOARDING_RESTING_MOMENT_SCALE +
+        focus.coerceIn(0f, 1f) * (ONBOARDING_FOCUSED_MOMENT_SCALE - ONBOARDING_RESTING_MOMENT_SCALE)
+
+internal data class OnboardingSheetDeformation(
+    val retreat: Float,
+    val tailWidthFraction: Float,
+    val topInsetFraction: Float,
+    val finalPull: Float,
+)
+
+internal fun onboardingSheetDeformation(progress: Float): OnboardingSheetDeformation {
+    val value = progress.coerceIn(0f, 1f)
+    // The two pulls overlap. Ending one eased segment before beginning the next
+    // creates a visible plateau in the card's bottom-up uncovering.
+    val progressivePull = smoothStep(((value - .02f) / .86f).coerceIn(0f, 1f))
+    val finalPull = smoothStep(((value - .54f) / .46f).coerceIn(0f, 1f))
+    return OnboardingSheetDeformation(
+        retreat = progressivePull * .74f + finalPull * .26f,
+        tailWidthFraction = lerp(.5f, .11f, progressivePull).let { lerp(it, .006f, finalPull) },
+        topInsetFraction = finalPull * .494f,
+        finalPull = finalPull,
+    )
+}
+
+internal fun onboardingCardRevealProgress(suctionProgress: Float): Float =
+    onboardingSheetDeformation(suctionProgress).retreat
+
+private fun smoothStep(value: Float): Float = value * value * (3f - 2f * value)
+
+private fun lerp(start: Float, end: Float, fraction: Float): Float =
+    start + (end - start) * fraction.coerceIn(0f, 1f)
+
+private enum class OnboardingStage {
+    Screen1,
+    RevealingTimeline,
+    TimelineSettled,
+    TimelineAutoScroll,
+    TimelineIdle,
+    ReturningToFocus,
+    HidingTimeline,
+    SuckingTimeline,
+    RevealingThumbnail,
+    RevealingScreen3,
+    Screen3,
+    PrivacyTakeover,
+    Screen4,
+    RevealingScreen5,
+    Screen5,
+    PrivacyReturn,
+    HidingScreen3,
+    RecessingThumbnail,
+    RestoringTimeline,
+}
 
 @Composable
 fun OnboardingScreen(
     mediaStore: MediaStore,
-    onFinish: suspend () -> Boolean,
+    onContinue: () -> Unit,
+    onSkip: suspend () -> Boolean,
 ) {
-    ReliveTheme(themeId = ONBOARDING_THEME_ID, darkMode = ONBOARDING_DARK_MODE) {
-        OnboardingContent(mediaStore, onFinish)
+    ReliveTheme(CaptureThemeId, ONBOARDING_DARK_MODE) {
+        OnboardingFlow(mediaStore, onContinue, onSkip)
     }
 }
 
 @Composable
-private fun OnboardingContent(
+private fun OnboardingFlow(
     mediaStore: MediaStore,
-    onFinish: suspend () -> Boolean,
+    onContinue: () -> Unit,
+    onSkip: suspend () -> Boolean,
 ) {
     val motion = ReliveTheme.motion
-    val reduceMotion = ReliveTheme.reduceMotion
+    val reducedMotion = ReliveTheme.reduceMotion
     val scope = rememberCoroutineScope()
-    var state by remember { mutableStateOf(OnboardingState()) }
-    var finishing by remember { mutableStateOf(false) }
+    var stage by remember { mutableStateOf(OnboardingStage.Screen1) }
+    var autoScrollHasRun by remember { mutableStateOf(false) }
+    var timelinePrepositioned by remember { mutableStateOf(false) }
+    var skipEnabled by remember { mutableStateOf(true) }
+    var captureCardBounds by remember { mutableStateOf<Rect?>(null) }
+    var visualBounds by remember { mutableStateOf<Rect?>(null) }
+    var timelineSheetBounds by remember { mutableStateOf<Rect?>(null) }
+    var customTimelineHoleBounds by remember { mutableStateOf<Rect?>(null) }
+    val timelineCardBounds = remember { mutableStateMapOf<Int, Rect>() }
+    var focusedFirstVisibleItemIndex by remember { mutableIntStateOf(0) }
+    var focusedFirstVisibleItemOffset by remember { mutableIntStateOf(0) }
+    val transitionProgress = remember { Animatable(0f) }
+    val suctionProgress = remember { Animatable(0f) }
+    val thumbnailProgress = remember { Animatable(0f) }
+    val screen3ContentProgress = remember { Animatable(0f) }
+    val privacyTakeoverProgress = remember { Animatable(0f) }
+    val screen5TransitionProgress = remember { Animatable(0f) }
+    val navigationButtonBrightness = remember { Animatable(.42f) }
+    var screen3CardBounds by remember { mutableStateOf<Rect?>(null) }
+    val timelineState = rememberLazyListState()
+    val userDraggingTimeline by timelineState.interactionSource.collectIsDraggedAsState()
 
-    ReliveBackHandler(enabled = !state.isFirstPage && !finishing) {
-        state = state.previous()
-    }
-
-    val finish: () -> Unit = {
-        if (!finishing) {
-            finishing = true
-            scope.launch {
-                if (!onFinish()) finishing = false
-            }
+    LaunchedEffect(userDraggingTimeline, stage) {
+        if (userDraggingTimeline && stage == OnboardingStage.TimelineAutoScroll) {
+            stage = OnboardingStage.TimelineIdle
         }
     }
-    val primaryAction: () -> Unit = {
-        when (state.primaryCommand) {
-            OnboardingCommand.Advance -> state = state.next()
-            OnboardingCommand.Complete -> finish()
-        }
-    }
 
-    Box(Modifier.fillMaxSize().background(OnboardingReferenceCanvasBrush)) {
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(brush = rememberGrainBrush(isDark = false), alpha = 0.04f),
-        )
-        AnimatedContent(
-            targetState = state.pageIndex,
-            transitionSpec = {
-                val exitSpec = motion.spec<Float>(
-                    reduceMotion = reduceMotion,
-                    full = tween(
-                        durationMillis = motion.durations.short4,
-                        easing = motion.easings.emphasizedAccelerate,
-                    ),
-                )
-                val enterSpec = motion.spec<Float>(
-                    reduceMotion = reduceMotion,
-                    full = tween(
-                        durationMillis = motion.durations.medium2,
-                        delayMillis = motion.durations.short4,
-                        easing = motion.easings.emphasizedDecelerate,
-                    ),
-                    reduced = tween(
-                        durationMillis = motion.durations.short3,
-                        delayMillis = motion.durations.short3,
-                        easing = motion.easings.standard,
-                    ),
-                )
-                fadeIn(enterSpec) togetherWith fadeOut(exitSpec)
-            },
-            label = "onboarding page",
-            modifier = Modifier.fillMaxSize(),
-        ) { targetIndex ->
-            val targetState = OnboardingState(targetIndex)
-            when (targetState.page) {
-                OnboardingPage.Welcome -> WelcomePage(
-                    enabled = !finishing,
-                    onNext = primaryAction,
-                )
-                OnboardingPage.Capture -> CapturePage(
-                    page = targetState,
-                    enabled = !finishing,
-                    onSkip = finish,
-                    onNext = primaryAction,
-                )
-                OnboardingPage.Organize -> OrganizePage(
-                    page = targetState,
-                    enabled = !finishing,
-                    onSkip = finish,
-                    onNext = primaryAction,
-                )
-                OnboardingPage.ReliveMoments -> ReliveMomentsPage(
-                    page = targetState,
-                    mediaStore = mediaStore,
-                    enabled = !finishing,
-                    onSkip = finish,
-                    onNext = primaryAction,
-                )
-                OnboardingPage.Private -> PrivatePage(
-                    page = targetState,
-                    enabled = !finishing,
-                    onSkip = finish,
-                    onNext = primaryAction,
-                )
-                OnboardingPage.Final -> FinalPage(
-                    enabled = !finishing,
-                    onFinish = primaryAction,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun WelcomePage(
-    enabled: Boolean,
-    onNext: () -> Unit,
-) {
-    val colors = ReliveTheme.colors
-    val dims = ReliveTheme.dimensions
-    val type = ReliveTheme.typography
-    Box(Modifier.fillMaxSize()) {
-        Image(
-            painter = painterResource(Res.drawable.onboarding_welcome_reference_v2),
-            contentDescription = null,
-            contentScale = ContentScale.FillBounds,
-            alpha = 0.84f,
-            modifier = Modifier.fillMaxSize(),
-        )
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.48f)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(ONBOARDING_REFERENCE_CANVAS.copy(alpha = 0.96f), Color.Transparent),
-                    ),
+    LaunchedEffect(stage) {
+        val navigationReady = stage == OnboardingStage.Screen1 ||
+            stage == OnboardingStage.TimelineSettled ||
+            stage == OnboardingStage.TimelineAutoScroll ||
+            stage == OnboardingStage.TimelineIdle ||
+            stage == OnboardingStage.Screen3 ||
+            stage == OnboardingStage.Screen4 ||
+            stage == OnboardingStage.Screen5
+        if (reducedMotion) {
+            navigationButtonBrightness.snapTo(if (navigationReady) 1f else .42f)
+        } else {
+            if (stage == OnboardingStage.Screen1) delay(180)
+            navigationButtonBrightness.animateTo(
+                if (navigationReady) 1f else .42f,
+                tween(
+                    durationMillis = if (navigationReady) 820 else 420,
+                    easing = motion.easings.emphasizedDecelerate,
                 ),
-        )
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(horizontal = dims.onboarding.pageHorizontalPadding),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Spacer(Modifier.height(128.dp))
-                Text(
-                    text = "Relive",
-                    style = type.onboardingWelcomeTitle,
-                    color = colors.textPrimary,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(Modifier.height(28.dp))
-                Text(
-                    text = "S M A L L  M O M E N T S.\nA  F U L L E R  Y O U.",
-                    style = type.eyebrow.copy(
-                        fontSize = 13.sp,
-                        lineHeight = 22.sp,
-                    ),
-                    color = colors.textSecondary,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(Modifier.height(312.dp))
-                Text(
-                    text = "Memories\nmake life\nricher  ♡",
-                    style = type.onboardingHandwritten.copy(
-                        fontSize = 36.sp,
-                        lineHeight = 42.sp,
-                    ),
-                    color = colors.accent.copy(alpha = 0.76f),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .align(Alignment.Start)
-                        .offset(x = dims.spacing.lg)
-                        .graphicsLayer { rotationZ = -7f },
-                )
-                Spacer(Modifier.height(dims.spacing.xl))
-            }
-            OnboardingPrimaryAction(
-                label = "Get started  →",
-                enabled = enabled,
-                onClick = onNext,
-                modifier = Modifier.fillMaxWidth(0.88f),
-            )
-            Text(
-                text = "Your memories stay yours.",
-                style = type.caption,
-                color = colors.textSecondary,
-                modifier = Modifier.padding(vertical = dims.spacing.md),
             )
         }
     }
-}
 
-@Composable
-private fun OnboardingHeader(
-    number: Int,
-    showSkip: Boolean,
-    enabled: Boolean,
-    onSkip: () -> Unit,
-) {
-    val colors = ReliveTheme.colors
-    val dims = ReliveTheme.dimensions
-    Row(
-        modifier = Modifier.fillMaxWidth().height(dims.onboarding.headerHeight),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+    LaunchedEffect(
+        stage,
+        captureCardBounds != null,
+        timelineCardBounds[0] != null,
+        timelinePrepositioned,
+        timelineSheetBounds != null,
+        customTimelineHoleBounds != null,
     ) {
-        Text(
-            text = "$number / $FEATURE_PAGE_COUNT",
-            style = ReliveTheme.typography.action,
-            color = colors.accent,
-        )
-        if (showSkip) {
-            TextButton(
-                onClick = onSkip,
-                enabled = enabled,
-                modifier = Modifier.heightIn(min = dims.minTouchTarget),
-            ) {
-                Text("Skip", style = ReliveTheme.typography.action, color = colors.textSecondary)
+        when (stage) {
+            OnboardingStage.Screen1,
+            OnboardingStage.TimelineIdle,
+            OnboardingStage.Screen3,
+            OnboardingStage.Screen4,
+            OnboardingStage.Screen5 -> Unit
+
+            OnboardingStage.RevealingScreen5 -> {
+                if (reducedMotion) {
+                    screen5TransitionProgress.snapTo(1f)
+                } else {
+                    screen5TransitionProgress.animateTo(
+                        1f,
+                        tween(1_900, easing = LinearEasing),
+                    )
+                }
+                stage = OnboardingStage.Screen5
+            }
+
+            OnboardingStage.PrivacyTakeover -> {
+                if (screen3CardBounds == null) return@LaunchedEffect
+                if (reducedMotion) {
+                    privacyTakeoverProgress.snapTo(1f)
+                } else {
+                    privacyTakeoverProgress.animateTo(
+                        1f,
+                        tween(1_350, easing = motion.easings.emphasizedDecelerate),
+                    )
+                }
+                stage = OnboardingStage.Screen4
+            }
+
+            OnboardingStage.PrivacyReturn -> {
+                // The panel's contents leave composition before its reveal reverses. This
+                // prevents translated bar text from being caught in the shrinking clip.
+                if (!reducedMotion) delay(240)
+                if (reducedMotion) {
+                    privacyTakeoverProgress.snapTo(0f)
+                } else {
+                    privacyTakeoverProgress.animateTo(
+                        0f,
+                        tween(900, easing = motion.easings.emphasizedDecelerate),
+                    )
+                }
+                stage = OnboardingStage.Screen3
+            }
+
+            OnboardingStage.RevealingTimeline -> {
+                val hasMeasuredSharedCardBounds = captureCardBounds != null && timelineCardBounds[0] != null
+                if (!hasMeasuredSharedCardBounds) return@LaunchedEffect
+                if (!timelinePrepositioned) {
+                    val captureBounds = requireNotNull(captureCardBounds)
+                    val targetBounds = requireNotNull(timelineCardBounds[0])
+                    timelineState.animateScrollBy(
+                        value = targetBounds.top - captureBounds.top,
+                        animationSpec = tween(1),
+                    )
+                    focusedFirstVisibleItemIndex = timelineState.firstVisibleItemIndex
+                    focusedFirstVisibleItemOffset = timelineState.firstVisibleItemScrollOffset
+                    timelinePrepositioned = true
+                    return@LaunchedEffect
+                }
+                if (reducedMotion) {
+                    transitionProgress.snapTo(1f)
+                } else {
+                    transitionProgress.animateTo(
+                        1f,
+                        tween(850, easing = motion.easings.emphasizedDecelerate),
+                    )
+                }
+                stage = OnboardingStage.TimelineSettled
+            }
+
+            OnboardingStage.TimelineSettled -> {
+                if (!reducedMotion) delay(320)
+                stage = if (reducedMotion) OnboardingStage.TimelineIdle else OnboardingStage.TimelineAutoScroll
+            }
+
+            OnboardingStage.TimelineAutoScroll -> {
+                if (autoScrollHasRun) {
+                    stage = OnboardingStage.TimelineIdle
+                } else {
+                    autoScrollHasRun = true
+                    for (index in 1..ONBOARDING_TIMELINE_MOMENT_PREVIEWS.lastIndex) {
+                        var attempts = 0
+                        while (timelineCardBounds[index] == null && attempts < 12) {
+                            val focusBounds = captureCardBounds ?: break
+                            timelineState.animateScrollBy(
+                                value = focusBounds.height * .24f,
+                                animationSpec = tween(190, easing = motion.easings.standard),
+                            )
+                            delay(12)
+                            attempts++
+                        }
+                        val nextBounds = timelineCardBounds[index] ?: break
+                        val focusBounds = captureCardBounds ?: break
+                        timelineState.animateScrollBy(
+                            value = nextBounds.top - focusBounds.top,
+                            animationSpec = tween(1_180, easing = motion.easings.standard),
+                        )
+                        delay(90)
+                    }
+                    stage = OnboardingStage.TimelineIdle
+                }
+            }
+
+            OnboardingStage.ReturningToFocus -> {
+                timelineState.animateScrollToItem(
+                    focusedFirstVisibleItemIndex,
+                    focusedFirstVisibleItemOffset,
+                )
+                stage = OnboardingStage.HidingTimeline
+            }
+
+            OnboardingStage.HidingTimeline -> {
+                if (reducedMotion) {
+                    transitionProgress.snapTo(0f)
+                } else {
+                    transitionProgress.animateTo(
+                        0f,
+                        tween(720, easing = motion.easings.emphasizedDecelerate),
+                    )
+                }
+                autoScrollHasRun = false
+                timelinePrepositioned = false
+                timelineCardBounds.clear()
+                stage = OnboardingStage.Screen1
+            }
+
+            OnboardingStage.SuckingTimeline -> {
+                if (timelineSheetBounds == null || customTimelineHoleBounds == null) {
+                    return@LaunchedEffect
+                }
+                if (reducedMotion) {
+                    suctionProgress.snapTo(1f)
+                } else {
+                    suctionProgress.animateTo(
+                        1f,
+                        tween(1_800, easing = motion.easings.standard),
+                    )
+                }
+                stage = OnboardingStage.RevealingThumbnail
+            }
+
+            OnboardingStage.RevealingThumbnail -> {
+                if (reducedMotion) {
+                    thumbnailProgress.animateTo(
+                        1f,
+                        tween(motion.durations.short3, easing = motion.easings.standard),
+                    )
+                } else {
+                    thumbnailProgress.animateTo(
+                        1f,
+                        tween(320, easing = motion.easings.emphasizedDecelerate),
+                    )
+                }
+                stage = OnboardingStage.RevealingScreen3
+            }
+
+            OnboardingStage.RevealingScreen3 -> {
+                if (reducedMotion) {
+                    screen3ContentProgress.animateTo(
+                        1f,
+                        tween(motion.durations.short3, easing = motion.easings.standard),
+                    )
+                } else {
+                    screen3ContentProgress.animateTo(
+                        1f,
+                        tween(motion.durations.medium4, easing = motion.easings.standard),
+                    )
+                }
+                stage = OnboardingStage.Screen3
+            }
+
+            OnboardingStage.HidingScreen3 -> {
+                if (reducedMotion) {
+                    screen3ContentProgress.animateTo(
+                        0f,
+                        tween(motion.durations.short3, easing = motion.easings.standard),
+                    )
+                } else {
+                    screen3ContentProgress.animateTo(
+                        0f,
+                        tween(motion.durations.medium1, easing = motion.easings.standardAccelerate),
+                    )
+                }
+                stage = OnboardingStage.RecessingThumbnail
+            }
+
+            OnboardingStage.RecessingThumbnail -> {
+                if (reducedMotion) {
+                    thumbnailProgress.animateTo(
+                        0f,
+                        tween(motion.durations.short3, easing = motion.easings.standard),
+                    )
+                } else {
+                    thumbnailProgress.animateTo(
+                        0f,
+                        tween(motion.durations.medium1, easing = motion.easings.standardAccelerate),
+                    )
+                }
+                stage = OnboardingStage.RestoringTimeline
+            }
+
+            OnboardingStage.RestoringTimeline -> {
+                if (reducedMotion) {
+                    suctionProgress.snapTo(0f)
+                } else {
+                    suctionProgress.animateTo(
+                        0f,
+                        tween(
+                            motion.durations.extraLong1 + motion.durations.short2,
+                            easing = motion.easings.emphasizedDecelerate,
+                        ),
+                    )
+                }
+                stage = OnboardingStage.TimelineIdle
             }
         }
     }
-}
 
-@Composable
-private fun CapturePage(
-    page: OnboardingState,
-    enabled: Boolean,
-    onSkip: () -> Unit,
-    onNext: () -> Unit,
-) {
-    val copy = requireNotNull(FeatureCopyByPage[page.page])
-    val colors = ReliveTheme.colors
-    val dims = ReliveTheme.dimensions
-    val type = ReliveTheme.typography
+    val readyVisible = stage == OnboardingStage.RevealingScreen5 || stage == OnboardingStage.Screen5
+    val privacyVisible = stage == OnboardingStage.PrivacyTakeover ||
+        stage == OnboardingStage.Screen4 || stage == OnboardingStage.RevealingScreen5 ||
+        stage == OnboardingStage.PrivacyReturn
+    val timelineVisible = stage != OnboardingStage.Screen1
+    val timelineSheetVisible = stage == OnboardingStage.RevealingTimeline ||
+        stage == OnboardingStage.TimelineSettled ||
+        stage == OnboardingStage.TimelineAutoScroll ||
+        stage == OnboardingStage.TimelineIdle ||
+        stage == OnboardingStage.ReturningToFocus ||
+        stage == OnboardingStage.SuckingTimeline ||
+        stage == OnboardingStage.RestoringTimeline
+    val sharedCardVisible = stage == OnboardingStage.Screen1 ||
+        stage == OnboardingStage.RevealingTimeline || stage == OnboardingStage.HidingTimeline
+
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        Image(
-            painter = painterResource(Res.drawable.onboarding_capture_fullscreen_v3),
-            contentDescription = null,
-            contentScale = ContentScale.FillBounds,
-            modifier = Modifier.fillMaxSize(),
-        )
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.38f)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            ONBOARDING_REFERENCE_CANVAS.copy(alpha = 0.62f),
-                            Color.Transparent,
-                        ),
-                    ),
-                ),
-        )
-        Text(
-            text = "Good food.\nBrighter days.  ♡",
-            style = type.onboardingHandwritten.copy(fontSize = 13.sp, lineHeight = 16.sp),
-            color = colors.textSecondary,
-            modifier = Modifier
-                .offset(x = maxWidth * 0.25f, y = maxHeight * 0.555f)
-                .graphicsLayer { rotationZ = -8f },
+        val density = LocalDensity.current
+        val shellHeight = (maxHeight * .37f).coerceIn(238.dp, 310.dp)
+        val momentWidthFraction = if (maxHeight < 780.dp) .56f else .74f
+        val focusTopInset = captureCardBounds?.let { captureBounds ->
+            visualBounds?.let { bounds ->
+                with(density) { (captureBounds.top - bounds.top).coerceAtLeast(0f).toDp() }
+            }
+        }
+        OnboardingAtmosphereCanvas(
+            progress = transitionProgress.value + suctionProgress.value + privacyTakeoverProgress.value +
+                screen5TransitionProgress.value,
         )
         Column(
-            modifier = Modifier
-                .fillMaxSize()
+            Modifier.fillMaxSize()
                 .windowInsetsPadding(WindowInsets.statusBars)
-                .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(horizontal = dims.onboarding.pageHorizontalPadding),
+                .windowInsetsPadding(WindowInsets.navigationBars),
         ) {
-            Spacer(Modifier.height(dims.onboarding.numberedPageTopPadding))
-            OnboardingHeader(
-                number = copy.number,
-                showSkip = page.canSkip,
-                enabled = enabled,
-                onSkip = onSkip,
-            )
-            Text(copy.title, style = type.onboardingTitle, color = colors.textPrimary)
-            Spacer(Modifier.height(dims.spacing.xs))
-            Text(copy.body, style = type.onboardingBody, color = colors.textSecondary)
-            Spacer(Modifier.weight(1f))
-            Row(
-                modifier = Modifier
+            CaptureHeader(
+                enabled = skipEnabled && !readyVisible,
+                departure = screen5TransitionProgress.value,
+            ) {
+                if (skipEnabled) {
+                    skipEnabled = false
+                    scope.launch { if (!onSkip()) skipEnabled = true }
+                }
+            }
+            Box(
+                Modifier.weight(1f)
                     .fillMaxWidth()
-                    .height(dims.onboarding.captureFeatureHeight),
-                horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm),
+                    .clipToBounds()
+                    .onGloballyPositioned { visualBounds = it.boundsInRoot() },
             ) {
-                CaptureFeature(ProfileIcons.Media, "Photos", Modifier.weight(1f))
-                CaptureFeature(CameraIcons.Videocam, "Videos", Modifier.weight(1f))
-                CaptureFeature(OnboardingIcons.Note, "Notes", Modifier.weight(1f))
-                CaptureFeature(ProfileIcons.Location, "Location", Modifier.weight(1f))
-            }
-            Spacer(Modifier.height(dims.spacing.sm))
-            OnboardingBottomControls(
-                activeIndex = copy.number - 1,
-                enabled = enabled,
-                onNext = onNext,
-            )
-        }
-    }
-}
-
-@Composable
-private fun CaptureFeature(icon: ImageVector, label: String, modifier: Modifier) {
-    val colors = ReliveTheme.colors
-    val dims = ReliveTheme.dimensions
-    Column(
-        modifier = modifier
-            .fillMaxHeight()
-            .clip(RoundedCornerShape(dims.onboarding.featureTileRadius))
-            .background(colors.surfaceCard.copy(alpha = 0.74f))
-            .padding(vertical = dims.spacing.md),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(dims.onboarding.captureIconMedallionSize)
-                .clip(CircleShape)
-                .background(colors.tint.copy(alpha = 0.7f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = colors.accent,
-                modifier = Modifier.size(dims.onboarding.captureIconSize),
-            )
-        }
-        Text(label, style = ReliveTheme.typography.caption, color = colors.textPrimary)
-    }
-}
-
-@Composable
-private fun OrganizePage(
-    page: OnboardingState,
-    enabled: Boolean,
-    onSkip: () -> Unit,
-    onNext: () -> Unit,
-) {
-    val copy = requireNotNull(FeatureCopyByPage[page.page])
-    val colors = ReliveTheme.colors
-    val dims = ReliveTheme.dimensions
-    val type = ReliveTheme.typography
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        Image(
-            painter = painterResource(Res.drawable.onboarding_organize_fullscreen_v2),
-            contentDescription = null,
-            contentScale = ContentScale.FillBounds,
-            modifier = Modifier.fillMaxSize(),
-        )
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.34f)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            ONBOARDING_REFERENCE_CANVAS.copy(alpha = 0.52f),
-                            Color.Transparent,
-                        ),
-                    ),
-                ),
-        )
-        Text(
-            text = "Same\nmoments,\nmore meaning\n♡",
-            style = type.onboardingHandwritten.copy(fontSize = 16.sp, lineHeight = 19.sp),
-            color = colors.accent,
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .width(maxWidth * 0.29f)
-                .offset(x = maxWidth * 0.68f, y = maxHeight * 0.145f)
-                .graphicsLayer { rotationZ = -8f },
-        )
-        Canvas(
-            modifier = Modifier
-                .size(width = 42.dp, height = 32.dp)
-                .offset(x = maxWidth * 0.73f, y = maxHeight * 0.292f),
-        ) {
-            val ink = colors.accent.copy(alpha = 0.82f)
-            drawLine(ink, start = androidx.compose.ui.geometry.Offset(4.dp.toPx(), 22.dp.toPx()), end = androidx.compose.ui.geometry.Offset(0f, 5.dp.toPx()), strokeWidth = 2.dp.toPx())
-            drawLine(ink, start = androidx.compose.ui.geometry.Offset(18.dp.toPx(), 19.dp.toPx()), end = androidx.compose.ui.geometry.Offset(25.dp.toPx(), 2.dp.toPx()), strokeWidth = 2.dp.toPx())
-            drawLine(ink, start = androidx.compose.ui.geometry.Offset(28.dp.toPx(), 27.dp.toPx()), end = androidx.compose.ui.geometry.Offset(40.dp.toPx(), 19.dp.toPx()), strokeWidth = 2.dp.toPx())
-        }
-        Text(
-            text = "Growing days",
-            style = type.title.copy(fontSize = 22.sp, lineHeight = 26.sp),
-            color = colors.textPrimary,
-            modifier = Modifier
-                .offset(x = maxWidth * 0.105f, y = maxHeight * 0.663f)
-                .graphicsLayer { rotationZ = -3.5f },
-        )
-        Text(
-            text = "4 moments",
-            style = type.caption.copy(fontSize = 12.sp),
-            color = colors.textSecondary,
-            modifier = Modifier
-                .offset(x = maxWidth * 0.105f, y = maxHeight * 0.704f)
-                .graphicsLayer { rotationZ = -3.5f },
-        )
-        Text(
-            text = "4 September 2026",
-            style = type.caption.copy(fontSize = 12.sp),
-            color = colors.textSecondary,
-            textAlign = TextAlign.End,
-            modifier = Modifier
-                .width(maxWidth * 0.36f)
-                .offset(x = maxWidth * 0.34f, y = maxHeight * 0.704f)
-                .graphicsLayer { rotationZ = -3.5f },
-        )
-        Canvas(
-            modifier = Modifier
-                .size(width = 66.dp, height = 54.dp)
-                .offset(x = maxWidth * 0.255f, y = maxHeight * 0.758f),
-        ) {
-            val ink = colors.accent.copy(alpha = 0.86f)
-            val curve = Path().apply {
-                moveTo(size.width * 0.92f, size.height * 0.86f)
-                cubicTo(
-                    size.width * 0.53f,
-                    size.height * 0.82f,
-                    size.width * 0.18f,
-                    size.height * 0.58f,
-                    size.width * 0.16f,
-                    size.height * 0.14f,
-                )
-            }
-            drawPath(
-                path = curve,
-                color = ink,
-                style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round),
-            )
-            drawLine(
-                color = ink,
-                start = androidx.compose.ui.geometry.Offset(size.width * 0.16f, size.height * 0.14f),
-                end = androidx.compose.ui.geometry.Offset(size.width * 0.12f, size.height * 0.42f),
-                strokeWidth = 2.dp.toPx(),
-                cap = StrokeCap.Round,
-            )
-            drawLine(
-                color = ink,
-                start = androidx.compose.ui.geometry.Offset(size.width * 0.16f, size.height * 0.14f),
-                end = androidx.compose.ui.geometry.Offset(size.width * 0.37f, size.height * 0.29f),
-                strokeWidth = 2.dp.toPx(),
-                cap = StrokeCap.Round,
-            )
-        }
-        Text(
-            text = "Create multiple timelines\nfor different chapters of your life",
-            style = type.onboardingHandwritten.copy(fontSize = 14.sp, lineHeight = 17.sp),
-            color = colors.textSecondary,
-            modifier = Modifier
-                .width(maxWidth * 0.57f)
-                .offset(x = maxWidth * 0.41f, y = maxHeight * 0.79f)
-                .graphicsLayer { rotationZ = -5f },
-        )
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(horizontal = dims.onboarding.pageHorizontalPadding),
-        ) {
-            Spacer(Modifier.height(dims.onboarding.numberedPageTopPadding))
-            OnboardingHeader(
-                number = copy.number,
-                showSkip = page.canSkip,
-                enabled = enabled,
-                onSkip = onSkip,
-            )
-            Text(copy.title, style = type.onboardingTitle, color = colors.textPrimary)
-            Spacer(Modifier.height(dims.spacing.xs))
-            Text(copy.body, style = type.onboardingBody, color = colors.textSecondary)
-            Spacer(Modifier.weight(1f))
-            OnboardingBottomControls(
-                activeIndex = copy.number - 1,
-                enabled = enabled,
-                onNext = onNext,
-            )
-        }
-    }
-}
-
-@Composable
-private fun ReliveMomentsPage(
-    page: OnboardingState,
-    mediaStore: MediaStore,
-    enabled: Boolean,
-    onSkip: () -> Unit,
-    onNext: () -> Unit,
-) {
-    val copy = requireNotNull(FeatureCopyByPage[page.page])
-    val colors = ReliveTheme.colors
-    val dims = ReliveTheme.dimensions
-    val type = ReliveTheme.typography
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        Image(
-            painter = painterResource(Res.drawable.onboarding_relive_moments_scroll_background_v1),
-            contentDescription = null,
-            contentScale = ContentScale.FillBounds,
-            modifier = Modifier.fillMaxSize(),
-        )
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.34f)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            ONBOARDING_REFERENCE_CANVAS.copy(alpha = 0.58f),
-                            Color.Transparent,
-                        ),
-                    ),
-                ),
-        )
-        Text(
-            text = "Your\nmemories,\nall in one\ntimeline  ♡",
-            style = type.onboardingHandwritten.copy(fontSize = 15.sp, lineHeight = 18.sp),
-            color = colors.accent,
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .width(maxWidth * 0.22f)
-                .offset(x = maxWidth * 0.76f, y = maxHeight * 0.145f)
-                .graphicsLayer { rotationZ = -7f },
-        )
-        OnboardingMomentScrollPreview(
-            mediaStore = mediaStore,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(maxHeight * 0.37f)
-                .offset(y = maxHeight * 0.34f),
-        )
-        Canvas(
-            modifier = Modifier
-                .size(width = 58.dp, height = 80.dp)
-                .offset(x = maxWidth * 0.75f, y = maxHeight * 0.245f),
-        ) {
-            val ink = colors.accent.copy(alpha = 0.86f)
-            val curve = Path().apply {
-                moveTo(size.width * 0.82f, size.height * 0.04f)
-                cubicTo(
-                    size.width * 0.86f,
-                    size.height * 0.42f,
-                    size.width * 0.58f,
-                    size.height * 0.72f,
-                    size.width * 0.19f,
-                    size.height * 0.91f,
-                )
-            }
-            drawPath(curve, ink, style = Stroke(width = 1.7.dp.toPx(), cap = StrokeCap.Round))
-            drawLine(
-                color = ink,
-                start = androidx.compose.ui.geometry.Offset(size.width * 0.19f, size.height * 0.91f),
-                end = androidx.compose.ui.geometry.Offset(size.width * 0.25f, size.height * 0.69f),
-                strokeWidth = 1.7.dp.toPx(),
-                cap = StrokeCap.Round,
-            )
-            drawLine(
-                color = ink,
-                start = androidx.compose.ui.geometry.Offset(size.width * 0.19f, size.height * 0.91f),
-                end = androidx.compose.ui.geometry.Offset(size.width * 0.42f, size.height * 0.86f),
-                strokeWidth = 1.7.dp.toPx(),
-                cap = StrokeCap.Round,
-            )
-        }
-        Canvas(
-            modifier = Modifier
-                .size(width = 48.dp, height = 76.dp)
-                .offset(x = maxWidth * 0.73f, y = maxHeight * 0.712f),
-        ) {
-            val ink = colors.accent.copy(alpha = 0.82f)
-            val curve = Path().apply {
-                moveTo(size.width * 0.18f, size.height * 0.05f)
-                cubicTo(
-                    size.width * 0.65f,
-                    size.height * 0.28f,
-                    size.width * 0.61f,
-                    size.height * 0.62f,
-                    size.width * 0.35f,
-                    size.height * 0.91f,
-                )
-            }
-            drawPath(curve, ink, style = Stroke(width = 1.7.dp.toPx(), cap = StrokeCap.Round))
-            drawLine(
-                color = ink,
-                start = androidx.compose.ui.geometry.Offset(size.width * 0.35f, size.height * 0.91f),
-                end = androidx.compose.ui.geometry.Offset(size.width * 0.29f, size.height * 0.72f),
-                strokeWidth = 1.7.dp.toPx(),
-                cap = StrokeCap.Round,
-            )
-            drawLine(
-                color = ink,
-                start = androidx.compose.ui.geometry.Offset(size.width * 0.35f, size.height * 0.91f),
-                end = androidx.compose.ui.geometry.Offset(size.width * 0.53f, size.height * 0.80f),
-                strokeWidth = 1.7.dp.toPx(),
-                cap = StrokeCap.Round,
-            )
-        }
-        Text(
-            text = "Scroll\nto relive\nmore  ♡",
-            style = type.onboardingHandwritten.copy(fontSize = 14.sp, lineHeight = 17.sp),
-            color = colors.accent,
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .width(maxWidth * 0.18f)
-                .offset(x = maxWidth * 0.80f, y = maxHeight * 0.755f)
-                .graphicsLayer { rotationZ = -6f },
-        )
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(horizontal = dims.onboarding.pageHorizontalPadding),
-        ) {
-            Spacer(Modifier.height(dims.onboarding.numberedPageTopPadding))
-            OnboardingHeader(
-                number = copy.number,
-                showSkip = page.canSkip,
-                enabled = enabled,
-                onSkip = onSkip,
-            )
-            Row(
-                modifier = Modifier.width(220.dp).height(4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                repeat(FEATURE_PAGE_COUNT) { index ->
+                if (timelineVisible && !readyVisible) {
+                    Screen3TimelineCard(
+                        mediaStore = mediaStore,
+                        revealProgress = onboardingCardRevealProgress(suctionProgress.value),
+                        thumbnailProgress = thumbnailProgress.value,
+                        onHoleBoundsChanged = { customTimelineHoleBounds = it },
+                        onCardBoundsChanged = { screen3CardBounds = it },
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = ReliveTheme.dimensions.spacing.xxl)
+                            .blur(5.dp * privacyTakeoverProgress.value)
+                            .graphicsLayer {
+                                alpha = 1f - privacyTakeoverProgress.value * .34f
+                            },
+                    )
+                }
+                if (timelineSheetVisible) {
                     Box(
-                        Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .clip(CircleShape)
-                            .background(if (index < copy.number) colors.accent else colors.borderMuted),
+                        Modifier.fillMaxSize()
+                            .onGloballyPositioned { timelineSheetBounds = it.boundsInRoot() },
+                    ) {
+                        TimelineOnboardingVisual(
+                            mediaStore = mediaStore,
+                            timelineState = timelineState,
+                            stage = stage,
+                            focusBounds = captureCardBounds,
+                            entryProgress = transitionProgress.value,
+                            momentWidthFraction = momentWidthFraction,
+                            sharedCardWidth = captureCardBounds?.width?.let { with(density) { it.toDp() } },
+                            focusTopInset = focusTopInset,
+                            onMomentBoundsChanged = { index, bounds -> timelineCardBounds[index] = bounds },
+                            modifier = Modifier.timelineSuction(
+                                progress = suctionProgress.value,
+                                sheetBounds = timelineSheetBounds,
+                                holeBounds = customTimelineHoleBounds,
+                            ),
+                        )
+                    }
+                }
+                CaptureOnboardingVisual(
+                    mediaStore = mediaStore,
+                    controlsProgress = 1f - transitionProgress.value,
+                    showMoment = sharedCardVisible,
+                    momentWidthFraction = momentWidthFraction,
+                    onMomentBoundsChanged = { captureCardBounds = it },
+                )
+                val privacyBounds = screen3CardBounds
+                val privacyStageBounds = visualBounds
+                if (privacyVisible && privacyBounds != null && privacyStageBounds != null) {
+                    PrivacyOnboardingVisual(
+                        takeoverProgress = privacyTakeoverProgress.value,
+                        contentVisible = stage != OnboardingStage.PrivacyReturn,
+                        modifier = Modifier
+                            .offset(
+                                x = with(density) { (privacyBounds.left - privacyStageBounds.left).toDp() },
+                                y = with(density) { (privacyBounds.top - privacyStageBounds.top).toDp() },
+                            )
+                            .size(
+                                width = with(density) { privacyBounds.width.toDp() },
+                                height = with(density) { privacyBounds.height.toDp() },
+                            )
+                            .graphicsLayer {
+                                val collapse = smoothStep(
+                                    (screen5TransitionProgress.value / .34f).coerceIn(0f, 1f),
+                                )
+                                scaleX = lerp(1f, .001f, collapse)
+                                scaleY = scaleX
+                            },
+                    )
+                }
+                if (readyVisible) {
+                    ReadyOnboardingVisual(
+                        transitionProgress = screen5TransitionProgress.value,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+                val holeBounds = customTimelineHoleBounds
+                val stageBounds = visualBounds
+                if (timelineVisible && !privacyVisible && !readyVisible && holeBounds != null && stageBounds != null) {
+                    val holeReveal = ((onboardingCardRevealProgress(suctionProgress.value) - .42f) / .54f)
+                        .coerceIn(0f, 1f)
+                    OnboardingHoleSurface(
+                        thumbnailProgress = thumbnailProgress.value,
+                        modifier = Modifier
+                            .offset(
+                                x = with(density) { (holeBounds.left - stageBounds.left).toDp() },
+                                y = with(density) { (holeBounds.top - stageBounds.top).toDp() },
+                            )
+                            .size(
+                                width = with(density) { holeBounds.width.toDp() },
+                                height = with(density) { holeBounds.height.toDp() },
+                            )
+                            .graphicsLayer {
+                                shape = BottomUpRevealShape(holeReveal)
+                                clip = true
+                            },
                     )
                 }
             }
-            Spacer(Modifier.height(22.dp))
-            Text("Relive your", style = type.onboardingTitle, color = colors.textPrimary)
-            Text(
-                "moments",
-                style = type.onboardingTitle.copy(fontStyle = FontStyle.Italic),
-                color = colors.accent,
-                modifier = Modifier.offset(y = (-5).dp),
+            // Copy and progress advance during the final pull, leaving the thumbnail
+            // as the sole end beat once the sheet has been absorbed.
+            val screen3PresentationProgress = maxOf(
+                screen3ContentProgress.value,
+                ((suctionProgress.value - .52f) / .42f).coerceIn(0f, 1f),
             )
-            Text(
-                copy.body,
-                style = type.onboardingBody,
-                color = colors.textSecondary,
-                modifier = Modifier.offset(y = (-4).dp),
-            )
-            Spacer(Modifier.weight(1f))
-            OnboardingBottomControls(
-                activeIndex = copy.number - 1,
-                enabled = enabled,
-                onNext = onNext,
+            OnboardingBottomShell(
+                captureHeadline = "Keep what matters.",
+                captureDescription = "Photos, words, videos, and sounds. A little of life, kept together.",
+                timelineHeadline = "Your moments find their place.",
+                timelineDescription = "Captured memories are added to your timeline, building your story over time.",
+                customTimelineHeadline = "Create custom timelines.",
+                customTimelineDescription = "Group your moments into meaningful collections you can revisit anytime.",
+                privacyHeadline = "Your memories stay yours.",
+                privacyDescription = "A personal archive, stored on your device.",
+                readyHeadline = "Your moments, yours to relive.",
+                readyDescription = "Keep the little things. Come back to them whenever you want.",
+                transition = transitionProgress.value,
+                screen3Transition = screen3PresentationProgress,
+                screen3CopyTransition = screen3PresentationProgress,
+                screen3ControlsProgress = screen3PresentationProgress,
+                privacyProgress = smoothStep(
+                    ((privacyTakeoverProgress.value - .55f) / .45f).coerceIn(0f, 1f),
+                ),
+                readyProgress = screen5TransitionProgress.value,
+                continueVisualAlpha = navigationButtonBrightness.value,
+                onContinue = {
+                    if (stage == OnboardingStage.Screen1) stage = OnboardingStage.RevealingTimeline
+                    else if (
+                        stage == OnboardingStage.TimelineSettled ||
+                        stage == OnboardingStage.TimelineAutoScroll ||
+                        stage == OnboardingStage.TimelineIdle
+                    ) {
+                        stage = OnboardingStage.SuckingTimeline
+                    } else if (stage == OnboardingStage.Screen3) {
+                        stage = OnboardingStage.PrivacyTakeover
+                    } else if (stage == OnboardingStage.Screen4) {
+                        stage = OnboardingStage.RevealingScreen5
+                    } else if (stage == OnboardingStage.Screen5) {
+                        onContinue()
+                    }
+                },
+                onBack = {
+                    if (stage == OnboardingStage.Screen5) {
+                        scope.launch {
+                            screen5TransitionProgress.snapTo(0f)
+                            stage = OnboardingStage.Screen4
+                        }
+                    } else {
+                        stage = if (stage == OnboardingStage.Screen4) {
+                            OnboardingStage.PrivacyReturn
+                        } else if (stage == OnboardingStage.Screen3) {
+                            OnboardingStage.HidingScreen3
+                        } else {
+                            OnboardingStage.ReturningToFocus
+                        }
+                    }
+                },
+                continueEnabled = stage == OnboardingStage.Screen1 ||
+                    stage == OnboardingStage.TimelineSettled ||
+                    stage == OnboardingStage.TimelineAutoScroll ||
+                    stage == OnboardingStage.TimelineIdle ||
+                    stage == OnboardingStage.Screen3 ||
+                    stage == OnboardingStage.Screen4 ||
+                    stage == OnboardingStage.Screen5,
+                showBack = transitionProgress.value >= .999f &&
+                    stage != OnboardingStage.SuckingTimeline &&
+                    stage != OnboardingStage.RevealingThumbnail &&
+                    stage != OnboardingStage.RevealingScreen3 &&
+                    stage != OnboardingStage.HidingScreen3 &&
+                    stage != OnboardingStage.RecessingThumbnail &&
+                    stage != OnboardingStage.RestoringTimeline,
+                backEnabled = stage == OnboardingStage.TimelineSettled ||
+                    stage == OnboardingStage.TimelineAutoScroll ||
+                    stage == OnboardingStage.TimelineIdle ||
+                    stage == OnboardingStage.Screen3 ||
+                    stage == OnboardingStage.Screen4 ||
+                    stage == OnboardingStage.Screen5,
+                finalAction = readyVisible,
+                modifier = Modifier.height(shellHeight),
             )
         }
     }
 }
 
 @Composable
-private fun OnboardingMomentScrollPreview(
+private fun CaptureOnboardingVisual(
     mediaStore: MediaStore,
+    controlsProgress: Float,
+    showMoment: Boolean,
+    momentWidthFraction: Float,
+    onMomentBoundsChanged: (Rect) -> Unit,
+) {
+    val motion = ReliveTheme.motion
+    val reduced = ReliveTheme.reduceMotion
+    val capabilities = List(4) { remember { Animatable(0f) } }
+    val card = remember { Animatable(0f) }
+
+    LaunchedEffect(Unit) {
+        if (reduced) {
+            capabilities.forEach { it.snapTo(1f) }
+            card.snapTo(1f)
+            return@LaunchedEffect
+        }
+        launch {
+            card.animateTo(1f, tween(520, easing = motion.easings.emphasizedDecelerate))
+        }
+        capabilities.forEachIndexed { index, value ->
+            launch {
+                delay(120L + index * 85L)
+                value.animateTo(1f, tween(680, easing = motion.easings.emphasizedDecelerate))
+            }
+        }
+    }
+
+    Box(
+        Modifier.fillMaxSize()
+            .padding(horizontal = ReliveTheme.dimensions.onboarding.pageHorizontalPadding),
+    ) {
+        if (showMoment) {
+            CaptureMomentPreview(
+                mediaStore = mediaStore,
+                entrance = card.value,
+                atmosphereProgress = 1f - controlsProgress,
+                widthFraction = momentWidthFraction,
+                onBoundsChanged = onMomentBoundsChanged,
+                modifier = Modifier.align(Alignment.Center),
+            )
+        }
+        CaptureCapabilities(
+            values = capabilities.map { it.value },
+            visibility = controlsProgress,
+            modifier = Modifier.fillMaxSize().departure(1f - controlsProgress, 10.dp),
+        )
+    }
+}
+
+@Composable
+private fun ReadyOnboardingVisual(
+    transitionProgress: Float,
     modifier: Modifier = Modifier,
 ) {
-    val dims = ReliveTheme.dimensions
-    val scrollState = rememberScrollState()
-    Box(
-        modifier = modifier
-            .clipToBounds()
-            .semantics { contentDescription = "Scrollable preview of three Relive moments" },
+    BoxWithConstraints(
+        modifier.padding(horizontal = 18.dp).semantics {
+            contentDescription = "A collection of five abstract Relive moment cards"
+        },
+        contentAlignment = Alignment.Center,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(scrollState)
-                .padding(end = dims.onboarding.pageHorizontalPadding),
+        val compact = maxWidth < 370.dp || maxHeight < 430.dp
+        val backWidth = if (compact) 128.dp else 146.dp
+        val centerWidth = if (compact) 164.dp else 184.dp
+        val horizontalReach = if (compact) 92.dp else 108.dp
+        val verticalReach = if (compact) 88.dp else 104.dp
+
+        ReadyMomentCard(
+            media = ReadyMomentMedia.Greenery,
+            width = backWidth,
+            rotation = -9f,
+            revealProgress = readyCardRevealProgress(transitionProgress, 0),
+            modifier = Modifier.offset(x = -horizontalReach, y = -verticalReach),
+        )
+        ReadyMomentCard(
+            media = ReadyMomentMedia.Beach,
+            width = backWidth,
+            rotation = 8f,
+            revealProgress = readyCardRevealProgress(transitionProgress, 1),
+            modifier = Modifier.offset(x = horizontalReach, y = -verticalReach + 8.dp),
+        )
+        ReadyMomentCard(
+            media = ReadyMomentMedia.CityNight,
+            width = backWidth,
+            rotation = -7f,
+            revealProgress = readyCardRevealProgress(transitionProgress, 2),
+            modifier = Modifier.offset(x = -horizontalReach, y = verticalReach),
+        )
+        ReadyMomentCard(
+            media = ReadyMomentMedia.Cozy,
+            width = backWidth,
+            rotation = 8f,
+            revealProgress = readyCardRevealProgress(transitionProgress, 3),
+            modifier = Modifier.offset(x = horizontalReach, y = verticalReach + 2.dp),
+        )
+        ReadyMomentCard(
+            media = ReadyMomentMedia.Sunset,
+            width = centerWidth,
+            rotation = 4f,
+            revealProgress = readyCardRevealProgress(transitionProgress, 4),
+            modifier = Modifier.offset(y = 4.dp),
+        )
+    }
+}
+
+private fun readyCardRevealProgress(transitionProgress: Float, index: Int): Float {
+    val start = .34f + index * .075f
+    return smoothStep(((transitionProgress - start) / .23f).coerceIn(0f, 1f))
+}
+
+private enum class ReadyMomentMedia { Greenery, Beach, CityNight, Cozy, Sunset }
+
+@Composable
+private fun ReadyMomentCard(
+    media: ReadyMomentMedia,
+    width: Dp,
+    rotation: Float,
+    revealProgress: Float,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(11.dp)
+    Column(
+        modifier = modifier
+            .width(width)
+            .aspectRatio(.78f)
+            .graphicsLayer {
+                alpha = revealProgress
+                scaleX = revealProgress.coerceAtLeast(.001f)
+                scaleY = scaleX
+                rotationZ = rotation
+                shadowElevation = 11.dp.toPx()
+                this.shape = shape
+                clip = false
+            }
+            .blur(
+                radius = 6.dp * (1f - revealProgress),
+                edgeTreatment = BlurredEdgeTreatment.Unbounded,
+            )
+            .clip(shape)
+            .background(Color(0xFFF8F5F4))
+            .padding(10.dp),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().height(34.dp),
+            verticalAlignment = Alignment.Top,
         ) {
-            ONBOARDING_RELIVE_MOMENT_PREVIEWS.forEachIndexed { index, moment ->
-                MomentCard(
+            Column(Modifier.weight(1f)) {
+                Box(
+                    Modifier.fillMaxWidth(.82f).height(10.dp)
+                        .clip(RoundedCornerShape(50)).background(Color(0xFFD4D0D2)),
+                )
+                Spacer(Modifier.height(6.dp))
+                Box(
+                    Modifier.fillMaxWidth(.52f).height(9.dp)
+                        .clip(RoundedCornerShape(50)).background(Color(0xFFDEDADD)),
+                )
+            }
+            Box(
+                Modifier.padding(start = 6.dp).size(16.dp).clip(CircleShape)
+                    .background(readyMomentAccent(media)),
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        ReadyMomentMediaThumbnail(
+            media = media,
+            modifier = Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(7.dp)),
+        )
+    }
+}
+
+private fun readyMomentAccent(media: ReadyMomentMedia): Color = when (media) {
+    ReadyMomentMedia.Greenery -> Color(0xFFB9C9A9)
+    ReadyMomentMedia.Beach -> Color(0xFFAEC9EA)
+    ReadyMomentMedia.CityNight -> Color(0xFFC0A5D9)
+    ReadyMomentMedia.Cozy -> Color(0xFFD6B7AA)
+    ReadyMomentMedia.Sunset -> Color(0xFFD6B4D3)
+}
+
+@Composable
+private fun ReadyMomentMediaThumbnail(
+    media: ReadyMomentMedia,
+    modifier: Modifier = Modifier,
+) {
+    Canvas(modifier) {
+        when (media) {
+            ReadyMomentMedia.Sunset -> {
+                drawRect(Brush.verticalGradient(listOf(Color(0xFFD8B2CC), Color(0xFFEFB9AC), Color(0xFF8E72AD))))
+                drawCircle(Color(0xFFFFE3BF), size.minDimension * .105f, androidx.compose.ui.geometry.Offset(size.width * .73f, size.height * .27f))
+                val rear = Path().apply {
+                    moveTo(0f, size.height * .74f); lineTo(size.width * .28f, size.height * .54f)
+                    lineTo(size.width * .5f, size.height * .75f); lineTo(size.width * .66f, size.height * .65f)
+                    lineTo(size.width, size.height * .82f); lineTo(size.width, size.height); lineTo(0f, size.height); close()
+                }
+                drawPath(rear, Color(0xFF9D7FB0))
+                val front = Path().apply {
+                    moveTo(0f, size.height * .82f); lineTo(size.width * .3f, size.height * .56f)
+                    lineTo(size.width * .58f, size.height * .86f); lineTo(size.width, size.height * .76f)
+                    lineTo(size.width, size.height); lineTo(0f, size.height); close()
+                }
+                drawPath(front, Color(0xFF57477F))
+            }
+            ReadyMomentMedia.Greenery -> {
+                drawRect(Brush.linearGradient(listOf(Color(0xFFE4D8C7), Color(0xFF8C9B78), Color(0xFF435C45))))
+                repeat(7) { index ->
+                    val x = size.width * (.12f + index * .13f)
+                    val y = size.height * (.2f + (index % 3) * .23f)
+                    drawOval(Color(0xFF36543B).copy(alpha = .82f), topLeft = androidx.compose.ui.geometry.Offset(x, y), size = Size(size.width * .18f, size.height * .27f))
+                }
+            }
+            ReadyMomentMedia.Beach -> {
+                drawRect(Brush.verticalGradient(listOf(Color(0xFFBBD4E8), Color(0xFFE1E5E3), Color(0xFFB6D4E4), Color(0xFFE5D0B6))))
+                drawRect(Color.White.copy(alpha = .68f), topLeft = androidx.compose.ui.geometry.Offset(0f, size.height * .62f), size = Size(size.width, size.height * .035f))
+                drawRect(Color(0xFF75AAC8).copy(alpha = .48f), topLeft = androidx.compose.ui.geometry.Offset(0f, size.height * .49f), size = Size(size.width, size.height * .04f))
+            }
+            ReadyMomentMedia.CityNight -> {
+                drawRect(Brush.verticalGradient(listOf(Color(0xFF62528E), Color(0xFF24244F), Color(0xFF161B3D))))
+                drawCircle(Color(0xFFF2DE9A), size.minDimension * .07f, androidx.compose.ui.geometry.Offset(size.width * .27f, size.height * .2f))
+                drawCircle(Color(0xFF62528E), size.minDimension * .07f, androidx.compose.ui.geometry.Offset(size.width * .3f, size.height * .18f))
+                repeat(8) { index ->
+                    val buildingWidth = size.width / 9f
+                    val buildingHeight = size.height * (.22f + (index % 4) * .055f)
+                    val left = index * buildingWidth * 1.1f
+                    drawRect(Color(0xFF20234B), androidx.compose.ui.geometry.Offset(left, size.height - buildingHeight), Size(buildingWidth, buildingHeight))
+                    drawCircle(Color(0xFFE8B26F), 1.4.dp.toPx(), androidx.compose.ui.geometry.Offset(left + buildingWidth * .5f, size.height - buildingHeight * .55f))
+                }
+            }
+            ReadyMomentMedia.Cozy -> {
+                drawRect(Brush.linearGradient(listOf(Color(0xFFD7B6A4), Color(0xFFF0D9C5), Color(0xFF9A7569))))
+                drawCircle(Color(0xFF574441).copy(alpha = .24f), size.minDimension * .3f, androidx.compose.ui.geometry.Offset(size.width * .86f, size.height * .2f))
+                drawOval(Color(0xFF8B6255), topLeft = androidx.compose.ui.geometry.Offset(size.width * .2f, size.height * .58f), size = Size(size.width * .34f, size.height * .22f))
+                drawArc(Color(0xFF8B6255), -80f, 190f, false, topLeft = androidx.compose.ui.geometry.Offset(size.width * .44f, size.height * .59f), size = Size(size.width * .18f, size.height * .17f), style = Stroke(width = 3.dp.toPx()))
+                drawOval(Color(0xFFF4D8C5).copy(alpha = .5f), topLeft = androidx.compose.ui.geometry.Offset(size.width * .15f, size.height * .8f), size = Size(size.width * .52f, size.height * .06f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun PrivacyOnboardingVisual(
+    takeoverProgress: Float,
+    contentVisible: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val panelShape = RoundedCornerShape(28.dp)
+    val surfaceProgress = smoothStep((takeoverProgress / .82f).coerceIn(0f, 1f))
+    val reducedMotion = ReliveTheme.reduceMotion
+    val motion = ReliveTheme.motion
+    val lockProgress = remember { Animatable(0f) }
+    val barProgress = List(3) { remember { Animatable(0f) } }
+    val entranceReady = contentVisible && takeoverProgress >= .999f
+
+    LaunchedEffect(entranceReady) {
+        if (!entranceReady) {
+            if (reducedMotion || lockProgress.value == 0f) {
+                lockProgress.snapTo(0f)
+                barProgress.forEach { it.snapTo(0f) }
+                return@LaunchedEffect
+            }
+            barProgress.forEachIndexed { index, progress ->
+                launch {
+                    delay(index * 70L)
+                    progress.animateTo(
+                        0f,
+                        spring(
+                            dampingRatio = .92f,
+                            stiffness = Spring.StiffnessMediumLow,
+                        ),
+                    )
+                }
+            }
+            delay(380)
+            lockProgress.animateTo(
+                0f,
+                tween(270, easing = motion.easings.emphasizedDecelerate),
+            )
+            return@LaunchedEffect
+        }
+        if (reducedMotion) {
+            lockProgress.snapTo(1f)
+            barProgress.forEach { it.snapTo(1f) }
+            return@LaunchedEffect
+        }
+        lockProgress.animateTo(
+            1f,
+            tween(420, easing = motion.easings.emphasizedDecelerate),
+        )
+        barProgress.forEachIndexed { index, progress ->
+            launch {
+                delay(index * 180L)
+                progress.animateTo(
+                    1f,
+                    spring(
+                        dampingRatio = .92f,
+                        stiffness = Spring.StiffnessMediumLow,
+                    ),
+                )
+            }
+        }
+    }
+    Column(
+        modifier = modifier
+            .graphicsLayer {
+                alpha = if (surfaceProgress <= .001f) 0f else 1f
+                shape = BottomUpRevealShape(surfaceProgress)
+                clip = true
+            }
+            .shadow(20.dp, panelShape, ambientColor = Color.Black.copy(alpha = .22f))
+            .clip(panelShape)
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFF35243F), Color(0xFF211828)),
+                ),
+            )
+            .border(1.dp, Color.White.copy(alpha = .16f), panelShape)
+            .padding(horizontal = 18.dp, vertical = 18.dp)
+            .semantics {
+                contentDescription =
+                    "Privacy: stored on your device, no account needed to begin, and you control what you keep"
+            },
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        if (contentVisible) {
+            Box(
+                Modifier
+                    .size(62.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color.White.copy(alpha = .13f))
+                    .graphicsLayer {
+                        alpha = lockProgress.value
+                        scaleX = lerp(.88f, 1f, lockProgress.value)
+                        scaleY = scaleX
+                        translationY = (1f - lockProgress.value) * 6.dp.toPx()
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = OnboardingIcons.Lock,
+                    contentDescription = null,
+                    modifier = Modifier.size(30.dp),
+                    tint = Color.White,
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+                val barTravel = with(LocalDensity.current) { (maxWidth + 18.dp).toPx() }
+                Column(
+                    Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    PrivacyBar(
+                        "Stored on your device",
+                        "Your archive begins locally.",
+                        Color(0xFF6D435E),
+                        Modifier.graphicsLayer {
+                            translationX = -(1f - barProgress[0].value) * barTravel
+                        },
+                    )
+                    PrivacyBar(
+                        "No account needed to begin",
+                        "Start without signing in.",
+                        Color(0xFF514368),
+                        Modifier.graphicsLayer {
+                            translationX = (1f - barProgress[1].value) * barTravel
+                        },
+                    )
+                    PrivacyBar(
+                        "You control what you keep",
+                        "Edit or forget your own moments.",
+                        Color(0xFF493A59),
+                        Modifier.graphicsLayer {
+                            translationX = -(1f - barProgress[2].value) * barTravel
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PrivacyBar(
+    title: String,
+    caption: String,
+    tint: Color,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier
+            .fillMaxWidth()
+            .height(68.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(tint.copy(alpha = .72f))
+            .border(1.dp, Color.White.copy(alpha = .08f), RoundedCornerShape(18.dp))
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        horizontalAlignment = Alignment.Start,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            text = title,
+            style = ReliveTheme.typography.action,
+            color = ReliveOnboardingColors.textPrimary,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = caption,
+            style = ReliveTheme.typography.onboardingBody.copy(fontSize = 13.sp, lineHeight = 18.sp),
+            color = ReliveOnboardingColors.textSecondary,
+        )
+    }
+}
+
+@Composable
+private fun OnboardingAtmosphereCanvas(progress: Float) {
+    Canvas(Modifier.fillMaxSize()) {
+        drawRect(onboardingAtmosphereBrush(progress))
+        val curve = Path().apply {
+            moveTo(-size.width * .1f, size.height * .42f)
+            cubicTo(size.width * .2f, size.height * .28f, size.width * .62f, size.height * .54f, size.width * 1.1f, size.height * .34f)
+        }
+        drawPath(
+            curve,
+            onboardingAtmosphereCurveColor(progress).copy(alpha = .16f),
+            style = Stroke(1.dp.toPx(), cap = StrokeCap.Round),
+        )
+    }
+}
+
+@Composable
+private fun CaptureHeader(enabled: Boolean, departure: Float, onSkip: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().height(ReliveTheme.dimensions.onboarding.headerHeight).departure(departure, 10.dp)
+            .padding(horizontal = ReliveTheme.dimensions.onboarding.pageHorizontalPadding),
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TextButton(onSkip, enabled = enabled, modifier = Modifier.heightIn(min = ReliveTheme.dimensions.minTouchTarget)) {
+            Text("Skip", style = ReliveTheme.typography.action, color = ReliveOnboardingColors.textSecondary)
+        }
+    }
+}
+
+@Composable
+private fun CaptureCapabilities(
+    values: List<Float>,
+    visibility: Float,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier.graphicsLayer { alpha = visibility }) {
+        Capability(
+            label = "Photo",
+            value = values[0],
+            rotation = -5f,
+            driftX = -12.dp,
+            surfaceTop = ReliveOnboardingColors.photoControlTop,
+            surfaceBottom = ReliveOnboardingColors.photoControlBottom,
+            modifier = Modifier.align(Alignment.Center).offset(x = (-115).dp, y = (-190).dp),
+        ) {
+            ImageGlyph(it, Color.White, ReliveTheme.dimensions.stroke.icon)
+        }
+        Capability(
+            label = "Note",
+            value = values[1],
+            rotation = 4f,
+            driftX = 10.dp,
+            surfaceTop = ReliveOnboardingColors.noteControlTop,
+            surfaceBottom = ReliveOnboardingColors.noteControlBottom,
+            modifier = Modifier.align(Alignment.Center).offset(x = 115.dp, y = (-180).dp),
+        ) {
+            Icon(OnboardingIcons.Note, null, Modifier.size(it), tint = Color.White)
+        }
+        Capability(
+            label = "Video",
+            value = values[2],
+            rotation = 3f,
+            driftX = -9.dp,
+            surfaceTop = ReliveOnboardingColors.videoControlTop,
+            surfaceBottom = ReliveOnboardingColors.videoControlBottom,
+            modifier = Modifier.align(Alignment.Center).offset(x = (-98).dp, y = 190.dp),
+        ) {
+            VideoGlyph(it, Color.White, ReliveTheme.dimensions.stroke.icon)
+        }
+        Capability(
+            label = "Audio",
+            value = values[3],
+            rotation = -4f,
+            driftX = 12.dp,
+            surfaceTop = ReliveOnboardingColors.audioControlTop,
+            surfaceBottom = ReliveOnboardingColors.audioControlBottom,
+            modifier = Modifier.align(Alignment.Center).offset(x = 108.dp, y = 205.dp),
+        ) {
+            MicGlyph(it, Color.White, ReliveTheme.dimensions.stroke.icon)
+        }
+    }
+}
+
+@Composable
+private fun Capability(
+    label: String,
+    value: Float,
+    rotation: Float,
+    driftX: Dp,
+    surfaceTop: Color,
+    surfaceBottom: Color,
+    modifier: Modifier = Modifier,
+    icon: @Composable (Dp) -> Unit,
+) {
+    val tileShape = RoundedCornerShape(17.dp)
+    Box(
+        modifier.size(66.dp)
+            .graphicsLayer {
+                alpha = value
+                translationX = (1f - value) * driftX.toPx()
+                translationY = (1f - value) * 22.dp.toPx()
+                scaleX = .84f + value * .16f
+                scaleY = scaleX
+                rotationZ = rotation + (1f - value) * -rotation * 1.8f
+            }
+            .shadow(
+                11.dp,
+                tileShape,
+                ambientColor = ReliveOnboardingColors.controlShadow,
+                spotColor = ReliveOnboardingColors.controlShadow,
+            )
+            .clip(tileShape)
+            .background(
+                Brush.verticalGradient(
+                    listOf(surfaceTop, surfaceBottom),
+                ),
+            )
+            .border(1.dp, Color.White.copy(alpha = .24f), tileShape)
+            .semantics { contentDescription = label }
+            .padding(18.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        icon(ReliveTheme.dimensions.icon.lg)
+    }
+}
+
+@Composable
+private fun CaptureMomentPreview(
+    mediaStore: MediaStore,
+    entrance: Float,
+    atmosphereProgress: Float,
+    widthFraction: Float,
+    onBoundsChanged: (Rect) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        CompositionLocalProvider(
+            LocalTimelineWallpaperPalette provides TimelineWallpaperPalette(
+                ReliveTheme.colors.bgCanvas,
+                ReliveTheme.colors.borderMuted,
+            ),
+        ) {
+            FocusSizedMoment(
+                modifier = Modifier.wrapContentHeight(unbounded = true)
+                    .fillMaxWidth(widthFraction)
+                    .onGloballyPositioned { onBoundsChanged(it.boundsInRoot()) }
+                    .graphicsLayer {
+                        alpha = entrance
+                        translationY = (1f - entrance) * 12.dp.toPx()
+                    },
+            ) {
+                TimelineMomentCard(
+                    moment = ONBOARDING_RELIVE_MOMENT_PREVIEWS.single(),
+                    mediaStore = mediaStore,
+                    index = 0,
+                    showTimelineChrome = false,
+                    timelineChromeColor = onboardingAtmosphereChromeColor(atmosphereProgress),
+                    modifier = Modifier.semantics {
+                    contentDescription = "Example moment: A quiet morning at Mountain lake, 12 August 2026 at 8:24 AM"
+                },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FocusSizedMoment(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Layout(modifier = modifier, content = content) { measurables, constraints ->
+        val childWidth = (constraints.maxWidth / ONBOARDING_FOCUSED_MOMENT_SCALE).toInt()
+        val placeable = measurables.single().measure(
+            constraints.copy(minWidth = childWidth, maxWidth = childWidth),
+        )
+        val width = min(constraints.maxWidth, (placeable.width * ONBOARDING_FOCUSED_MOMENT_SCALE).toInt())
+        val height = (placeable.height * ONBOARDING_FOCUSED_MOMENT_SCALE).toInt()
+        layout(width, height) {
+            placeable.placeWithLayer(0, 0) {
+                scaleX = ONBOARDING_FOCUSED_MOMENT_SCALE
+                scaleY = ONBOARDING_FOCUSED_MOMENT_SCALE
+                transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TimelineOnboardingVisual(
+    mediaStore: MediaStore,
+    timelineState: LazyListState,
+    stage: OnboardingStage,
+    focusBounds: Rect?,
+    entryProgress: Float,
+    momentWidthFraction: Float,
+    sharedCardWidth: Dp?,
+    focusTopInset: Dp?,
+    onMomentBoundsChanged: (Int, Rect) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyColumn(
+        state = timelineState,
+        userScrollEnabled = stage == OnboardingStage.TimelineAutoScroll ||
+            stage == OnboardingStage.TimelineIdle || stage == OnboardingStage.ReturningToFocus,
+        // The entrance alpha has completed before suction begins. Avoid a second full-screen
+        // render layer during the path clip so the timeline can stay cached on the GPU.
+        modifier = modifier.fillMaxSize().then(
+            if (entryProgress < .999f) Modifier.graphicsLayer { alpha = entryProgress } else Modifier,
+        ),
+        contentPadding = PaddingValues(
+            start = ReliveTheme.dimensions.onboarding.pageHorizontalPadding,
+            top = focusTopInset ?: ReliveTheme.dimensions.spacing.lg,
+            end = ReliveTheme.dimensions.onboarding.pageHorizontalPadding,
+            bottom = ReliveTheme.dimensions.spacing.lg,
+        ),
+    ) {
+        itemsIndexed(
+            ONBOARDING_TIMELINE_MOMENT_PREVIEWS,
+            key = { _, moment -> moment.id.value },
+        ) { index, moment ->
+            TimelineMomentPreview(
+                moment = moment,
+                mediaStore = mediaStore,
+                index = index,
+                focusBounds = focusBounds,
+                widthFraction = momentWidthFraction,
+                sharedCardWidth = sharedCardWidth,
+                // Keep the transferred timeline card present during the handoff so its
+                // rail and first dot fade in with the Screen 1 card instead of arriving
+                // a beat after it. The shared card remains above it until the handoff ends.
+                visibility = 1f,
+                timelineChromeColor = onboardingAtmosphereChromeColor(entryProgress),
+                modifier = Modifier.onGloballyPositioned {
+                    onMomentBoundsChanged(index, it.boundsInRoot())
+                },
+            )
+        }
+    }
+}
+
+private fun Modifier.timelineSuction(
+    progress: Float,
+    sheetBounds: Rect?,
+    holeBounds: Rect?,
+): Modifier = graphicsLayer {
+    val source = sheetBounds
+    val destination = holeBounds
+    val localHole = if (source != null && destination != null) {
+        Rect(
+            left = destination.left - source.left,
+            top = destination.top - source.top,
+            right = destination.right - source.left,
+            bottom = destination.bottom - source.top,
+        )
+    } else {
+        null
+    }
+    compositingStrategy = CompositingStrategy.Offscreen
+    shape = SuctionSheetShape(progress, localHole)
+    clip = true
+}
+
+private class SuctionSheetShape(
+    private val progress: Float,
+    private val holeBounds: Rect?,
+) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        if (progress <= 0f) return Outline.Rectangle(Rect(0f, 0f, size.width, size.height))
+        val deformation = onboardingSheetDeformation(progress)
+        val hole = holeBounds ?: Rect(
+            left = size.width * .18f,
+            top = size.height * .58f,
+            right = size.width * .82f,
+            bottom = size.height * .84f,
+        )
+        val holeCenterX = hole.center.x.coerceIn(0f, size.width)
+        val holeCenterY = hole.center.y.coerceIn(0f, size.height)
+        val topInset = size.width * deformation.topInsetFraction
+        val topY = lerp(0f, holeCenterY - hole.height * .12f, deformation.finalPull)
+        val retreatY = lerp(size.height, holeCenterY - hole.height * .45f, deformation.retreat)
+        val shoulderY = lerp(retreatY, holeCenterY, deformation.finalPull)
+        val tailHalfWidth = size.width * deformation.tailWidthFraction
+        val tailBottom = lerp(size.height, holeCenterY + hole.height * .18f, deformation.retreat)
+        val leftTop = lerp(topInset, holeCenterX - tailHalfWidth, deformation.finalPull)
+        val rightTop = lerp(size.width - topInset, holeCenterX + tailHalfWidth, deformation.finalPull)
+        val path = Path().apply {
+            moveTo(leftTop, topY)
+            cubicTo(
+                size.width * .28f,
+                topY,
+                size.width * .72f,
+                topY,
+                rightTop,
+                topY,
+            )
+            cubicTo(
+                lerp(size.width, holeCenterX + tailHalfWidth * 2.1f, deformation.finalPull),
+                lerp(size.height * .30f, shoulderY, deformation.finalPull),
+                holeCenterX + tailHalfWidth * 1.65f,
+                shoulderY - (tailBottom - shoulderY) * .22f,
+                holeCenterX + tailHalfWidth,
+                tailBottom - (tailBottom - shoulderY) * .10f,
+            )
+            cubicTo(
+                holeCenterX + tailHalfWidth * .72f,
+                tailBottom,
+                holeCenterX + tailHalfWidth * .30f,
+                tailBottom,
+                holeCenterX,
+                tailBottom,
+            )
+            cubicTo(
+                holeCenterX - tailHalfWidth * .30f,
+                tailBottom,
+                holeCenterX - tailHalfWidth * .72f,
+                tailBottom,
+                holeCenterX - tailHalfWidth,
+                tailBottom - (tailBottom - shoulderY) * .10f,
+            )
+            cubicTo(
+                holeCenterX - tailHalfWidth * 1.65f,
+                shoulderY - (tailBottom - shoulderY) * .22f,
+                lerp(0f, holeCenterX - tailHalfWidth * 2.1f, deformation.finalPull),
+                lerp(size.height * .30f, shoulderY, deformation.finalPull),
+                leftTop,
+                topY,
+            )
+            close()
+        }
+        return Outline.Generic(path)
+    }
+}
+
+private class BottomUpRevealShape(private val progress: Float) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val revealedHeight = size.height * progress.coerceIn(0f, 1f)
+        val radius = with(density) { 20.dp.toPx() }.coerceAtMost(revealedHeight / 2f)
+        return Outline.Rounded(
+            RoundRect(
+                rect = Rect(0f, size.height - revealedHeight, size.width, size.height),
+                topLeft = CornerRadius(radius, radius),
+                topRight = CornerRadius(radius, radius),
+                bottomRight = CornerRadius(radius, radius),
+                bottomLeft = CornerRadius(radius, radius),
+            ),
+        )
+    }
+}
+
+@Composable
+private fun Screen3TimelineCard(
+    mediaStore: MediaStore,
+    revealProgress: Float,
+    thumbnailProgress: Float,
+    onHoleBoundsChanged: (Rect) -> Unit,
+    onCardBoundsChanged: (Rect) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val summary = remember {
+        TimelineHomeSummary(
+            timeline = Timeline.Custom(
+                id = TimelineId("onboarding-mountain-escapes"),
+                name = "Mountain escapes",
+            ),
+            momentCount = 12,
+            previewAttachments = emptyList(),
+            createdAt = Instant(1),
+        )
+    }
+    ReliveTheme(ReliveThemeId.PlumGold, ONBOARDING_DARK_MODE) {
+        Box(
+            modifier
+                .fillMaxWidth()
+                .padding(horizontal = ReliveTheme.dimensions.onboarding.pageHorizontalPadding)
+                .graphicsLayer {
+                    shape = BottomUpRevealShape(revealProgress)
+                    clip = true
+                },
+        ) {
+            TimelineHomeCard(
+                summary = summary,
+                mediaStore = mediaStore,
+                onClick = {},
+                interactive = false,
+                previewMediaHeight = 256.dp,
+                previewMetadata = "12 moments",
+                previewTrailingMetadata = "Aug 2026",
+                compactPreviewInfo = true,
+                // The expanded Screen 3 card is 360dp tall: 256dp media plus the 104dp
+                // bottom title and metadata strip, including compact vertical padding.
+                previewInfoHeight = 96.dp,
+                previewMediaContent = {
+                    OnboardingTimelineHole(
+                        thumbnailProgress = thumbnailProgress,
+                        onBoundsChanged = onHoleBoundsChanged,
+                    )
+                },
+                modifier = Modifier
+                    .onGloballyPositioned { onCardBoundsChanged(it.boundsInRoot()) }
+                    .semantics {
+                        contentDescription = "Custom timeline: Mountain escapes, 12 moments, August 2026"
+                    },
+            )
+        }
+    }
+}
+
+@Composable
+private fun OnboardingTimelineHole(
+    thumbnailProgress: Float,
+    onBoundsChanged: (Rect) -> Unit,
+) {
+    Box(
+        Modifier.fillMaxSize()
+            .onGloballyPositioned { onBoundsChanged(it.boundsInRoot()) },
+    ) {
+        OnboardingHoleSurface(thumbnailProgress, Modifier.matchParentSize())
+    }
+}
+
+@Composable
+private fun OnboardingHoleSurface(thumbnailProgress: Float, modifier: Modifier = Modifier) {
+    val holeShape = RoundedCornerShape(15.dp)
+    Box(
+        modifier
+            .clip(holeShape)
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFF100B18), Color(0xFF241634)),
+                ),
+            )
+            .border(1.dp, Color.White.copy(alpha = .08f), holeShape),
+    ) {
+        OnboardingTimelineThumbnail(
+            progress = thumbnailProgress,
+            modifier = Modifier.matchParentSize(),
+        )
+        Canvas(Modifier.matchParentSize()) {
+            drawRoundRect(
+                brush = Brush.verticalGradient(
+                    listOf(Color.Black.copy(alpha = .42f), Color.Transparent),
+                    endY = size.height * .36f,
+                ),
+                cornerRadius = CornerRadius(15.dp.toPx()),
+            )
+            drawRoundRect(
+                color = Color.Black.copy(alpha = .24f),
+                cornerRadius = CornerRadius(15.dp.toPx()),
+                style = Stroke(3.dp.toPx()),
+            )
+        }
+    }
+}
+
+@Composable
+private fun OnboardingTimelineThumbnail(progress: Float, modifier: Modifier = Modifier) {
+    Canvas(
+        modifier
+            .blur(3.dp * (1f - progress.coerceIn(0f, 1f)))
+            .graphicsLayer {
+                alpha = progress.coerceIn(0f, 1f)
+                scaleX = .94f + progress.coerceIn(0f, 1f) * .06f
+                scaleY = scaleX
+            },
+    ) {
+        drawRect(
+            Brush.linearGradient(
+                listOf(Color(0xFF5C3B78), Color(0xFFB078A7), Color(0xFFF0C264)),
+            ),
+        )
+        drawCircle(
+            color = Color(0xFFFFE6A8).copy(alpha = .72f),
+            radius = size.minDimension * .12f,
+            center = androidx.compose.ui.geometry.Offset(size.width * .78f, size.height * .24f),
+        )
+        val distantMountain = Path().apply {
+            moveTo(0f, size.height * .74f)
+            lineTo(size.width * .27f, size.height * .38f)
+            lineTo(size.width * .48f, size.height * .67f)
+            lineTo(size.width * .66f, size.height * .44f)
+            lineTo(size.width, size.height * .76f)
+            lineTo(size.width, size.height)
+            lineTo(0f, size.height)
+            close()
+        }
+        drawPath(distantMountain, Color(0xFF37234C).copy(alpha = .74f))
+        val foreground = Path().apply {
+            moveTo(0f, size.height * .82f)
+            cubicTo(
+                size.width * .24f,
+                size.height * .68f,
+                size.width * .44f,
+                size.height * .96f,
+                size.width * .65f,
+                size.height * .78f,
+            )
+            cubicTo(
+                size.width * .82f,
+                size.height * .65f,
+                size.width * .9f,
+                size.height * .84f,
+                size.width,
+                size.height * .72f,
+            )
+            lineTo(size.width, size.height)
+            lineTo(0f, size.height)
+            close()
+        }
+        drawPath(foreground, Color(0xFF21162E).copy(alpha = .9f))
+    }
+}
+
+@Composable
+private fun TimelineMomentPreview(
+    moment: MomentPresentation,
+    mediaStore: MediaStore,
+    index: Int,
+    focusBounds: Rect?,
+    widthFraction: Float,
+    sharedCardWidth: Dp?,
+    timelineChromeColor: Color,
+    visibility: Float = 1f,
+    modifier: Modifier = Modifier,
+) {
+    var ownBounds by remember { mutableStateOf<Rect?>(null) }
+    val naturalFocusTarget = ownBounds?.let { bounds ->
+        val focus = focusBounds ?: return@let 0f
+        onboardingMomentFocus(bounds.center.y, focus.center.y, focus.height)
+    } ?: 0f
+    val isQuietMorning = moment.id == ONBOARDING_RELIVE_MOMENT_PREVIEWS.single().id
+    val focus = naturalFocusTarget
+    CompositionLocalProvider(
+        LocalTimelineWallpaperPalette provides TimelineWallpaperPalette(
+            ReliveTheme.colors.bgCanvas,
+            ReliveTheme.colors.borderMuted,
+        ),
+    ) {
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            FocusSizedMoment(
+                modifier = modifier.then(
+                    if (sharedCardWidth != null) Modifier.width(sharedCardWidth)
+                    else Modifier.fillMaxWidth(widthFraction),
+                )
+                    .onGloballyPositioned { ownBounds = it.boundsInRoot() }
+                    .graphicsLayer { alpha = visibility },
+            ) {
+                TimelineMomentCard(
                     moment = moment,
                     mediaStore = mediaStore,
-                    onToggleFavorite = null,
-                    onOpenMedia = { _, _ -> },
-                    canEditOrForget = false,
-                    onEdit = {},
-                    onForget = {},
-                    hasPreviousMoment = index > 0,
-                    hasNextMoment = index < ONBOARDING_RELIVE_MOMENT_PREVIEWS.lastIndex,
-                    modifier = Modifier.fillMaxWidth(),
-                    previewMediaContent = {
-                        OnboardingMomentPhoto(OnboardingReliveMomentMedia[index])
+                    index = index,
+                    modifier = Modifier.semantics {
+                        contentDescription = if (isQuietMorning) {
+                            "Example timeline moment: A quiet morning at Mountain lake"
+                        } else {
+                            "Example timeline moment: ${moment.title}"
+                        }
+                    },
+                    focus = focus,
+                    timelineChromeColor = timelineChromeColor,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TimelineMomentCard(
+    moment: MomentPresentation,
+    mediaStore: MediaStore,
+    index: Int,
+    modifier: Modifier = Modifier,
+    focus: Float = 1f,
+    showTimelineChrome: Boolean = true,
+    timelineChromeColor: Color,
+) {
+    MomentCard(
+        moment = moment,
+        mediaStore = mediaStore,
+        onToggleFavorite = null,
+        onOpenMedia = { _, _ -> },
+        canEditOrForget = false,
+        onEdit = {},
+        onForget = {},
+        hasPreviousMoment = index > 0,
+        hasNextMoment = index < ONBOARDING_TIMELINE_MOMENT_PREVIEWS.lastIndex,
+        showTags = false,
+        previewMediaContent = { OnboardingMomentPlaceholder(moment.id) },
+        interactive = false,
+        showTimelineChrome = showTimelineChrome,
+        timelineChromeColor = timelineChromeColor,
+        timelineMetadataColor = timelineChromeColor,
+        previewPrintAspectRatio = 1f,
+        modifier = modifier,
+        printCardModifier = Modifier
+            .blur(1.2.dp * (1f - focus))
+            .graphicsLayer {
+                val scale = onboardingMomentScale(focus) / ONBOARDING_FOCUSED_MOMENT_SCALE
+                alpha = .68f + focus * .32f
+                scaleX = scale
+                scaleY = scale
+            },
+    )
+}
+
+@Composable
+private fun OnboardingMomentPlaceholder(momentId: MomentId) {
+    val palette = when (momentId.value) {
+        "onboarding-quiet-morning" -> listOf(
+            Color(0xFFE6C9D8),
+            Color(0xFFD9AFC7),
+            Color(0xFFC789AE),
+            Color(0xFFF1DEE5),
+        )
+        "onboarding-forest-trails" -> listOf(
+            Color(0xFFD7CCEA),
+            Color(0xFFB8A5DC),
+            Color(0xFF8F79C4),
+            Color(0xFFE8E0F4),
+        )
+        "onboarding-coastal-escape" -> listOf(
+            Color(0xFFD7D2F2),
+            Color(0xFFB7ADE4),
+            Color(0xFF8F82CF),
+            Color(0xFFEDEAF9),
+        )
+        else -> listOf(
+            Color(0xFFE5CEDC),
+            Color(0xFFCDA8C1),
+            Color(0xFFA77A9E),
+            Color(0xFFF0DFE9),
+        )
+    }
+    Column {
+        listOf(.88f, .64f, .76f).forEachIndexed { index, width ->
+            Box(
+                Modifier
+                    .fillMaxWidth(width)
+                    .height(if (index == 0) 12.dp else 10.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(palette[1].copy(alpha = if (index == 0) .62f else .48f)),
+            )
+            if (index < 2) Spacer(Modifier.height(6.dp))
+        }
+        Spacer(Modifier.height(28.dp))
+        Canvas(
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(2.05f)
+                .clip(RoundedCornerShape(10.dp)),
+        ) {
+            drawRect(Brush.verticalGradient(listOf(palette[3], palette[0])))
+            drawCircle(
+                color = Color.White.copy(alpha = .48f),
+                radius = size.minDimension * .105f,
+                center = androidx.compose.ui.geometry.Offset(size.width * .76f, size.height * .23f),
+            )
+            val distantHill = Path().apply {
+                moveTo(0f, size.height * .66f)
+                cubicTo(
+                    size.width * .20f,
+                    size.height * .47f,
+                    size.width * .28f,
+                    size.height * .39f,
+                    size.width * .47f,
+                    size.height * .61f,
+                )
+                cubicTo(
+                    size.width * .67f,
+                    size.height * .83f,
+                    size.width * .78f,
+                    size.height * .45f,
+                    size.width,
+                    size.height * .62f,
+                )
+                lineTo(size.width, size.height)
+                lineTo(0f, size.height)
+                close()
+            }
+            drawPath(distantHill, palette[1].copy(alpha = .72f))
+            val foregroundHill = Path().apply {
+                moveTo(0f, size.height * .76f)
+                cubicTo(
+                    size.width * .22f,
+                    size.height * .64f,
+                    size.width * .38f,
+                    size.height * .91f,
+                    size.width * .56f,
+                    size.height * .82f,
+                )
+                cubicTo(
+                    size.width * .73f,
+                    size.height * .72f,
+                    size.width * .84f,
+                    size.height * .83f,
+                    size.width,
+                    size.height * .73f,
+                )
+                lineTo(size.width, size.height)
+                lineTo(0f, size.height)
+                close()
+            }
+            drawPath(foregroundHill, palette[2].copy(alpha = .62f))
+        }
+    }
+}
+
+@Composable
+private fun OnboardingBottomShell(
+    captureHeadline: String,
+    captureDescription: String,
+    timelineHeadline: String,
+    timelineDescription: String,
+    customTimelineHeadline: String,
+    customTimelineDescription: String,
+    privacyHeadline: String,
+    privacyDescription: String,
+    readyHeadline: String,
+    readyDescription: String,
+    transition: Float,
+    screen3Transition: Float,
+    screen3CopyTransition: Float,
+    screen3ControlsProgress: Float,
+    privacyProgress: Float,
+    readyProgress: Float,
+    continueVisualAlpha: Float,
+    onContinue: () -> Unit,
+    onBack: () -> Unit,
+    continueEnabled: Boolean,
+    showBack: Boolean,
+    backEnabled: Boolean,
+    finalAction: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier.fillMaxWidth().padding(
+            start = ReliveTheme.dimensions.onboarding.pageHorizontalPadding,
+            end = ReliveTheme.dimensions.onboarding.pageHorizontalPadding,
+            top = ReliveTheme.dimensions.spacing.xs,
+            bottom = ReliveTheme.dimensions.spacing.sm,
+        ),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Spacer(Modifier.height(8.dp))
+        SegmentedProgress(transition + screen3Transition + privacyProgress + readyProgress)
+        Spacer(Modifier.height(20.dp))
+        Box(Modifier.fillMaxWidth().height(84.dp)) {
+            OnboardingCopy(
+                captureHeadline,
+                captureDescription,
+                Modifier.fillMaxWidth().graphicsLayer {
+                    alpha = 1f - transition
+                    translationY = -transition * 6.dp.toPx()
+                },
+            )
+            OnboardingCopy(
+                timelineHeadline,
+                timelineDescription,
+                Modifier.fillMaxWidth().graphicsLayer {
+                    alpha = transition * (1f - screen3CopyTransition * 2f).coerceIn(0f, 1f)
+                    translationY = (1f - transition) * 6.dp.toPx() - screen3CopyTransition * 4.dp.toPx()
+                },
+            )
+            OnboardingCopy(
+                customTimelineHeadline,
+                customTimelineDescription,
+                Modifier.fillMaxWidth().graphicsLayer {
+                    val reveal = ((screen3CopyTransition - .48f) / .52f).coerceIn(0f, 1f)
+                    alpha = reveal * (1f - privacyProgress)
+                    translationY = (1f - reveal) * 8.dp.toPx() - privacyProgress * 6.dp.toPx()
+                },
+            )
+            if (privacyProgress > 0f) {
+                OnboardingCopy(
+                    privacyHeadline,
+                    privacyDescription,
+                    Modifier.fillMaxWidth().graphicsLayer {
+                        alpha = privacyProgress * (1f - readyProgress)
+                        translationY = (1f - privacyProgress) * 8.dp.toPx()
                     },
                 )
             }
-        }
-        Box(
-            Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .height(12.dp)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(ONBOARDING_REFERENCE_CANVAS.copy(alpha = 0.82f), Color.Transparent),
-                    ),
-                ),
-        )
-        Box(
-            Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .height(18.dp)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(Color.Transparent, ONBOARDING_REFERENCE_CANVAS.copy(alpha = 0.9f)),
-                    ),
-                ),
-        )
-    }
-}
-
-@Composable
-private fun OnboardingMomentPhoto(resource: DrawableResource) {
-    val colors = ReliveTheme.colors
-    val dims = ReliveTheme.dimensions
-    Image(
-        painter = painterResource(resource),
-        contentDescription = "Sample Moment photo",
-        contentScale = ContentScale.Crop,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(148.dp)
-            .clip(RoundedCornerShape(dims.radii.medium))
-            .border(
-                width = dims.media.collageBorder,
-                color = colors.accent,
-                shape = RoundedCornerShape(dims.radii.medium),
-            ),
-    )
-}
-
-@Composable
-private fun PrivatePage(
-    page: OnboardingState,
-    enabled: Boolean,
-    onSkip: () -> Unit,
-    onNext: () -> Unit,
-) {
-    val copy = requireNotNull(FeatureCopyByPage[page.page])
-    val colors = ReliveTheme.colors
-    val dims = ReliveTheme.dimensions
-    val type = ReliveTheme.typography
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        Image(
-            painter = painterResource(Res.drawable.onboarding_private_fullscreen_v1),
-            contentDescription = null,
-            contentScale = ContentScale.FillBounds,
-            modifier = Modifier.fillMaxSize(),
-        )
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.33f)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            ONBOARDING_REFERENCE_CANVAS.copy(alpha = 0.42f),
-                            Color.Transparent,
-                        ),
-                    ),
-                ),
-        )
-        Text(
-            text = "Your\nmemories.\nYour control\n♡",
-            style = type.onboardingHandwritten.copy(fontSize = 14.sp, lineHeight = 17.sp),
-            color = colors.accent.copy(alpha = 0.72f),
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .width(maxWidth * 0.19f)
-                .offset(x = maxWidth * 0.79f, y = maxHeight * 0.355f)
-                .graphicsLayer { rotationZ = -7f },
-        )
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(horizontal = dims.onboarding.pageHorizontalPadding),
-        ) {
-            Spacer(Modifier.height(dims.onboarding.numberedPageTopPadding))
-            OnboardingHeader(
-                number = copy.number,
-                showSkip = page.canSkip,
-                enabled = enabled,
-                onSkip = onSkip,
-            )
-            Text(copy.title, style = type.onboardingTitle, color = colors.textPrimary)
-            Spacer(Modifier.height(dims.spacing.xs))
-            Text(copy.body, style = type.onboardingBody, color = colors.textSecondary)
-            Spacer(Modifier.weight(1f))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(122.dp),
-                horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm),
-            ) {
-                PrivacyFeature(ProfileIcons.Phone, "Stored\non your device", Modifier.weight(1f))
-                PrivacyFeature(
-                    OnboardingIcons.VisibilityOff,
-                    "You control\nwhat’s visible",
-                    Modifier.weight(1f),
+            if (readyProgress > 0f) {
+                OnboardingCopy(
+                    readyHeadline,
+                    readyDescription,
+                    Modifier.fillMaxWidth().graphicsLayer { alpha = readyProgress },
                 )
-                PrivacyFeature(ProfileIcons.CloudOutline, "Optional\ncloud backup", Modifier.weight(1f))
             }
-            Spacer(Modifier.height(dims.spacing.md))
-            OnboardingBottomControls(
-                activeIndex = copy.number - 1,
-                enabled = enabled,
-                onNext = onNext,
-            )
         }
-    }
-}
-
-@Composable
-private fun PrivacyFeature(icon: ImageVector, label: String, modifier: Modifier) {
-    val colors = ReliveTheme.colors
-    val dims = ReliveTheme.dimensions
-    Column(
-        modifier = modifier
-            .fillMaxHeight()
-            .clip(RoundedCornerShape(dims.onboarding.featureTileRadius))
-            .background(colors.surfaceCard.copy(alpha = 0.82f))
-            .padding(horizontal = dims.spacing.xs, vertical = dims.spacing.md),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(dims.spacing.sm),
-    ) {
-        Box(
-            Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(colors.tint.copy(alpha = 0.56f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(icon, contentDescription = null, tint = colors.accent, modifier = Modifier.size(22.dp))
-        }
-        Text(
-            text = label,
-            style = ReliveTheme.typography.title.copy(fontSize = 14.sp, lineHeight = 17.sp),
-            color = colors.textPrimary,
-            textAlign = TextAlign.Center,
+        Spacer(Modifier.height(22.dp))
+        ContinueButton(
+            onClick = onContinue,
+            enabled = continueEnabled,
+            alpha = continueVisualAlpha,
+            label = if (finalAction) "Start Reliving" else "Continue",
         )
-    }
-}
-
-@Composable
-private fun FinalPage(
-    enabled: Boolean,
-    onFinish: () -> Unit,
-) {
-    val colors = ReliveTheme.colors
-    val dims = ReliveTheme.dimensions
-    val type = ReliveTheme.typography
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        Image(
-            painter = painterResource(Res.drawable.onboarding_final_fullscreen_v3),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
-        )
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.4f)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            ONBOARDING_REFERENCE_CANVAS.copy(alpha = 0.7f),
-                            ONBOARDING_REFERENCE_CANVAS.copy(alpha = 0.28f),
-                            Color.Transparent,
-                        ),
+        Box(Modifier.fillMaxWidth().height(36.dp), contentAlignment = Alignment.Center) {
+            val backAlpha = if (showBack) 1f else screen3ControlsProgress
+            if (backAlpha > 0f) {
+                TextButton(
+                    onClick = onBack,
+                    enabled = backEnabled,
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = ReliveOnboardingColors.textSecondary,
+                        disabledContentColor = ReliveOnboardingColors.textSecondary,
                     ),
-                ),
-        )
-        Text(
-            text = "A kinder\ntomorrow,\nwith yesterday  ♡",
-            style = type.onboardingHandwritten.copy(fontSize = 17.sp, lineHeight = 22.sp),
-            color = colors.accent,
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .width(maxWidth * 0.32f)
-                .offset(x = maxWidth * 0.66f, y = maxHeight * 0.255f)
-                .graphicsLayer { rotationZ = -6f },
-        )
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(
-                    start = dims.onboarding.pageHorizontalPadding,
-                    end = dims.onboarding.pageHorizontalPadding,
-                    bottom = dims.onboarding.finalSheetHeight,
-                )
-                .verticalScroll(rememberScrollState()),
-        ) {
-            OnboardingHeader(number = 5, showSkip = false, enabled = enabled, onSkip = {})
-            Text("You’re all set!", style = type.onboardingTitle, color = colors.textPrimary)
-            Spacer(Modifier.height(dims.spacing.xs))
-            Text(
-                "Let’s make space for the moments\nthat matter.",
-                style = type.onboardingBody,
-                color = colors.textSecondary,
-            )
-        }
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .height(dims.onboarding.finalSheetHeight)
-                .clip(
-                    RoundedCornerShape(
-                        topStart = dims.onboarding.finalSheetRadius,
-                        topEnd = dims.onboarding.finalSheetRadius,
-                    ),
-                )
-                .background(ONBOARDING_REFERENCE_CANVAS.copy(alpha = 0.96f))
-                .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(
-                    horizontal = dims.onboarding.pageHorizontalPadding,
-                    vertical = dims.spacing.md,
-                ),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            OnboardingPrimaryAction(
-                label = "Create my first timeline  →",
-                enabled = enabled,
-                onClick = onFinish,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .shadow(
-                        elevation = 10.dp,
-                        shape = RoundedCornerShape(dims.radii.full),
-                        ambientColor = colors.accent.copy(alpha = 0.28f),
-                        spotColor = colors.accent.copy(alpha = 0.28f),
-                    ),
-            )
-            TextButton(
-                onClick = onFinish,
-                enabled = enabled,
-                modifier = Modifier.heightIn(min = dims.minTouchTarget),
-            ) {
-                Text("Not now", style = type.action, color = colors.textSecondary)
+                    modifier = Modifier.graphicsLayer { alpha = backAlpha },
+                ) {
+                    Text(
+                        "Back",
+                        style = ReliveTheme.typography.action,
+                        color = ReliveOnboardingColors.textSecondary,
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun OnboardingBottomControls(
-    activeIndex: Int,
-    enabled: Boolean,
-    onNext: () -> Unit,
-) {
-    val dims = ReliveTheme.dimensions
-    Row(
-        modifier = Modifier.fillMaxWidth().height(dims.onboarding.bottomControlsHeight),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        OnboardingProgress(activeIndex)
-        Spacer(Modifier.weight(1f))
-        OnboardingArrowAction(enabled = enabled, onClick = onNext)
+private fun OnboardingCopy(headline: String, description: String, modifier: Modifier = Modifier) {
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            headline,
+            style = ReliveTheme.typography.onboardingTitle.copy(fontSize = 23.sp, lineHeight = 28.sp),
+            color = ReliveOnboardingColors.textPrimary,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(ReliveTheme.dimensions.spacing.xs))
+        Text(
+            description,
+            style = ReliveTheme.typography.onboardingBody.copy(fontSize = 14.sp, lineHeight = 20.sp),
+            color = ReliveOnboardingColors.textSecondary,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
 @Composable
-private fun OnboardingProgress(pageIndex: Int) {
-    val colors = ReliveTheme.colors
-    val dims = ReliveTheme.dimensions
+private fun SegmentedProgress(transition: Float) {
+    val chapterProgress = transition.coerceIn(0f, 4f)
+    val activeChapter = chapterProgress.roundToInt()
     Row(
-        modifier = Modifier
-            .width(dims.onboarding.progressWidth)
-            .height(dims.onboarding.progressHeight)
-            .semantics {
-                contentDescription = "Onboarding page ${pageIndex + 1} of $FEATURE_PAGE_COUNT"
-                progressBarRangeInfo = ProgressBarRangeInfo(
-                    current = pageIndex.toFloat(),
-                    range = 0f..(FEATURE_PAGE_COUNT - 1).toFloat(),
-                    steps = FEATURE_PAGE_COUNT - 2,
-                )
-            },
-        horizontalArrangement = Arrangement.SpaceBetween,
+        Modifier.height(6.dp).semantics {
+            val progress = (activeChapter + 1) / 5f
+            contentDescription = "Onboarding progress ${(progress * 100).toInt()} percent"
+            progressBarRangeInfo = ProgressBarRangeInfo(progress, 0f..1f, 0)
+        },
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        repeat(FEATURE_PAGE_COUNT) { index ->
-            val active = index == pageIndex
+        repeat(5) { index ->
             Box(
                 Modifier
-                    .size(if (active) dims.onboarding.progressDotActive else dims.onboarding.progressDot)
-                    .clip(CircleShape)
-                    .background(if (active) colors.accent else colors.borderMuted),
+                    .width(if (index == activeChapter) 30.dp else 6.dp)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(50))
+                    .background(
+                        if (index == activeChapter) {
+                            ReliveOnboardingColors.softWhiteSurface
+                        } else {
+                            ReliveOnboardingColors.quietProgress
+                        },
+                    ),
             )
         }
     }
 }
 
 @Composable
-private fun OnboardingPrimaryAction(
-    label: String,
-    enabled: Boolean,
+private fun ContinueButton(
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
+    enabled: Boolean,
+    alpha: Float = 1f,
+    label: String = "Continue",
 ) {
-    val colors = ReliveTheme.colors
-    val dims = ReliveTheme.dimensions
-    val motion = ReliveTheme.motion
-    val haptics = rememberReliveHaptics()
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (pressed && !ReliveTheme.reduceMotion) dims.onboarding.pressedScale else 1f,
-        animationSpec = motion.spec(
-            reduceMotion = ReliveTheme.reduceMotion,
-            full = tween(
-                durationMillis = motion.durations.short2,
-                easing = motion.easings.standard,
-            ),
-        ),
-        label = "onboarding action press",
-    )
-    Box(
-        modifier = modifier
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-                alpha = if (enabled) 1f else 0.6f
-            }
-            .widthIn(min = dims.onboarding.primaryActionWidth)
-            .height(dims.onboarding.primaryActionHeight)
-            .clip(RoundedCornerShape(dims.radii.full))
-            .background(colors.accent)
-            .clickable(
-                enabled = enabled,
-                interactionSource = interaction,
-                indication = null,
-            ) {
+    val haptics = rememberReliveHaptics()
+    val scale = if (pressed && !ReliveTheme.reduceMotion) ReliveTheme.dimensions.onboarding.pressedScale else 1f
+    Row(
+        Modifier.fillMaxWidth().height(56.dp).graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+            this.alpha = alpha
+        }.clip(ReliveTheme.shapes.button).background(ReliveOnboardingColors.softWhiteSurface)
+            .clickable(enabled = enabled, interactionSource = interaction, indication = null, role = Role.Button) {
                 haptics.perform(ReliveHapticCue.Action)
                 onClick()
-            }
-            .semantics {
-                contentDescription = label
-                role = Role.Button
-            },
-        contentAlignment = Alignment.Center,
+            }.semantics { contentDescription = label },
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, style = ReliveTheme.typography.onboardingAction, color = colors.textOnAccent)
+        Text(label, style = ReliveTheme.typography.onboardingAction, color = ReliveOnboardingColors.darkBase)
+        Spacer(Modifier.width(ReliveTheme.dimensions.spacing.sm))
+        Text("→", style = ReliveTheme.typography.onboardingAction, color = ReliveOnboardingColors.darkBase)
     }
 }
 
-@Composable
-private fun OnboardingArrowAction(
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    val colors = ReliveTheme.colors
-    val dims = ReliveTheme.dimensions
-    val haptics = rememberReliveHaptics()
-    Box(
-        modifier = Modifier
-            .size(dims.onboarding.arrowActionSize)
-            .clip(CircleShape)
-            .background(colors.accent)
-            .clickable(enabled = enabled) {
-                haptics.perform(ReliveHapticCue.Action)
-                onClick()
-            }
-            .semantics {
-                contentDescription = "Next"
-                role = Role.Button
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            "→",
-            style = ReliveTheme.typography.onboardingAction.copy(fontSize = 24.sp),
-            color = colors.textOnAccent,
-        )
-    }
+private fun Modifier.departure(value: Float, travel: Dp) = graphicsLayer {
+    alpha = 1f - value
+    translationY = -value * travel.toPx()
+    scaleX = 1f - value * .015f
+    scaleY = scaleX
 }

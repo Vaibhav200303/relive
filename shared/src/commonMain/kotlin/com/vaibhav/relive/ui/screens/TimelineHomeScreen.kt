@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -659,6 +660,20 @@ internal fun TimelineHomeCard(
     onLongClick: (() -> Unit)? = null,
     isSelected: Boolean = false,
     showDraftIndicator: Boolean = false,
+    /** Non-persisted cover content for isolated previews such as onboarding. */
+    previewMediaContent: (@Composable () -> Unit)? = null,
+    /** Optional bounded media height for an isolated preview; production keeps token sizing. */
+    previewMediaHeight: androidx.compose.ui.unit.Dp? = null,
+    /** Preview cards retain production presentation without becoming interactive controls. */
+    interactive: Boolean = true,
+    /** Optional compact metadata used only by isolated previews such as onboarding. */
+    previewMetadata: String? = null,
+    /** Optional trailing metadata for an isolated preview, aligned opposite its primary metadata. */
+    previewTrailingMetadata: String? = null,
+    /** Packs preview title and metadata together without changing the card's outer footprint. */
+    compactPreviewInfo: Boolean = false,
+    /** Optional fixed information area for an isolated preview; production keeps token sizing. */
+    previewInfoHeight: androidx.compose.ui.unit.Dp? = null,
     modifier: Modifier = Modifier,
 ) {
     TimelineHomeCardContent(
@@ -670,6 +685,13 @@ internal fun TimelineHomeCard(
         onLongClick = onLongClick,
         isSelected = isSelected,
         showDraftIndicator = showDraftIndicator,
+        previewMediaContent = previewMediaContent,
+        previewMediaHeight = previewMediaHeight,
+        interactive = interactive,
+        previewMetadata = previewMetadata,
+        previewTrailingMetadata = previewTrailingMetadata,
+        compactPreviewInfo = compactPreviewInfo,
+        previewInfoHeight = previewInfoHeight,
         modifier = modifier,
     )
 }
@@ -684,6 +706,13 @@ private fun TimelineHomeCardContent(
     onLongClick: (() -> Unit)?,
     isSelected: Boolean,
     showDraftIndicator: Boolean,
+    previewMediaContent: (@Composable () -> Unit)?,
+    previewMediaHeight: androidx.compose.ui.unit.Dp?,
+    interactive: Boolean,
+    previewMetadata: String?,
+    previewTrailingMetadata: String?,
+    compactPreviewInfo: Boolean,
+    previewInfoHeight: androidx.compose.ui.unit.Dp?,
     modifier: Modifier = Modifier,
 ) {
     val colors = ReliveTheme.colors
@@ -694,7 +723,7 @@ private fun TimelineHomeCardContent(
         animationSpec = tween(motion.durations.fastMillis, easing = motion.easings.emphasized),
         label = "timeline card selection",
     )
-    val mediaHeight = if (summary.timeline == Timeline.All) {
+    val mediaHeight = previewMediaHeight ?: if (summary.timeline == Timeline.All) {
         dims.timelineHome.allMediaHeight
     } else {
         dims.timelineHome.customMediaHeight
@@ -717,7 +746,13 @@ private fun TimelineHomeCardContent(
             // carries the card edge in dark mode; it stays subtle enough to read as a soft edge in
             // light mode too, under the shadow.
             .border(dims.stroke.hairline, colors.borderMuted, cardShape)
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .then(
+                if (interactive) {
+                    Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                } else {
+                    Modifier
+                },
+            )
     ) {
         TimelineHomeMediaPreview(
             summary = summary,
@@ -725,35 +760,70 @@ private fun TimelineHomeCardContent(
             mediaHeight = mediaHeight,
             allCollageBucket = allCollageBucket,
             allCollageCandidates = allCollageCandidates,
+            previewMediaContent = previewMediaContent,
         )
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = dims.timelineHome.infoAreaMinHeight)
-                .padding(dims.spacing.lg),
+                .then(
+                    if (previewInfoHeight != null) Modifier.height(previewInfoHeight)
+                    else Modifier.heightIn(min = dims.timelineHome.infoAreaMinHeight),
+                )
+                .padding(
+                    horizontal = dims.spacing.lg,
+                    vertical = if (compactPreviewInfo) dims.spacing.xs else dims.spacing.lg,
+                ),
+            verticalArrangement = if (compactPreviewInfo) Arrangement.Center else Arrangement.Top,
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                Text(summary.name, style = ReliveTheme.typography.title, color = colors.textPrimary, maxLines = 2)
+            if (compactPreviewInfo) {
+                Text(
+                    summary.name,
+                    style = ReliveTheme.typography.title,
+                    color = colors.textPrimary,
+                    maxLines = 2,
+                )
+                Spacer(Modifier.height(dims.spacing.xs))
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    Text(summary.name, style = ReliveTheme.typography.title, color = colors.textPrimary, maxLines = 2)
+                }
             }
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "${summary.momentCount} ${if (summary.momentCount == 1L) "moment" else "moments"}",
-                    style = ReliveTheme.typography.subtitle,
-                    color = colors.textSecondary,
-                    modifier = Modifier.weight(1f),
-                )
-                summary.createdAt?.let { createdAt ->
+                if (previewMetadata != null) {
                     Text(
-                        text = TimelineCreatedDateFormatter.format(createdAt),
-                        style = ReliveTheme.typography.tag,
-                        color = colors.textMuted,
-                        maxLines = 1,
+                        text = previewMetadata,
+                        style = ReliveTheme.typography.subtitle,
+                        color = colors.textSecondary,
+                        modifier = Modifier.weight(1f),
                     )
+                    previewTrailingMetadata?.let { trailingMetadata ->
+                        Text(
+                            text = trailingMetadata,
+                            style = ReliveTheme.typography.tag,
+                            color = colors.textMuted,
+                            maxLines = 1,
+                        )
+                    }
+                } else {
+                    Text(
+                        text = "${summary.momentCount} ${if (summary.momentCount == 1L) "moment" else "moments"}",
+                        style = ReliveTheme.typography.subtitle,
+                        color = colors.textSecondary,
+                        modifier = Modifier.weight(1f),
+                    )
+                    summary.createdAt?.let { createdAt ->
+                        Text(
+                            text = TimelineCreatedDateFormatter.format(createdAt),
+                            style = ReliveTheme.typography.tag,
+                            color = colors.textMuted,
+                            maxLines = 1,
+                        )
+                    }
                 }
                 if (showDraftIndicator) {
                     Text(
@@ -782,6 +852,7 @@ internal fun TimelineHomeMediaPreview(
     mediaHeight: androidx.compose.ui.unit.Dp,
     allCollageBucket: Long,
     allCollageCandidates: List<MediaAttachment>?,
+    previewMediaContent: (@Composable () -> Unit)? = null,
 ) {
     val dims = ReliveTheme.dimensions
     val attachments = summary.previewAttachments
@@ -791,7 +862,9 @@ internal fun TimelineHomeMediaPreview(
             .height(mediaHeight)
             .background(ReliveTheme.colors.surfaceCardTranslucent),
     ) {
-        if (summary.timeline == Timeline.All) {
+        if (previewMediaContent != null) {
+            previewMediaContent()
+        } else if (summary.timeline == Timeline.All) {
             val selection = resolveAllTimelineCollage(
                 available = allCollageCandidates ?: attachments,
                 bucket = allCollageBucket,

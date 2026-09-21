@@ -599,7 +599,18 @@ fun App(
                 } else if (!onboardingBypassedForSession && onboardingVisible == true) {
                     OnboardingScreen(
                         mediaStore = container.mediaStore,
-                        onFinish = {
+                        onContinue = {
+                            scope.launch {
+                                if (
+                                    container.onboardingPreferencesRepository
+                                        .complete(CURRENT_ONBOARDING_VERSION)
+                                        .isSuccess
+                                ) {
+                                    onboardingVisible = false
+                                }
+                            }
+                        },
+                        onSkip = {
                             container.onboardingPreferencesRepository
                                 .complete(CURRENT_ONBOARDING_VERSION)
                                 .isSuccess

@@ -9,24 +9,23 @@ import kotlin.test.assertTrue
 
 class OnboardingStateTest {
     @Test
-    fun navigationAdvancesAndRetreatsWithinSixScreens() {
+    fun navigationAdvancesAndRetreatsWithinFiveChapters() {
         val first = OnboardingState()
         val second = first.next()
-        val last = second.next().next().next().next()
+        val last = second.next().next().next()
 
         assertTrue(first.isFirstPage)
         assertEquals(1, second.pageIndex)
         assertTrue(last.isLastPage)
         assertEquals(last, last.next())
         assertEquals(first, first.previous())
-        assertEquals(4, last.previous().pageIndex)
+        assertEquals(3, last.previous().pageIndex)
     }
 
     @Test
-    fun sixScreensMapToTheReferenceOrder() {
+    fun fiveChaptersMapToTheReferenceOrder() {
         assertEquals(
             listOf(
-                OnboardingPage.Welcome,
                 OnboardingPage.Capture,
                 OnboardingPage.Organize,
                 OnboardingPage.ReliveMoments,
@@ -39,18 +38,24 @@ class OnboardingStateTest {
 
     @Test
     fun primaryAndSkipActionsMatchTheVisibleControls() {
-        val welcome = OnboardingState(0)
-        val numberedPages = (1..4).map(::OnboardingState)
-        val final = OnboardingState(5)
+        val chapters = (0..3).map(::OnboardingState)
+        val final = OnboardingState(4)
 
-        assertEquals(OnboardingCommand.Advance, welcome.primaryCommand)
-        assertFalse(welcome.canSkip)
-        numberedPages.forEach { page ->
+        chapters.forEach { page ->
             assertEquals(OnboardingCommand.Advance, page.primaryCommand)
             assertTrue(page.canSkip)
         }
         assertEquals(OnboardingCommand.Complete, final.primaryCommand)
         assertFalse(final.canSkip)
+    }
+
+    @Test
+    fun repeatedNavigationInputRemainsBoundedAndDeterministic() {
+        val rapidForward = generateSequence(OnboardingState()) { it.next() }.take(20).last()
+        val rapidBack = generateSequence(rapidForward) { it.previous() }.take(20).last()
+
+        assertEquals(OnboardingState(ONBOARDING_PAGE_COUNT - 1), rapidForward)
+        assertEquals(OnboardingState(), rapidBack)
     }
 
     @Test

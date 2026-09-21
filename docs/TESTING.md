@@ -133,13 +133,13 @@ Using Compose Multiplatform UI testing:
 
 ### First-launch onboarding
 
-- A fresh installation with onboarding version `0` and bounded Profile counts of zero shows the screenshot-matched welcome screen plus five numbered pages before Home; it performs no whole-archive read. With no saved native appearance preference, the app and launcher start in Sunset.
-- `Get started` advances from Welcome to `1 / 5`; each circular Next advances exactly one numbered page. Back returns exactly one screen, and Back on Welcome follows root behavior. `Skip` from numbered pages one through four, plus `Create my first timeline` and `Not now` on `5 / 5`, persist the current onboarding version and reveal Home at scroll offset zero.
-- Process death before completion persists no partial page; the next ordinary launch begins again on Welcome. Once complete, ordinary launches never show onboarding again.
+- A fresh installation with onboarding version `0` and bounded Profile counts of zero shows exactly five chapters in order: Capture, Organize, Relive, Privacy, Ready. It performs no whole-archive read. With no saved native appearance preference, the app and launcher start in Sunset.
+- Each circular Next advances exactly one chapter. Back returns exactly one chapter, and Back on Capture follows root behavior. `Skip` from chapters one through four, plus `Create my first timeline` and `Not now` on chapter five, persist the current onboarding version and reveal Home at scroll offset zero.
+- Process death before completion persists no partial chapter; the next ordinary launch begins again on Capture. Once complete, ordinary launches never show onboarding again.
 - A pre-onboarding installation with at least one Moment or custom timeline is marked complete from the bounded Profile snapshot and reaches Home without an onboarding flash. An existing empty installation may see onboarding.
-- App Lock remains outside the onboarding gate. Incoming shares and authoritative deep links bypass onboarding without completing it, and the next ordinary launch still shows Welcome.
+- App Lock remains outside the onboarding gate. Incoming shares and authoritative deep links bypass onboarding without completing it, and the next ordinary launch still shows Capture.
 - Onboarding requests no notification, media, location, or authentication permission and never enables Reminders or App Lock.
-- UI tests cover all six fixed headings/screens, progress semantics, Skip visibility, both final actions, 48dp targets, compact heights, and large font scaling. Onboarding always uses light Sunset semantic tokens with its approved ivory reference canvas and dark system-bar icons, including under dark system appearance. Reduced motion uses fade only and runs no travel, tilt, or idle loop.
+- UI tests cover all five fixed headings/chapters, progress semantics, Skip visibility, both final actions, 48dp targets, compact heights, large font scaling, rapid input, and reverse navigation. Runtime verification covers all four forward/reverse shared transitions, continuous background blending, and the bounded Relive preview. The chapters use the existing dark Evergreen → Original → Plum & Gold → Sunrise → Sunset palettes; background canvas, glow, tint, accent, and shadow interpolate from the same transition progress, and system bars retain light icons. Reduced motion uses short fades or immediate stable spatial state and runs no travel, scale, morph, stagger, tilt, or idle loop.
 - Launcher tests cover palette-to-icon mapping, coalescing repeated requests, safe pending application on Android, Sunset as the manifest baseline, and Warm Journal as the iOS alternate; notification tests verify the theme-neutral monochrome Relive diary mark.
 
 ---

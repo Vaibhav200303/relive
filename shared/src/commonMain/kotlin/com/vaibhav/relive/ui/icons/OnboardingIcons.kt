@@ -8,6 +8,10 @@ import androidx.compose.ui.unit.dp
 
 /** Small local vectors used only by the reference-matched onboarding flow. */
 object OnboardingIcons {
+    val Lock = vector(
+        name = "Privacy lock",
+        pathData = "M17,8H16V6C16,3.79 14.21,2 12,2C9.79,2 8,3.79 8,6V8H7C5.9,8 5,8.9 5,10V20C5,21.1 5.9,22 7,22H17C18.1,22 19,21.1 19,20V10C19,8.9 18.1,8 17,8M10,6C10,4.9 10.9,4 12,4C13.1,4 14,4.9 14,6V8H10V6M13,17.73V19H11V17.73C10.4,17.38 10,16.73 10,16C10,14.9 10.9,14 12,14C13.1,14 14,14.9 14,16C14,16.73 13.6,17.38 13,17.73Z",
+    )
     val Note = vector(
         name = "Notes",
         pathData = "M6,2H14L20,8V22H6C4.9,22 4,21.1 4,20V4C4,2.9 4.9,2 6,2M13,4H6V20H18V9H13V4M8,12H16V14H8V12M8,16H16V18H8V16Z",
