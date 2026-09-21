@@ -563,6 +563,22 @@ private fun OnboardingFlow(
             progress = transitionProgress.value + suctionProgress.value + privacyTakeoverProgress.value +
                 screen5TransitionProgress.value,
         )
+        Box(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(shellHeight + 192.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0f to Color.Transparent,
+                            .28f to ReliveOnboardingColors.darkPlum.copy(alpha = .46f),
+                            .52f to ReliveOnboardingColors.darkPlum.copy(alpha = .96f),
+                            1f to ReliveOnboardingColors.darkBase,
+                        ),
+                    ),
+                ),
+        )
         Column(
             Modifier.fillMaxSize()
                 .windowInsetsPadding(WindowInsets.statusBars)
@@ -571,6 +587,11 @@ private fun OnboardingFlow(
             CaptureHeader(
                 enabled = skipEnabled && !readyVisible,
                 departure = screen5TransitionProgress.value,
+                timelineBlend = if (timelineSheetVisible) {
+                    transitionProgress.value * (1f - suctionProgress.value)
+                } else {
+                    0f
+                },
             ) {
                 if (skipEnabled) {
                     skipEnabled = false
@@ -657,6 +678,26 @@ private fun OnboardingFlow(
                     ReadyOnboardingVisual(
                         transitionProgress = screen5TransitionProgress.value,
                         modifier = Modifier.fillMaxSize(),
+                    )
+                }
+                if (timelineSheetVisible && suctionProgress.value < 1f) {
+                    Box(
+                        Modifier
+                            .align(Alignment.TopCenter)
+                            .fillMaxWidth()
+                            .height(88.dp)
+                            .graphicsLayer {
+                                alpha = transitionProgress.value * (1f - suctionProgress.value)
+                            }
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(
+                                        onboardingAtmosphereCurveColor(transitionProgress.value)
+                                            .copy(alpha = .82f),
+                                        Color.Transparent,
+                                    ),
+                                ),
+                            ),
                     )
                 }
                 val holeBounds = customTimelineHoleBounds
@@ -1197,9 +1238,24 @@ private fun OnboardingAtmosphereCanvas(progress: Float) {
 }
 
 @Composable
-private fun CaptureHeader(enabled: Boolean, departure: Float, onSkip: () -> Unit) {
+private fun CaptureHeader(
+    enabled: Boolean,
+    departure: Float,
+    timelineBlend: Float,
+    onSkip: () -> Unit,
+) {
+    val timelineColor = onboardingAtmosphereCurveColor(1f)
     Row(
-        Modifier.fillMaxWidth().height(ReliveTheme.dimensions.onboarding.headerHeight).departure(departure, 10.dp)
+        Modifier.fillMaxWidth().height(ReliveTheme.dimensions.onboarding.headerHeight)
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        timelineColor.copy(alpha = 0f),
+                        timelineColor.copy(alpha = .82f * timelineBlend),
+                    ),
+                ),
+            )
+            .departure(departure, 10.dp)
             .padding(horizontal = ReliveTheme.dimensions.onboarding.pageHorizontalPadding),
         horizontalArrangement = Arrangement.End,
         verticalAlignment = Alignment.CenterVertically,
@@ -1978,6 +2034,7 @@ private fun OnboardingBottomShell(
             alpha = continueVisualAlpha,
             label = if (finalAction) "Start Reliving" else "Continue",
         )
+        Spacer(Modifier.height(8.dp))
         Box(Modifier.fillMaxWidth().height(36.dp), contentAlignment = Alignment.Center) {
             val backAlpha = if (showBack) 1f else screen3ControlsProgress
             if (backAlpha > 0f) {
