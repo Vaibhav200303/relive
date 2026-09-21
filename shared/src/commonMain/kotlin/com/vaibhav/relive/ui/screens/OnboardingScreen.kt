@@ -1971,6 +1971,7 @@ private fun OnboardingBottomShell(
     finalAction: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val readyCopyReveal = smoothStep(((readyProgress - .76f) / .24f).coerceIn(0f, 1f))
     Column(
         modifier.fillMaxWidth().padding(
             start = ReliveTheme.dimensions.onboarding.pageHorizontalPadding,
@@ -2014,7 +2015,7 @@ private fun OnboardingBottomShell(
                     privacyHeadline,
                     privacyDescription,
                     Modifier.fillMaxWidth().graphicsLayer {
-                        alpha = privacyProgress * (1f - readyProgress)
+                        alpha = privacyProgress * (1f - readyCopyReveal)
                         translationY = (1f - privacyProgress) * 8.dp.toPx()
                     },
                 )
@@ -2023,7 +2024,10 @@ private fun OnboardingBottomShell(
                 OnboardingCopy(
                     readyHeadline,
                     readyDescription,
-                    Modifier.fillMaxWidth().graphicsLayer { alpha = readyProgress },
+                    Modifier.fillMaxWidth().graphicsLayer {
+                        alpha = readyCopyReveal
+                        translationY = (1f - readyCopyReveal) * 8.dp.toPx()
+                    },
                 )
             }
         }
