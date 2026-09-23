@@ -904,6 +904,13 @@ Format for each entry:
 - **Decision:** A custom timeline with no selected cover photo renders the shared abstract landscape thumbnail on both its Timeline Home card and its detail cover. The thumbnail uses a sky, sun, layered mountain, and foreground composition matching the onboarding custom-card family, with colors derived from the active Relive semantic palette. Explicit cover photos still take precedence. The All Photos no-cover placeholder and generated collection covers do not change.
 - **Consequences:** Empty custom timelines retain a visually continuous source/destination cover for their container transform and no longer look like missing media. No cover image is persisted or fabricated, and there is no schema, media, dependency, or archive-behavior change.
 
+## ADR-0097 — Rediscover cards rotate preview photos hourly
+
+- **Date:** 2026-09-24 · **Status:** Accepted · amends ADR-0064 cover selection
+- **Context:** Rediscover cards were re-dealt only once per app launch and could remain generated gradients even when their bounded collection projections contained photos. The product owner requested random photos that change hourly.
+- **Decision:** Every Home Rediscover card selects exactly one image from its existing bounded preview projection. A stable collection-specific starting offset plus the current epoch-hour bucket makes the choice stable through recomposition, scrolling, navigation, and configuration changes within an hour and advances it at each hour boundary when at least two distinct candidates exist. Images alone are eligible; video and audio are excluded. A collection with no eligible image uses the accent-derived generated fallback. Home refreshes the bucket at the boundary and on resume. The resolved cover is still carried into the opened collection surface.
+- **Consequences:** ADR-0064's per-launch shuffle is superseded by hourly photo rotation for the Home Rediscover row. No archive-wide read, persistence, schema, repository API, dependency, or user-selectable cover is introduced; the candidates remain bounded by the existing Rediscover projections. A zero- or one-photo collection cannot visibly rotate until another eligible preview enters its bounded projection.
+
 ## Template for new decisions
 
 ```text
