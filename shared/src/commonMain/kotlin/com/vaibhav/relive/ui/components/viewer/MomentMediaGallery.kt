@@ -47,7 +47,7 @@ import com.vaibhav.relive.presentation.timeline.MomentAttachmentPresentation
 import com.vaibhav.relive.presentation.viewer.MomentMediaGalleryState
 import com.vaibhav.relive.presentation.viewer.MediaSelectionState
 import com.vaibhav.relive.ui.components.timeline.TimelineMediaSharedTransition
-import com.vaibhav.relive.ui.components.timeline.BackGlyph
+import com.vaibhav.relive.ui.components.timeline.TimelineCoverBackButton
 import com.vaibhav.relive.ui.theme.ReliveTheme
 
 /**
@@ -175,31 +175,26 @@ internal fun GalleryTopBar(
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .size(44.dp)
-                .clip(RoundedCornerShape(GalleryChromeRadius))
-                .background(GalleryChromeScrim),
-            contentAlignment = Alignment.Center,
-        ) {
-            IconButton(
+        if (selectedCount == 0) {
+            TimelineCoverBackButton(
                 onClick = onClose,
+                modifier = Modifier.align(Alignment.CenterStart),
+            )
+        } else {
+            Box(
                 modifier = Modifier
+                    .align(Alignment.CenterStart)
                     .size(44.dp)
-                    .semantics {
-                        contentDescription = if (selectedCount > 0) {
-                            "Exit media selection"
-                        } else {
-                            "Back"
-                        }
-                    },
+                    .clip(RoundedCornerShape(GalleryChromeRadius))
+                    .background(GalleryChromeScrim),
+                contentAlignment = Alignment.Center,
             ) {
-                if (selectedCount > 0) {
-                    Text("✕", color = GalleryChromeInk)
-                } else {
-                    BackGlyph(24.dp, GalleryChromeInk, 2.dp)
-                }
+                IconButton(
+                    onClick = onClose,
+                    modifier = Modifier
+                        .size(44.dp)
+                        .semantics { contentDescription = "Exit media selection" },
+                ) { Text("✕", color = GalleryChromeInk) }
             }
         }
         Text(
@@ -235,7 +230,7 @@ internal fun GalleryTopBar(
 
 private val GalleryGutter = 12.dp
 private val GalleryGap = 8.dp
-// Chrome and tile bases sit over the fixed-light wallpaper, so they use mode-independent tones.
+// Selection chrome and tile bases sit over the fixed-light wallpaper, so they use mode-independent tones.
 private val GalleryChromeScrim = Color(0xE6FFFFFF)
 private val GalleryChromeInk = Color(0xFF23202B)
 private val GalleryChromeRadius = 999.dp

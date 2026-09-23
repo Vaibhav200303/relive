@@ -44,6 +44,7 @@ import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.domain.model.TimelineWallpaper
 import com.vaibhav.relive.ui.components.timeline.TimelineWallpaperSurface
 import com.vaibhav.relive.ui.components.timeline.TimelineMediaSharedTransition
+import com.vaibhav.relive.ui.components.timeline.TimelineCoverBackButton
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.theme.reliveLateralPagerSnapSpec
 import com.vaibhav.relive.platform.media.ActivePlayback
@@ -306,21 +307,10 @@ private fun TopBar(index: Int, total: Int, onClose: () -> Unit, onDownload: () -
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        // Chrome rides in soft pills so it stays legible over any (always-light) wallpaper.
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(ViewerChromeRadius))
-                .background(ViewerChromeScrim),
-            contentAlignment = Alignment.Center,
-        ) {
-            IconButton(
-                onClick = onClose,
-                modifier = Modifier
-                    .size(44.dp)
-                    .semantics { contentDescription = "Close media viewer" },
-            ) { Text("✕", color = ViewerChromeInk) }
-        }
+        TimelineCoverBackButton(
+            onClick = onClose,
+            contentDescription = "Back",
+        )
         if (total > 1) {
             Text(
                 text = "${index + 1} / $total",

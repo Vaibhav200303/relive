@@ -327,10 +327,13 @@ fun TimelineCoverControls(
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
     Box(modifier = modifier.fillMaxWidth()) {
-        if (onBack != null) IconButton(
+        if (onBack != null) TimelineCoverBackButton(
             onClick = onBack,
-            modifier = Modifier.align(Alignment.TopStart).windowInsetsPadding(WindowInsets.statusBars).padding(dims.spacing.md).size(dims.minTouchTarget).background(colors.surfaceFloating.copy(alpha = ReliveOpacity.VeryHigh), CircleShape).semantics { contentDescription = "Back to Timeline Home" },
-        ) { BackGlyph(dims.icon.lg, colors.textPrimary, dims.stroke.icon) }
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(dims.spacing.md),
+        )
         if (onChangeTheme != null || onJumpToDate != null) Row(
             modifier = Modifier
                 .align(Alignment.TopEnd)
@@ -345,6 +348,29 @@ fun TimelineCoverControls(
             if (onChangeTheme != null) IconButton(onClick = onChangeTheme, modifier = Modifier.size(dims.minTouchTarget).semantics { contentDescription = "Change timeline theme" }) { PaletteGlyph(dims.icon.md, colors.textPrimary, dims.stroke.icon) }
             if (onJumpToDate != null) IconButton(onClick = onJumpToDate, modifier = Modifier.size(dims.minTouchTarget).semantics { contentDescription = "Jump to date" }) { CalendarGlyph(dims.icon.md, colors.textPrimary, dims.stroke.icon) }
         }
+    }
+}
+
+/** Theme-aware circular Back control shared by timeline covers and media surfaces. */
+@Composable
+fun TimelineCoverBackButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    contentDescription: String = "Back",
+) {
+    val colors = ReliveTheme.colors
+    val dims = ReliveTheme.dimensions
+    IconButton(
+        onClick = onClick,
+        modifier = modifier
+            .size(dims.minTouchTarget)
+            .background(
+                colors.surfaceFloating.copy(alpha = ReliveOpacity.VeryHigh),
+                CircleShape,
+            )
+            .semantics { this.contentDescription = contentDescription },
+    ) {
+        BackGlyph(dims.icon.lg, colors.textPrimary, dims.stroke.icon)
     }
 }
 
