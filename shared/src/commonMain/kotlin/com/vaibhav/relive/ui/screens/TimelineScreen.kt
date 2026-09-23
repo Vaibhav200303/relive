@@ -1903,6 +1903,13 @@ private fun TimelineContent(
                                     .offset(y = -dims.spacing.xxl),
                             )
                         }
+                    } else if (isHomeSurface) {
+                        item(key = "all-moments-sheet-room", contentType = "all-moments-sheet-room") {
+                            // A short archive needs the same travel room as an empty one. Without
+                            // it, one or two compact Moments can exhaust the list before the sheet
+                            // reaches the floating controls, leaving part of Home's hero exposed.
+                            Spacer(Modifier.fillParentMaxHeight())
+                        }
                     }
                     if (!isNewestFirst) composerItem()
                 }

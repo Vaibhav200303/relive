@@ -660,6 +660,7 @@ fun HomeScreen(
                         wallpaper = LocalTimelineWallpaperPalette.current,
                     ).textPrimary,
                     topPadding = ReliveTheme.dimensions.spacing.lg,
+                    horizontalPadding = ReliveTheme.dimensions.spacing.none,
                 )
             }
         },
@@ -1275,6 +1276,7 @@ private fun SectionHeading(
     text: String,
     color: Color = ReliveTheme.colors.textPrimary,
     topPadding: Dp = ReliveTheme.dimensions.spacing.none,
+    horizontalPadding: Dp = ReliveTheme.dimensions.spacing.xl,
 ) {
     val dims = ReliveTheme.dimensions
     Text(
@@ -1284,8 +1286,8 @@ private fun SectionHeading(
         modifier = Modifier
             .fillMaxWidth()
             .padding(
-                start = dims.spacing.xl,
-                end = dims.spacing.xl,
+                start = horizontalPadding,
+                end = horizontalPadding,
                 top = dims.spacing.md + topPadding,
                 bottom = dims.spacing.md,
             ),
