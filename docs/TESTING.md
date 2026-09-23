@@ -308,8 +308,8 @@ Behavior introduced by the unified Home surface ([`DECISIONS.md`](DECISIONS.md) 
 
 ### Greeting
 
-- A real profile display name renders `Welcome back, {name}`.
-- No real profile display name renders exactly `Welcome back` — no trailing punctuation, no placeholder.
+- A real profile display name renders `Hey, {name}!!!`.
+- No real profile display name renders exactly `Hey!!!` — no placeholder.
 - The `Your Relive` fallback label never leaks into the greeting in either case.
 - The subtitle is always `Your memories are waiting for you.`
 

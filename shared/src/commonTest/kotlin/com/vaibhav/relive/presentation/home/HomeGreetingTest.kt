@@ -7,44 +7,44 @@ class HomeGreetingTest {
 
     @Test
     fun namedGreetingUsesTheProfileDisplayName() {
-        assertEquals("Welcome back, Alex", homeGreeting("Alex"))
+        assertEquals("Hey, Alex!!!", homeGreeting("Alex"))
     }
 
     @Test
     fun greetingAddressesTheFirstNameOnly() {
-        assertEquals("Welcome back, Vaibhav", homeGreeting("Vaibhav Sharma"))
-        assertEquals("Welcome back, Alex", homeGreeting("Alex  van der Berg"))
+        assertEquals("Hey, Vaibhav!!!", homeGreeting("Vaibhav Sharma"))
+        assertEquals("Hey, Alex!!!", homeGreeting("Alex  van der Berg"))
     }
 
     @Test
-    fun namelessGreetingIsExactlyWelcomeBack() {
-        assertEquals("Welcome back", homeGreeting(null))
+    fun namelessGreetingIsExactlyHey() {
+        assertEquals("Hey!!!", homeGreeting(null))
     }
 
     @Test
     fun blankNameIsTreatedAsNoName() {
-        assertEquals("Welcome back", homeGreeting(""))
-        assertEquals("Welcome back", homeGreeting("   "))
+        assertEquals("Hey!!!", homeGreeting(""))
+        assertEquals("Hey!!!", homeGreeting("   "))
     }
 
     @Test
     fun profilePlaceholderNeverLeaksIntoTheGreeting() {
         // ProfileState substitutes "Your Relive" when no name is set. It is a Profile-screen
-        // affordance, not a name: "Welcome back, Your Relive" must never render.
-        assertEquals("Welcome back", homeGreeting("Your Relive"))
-        assertEquals("Welcome back", homeGreeting("your relive"))
-        assertEquals("Welcome back", homeGreeting("  Your Relive  "))
+        // affordance, not a name: "Hey, Your Relive!!!" must never render.
+        assertEquals("Hey!!!", homeGreeting("Your Relive"))
+        assertEquals("Hey!!!", homeGreeting("your relive"))
+        assertEquals("Hey!!!", homeGreeting("  Your Relive  "))
     }
 
     @Test
     fun surroundingWhitespaceIsTrimmedFromARealName() {
-        assertEquals("Welcome back, Alex", homeGreeting("  Alex  "))
+        assertEquals("Hey, Alex!!!", homeGreeting("  Alex  "))
     }
 
     @Test
     fun aNameThatMerelyContainsThePlaceholderIsStillARealName() {
         // Still greeted (not dropped like the exact placeholder), by its first word as always.
-        assertEquals("Welcome back, Your", homeGreeting("Your Relive Companion"))
+        assertEquals("Hey, Your!!!", homeGreeting("Your Relive Companion"))
     }
 
     @Test
