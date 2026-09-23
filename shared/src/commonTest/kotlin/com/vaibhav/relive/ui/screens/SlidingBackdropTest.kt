@@ -68,6 +68,41 @@ class SlidingBackdropTest {
     }
 
     @Test
+    fun aSmallUpwardHomeDragContinuesDirectlyToFocusedAllMoments() {
+        assertEquals(
+            600,
+            focusedSettleTarget(
+                offsetPx = 24,
+                backdropHeightPx = 600,
+                velocityY = -20f,
+                lastDragDeltaY = -2f,
+            ),
+        )
+        assertEquals(
+            600,
+            focusedSettleTarget(
+                offsetPx = 24,
+                backdropHeightPx = 600,
+                velocityY = 0f,
+                lastDragDeltaY = -2f,
+            ),
+        )
+    }
+
+    @Test
+    fun reversingTheHomeFocusDragReturnsToTheBackdrop() {
+        assertEquals(
+            0,
+            focusedSettleTarget(
+                offsetPx = 580,
+                backdropHeightPx = 600,
+                velocityY = 20f,
+                lastDragDeltaY = 2f,
+            ),
+        )
+    }
+
+    @Test
     fun expansionProgressIsNormalizedAndContinuousInEitherDirection() {
         val state = BackdropExpansionState().apply {
             viewportHeightPx = 1_000

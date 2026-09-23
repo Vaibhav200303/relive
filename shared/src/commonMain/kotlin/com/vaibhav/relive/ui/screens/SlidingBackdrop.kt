@@ -349,6 +349,81 @@ internal fun BackdropSettleEffect(
 }
 
 /**
+ * Hands Home's partially focused sheet straight from the finger into its final resting place.
+ * Intercepting before the list starts a separate fling avoids the stopped frame that would
+ * otherwise appear between LazyColumn's fling and [BackdropSettleEffect]'s endpoint correction.
+ */
+@Composable
+internal fun rememberHomeFocusSettleConnection(
+    listState: LazyListState,
+    backdropHeightPx: () -> Int,
+): NestedScrollConnection = remember(listState) {
+    object : NestedScrollConnection {
+        private var lastDragDeltaY = 0f
+
+        override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+            if (source == NestedScrollSource.UserInput && available.y != 0f) {
+                lastDragDeltaY = available.y
+            }
+            return Offset.Zero
+        }
+
+        override suspend fun onPreFling(available: Velocity): Velocity {
+            val height = backdropHeightPx()
+            val offset = listState.firstVisibleItemScrollOffset
+            if (height <= 0 || listState.firstVisibleItemIndex != 0 || offset <= 0 || offset >= height) {
+                return Velocity.Zero
+            }
+            val target = focusedSettleTarget(
+                offsetPx = offset,
+                backdropHeightPx = height,
+                velocityY = available.y,
+                lastDragDeltaY = lastDragDeltaY,
+            )
+            animateHomeFocusTo(
+                listState = listState,
+                targetOffsetPx = target,
+                initialVelocityPxPerSecond = -available.y,
+            )
+            return available
+        }
+    }
+}
+
+/** Finger direction wins, including a very small upward pull; distance is only a zero-motion fallback. */
+internal fun focusedSettleTarget(
+    offsetPx: Int,
+    backdropHeightPx: Int,
+    velocityY: Float,
+    lastDragDeltaY: Float,
+): Int = when {
+    velocityY < 0f || (velocityY == 0f && lastDragDeltaY < 0f) -> backdropHeightPx
+    velocityY > 0f || (velocityY == 0f && lastDragDeltaY > 0f) -> 0
+    offsetPx >= backdropHeightPx / 2 -> backdropHeightPx
+    else -> 0
+}
+
+/** A velocity-preserving, no-bounce continuation of Home's focus gesture. */
+private suspend fun animateHomeFocusTo(
+    listState: LazyListState,
+    targetOffsetPx: Int,
+    initialVelocityPxPerSecond: Float,
+) {
+    listState.scroll {
+        var previous = listState.firstVisibleItemScrollOffset.toFloat()
+        animate(
+            initialValue = previous,
+            targetValue = targetOffsetPx.toFloat(),
+            initialVelocity = initialVelocityPxPerSecond,
+            animationSpec = spring(dampingRatio = 1f, stiffness = 420f),
+        ) { value, _ ->
+            val consumed = scrollBy(value - previous)
+            previous += consumed
+        }
+    }
+}
+
+/**
  * Lets a child ignore an ancestor's horizontal padding so the sheet's edge and shadow — and the
  * backdrop behind it — reach the screen edges. Without it the sheet reads as a floating card rather
  * than a surface being covered.
