@@ -16,6 +16,7 @@ import com.vaibhav.relive.platform.system.IosDeviceAuthentication
 import com.vaibhav.relive.platform.notifications.IosRediscoverReminderService
 import com.vaibhav.relive.platform.media.IosMediaProcessor
 import com.vaibhav.relive.platform.media.IosMediaStore
+import com.vaibhav.relive.platform.media.IosMediaDownloadService
 import com.vaibhav.relive.presentation.id.UuidGenerator
 import com.vaibhav.relive.presentation.time.SystemClock
 import com.vaibhav.relive.domain.entitlement.entitlementProviderFor
@@ -51,6 +52,7 @@ fun createDefaultReliveAppContainer(
         idGenerator = UuidGenerator,
         mediaStore = store,
         mediaProcessor = processor,
+        mediaDownloadService = IosMediaDownloadService(store),
         exportService = IosReliveExportService(store),
         exportCompletionNotifier = IosExportCompletionNotifier(),
         portableArchiveRequestBus = IosPortableArchiveIngress.requestBus,

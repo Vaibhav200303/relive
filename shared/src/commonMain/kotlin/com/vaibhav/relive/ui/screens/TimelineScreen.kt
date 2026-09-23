@@ -26,6 +26,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -39,8 +40,10 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.IntOffset
 import com.vaibhav.relive.domain.model.MediaStorageRef
 import com.vaibhav.relive.ui.components.timeline.TimelineCoverControls
@@ -89,11 +92,13 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -106,6 +111,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.animateFloatingActionButton
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import com.vaibhav.relive.domain.id.IdGenerator
 import com.vaibhav.relive.domain.policy.EditWindow
 import com.vaibhav.relive.domain.model.MomentFeeling
@@ -124,6 +131,7 @@ import com.vaibhav.relive.domain.repository.AppearanceRepository
 import com.vaibhav.relive.domain.time.Clock
 import com.vaibhav.relive.platform.media.ActivePlayback
 import com.vaibhav.relive.platform.media.MediaProcessor
+import com.vaibhav.relive.platform.media.MediaDownloadService
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.platform.media.rememberMediaPickerHandle
 import com.vaibhav.relive.platform.permission.MicPermissionResult
@@ -156,6 +164,7 @@ import com.vaibhav.relive.presentation.viewer.closeGallery
 import com.vaibhav.relive.presentation.viewer.closeViewer
 import com.vaibhav.relive.presentation.viewer.openFromCollage
 import com.vaibhav.relive.presentation.viewer.openFromGallery
+import com.vaibhav.relive.presentation.viewer.openAt
 import com.vaibhav.relive.ui.components.composer.CollapsedComposerMarker
 import com.vaibhav.relive.ui.components.composer.ComposerOverlayHost
 import com.vaibhav.relive.ui.components.composer.MediaPickerDriver
@@ -181,6 +190,8 @@ import com.vaibhav.relive.ui.components.timeline.UpGlyph
 import com.vaibhav.relive.ui.components.rediscover.SystemCollectionCoverImage
 import com.vaibhav.relive.ui.components.viewer.MediaViewer
 import com.vaibhav.relive.ui.components.viewer.MomentMediaGallery
+import com.vaibhav.relive.ui.components.viewer.MediaGalleryTile
+import com.vaibhav.relive.ui.components.viewer.GalleryTopBar
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveTheme
@@ -218,6 +229,9 @@ private fun allTimelineCoverCandidates(
     .sortedWith(compareBy<MediaAttachment>({ allCoverCandidateScore(it.id.value, bucket) }, { it.id.value }))
     .take(9)
     .toList()
+
+internal fun allPhotosVisualAttachments(moments: List<MomentPresentation>): List<MomentAttachmentPresentation> =
+    moments.flatMap(MomentPresentation::attachments)
 
 /** Mirrors TimelineHome.sq's bounded All-card candidate order. */
 private fun allCoverCandidateScore(id: String, bucket: Long): Long {
@@ -275,6 +289,7 @@ fun TimelineScreen(
     idGenerator: IdGenerator,
     mediaStore: MediaStore,
     mediaProcessor: MediaProcessor,
+    mediaDownloadService: MediaDownloadService,
     draftStore: TimelineComposerDraftStore? = null,
     initialTimeline: CurrentTimeline = CurrentTimeline.All,
     mode: TimelineMode = TimelineMode.Editable,
@@ -457,9 +472,37 @@ fun TimelineScreen(
     var discardConfirmation by remember { mutableStateOf(ComposerDiscardConfirmationState()) }
     var showCoverPicker by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+    var downloadProgress by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    var downloadJob by remember { mutableStateOf<Job?>(null) }
     val haptics = rememberReliveHaptics()
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+
+    val downloadMedia: (List<MomentAttachmentPresentation>) -> Unit = { attachments ->
+        if (attachments.isNotEmpty() && downloadJob?.isActive != true) {
+            downloadProgress = 0 to attachments.size
+            downloadJob = scope.launch {
+                try {
+                    val result = mediaDownloadService.download(attachments) { completed, total ->
+                        downloadProgress = completed to total
+                    }
+                    val message = when {
+                        result.isSuccess -> if (result.savedCount == 1) "Saved to your media library." else "Saved ${result.savedCount} items to your media library."
+                        result.savedCount > 0 -> "Saved ${result.savedCount}; ${result.failedCount} could not be saved."
+                        else -> "Could not save media."
+                    }
+                    downloadProgress = null
+                    snackbarHostState.showSnackbar(message)
+                } catch (_: CancellationException) {
+                    downloadProgress = null
+                    snackbarHostState.showSnackbar("Download cancelled.")
+                } finally {
+                    downloadProgress = null
+                    downloadJob = null
+                }
+            }
+        }
+    }
 
     val dismissKeyboardThen: (() -> Unit) -> Unit = { action ->
         focusManager.clearFocus(force = true)
@@ -686,6 +729,11 @@ fun TimelineScreen(
                 }
             },
     ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .then(if (downloadProgress != null) Modifier.blur(12.dp) else Modifier),
+        ) {
         TimelineContent(
             timelineState = displayedTimelineState,
             composerState = composerState,
@@ -714,6 +762,11 @@ fun TimelineScreen(
                 ActivePlayback.stopActive()
                 navState = navState.openFromCollage(list, index)
             },
+            onOpenAllPhotosMedia = { list, index ->
+                ActivePlayback.stopActive()
+                navState = navState.copy(viewer = openAt(list, index))
+            },
+            onDownloadMedia = downloadMedia,
             onBack = if (onBackToTimelineHome == null) null else leaveTimeline,
             onTitleChange = composerViewModel::updateTitle,
             onContentChange = composerViewModel::updateContent,
@@ -887,6 +940,7 @@ fun TimelineScreen(
                     backEnabled = viewer == null,
                     wallpaper = displayedTimelineState.appearance.wallpaper,
                     sharedTransition = mediaSharedTransition,
+                    onDownload = downloadMedia,
                 )
             }
         }
@@ -916,8 +970,31 @@ fun TimelineScreen(
                     },
                     wallpaper = displayedTimelineState.appearance.wallpaper,
                     sharedTransition = mediaSharedTransition,
+                    onDownloadCurrent = { attachment -> downloadMedia(listOf(attachment)) },
                 )
             }
+        }
+        }
+        ReliveSnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter),
+        ) { data ->
+            Snackbar(
+                snackbarData = data,
+                shape = RoundedCornerShape(ReliveTheme.dimensions.radii.menu),
+                containerColor = ReliveTheme.colors.accent,
+                contentColor = ReliveTheme.colors.textOnAccent,
+                actionColor = ReliveTheme.colors.textOnAccent,
+                actionContentColor = ReliveTheme.colors.textOnAccent,
+                dismissActionContentColor = ReliveTheme.colors.textOnAccent,
+            )
+        }
+        downloadProgress?.let { (completed, total) ->
+            MediaDownloadProgressOverlay(
+                completed = completed,
+                total = total,
+                onCancel = { downloadJob?.cancel() },
+            )
         }
     }
     }
@@ -1079,8 +1156,8 @@ internal fun systemCollectionEmptyCopy(timeline: CurrentTimeline): SystemCollect
         message = "Moments you favorite will appear here.",
     )
     CurrentTimeline.AllPhotos -> SystemCollectionEmptyCopy(
-        title = "No photos or videos yet.",
-        message = "Moments with photos or videos will appear here.",
+        title = "No media yet.",
+        message = "Photos, videos, and audio from your moments will appear here.",
     )
     is CurrentTimeline.OnThisDay -> SystemCollectionEmptyCopy(
         title = "No moments from this day yet.",
@@ -1136,6 +1213,8 @@ private fun TimelineContent(
     onExitMomentActions: () -> Unit,
     onShowTimelineAssignmentPicker: () -> Unit,
     onOpenMedia: (List<MomentAttachmentPresentation>, Int) -> Unit,
+    onOpenAllPhotosMedia: (List<MomentAttachmentPresentation>, Int) -> Unit,
+    onDownloadMedia: (List<MomentAttachmentPresentation>) -> Unit,
     sharedTransition: TimelineMediaSharedTransition?,
     onBack: (() -> Unit)?,
     onTitleChange: (String) -> Unit,
@@ -1193,6 +1272,10 @@ private fun TimelineContent(
     val moments: List<MomentPresentation> = when (val state = timelineState.moments) {
         TimelineMomentsState.Loading, TimelineMomentsState.Empty -> emptyList()
         is TimelineMomentsState.Loaded -> state.moments
+    }
+    var allPhotosSelection by remember(timelineState.currentTimeline) { mutableStateOf(com.vaibhav.relive.presentation.viewer.MediaSelectionState()) }
+    if (timelineState.currentTimeline == CurrentTimeline.AllPhotos) {
+        ReliveBackHandler(enabled = allPhotosSelection.isActive) { allPhotosSelection = allPhotosSelection.clear() }
     }
     val isEmptyHomeSurface = isHomeSurface && timelineState.moments == TimelineMomentsState.Empty
     // Home's two states are a pure function of scroll offset: once the welcome block and the
@@ -1799,7 +1882,39 @@ private fun TimelineContent(
                     // On a newest-first feed the chronological end of the timeline is its head, so
                     // the composer is emitted before the moments rather than after them.
                     if (isNewestFirst) composerItem()
-                    itemsIndexed(
+                    if (timelineState.currentTimeline == CurrentTimeline.AllPhotos) {
+                        val allPhotosMedia = allPhotosVisualAttachments(moments)
+                        itemsIndexed(
+                            items = allPhotosMedia.chunked(2),
+                            key = { rowIndex, row ->
+                                row.joinToString(prefix = "all-photos-$rowIndex-") { it.storageRef.value }
+                            },
+                            contentType = { _, _ -> "all-photos-media-row" },
+                        ) { rowIndex, row ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = dims.spacing.xs),
+                            ) {
+                                row.forEachIndexed { columnIndex, attachment ->
+                                    val mediaIndex = rowIndex * 2 + columnIndex
+                                    MediaGalleryTile(
+                                        att = attachment,
+                                        mediaStore = mediaStore,
+                                        sharedTransition = sharedTransition,
+                                        onClick = { onOpenAllPhotosMedia(allPhotosMedia, mediaIndex) },
+                                        selectionActive = allPhotosSelection.isActive,
+                                        selected = mediaIndex in allPhotosSelection.selectedIndices,
+                                        onLongClick = { allPhotosSelection = allPhotosSelection.toggle(mediaIndex) },
+                                        onToggleSelection = { allPhotosSelection = allPhotosSelection.toggle(mediaIndex) },
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    if (columnIndex == 0) Spacer(Modifier.size(dims.spacing.sm))
+                                }
+                                if (row.size == 1) Spacer(Modifier.weight(1f))
+                            }
+                        }
+                    } else itemsIndexed(
                         items = moments,
                         key = { _, moment -> moment.id.value },
                         contentType = { _, moment ->
@@ -2020,36 +2135,13 @@ private fun TimelineContent(
                         strokeWidth = dims.stroke.iconBold,
                     )
                 }
-                ReliveSnackbarHost(
-                    hostState = snackbarHostState,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(
-                            bottom = if (showReturnToBottom) {
-                                dims.minTouchTarget + dims.spacing.lg
-                            } else {
-                                dims.spacing.none
-                            },
-                        ),
-                ) { data ->
-                    Snackbar(
-                        snackbarData = data,
-                        shape = RoundedCornerShape(ReliveTheme.dimensions.radii.menu),
-                        containerColor = ReliveTheme.colors.accent,
-                        contentColor = ReliveTheme.colors.textOnAccent,
-                        actionColor = ReliveTheme.colors.textOnAccent,
-                        actionContentColor = ReliveTheme.colors.textOnAccent,
-                        dismissActionContentColor = ReliveTheme.colors.textOnAccent,
-                    )
-                }
-
                 if (isSlidingCoverSurface) {
                     // Pinned above the sheet: the timeline passes underneath these, never over
                     // them, which is the whole point of lifting them out of the cover. The
                     // selection bar takes the same slot, so a long-press swaps the controls in
                     // place rather than shifting the surface underneath them.
                     AnimatedContent(
-                        targetState = isContextualActionMode,
+                        targetState = isContextualActionMode || allPhotosSelection.isActive,
                         transitionSpec = {
                             reliveSequentialSlideFade(
                                 motion = motion,
@@ -2062,7 +2154,19 @@ private fun TimelineContent(
                             .align(Alignment.TopCenter)
                             .bleedHorizontal(dims.timeline.horizontalPadding),
                     ) { inActionMode ->
-                        if (inActionMode && selectedActionMoment != null && actionAvailability != null) {
+                        if (allPhotosSelection.isActive) {
+                            val allMedia = allPhotosVisualAttachments(moments)
+                            GalleryTopBar(
+                                count = allMedia.size,
+                                selectedCount = allPhotosSelection.count,
+                                onClose = { allPhotosSelection = allPhotosSelection.clear() },
+                                onDownload = {
+                                    onDownloadMedia(allPhotosSelection.selectedIndices.sorted().map(allMedia::get))
+                                    allPhotosSelection = allPhotosSelection.clear()
+                                },
+                                modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars),
+                            )
+                        } else if (inActionMode && selectedActionMoment != null && actionAvailability != null) {
                             TimelineMomentActionHeader(
                                 showEdit = actionAvailability.canEdit,
                                 showAddToTimeline = actionAvailability.canAddToTimeline,
@@ -2130,6 +2234,44 @@ private fun TimelineContent(
     }
 }
 
+@Composable
+private fun MediaDownloadProgressOverlay(
+    completed: Int,
+    total: Int,
+    onCancel: () -> Unit,
+) {
+    val colors = ReliveTheme.colors
+    val dims = ReliveTheme.dimensions
+    val fraction = if (total > 0) completed.toFloat() / total else 0f
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.32f))
+            .semantics { contentDescription = "Downloading media" },
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(dims.radii.dialog))
+                .background(colors.surfaceOverlay)
+                .padding(dims.spacing.xl),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(dims.spacing.md),
+        ) {
+            CircularProgressIndicator(
+                progress = { fraction.coerceIn(0f, 1f) },
+                color = colors.accent,
+                trackColor = colors.borderMuted,
+            )
+            Text(
+                text = "Saving $completed of $total",
+                style = ReliveTheme.typography.title,
+                color = colors.textPrimary,
+            )
+            FilledTonalButton(onClick = onCancel) { Text("Cancel") }
+        }
+    }
+}
 /**
  * The window reserving the cover's space and the lead-in below it. Keep in step with the feed's
  * item order in `TimelineScreenContent`.

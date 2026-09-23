@@ -560,7 +560,7 @@ internal enum class HelpTopic(
     FindingMemories(
         "Find a Memory",
         "Search, filter and rediscover",
-        "Search saved titles and writing, browse a timeline by date, or return to Favourites, On This Day, From Your Past, and All Photos.",
+        "Search saved titles and writing, browse a timeline by date, or return to Favourites, On This Day, From Your Past, and Media.",
         ProfileIcons.Search,
     ),
     BackupRestore(

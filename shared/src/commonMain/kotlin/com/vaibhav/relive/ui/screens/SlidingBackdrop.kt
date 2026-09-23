@@ -331,10 +331,13 @@ internal fun BackdropSettleEffect(
     }
     LaunchedEffect(listState, backdropHeightPx) {
         if (backdropHeightPx <= 0) return@LaunchedEffect
+        var wasScrolling = listState.isScrollInProgress
         snapshotFlow { listState.isScrollInProgress }
             .distinctUntilChanged()
             .collect { scrolling ->
-                if (scrolling || listState.firstVisibleItemIndex != 0) return@collect
+                val shouldSettle = shouldSettleBackdropAfterScroll(wasScrolling, scrolling)
+                wasScrolling = scrolling
+                if (!shouldSettle || listState.firstVisibleItemIndex != 0) return@collect
                 val offset = listState.firstVisibleItemScrollOffset
                 if (offset <= 0 || offset >= backdropHeightPx) return@collect
                 listState.animateScrollBy(
@@ -347,6 +350,10 @@ internal fun BackdropSettleEffect(
             }
     }
 }
+
+/** Initial idle layout emissions are not releases and must never focus a freshly opened surface. */
+internal fun shouldSettleBackdropAfterScroll(wasScrolling: Boolean, isScrolling: Boolean): Boolean =
+    wasScrolling && !isScrolling
 
 /**
  * Hands Home's partially focused sheet straight from the finger into its final resting place.

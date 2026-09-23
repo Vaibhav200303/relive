@@ -2,10 +2,12 @@ package com.vaibhav.relive.ui.components.viewer
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,6 +25,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,7 +45,9 @@ import com.vaibhav.relive.platform.media.RelivedVideoTile
 import com.vaibhav.relive.platform.system.ReliveBackHandler
 import com.vaibhav.relive.presentation.timeline.MomentAttachmentPresentation
 import com.vaibhav.relive.presentation.viewer.MomentMediaGalleryState
+import com.vaibhav.relive.presentation.viewer.MediaSelectionState
 import com.vaibhav.relive.ui.components.timeline.TimelineMediaSharedTransition
+import com.vaibhav.relive.ui.components.timeline.BackGlyph
 import com.vaibhav.relive.ui.theme.ReliveTheme
 
 /**
@@ -60,10 +67,12 @@ fun MomentMediaGallery(
     backEnabled: Boolean = true,
     wallpaper: TimelineWallpaper = TimelineWallpaper.WarmCream,
     sharedTransition: TimelineMediaSharedTransition? = null,
+    onDownload: (List<MomentAttachmentPresentation>) -> Unit = {},
 ) {
     val gridState = rememberLazyGridState()
+    var selection by remember(state.attachments) { mutableStateOf(MediaSelectionState()) }
 
-    ReliveBackHandler(enabled = backEnabled, onBack = onClose)
+    ReliveBackHandler(enabled = backEnabled, onBack = { if (selection.isActive) selection = selection.clear() else onClose() })
 
     // The grid lays its tiles over the timeline's own doodle wallpaper; the gaps between tiles
     // let the wallpaper breathe through so the gallery stays part of the memory's world.
@@ -76,7 +85,15 @@ fun MomentMediaGallery(
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.systemBars),
         ) {
-            GalleryTopBar(count = state.size, onClose = onClose)
+            GalleryTopBar(
+                count = state.size,
+                selectedCount = selection.count,
+                onClose = { if (selection.isActive) selection = selection.clear() else onClose() },
+                onDownload = {
+                    onDownload(selection.selectedIndices.sorted().map(state.attachments::get))
+                    selection = selection.clear()
+                },
+            )
             LazyVerticalGrid(
                 state = gridState,
                 columns = GridCells.Adaptive(minSize = 160.dp),
@@ -89,11 +106,15 @@ fun MomentMediaGallery(
                     items = state.attachments,
                     key = { i, a -> a.storageRef.value + ":" + i },
                 ) { index, att ->
-                    GalleryTile(
+                    MediaGalleryTile(
                         att = att,
                         mediaStore = mediaStore,
                         sharedTransition = sharedTransition,
                         onClick = { onOpenItem(index) },
+                        selectionActive = selection.isActive,
+                        selected = index in selection.selectedIndices,
+                        onLongClick = { selection = selection.toggle(index) },
+                        onToggleSelection = { selection = selection.toggle(index) },
                     )
                 }
             }
@@ -102,11 +123,16 @@ fun MomentMediaGallery(
 }
 
 @Composable
-private fun GalleryTile(
+internal fun MediaGalleryTile(
     att: MomentAttachmentPresentation,
     mediaStore: MediaStore,
     sharedTransition: TimelineMediaSharedTransition?,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    selectionActive: Boolean = false,
+    selected: Boolean = false,
+    onLongClick: (() -> Unit)? = null,
+    onToggleSelection: (() -> Unit)? = null,
 ) {
     val dims = ReliveTheme.dimensions
     val desc = when (att.type) {
@@ -115,13 +141,16 @@ private fun GalleryTile(
         MediaType.Audio -> "Open audio"
     }
     Box(
-        modifier = Modifier
+        modifier = modifier
             .then(sharedTransition?.galleryModifier(att) ?: Modifier)
             .fillMaxWidth()
             .aspectRatio(1f)
             .clip(RoundedCornerShape(dims.radii.medium))
             .background(GalleryTileBase)
-            .clickable(onClick = onClick)
+            .combinedClickable(
+                onClick = { if (selectionActive) onToggleSelection?.invoke() else onClick() },
+                onLongClick = onLongClick,
+            )
             .semantics { contentDescription = desc },
     ) {
         when (att.type) {
@@ -129,13 +158,20 @@ private fun GalleryTile(
             MediaType.Video -> RelivedVideoTile(att.storageRef, mediaStore, Modifier.fillMaxSize())
             MediaType.Audio -> RelivedAudioTile(att.storageRef, mediaStore, Modifier.fillMaxSize())
         }
+        if (selectionActive) SelectionMark(selected, Modifier.align(Alignment.TopEnd).padding(8.dp))
     }
 }
 
 @Composable
-private fun GalleryTopBar(count: Int, onClose: () -> Unit) {
+internal fun GalleryTopBar(
+    count: Int,
+    selectedCount: Int,
+    onClose: () -> Unit,
+    onDownload: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
@@ -151,11 +187,23 @@ private fun GalleryTopBar(count: Int, onClose: () -> Unit) {
                 onClick = onClose,
                 modifier = Modifier
                     .size(44.dp)
-                    .semantics { contentDescription = "Close media gallery" },
-            ) { Text("✕", color = GalleryChromeInk) }
+                    .semantics {
+                        contentDescription = if (selectedCount > 0) {
+                            "Exit media selection"
+                        } else {
+                            "Back"
+                        }
+                    },
+            ) {
+                if (selectedCount > 0) {
+                    Text("✕", color = GalleryChromeInk)
+                } else {
+                    BackGlyph(24.dp, GalleryChromeInk, 2.dp)
+                }
+            }
         }
         Text(
-            text = "$count items",
+            text = if (selectedCount > 0) "$selectedCount selected" else "$count items",
             color = GalleryChromeInk,
             modifier = Modifier
                 .align(Alignment.Center)
@@ -163,7 +211,25 @@ private fun GalleryTopBar(count: Int, onClose: () -> Unit) {
                 .background(GalleryChromeScrim)
                 .padding(horizontal = 14.dp, vertical = 8.dp),
         )
-        Box(modifier = Modifier.align(Alignment.CenterEnd).size(44.dp))
+        if (selectedCount > 0) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(GalleryChromeRadius))
+                    .background(GalleryChromeScrim),
+                contentAlignment = Alignment.Center,
+            ) {
+                IconButton(
+                    onClick = onDownload,
+                    modifier = Modifier
+                        .size(44.dp)
+                        .semantics { contentDescription = "Download selected media" },
+                ) {
+                    DownloadGlyph(Modifier.size(24.dp), GalleryChromeInk)
+                }
+            }
+        } else Box(modifier = Modifier.align(Alignment.CenterEnd).size(44.dp))
     }
 }
 

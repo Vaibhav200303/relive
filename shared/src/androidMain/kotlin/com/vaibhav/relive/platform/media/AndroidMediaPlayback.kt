@@ -49,6 +49,7 @@ import com.vaibhav.relive.domain.model.MediaStorageRef
 import com.vaibhav.relive.ui.components.timeline.WaveformView
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
+import com.vaibhav.relive.ui.theme.ReliveTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -91,6 +92,7 @@ actual fun RelivedVideo(
     modifier: Modifier,
     posterFallbackPath: String?,
 ) {
+    val colors = ReliveTheme.colors
     val haptics = rememberReliveHaptics()
     val path = mediaStore.resolveAbsolutePath(ref)
     var player: MediaPlayer? by remember(path) { mutableStateOf(null) }
@@ -173,9 +175,9 @@ actual fun RelivedVideo(
                 modifier = Modifier
                     .size(56.dp)
                     .clip(CircleShape)
-                    .background(Color(0x99000000)),
+                    .background(colors.surfaceFloating.copy(alpha = 0.9f)),
                 contentAlignment = Alignment.Center,
-            ) { Text("▶", color = Color.White) }
+            ) { Text("▶", color = colors.textPrimary) }
         }
     }
     DisposableEffect(path) {
@@ -185,6 +187,7 @@ actual fun RelivedVideo(
 
 @Composable
 actual fun RelivedAudio(ref: MediaStorageRef, mediaStore: MediaStore, modifier: Modifier) {
+    val colors = ReliveTheme.colors
     val path = mediaStore.resolveAbsolutePath(ref)
     val player = remember(path) {
         MediaPlayer().apply {
@@ -207,7 +210,7 @@ actual fun RelivedAudio(ref: MediaStorageRef, mediaStore: MediaStore, modifier: 
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .background(Color(0x11000000))
+            .background(colors.tint)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -216,7 +219,7 @@ actual fun RelivedAudio(ref: MediaStorageRef, mediaStore: MediaStore, modifier: 
             modifier = Modifier
                 .size(48.dp)
                 .clip(CircleShape)
-                .background(Color(0xFF6F4E37))
+                .background(colors.accent)
                 .clickable {
                     try {
                         if (player.isPlaying) {
@@ -231,8 +234,8 @@ actual fun RelivedAudio(ref: MediaStorageRef, mediaStore: MediaStore, modifier: 
                     } catch (_: Throwable) {}
                 },
             contentAlignment = Alignment.Center,
-        ) { Text(if (playing) "❚❚" else "▶", color = Color.White) }
-        Text(formatTime(pos) + " / " + formatTime(duration))
+        ) { Text(if (playing) "❚❚" else "▶", color = colors.textOnAccent) }
+        Text(formatTime(pos) + " / " + formatTime(duration), color = colors.textPrimary)
     }
 }
 
@@ -264,6 +267,7 @@ actual fun RelivedImageTile(ref: MediaStorageRef, mediaStore: MediaStore, modifi
 
 @Composable
 actual fun RelivedVideoTile(ref: MediaStorageRef, mediaStore: MediaStore, modifier: Modifier) {
+    val colors = ReliveTheme.colors
     val path = mediaStore.resolveAbsolutePath(ref)
     val key = ref.value
     val cached = AndroidVideoThumbnailCache.get(key)
@@ -294,9 +298,9 @@ actual fun RelivedVideoTile(ref: MediaStorageRef, mediaStore: MediaStore, modifi
             modifier = Modifier
                 .size(44.dp)
                 .clip(CircleShape)
-                .background(Color(0x99000000)),
+                .background(colors.surfaceFloating.copy(alpha = 0.9f)),
             contentAlignment = Alignment.Center,
-        ) { Text("▶", color = Color.White) }
+        ) { Text("▶", color = colors.textPrimary) }
     }
 }
 
@@ -307,6 +311,7 @@ actual fun RelivedTimelineInlineVideo(
     onOpenFullScreen: () -> Unit,
     modifier: Modifier,
 ) {
+    val colors = ReliveTheme.colors
     val path = mediaStore.resolveAbsolutePath(ref)
     val key = ref.value
     var player: MediaPlayer? by remember(path) { mutableStateOf(null) }
@@ -401,7 +406,7 @@ actual fun RelivedTimelineInlineVideo(
             modifier = Modifier
                 .size(56.dp)
                 .clip(CircleShape)
-                .background(Color(0x99000000))
+                .background(colors.surfaceFloating.copy(alpha = 0.9f))
                 .clickable {
                     haptics.perform(if (playing) ReliveHapticCue.ToggleOff else ReliveHapticCue.ToggleOn)
                     val existing = player
@@ -430,12 +435,13 @@ actual fun RelivedTimelineInlineVideo(
                     contentDescription = if (playing) "Pause video" else "Play video"
                 },
             contentAlignment = Alignment.Center,
-        ) { Text(if (playing) "❚❚" else "▶", color = Color.White) }
+        ) { Text(if (playing) "❚❚" else "▶", color = colors.textPrimary) }
     }
 }
 
 @Composable
 actual fun RelivedAudioTile(ref: MediaStorageRef, mediaStore: MediaStore, modifier: Modifier) {
+    val colors = ReliveTheme.colors
     val path = mediaStore.resolveAbsolutePath(ref)
     val durationMs = rememberMediaDurationMs(ref, mediaStore) ?: 0L
     val envelope = rememberWaveformFor(ref, mediaStore, WaveformProcessor.bucketsFor(durationMs))
@@ -490,7 +496,7 @@ actual fun RelivedAudioTile(ref: MediaStorageRef, mediaStore: MediaStore, modifi
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(Color(0x33FFFFFF))
+                    .background(colors.surfaceFloating.copy(alpha = 0.9f))
                     .clickable {
                         if (holder.togglePlay(path)) {
                             val nowPlaying = holder.isPlaying()
@@ -504,8 +510,8 @@ actual fun RelivedAudioTile(ref: MediaStorageRef, mediaStore: MediaStore, modifi
                     }
                     .semantics { contentDescription = if (playing) "Pause audio" else "Play audio" },
                 contentAlignment = Alignment.Center,
-            ) { Text(if (playing) "❚❚" else "▶", color = Color.White) }
-            Text(label, color = Color(0xFFEFECE5))
+            ) { Text(if (playing) "❚❚" else "▶", color = colors.textPrimary) }
+            Text(label, color = colors.textPrimary)
         }
     }
 }

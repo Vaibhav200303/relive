@@ -26,6 +26,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.background
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -212,7 +213,9 @@ fun App(
         val homeListState = rememberLazyListState()
         // Home keeps its own list state: it and the Timelines list are different surfaces with
         // different content, and sharing one scroll position let each destroy the other's.
-        val homeFeedListState = rememberLazyListState()
+        // Preserve Home while navigating inside this running app, but do not save its focused
+        // timeline position across a new app launch: every launch starts on the hero.
+        val homeFeedListState = remember { LazyListState() }
         // Survives Home being swapped out for Profile, a collection or another destination.
         val homeSurfaceState = rememberHomeSurfaceState()
         val incomingShareState by container.incomingShareGateway.state.collectAsState()
@@ -755,6 +758,7 @@ fun App(
                         idGenerator = container.idGenerator,
                         mediaStore = container.mediaStore,
                         mediaProcessor = container.mediaProcessor,
+                        mediaDownloadService = container.mediaDownloadService,
                         draftStore = composerDraftStore,
                         initialTimeline = active.scope,
                         seedCustomTimeline = active.seedTimeline,
@@ -900,6 +904,7 @@ fun App(
                         idGenerator = container.idGenerator,
                         mediaStore = container.mediaStore,
                         mediaProcessor = container.mediaProcessor,
+                        mediaDownloadService = container.mediaDownloadService,
                         listState = homeFeedListState,
                         surfaceState = homeSurfaceState,
                         draftStore = composerDraftStore,
@@ -976,6 +981,7 @@ fun App(
                                     idGenerator = container.idGenerator,
                                     mediaStore = container.mediaStore,
                                     mediaProcessor = container.mediaProcessor,
+                                    mediaDownloadService = container.mediaDownloadService,
                                     draftStore = composerDraftStore,
                                     initialTimeline = CurrentTimeline.Favorites,
                                     mode = TimelineMode.ReadOnlySystemCollection(title = "Favourites"),
@@ -996,6 +1002,7 @@ fun App(
                                     idGenerator = container.idGenerator,
                                     mediaStore = container.mediaStore,
                                     mediaProcessor = container.mediaProcessor,
+                                    mediaDownloadService = container.mediaDownloadService,
                                     draftStore = composerDraftStore,
                                     initialTimeline = CurrentTimeline.OnThisDay(onThisDay.date),
                                     mode = TimelineMode.ReadOnlySystemCollection(title = "On This Day"),
@@ -1016,9 +1023,10 @@ fun App(
                                     idGenerator = container.idGenerator,
                                     mediaStore = container.mediaStore,
                                     mediaProcessor = container.mediaProcessor,
+                                    mediaDownloadService = container.mediaDownloadService,
                                     draftStore = composerDraftStore,
                                     initialTimeline = CurrentTimeline.AllPhotos,
-                                    mode = TimelineMode.ReadOnlySystemCollection(title = "All Photos"),
+                                    mode = TimelineMode.ReadOnlySystemCollection(title = "Media"),
                                     collectionCover = allPhotos.cover,
                                     onBackToTimelineHome = { rediscoverDestination = RediscoverDestination.Root },
                                     behaviorPreferences = behaviorState.preferences,
@@ -1035,6 +1043,7 @@ fun App(
                                     idGenerator = container.idGenerator,
                                     mediaStore = container.mediaStore,
                                     mediaProcessor = container.mediaProcessor,
+                                    mediaDownloadService = container.mediaDownloadService,
                                     draftStore = composerDraftStore,
                                     initialTimeline = CurrentTimeline.FromYourPast(fromYourPast.query),
                                     mode = TimelineMode.ReadOnlySystemCollection(title = "From Your Past"),

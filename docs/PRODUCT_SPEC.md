@@ -121,8 +121,8 @@ Membership rules:
 
 Rediscover is a horizontally scrollable **collection row inside the Home surface**, rendered under the `Relive your memories` heading and above the `All moments` heading. It is not a root, a destination, a screen, a chronological timeline, or a recommendation feed.
 
-- The row holds four collection cards, in this fixed order: **Favourites**, **On This Day**, **From Your Past**, **All Photos**. It has no app bar, no editable All timeline card, and no vertically stacked editorial sections of its own; the app bar and the floating toolbars belong to the Home surface (§2).
-- **All Photos** is a bounded, read-only system collection of Moments that have at least one image or video attachment, read through the same bounded projection pattern as Favourites and From Your Past. It introduces no new table, no membership, and no duplicate persistence. It is **never** an entry point into the editable All moments feed, which is always present on Home beneath the `All moments` heading. Like every Rediscover card, its cover selects one image from its bounded preview projection for each epoch-hour bucket, remains stable within that hour, and advances at the boundary; when no image is available it uses the generated accent-derived fallback. Videos, audio, and text-only Moments are not eligible cover photos. Users cannot choose an All Photos cover.
+- The row holds four collection cards, in this fixed order: **Favourites**, **On This Day**, **From Your Past**, **Media**. It has no app bar, no editable All timeline card, and no vertically stacked editorial sections of its own; the app bar and the floating toolbars belong to the Home surface (§2).
+- **Media** is a bounded, read-only system collection derived from Moments that have media attachments. Its destination retains the card's sliding cover, but the sheet presents every image, video, and audio attachment in the same adaptive grid used by the multi-media gallery — never Moment cards, timeline rails, writing, tags, or metadata. Tapping a tile opens the existing full-screen viewer at that item and horizontal paging continues across the flattened collection. The collection introduces no new table, membership, or duplicate persistence and is **never** an entry point into the editable All moments feed. Its visual cover selection remains unchanged; users cannot choose a Media cover.
 - **Favourites** is derived reactively from each Moment's persisted favorite state. It is not a custom timeline, membership, or duplicate persistence record.
 - Tapping the Favourites card opens the complete read-only Favourites timeline; the card is its single entry point. Individual favorited-Moment cards live inside that collection, not on Home, and positioning at an individual Moment applies only inside it. Every compact card there shares one fixed visual-region height: image/video cards use their first ordered visual attachment as the lead visual and quietly show an additional-attachment count; text-only and audio-only cards use the theme-aware deterministic generated cover with no fake media, icon, or illustration. This compact-card exception does not change normal Timeline presentation. With zero favorites, the collection shows `No favorite moments yet.` and `Moments you favorite will appear here.`
 - The Favourites detail is strictly read-only: it has Back and a centered Favourites title, but no composer, creation, edit, forget, membership, or favorite-mutation controls. Media viewing and playback remain available.
@@ -339,12 +339,14 @@ Timeline collage → Moment media gallery → tap item → Full-screen viewer
 - Mixed image/video/audio.
 - `+N` from timeline opens the gallery (not the viewer directly).
 - Back returns to timeline with scroll position preserved.
+- Long-press enters contextual multi-selection. Selected tiles show check marks; Cancel, Select all, and Download act on that selection and report the result with a snackbar.
 
 **Full-screen viewer:**
 - Dark/black surface.
 - Image, video, and audio supported.
 - Opens at exact selected index.
 - Mixed-media horizontal navigation allowed in viewer.
+- A Download action copies the current image or video to the device media library without changing Relive's archived original.
 
 **Image viewer:**
 - Image initially fitted to available viewport, preserving aspect ratio and orientation.

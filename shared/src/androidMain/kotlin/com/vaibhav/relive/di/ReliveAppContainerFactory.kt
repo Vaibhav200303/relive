@@ -20,6 +20,7 @@ import com.vaibhav.relive.domain.backup.GoogleDriveAccountManager
 import com.vaibhav.relive.domain.backup.BackupCoordinator
 import com.vaibhav.relive.platform.media.AndroidMediaProcessor
 import com.vaibhav.relive.platform.media.AndroidMediaStore
+import com.vaibhav.relive.platform.media.AndroidMediaDownloadService
 import com.vaibhav.relive.platform.media.installAndroidMediaContext
 import com.vaibhav.relive.platform.system.installAndroidAppSettingsContext
 import com.vaibhav.relive.platform.system.installAndroidProfilePlatformContext
@@ -83,6 +84,7 @@ fun createDefaultReliveAppContainer(
         idGenerator = idGenerator,
         mediaStore = mediaStore,
         mediaProcessor = mediaProcessor,
+        mediaDownloadService = AndroidMediaDownloadService(app, mediaStore),
         exportService = AndroidReliveExportService(app, mediaStore),
         exportCompletionNotifier = AndroidExportCompletionNotifier(app),
         portableArchiveRequestBus = portableArchiveRequestBus ?: PortableArchiveRequestBus(),

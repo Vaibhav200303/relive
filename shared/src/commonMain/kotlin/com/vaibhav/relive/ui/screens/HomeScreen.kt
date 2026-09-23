@@ -52,6 +52,7 @@ import androidx.compose.material3.carousel.CarouselDefaults
 import androidx.compose.material3.carousel.CarouselState
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -90,6 +91,7 @@ import com.vaibhav.relive.domain.repository.RediscoverRepository
 import com.vaibhav.relive.domain.repository.TimelineRepository
 import com.vaibhav.relive.domain.time.Clock
 import com.vaibhav.relive.platform.media.MediaProcessor
+import com.vaibhav.relive.platform.media.MediaDownloadService
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.platform.share.IncomingSharePayload
 import com.vaibhav.relive.presentation.composer.TimelineComposerDraftStore
@@ -221,6 +223,7 @@ fun HomeScreen(
     idGenerator: IdGenerator,
     mediaStore: MediaStore,
     mediaProcessor: MediaProcessor,
+    mediaDownloadService: MediaDownloadService,
     listState: LazyListState,
     /** Hoisted with [listState]: together they are what Home is restored from. */
     surfaceState: HomeSurfaceState = rememberHomeSurfaceState(),
@@ -300,13 +303,23 @@ fun HomeScreen(
     // Put the surface back before anything starts recording a new position, so the clamped-to-top
     // frames of a rebuild are never mistaken for somewhere the person actually scrolled to.
     var isRestored by remember { mutableStateOf(false) }
-    LaunchedEffect(listState, surfaceState) {
+    LaunchedEffect(listState, surfaceState, headerHeightPx) {
+        // Before the backdrop has a measured height its window is zero-height, so LazyColumn can
+        // temporarily promote `All moments` to index zero. Do not restore or record that layout
+        // artifact as a deliberate focused position.
+        if (headerHeightPx <= 0) return@LaunchedEffect
+        // Let the LazyColumn apply the newly non-zero window measurement before seating it. A
+        // scroll issued in the same frame can be overwritten by that pending remeasure.
+        withFrameNanos { }
+        withFrameNanos { }
         val index = surfaceState.anchorIndex
         val offset = surfaceState.anchorScrollOffset
         // A pending `+ New` means the surface's next act is to travel to the feed head anyway.
         // Skipping the deep-anchor restore then isn't just economy: its scrollToItem snaps would
         // steal the scroll mutex from the composer's paced travel mid-flight.
-        if (expandComposerRequest == 0 && (index > 0 || offset > 0)) {
+        if (index == 0 && offset == 0) {
+            listState.scrollToItem(0)
+        } else if (expandComposerRequest == 0) {
             // The archive window reloads at its first page, so a deep anchor needs paging to catch
             // up before the feed can hold it. Parking at the end of what is loaded is what asks for
             // the next page; repeat until the anchor is reachable or the feed stops growing, then
@@ -491,7 +504,7 @@ fun HomeScreen(
         add(
             RediscoverCollectionCardModel(
                 key = REDISCOVER_CARD_ALL_PHOTOS,
-                title = "All Photos",
+                title = "Media",
                 cover = allPhotosCover,
                 onOpen = { onOpenAllPhotos(allPhotosCover) },
             ),
@@ -564,6 +577,7 @@ fun HomeScreen(
         idGenerator = idGenerator,
         mediaStore = mediaStore,
         mediaProcessor = mediaProcessor,
+        mediaDownloadService = mediaDownloadService,
         draftStore = draftStore,
         initialTimeline = CurrentTimeline.All,
         openComposerOnEnter = openComposerOnEnter,
@@ -658,10 +672,18 @@ fun HomeScreen(
             // them; vertical drags pass to the list around it as always.
             item(key = "home-backdrop-window", contentType = "home-backdrop-window") {
                 var windowCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
+                // A non-zero placeholder keeps LazyColumn anchored to this first item while the
+                // backdrop performs its first measurement. With a zero-height item Compose can
+                // promote `All moments` to the first visible item before restoration can run.
+                val backdropWindowHeight = if (headerHeightPx > 0) {
+                    with(density) { headerHeightPx.toDp() }
+                } else {
+                    1.dp
+                }
                 Spacer(
                     Modifier
                         .fillMaxWidth()
-                        .height(with(density) { headerHeightPx.toDp() })
+                        .height(backdropWindowHeight)
                         .onGloballyPositioned { windowCoordinates = it }
                         .pointerInput(rediscoverRowHitTester) {
                             detectTapGestures { offset ->
@@ -908,7 +930,13 @@ private fun HomeBackdrop(
                     // the disclosed content from feeding back into `maxExpansionPx` and pulling
                     // the sheet (and therefore its own disclosure) back.
                     .onGloballyPositioned {
-                        if (expansionState.progress == 0f) onHeaderMeasured(it.size.height)
+                        val measuredHeight = it.size.height
+                        if (
+                            measuredHeight > 0 &&
+                            (headerHeightPx == 0 || expansionState.progress == 0f)
+                        ) {
+                            onHeaderMeasured(measuredHeight)
+                        }
                     }
                     .graphicsLayer {
                         val scrolled = scrolledIntoHeader.value

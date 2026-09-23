@@ -11,6 +11,22 @@ Format for each entry:
 
 ---
 
+## ADR-0100 — Media replaces All Photos and includes every attachment type
+
+- **Date:** 2026-09-24 · **Status:** Accepted · supersedes ADR-0098 and ADR-0099 where they limit the collection or save action to visual media
+- **Context:** The visual-only All Photos destination omitted voice recordings and its inline selection row did not match Relive's pinned contextual-action language. Saving also lacked visible cancellable progress.
+- **Decision:** The user-facing collection is named `Media` and flattens image, video, and audio attachments in stable Moment/attachment order. Long-press replaces the pinned Back control with Close, a centered selected count, and Download. Saving presents a modal Material 3 determinate loader over blurred content with Cancel; completion, partial failure, cancellation, or failure is reported by the bottom snackbar. Android saves images, videos, and audio through MediaStore into type-appropriate Relive folders. Playback controls use semantic theme colors, including composer drafts before Keep Moment.
+- **Consequences:** The existing cover and curved sheet partition remain unchanged. The collection stays derived and read-only with no new persistence. iOS Photos can save images and videos; unsupported audio is reported as a partial failure.
+
+## ADR-0098 — All Photos opens as a visual-media gallery
+
+- **Date:** 2026-09-24 · **Status:** Accepted · supersedes ADR-0061/ADR-0065 only for the All Photos sheet contents
+- **Context:** Reusing the generic read-only collection timeline made All Photos feel like another Moment feed, even though its purpose is direct visual browsing. The existing per-Moment multi-media gallery already establishes the approved tile and viewer behavior.
+- **Decision:** The All Photos Home card and sliding-cover transition remain unchanged. Beneath that cover, the destination flattens eligible image and video attachments from its derived collection in stable Moment/attachment order and renders them with the multi-media gallery tile presentation. It renders no Moment cards or timeline rail. Tapping a tile opens the existing full-screen viewer at that exact index, with horizontal paging across the flattened visual collection. Audio is excluded because All Photos is a visual collection.
+- **Consequences:** The destination remains read-only and adds no persistence or dependency. The shared gallery tile stays the single visual implementation for per-Moment and All Photos grids, while the full-screen viewer retains playback, zoom, and Back behavior. Other Rediscover collections keep their Moment-based presentations.
+
+---
+
 ## ADR-0060 — Rediscover collection navigation uses fade-through, not a container transform · reaffirmed by ADR-0063
 
 - **Date:** 2026-08-31 · **Status:** Accepted · scope narrowed by ADR-0061 · superseded for card-opened collection routes by ADR-0065, whose cover retention satisfies this ADR's own condition
@@ -910,6 +926,12 @@ Format for each entry:
 - **Context:** Rediscover cards were re-dealt only once per app launch and could remain generated gradients even when their bounded collection projections contained photos. The product owner requested random photos that change hourly.
 - **Decision:** Every Home Rediscover card selects exactly one image from its existing bounded preview projection. A stable collection-specific starting offset plus the current epoch-hour bucket makes the choice stable through recomposition, scrolling, navigation, and configuration changes within an hour and advances it at each hour boundary when at least two distinct candidates exist. Images alone are eligible; video and audio are excluded. A collection with no eligible image uses the accent-derived generated fallback. Home refreshes the bucket at the boundary and on resume. The resolved cover is still carried into the opened collection surface.
 - **Consequences:** ADR-0064's per-launch shuffle is superseded by hourly photo rotation for the Home Rediscover row. No archive-wide read, persistence, schema, repository API, dependency, or user-selectable cover is introduced; the candidates remain bounded by the existing Rediscover projections. A zero- or one-photo collection cannot visibly rotate until another eligible preview enters its bounded projection.
+
+## ADR-0099 — Media can be saved back to the platform library
+
+- **Date:** 2026-09-24 · **Status:** Accepted
+- **Decision:** Images and videos may be copied from Relive's app-owned archive into the user's platform media library. The full-screen viewer exposes a one-tap action for its current item. All Photos and the per-Moment media gallery use Material 3 contextual selection: long-press enters selection, subsequent taps toggle items, and contextual actions provide Select all, Cancel, and Download. Completion is reported with a snackbar. Android writes through MediaStore; iOS writes through Photos with add-only usage disclosure.
+- **Consequences:** Downloading never moves, deletes, or changes Relive's original file or Moment data. A batch can report partial failure. Audio remains outside this visual-media download action. No schema, backend, sync, sharing flow, or new runtime dependency is introduced.
 
 ## Template for new decisions
 

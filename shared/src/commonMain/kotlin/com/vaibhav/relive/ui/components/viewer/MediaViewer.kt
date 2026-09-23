@@ -73,6 +73,7 @@ fun MediaViewer(
     onClose: () -> Unit,
     wallpaper: TimelineWallpaper = TimelineWallpaper.WarmCream,
     sharedTransition: TimelineMediaSharedTransition? = null,
+    onDownloadCurrent: (MomentAttachmentPresentation) -> Unit = {},
 ) {
     val pagerState = rememberPagerState(
         initialPage = state.initialIndex,
@@ -138,6 +139,7 @@ fun MediaViewer(
                 index = pagerState.currentPage,
                 total = state.attachments.size,
                 onClose = onClose,
+                onDownload = { onDownloadCurrent(state.attachments[pagerState.currentPage]) },
             )
         }
     }
@@ -296,7 +298,7 @@ private fun ZoomableImage(
 }
 
 @Composable
-private fun TopBar(index: Int, total: Int, onClose: () -> Unit) {
+private fun TopBar(index: Int, total: Int, onClose: () -> Unit, onDownload: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -329,7 +331,11 @@ private fun TopBar(index: Int, total: Int, onClose: () -> Unit) {
                     .padding(horizontal = 14.dp, vertical = 8.dp),
             )
         }
-        Box(modifier = Modifier.size(44.dp))
+        Box(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(ViewerChromeRadius)).background(ViewerChromeScrim), contentAlignment = Alignment.Center) {
+            IconButton(onClick = onDownload, modifier = Modifier.size(44.dp).semantics { contentDescription = "Download media" }) {
+                DownloadGlyph(Modifier.size(24.dp), ViewerChromeInk)
+            }
+        }
     }
 }
 

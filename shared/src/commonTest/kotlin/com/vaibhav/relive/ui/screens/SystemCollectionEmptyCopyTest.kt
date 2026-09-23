@@ -19,8 +19,8 @@ class SystemCollectionEmptyCopyTest {
         )
         assertEquals(
             SystemCollectionEmptyCopy(
-                title = "No photos or videos yet.",
-                message = "Moments with photos or videos will appear here.",
+                title = "No media yet.",
+                message = "Photos, videos, and audio from your moments will appear here.",
             ),
             systemCollectionEmptyCopy(CurrentTimeline.AllPhotos),
         )

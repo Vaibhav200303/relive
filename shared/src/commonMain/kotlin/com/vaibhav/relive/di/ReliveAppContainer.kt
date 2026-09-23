@@ -14,6 +14,8 @@ import com.vaibhav.relive.domain.repository.RediscoverRepository
 import com.vaibhav.relive.domain.time.Clock
 import com.vaibhav.relive.platform.media.MediaProcessor
 import com.vaibhav.relive.platform.media.MediaStore
+import com.vaibhav.relive.platform.media.MediaDownloadService
+import com.vaibhav.relive.platform.media.UnavailableMediaDownloadService
 import com.vaibhav.relive.domain.backup.BackupPreferencesRepository
 import com.vaibhav.relive.domain.backup.GoogleDriveAccountManager
 import com.vaibhav.relive.domain.backup.GoogleDriveAuthorizationUnavailableException
@@ -63,6 +65,7 @@ class ReliveAppContainer(
     val idGenerator: IdGenerator,
     val mediaStore: MediaStore,
     val mediaProcessor: MediaProcessor,
+    val mediaDownloadService: MediaDownloadService = UnavailableMediaDownloadService,
     val exportService: ReliveExportService = UnavailableReliveExportService,
     val exportCompletionNotifier: ExportCompletionNotifier = UnavailableExportCompletionNotifier,
     val portableArchiveRequestBus: PortableArchiveRequestBus = PortableArchiveRequestBus(),

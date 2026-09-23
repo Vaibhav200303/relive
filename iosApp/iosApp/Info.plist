@@ -18,6 +18,8 @@
 	<string>Relive uses the camera only when you capture a photo or video for a moment.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Relive imports selected photos and videos from your library into your local memory archive.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Relive saves the photos and videos you choose back to your media library.</string>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>

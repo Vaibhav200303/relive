@@ -23,20 +23,20 @@ WHERE m.is_favorite = 1
 ORDER BY m.created_at DESC, m.id DESC, a.sort_index ASC
 LIMIT :limit;
 
--- All Photos: the bounded read-only collection of Moments carrying at least one image or video
--- attachment (ADR-0061). Audio-only and text-only Moments are excluded.
+-- Media: the bounded read-only collection of Moments carrying at least one attachment
+-- (ADR-0100). Text-only Moments are excluded; the cover projection below stays visual.
 allPhotosMomentCount:
 SELECT COUNT(*) FROM moments m
 WHERE EXISTS (
     SELECT 1 FROM media_attachments a
-    WHERE a.moment_id = m.id AND a.media_type IN ('Image', 'Video')
+    WHERE a.moment_id = m.id
 );
 
 selectAllPhotosMoments:
 SELECT m.* FROM moments m
 WHERE EXISTS (
     SELECT 1 FROM media_attachments a
-    WHERE a.moment_id = m.id AND a.media_type IN ('Image', 'Video')
+    WHERE a.moment_id = m.id
 )
 ORDER BY m.created_at DESC, m.id DESC;
 

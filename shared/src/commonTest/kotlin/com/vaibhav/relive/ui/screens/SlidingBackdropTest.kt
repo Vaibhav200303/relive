@@ -15,6 +15,13 @@ class SlidingBackdropTest {
     private val max = 800f
 
     @Test
+    fun initialIdleLayoutDoesNotFocusTheHomeSheet() {
+        assertTrue(!shouldSettleBackdropAfterScroll(wasScrolling = false, isScrolling = false))
+        assertTrue(!shouldSettleBackdropAfterScroll(wasScrolling = false, isScrolling = true))
+        assertTrue(shouldSettleBackdropAfterScroll(wasScrolling = true, isScrolling = false))
+    }
+
+    @Test
     fun aDecisiveDownwardFlingExpandsTheBackdropWhereverItStarted() {
         assertEquals(
             max,

@@ -219,6 +219,8 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 - [ ] `+N` tile opens gallery (not viewer at index 3).
 - [ ] Viewer Back returns to gallery; gallery Back returns to timeline.
 - [ ] Timeline scroll position preserved after returning from gallery/viewer.
+- [ ] Long-pressing a gallery or All Photos tile enters selection; taps toggle items, Back/Cancel clears selection first, and Select all selects every visible collection item.
+- [ ] Downloading one viewer item or a multi-selection copies image/video files to the platform media library, preserves Relive's originals, and reports success or failure with a snackbar.
 
 ### Audio waveform
 - [ ] Timeline audio tile shows real waveform capsule segments on black canvas.
@@ -269,7 +271,9 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 ### Home — Rediscover row
 - [ ] The Rediscover row is horizontally scrollable, sits between the `Relive your memories` and `All moments` headings on the same vertically scrolling surface, and its horizontal position is independent of Home's vertical offset.
 - [ ] The Rediscover row order is Favourites, On This Day, From Your Past, All Photos. Cards open their read-only collections; no card opens the editable All moments feed, which is reached only by scrolling Home down into focused All moments or via `+ New`.
-- [ ] `All Photos` is a bounded, read-only collection of Moments with at least one image or video attachment, read through the same bounded projection as Favourites and From Your Past, and introduces no new table, membership, or duplicate persistence.
+- [ ] `Media` keeps the selected card cover, then renders a read-only adaptive grid of every image, video, and audio attachment rather than Moment cards; attachment order is stable, and tapping a tile opens the full-screen viewer at that item with the remaining collection swipe-reachable. It introduces no new table, membership, or duplicate persistence.
+- [ ] Long-pressing Media pins Close / selected count / Download at the top and hides Back. Download shows determinate progress over blurred content, Cancel stops remaining copies, and a bottom snackbar reports completion, cancellation, partial failure, or failure.
+- [ ] Audio and video play/pause controls, including a recorded composer attachment before Keep Moment, use semantic colors in both light and dark themes.
 - [ ] Favourites reflects persisted favorite state in the same chronological ordering as the full Favourites collection; its bounded preview batch-loads attachments and does not hydrate the complete collection. The All moments feed on the same surface is likewise bounded, windowed, and paged, and the root never hydrates the complete archive on launch.
 - [ ] Media, text-only, and audio cards use their appropriate compact presentation; media uses the first ordered attachment with a quiet additional-count indicator and audio never autoplays.
 - [ ] Every Home Rediscover card chooses one image from its bounded preview, holds that cover stable within an epoch hour, changes to the next eligible image at the hour boundary when more than one exists, and uses the generated fallback when no image exists; videos and audio are never chosen as the hourly photo.
