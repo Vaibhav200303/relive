@@ -43,6 +43,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.platform.media.RelivedImageTile
@@ -71,10 +72,14 @@ fun TimelineCreationDialog(
     val creation = dims.timelineCreation
     val scrollState = rememberScrollState()
     val zoneShape = RoundedCornerShape(dims.radii.xl)
-    Dialog(onDismissRequest = { if (!state.isSaving) onDismiss() }) {
+    Dialog(
+        onDismissRequest = { if (!state.isSaving) onDismiss() },
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(horizontal = dims.spacing.md)
                 .widthIn(max = creation.maxWidth)
                 .heightIn(max = creation.maxHeight),
             shape = ReliveTheme.shapes.dialog,
@@ -103,9 +108,16 @@ fun TimelineCreationDialog(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .size(creation.headerCloseSize)
-                            .background(colors.tint, RoundedCornerShape(dims.radii.full)),
+                            .semantics { contentDescription = "Close new timeline dialog" },
                     ) {
-                        CloseGlyph(creation.headerCloseGlyphSize, colors.textPrimary, dims.stroke.icon)
+                        Box(
+                            modifier = Modifier
+                                .size(creation.headerCloseVisualSize)
+                                .background(colors.tint, RoundedCornerShape(dims.radii.full)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CloseGlyph(creation.headerCloseGlyphSize, colors.textPrimary, dims.stroke.icon)
+                        }
                     }
                 }
                 Spacer(Modifier.height(dims.spacing.md))

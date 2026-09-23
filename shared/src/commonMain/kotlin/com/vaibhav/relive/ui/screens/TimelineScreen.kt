@@ -1194,6 +1194,7 @@ private fun TimelineContent(
         TimelineMomentsState.Loading, TimelineMomentsState.Empty -> emptyList()
         is TimelineMomentsState.Loaded -> state.moments
     }
+    val isEmptyHomeSurface = isHomeSurface && timelineState.moments == TimelineMomentsState.Empty
     // Home's two states are a pure function of scroll offset: once the welcome block and the
     // Rediscover row have passed above the viewport, the timeline dominates (ADR-0061).
     if (isHomeSurface) {
@@ -1224,6 +1225,27 @@ private fun TimelineContent(
     // its head, so the chronological end is a short scroll from the top of the surface rather than
     // the far end of history, and the return control points up rather than down.
     val isNewestFirst = isHomeSurface || isSlidingCoverSurface
+    val emptyHomeScrollLimitConnection = remember(listState, isEmptyHomeSurface, homeHeaderCount) {
+        if (!isEmptyHomeSurface || homeHeaderCount <= 0) {
+            null
+        } else listState?.let { currentListState ->
+            object : NestedScrollConnection {
+                fun atFocusedSheetTop(): Boolean =
+                    currentListState.firstVisibleItemIndex >= homeHeaderCount - 1
+
+                override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                    if (source == NestedScrollSource.UserInput && available.y < 0f && atFocusedSheetTop()) {
+                        return Offset(0f, available.y)
+                    }
+                    return Offset.Zero
+                }
+
+                override suspend fun onPreFling(available: Velocity): Velocity {
+                    return if (available.y < 0f && atFocusedSheetTop()) available else Velocity.Zero
+                }
+            }
+        }
+    }
     // The elastic cover stretch and the sliding backdrop both want the overscroll at the top of the
     // feed, so a surface has one or the other. Home renders no cover at all (ADR-0061); a custom
     // timeline now grows its cover to fill the viewport instead of stretching it (ADR-0062). That
@@ -1378,6 +1400,16 @@ private fun TimelineContent(
 
             key(timelineState.currentTimeline) {
                 val listState = listState ?: rememberLazyListState()
+                LaunchedEffect(listState, isEmptyHomeSurface, homeHeaderCount) {
+                    if (!isEmptyHomeSurface || homeHeaderCount <= 0) return@LaunchedEffect
+                    val focusedIndex = homeHeaderCount - 1
+                    snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+                        .collect { (index, offset) ->
+                            if (index > focusedIndex || (index == focusedIndex && offset > 0)) {
+                                listState.scrollToItem(focusedIndex)
+                            }
+                        }
+                }
 
                 // The sliding cover's own geometry. Unlike Home, whose welcome block has to be
                 // measured, the cover rests at a fixed height, so the backdrop needs no
@@ -1694,6 +1726,9 @@ private fun TimelineContent(
                     // leaves the cover free to bleed to the screen edges.
                     .clipToBounds()
                     .nestedScroll(expansionConnection)
+                    .then(
+                        emptyHomeScrollLimitConnection?.let { Modifier.nestedScroll(it) } ?: Modifier,
+                    )
                     // The feed rides with the sheet it sits on, so the timeline leaves and re-enters
                     // by the bottom edge as one surface rather than standing still while its ground
                     // moves underneath it.
@@ -1859,7 +1894,14 @@ private fun TimelineContent(
                         }
                     } else if (isHomeSurface && timelineState.moments == TimelineMomentsState.Empty) {
                         item(key = "all-moments-empty", contentType = "all-moments-empty") {
-                            EmptyTimelinePlaceholder()
+                            // The sheet must still have a viewport's worth of content when the
+                            // archive is empty, otherwise the list cannot scroll far enough to
+                            // carry All moments fully over Home's backdrop.
+                            EmptyTimelinePlaceholder(
+                                modifier = Modifier
+                                    .fillParentMaxHeight()
+                                    .offset(y = -dims.spacing.xxl),
+                            )
                         }
                     }
                     if (!isNewestFirst) composerItem()

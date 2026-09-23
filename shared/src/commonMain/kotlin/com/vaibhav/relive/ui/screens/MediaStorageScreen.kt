@@ -399,7 +399,7 @@ private fun ArchiveSectionCard(title: String, subtitle: String, content: @Compos
 @Composable
 private fun CategoryBadge(category: ArchiveMediaCategory, size: Dp) {
     val d = ReliveTheme.dimensions
-    val color = category.color()
+    val color = category.badgeColor()
     Surface(
         modifier = Modifier.size(size),
         shape = RoundedCornerShape(d.radii.medium),
@@ -516,6 +516,12 @@ private fun ArchiveMediaCategory.color(): Color = when (this) {
     ArchiveMediaCategory.Video -> ReliveTheme.colors.accent
     ArchiveMediaCategory.Audio -> ReliveTheme.colors.surfaceAudio
     ArchiveMediaCategory.Other -> ReliveTheme.colors.border
+}
+
+@Composable
+private fun ArchiveMediaCategory.badgeColor(): Color = when (this) {
+    ArchiveMediaCategory.Audio -> ReliveTheme.colors.accentMuted
+    else -> color()
 }
 
 private data class CategoryItem(

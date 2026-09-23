@@ -659,6 +659,7 @@ fun HomeScreen(
                         colors = ReliveTheme.colors,
                         wallpaper = LocalTimelineWallpaperPalette.current,
                     ).textPrimary,
+                    topPadding = ReliveTheme.dimensions.spacing.lg,
                 )
             }
         },
@@ -1270,7 +1271,11 @@ private const val MOOD_BAR_REVEAL_END = 0.8f
 private const val MOOD_BAR_INTERACTION_ALPHA = 0.5f
 
 @Composable
-private fun SectionHeading(text: String, color: Color = ReliveTheme.colors.textPrimary) {
+private fun SectionHeading(
+    text: String,
+    color: Color = ReliveTheme.colors.textPrimary,
+    topPadding: Dp = ReliveTheme.dimensions.spacing.none,
+) {
     val dims = ReliveTheme.dimensions
     Text(
         text = text,
@@ -1278,6 +1283,11 @@ private fun SectionHeading(text: String, color: Color = ReliveTheme.colors.textP
         color = color,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = dims.spacing.xl, vertical = dims.spacing.md),
+            .padding(
+                start = dims.spacing.xl,
+                end = dims.spacing.xl,
+                top = dims.spacing.md + topPadding,
+                bottom = dims.spacing.md,
+            ),
     )
 }

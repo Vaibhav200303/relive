@@ -55,6 +55,8 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.vaibhav.relive.platform.system.ReliveBackHandler
 import com.vaibhav.relive.domain.model.AppearanceMode
 import com.vaibhav.relive.domain.model.ThemeReference
@@ -240,7 +242,6 @@ fun ProfileScreen(
                             }
                         }
                     }
-                    ProfileKeepsakeNote()
                 }
             }
             item(key = "profile-statistics") {
@@ -414,17 +415,6 @@ private fun ProfileHeader(onBack: () -> Unit, onEdit: () -> Unit) {
             Text("Edit", style = ReliveTheme.typography.action, color = colors.accentMuted)
         }
     }
-}
-
-@Composable
-private fun ProfileKeepsakeNote() {
-    Text(
-        text = "Collect\na kinder\ntomorrow ♡",
-        modifier = Modifier.width(ReliveTheme.dimensions.profile.appearanceItemWidth),
-        style = ReliveTheme.typography.subtitle,
-        color = ReliveTheme.colors.accentMuted,
-        textAlign = TextAlign.Center,
-    )
 }
 
 @Composable
@@ -725,7 +715,7 @@ private fun ProfileSettingRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = dims.minTouchTarget)
+            .heightIn(min = 80.dp)
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
             .padding(horizontal = dims.spacing.md, vertical = dims.spacing.sm)
             .semantics { contentDescription = listOfNotNull(label, supporting).joinToString(", ") },
@@ -741,8 +731,18 @@ private fun ProfileSettingRow(
             Icon(icon, contentDescription = null, modifier = Modifier.size(dims.icon.md), tint = ReliveTheme.colors.accentMuted)
         }
         Column(Modifier.weight(1f).padding(start = dims.spacing.md), verticalArrangement = Arrangement.spacedBy(dims.spacing.xs)) {
-            Text(label, style = ReliveTheme.typography.action, color = ReliveTheme.colors.textPrimary)
-            supporting?.let { Text(it, style = ReliveTheme.typography.tag, color = ReliveTheme.colors.textMuted) }
+            Text(
+                label,
+                style = ReliveTheme.typography.action.copy(fontSize = 16.sp, lineHeight = 22.sp),
+                color = ReliveTheme.colors.textPrimary,
+            )
+            supporting?.let {
+                Text(
+                    it,
+                    style = ReliveTheme.typography.tag.copy(fontSize = 14.sp, lineHeight = 20.sp),
+                    color = ReliveTheme.colors.textMuted,
+                )
+            }
         }
         ProfileChevronGlyph()
     }
