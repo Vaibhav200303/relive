@@ -39,6 +39,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.vaibhav.relive.domain.model.MediaAttachment
 import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.platform.media.RelivedImageTile
@@ -47,32 +48,32 @@ import com.vaibhav.relive.presentation.timeline.SystemCollectionCover
 import com.vaibhav.relive.ui.theme.ReliveCoverLabelScrim
 import com.vaibhav.relive.ui.theme.ReliveGeneratedCover
 import com.vaibhav.relive.ui.theme.ReliveTheme
-import kotlin.random.Random
+import com.vaibhav.relive.ui.theme.stableCoverIndex
 
 /** Stable card keys, shared with the navigation host that keys the container transform on them. */
 const val REDISCOVER_CARD_FAVOURITES = "favourites"
 const val REDISCOVER_CARD_ON_THIS_DAY = "on-this-day"
 const val REDISCOVER_CARD_FROM_YOUR_PAST = "from-your-past"
 const val REDISCOVER_CARD_ALL_PHOTOS = "all-photos"
+const val REDISCOVER_COVER_HOUR_MILLIS: Long = 60L * 60L * 1_000L
 
 /**
- * One shuffle per app launch, mixed into every cover key (ADR-0064). Which accent-derived
- * gradient a collection card wears is redrawn each session, but holds still within one so covers
- * don't churn as cards scroll in and out of composition.
+ * Resolves one image from a collection's bounded preview for the current hour. The stable hash
+ * makes the result deterministic within an hour while dealing a fresh candidate at the boundary.
+ * Collections without a photo retain the generated-cover fallback (ADR-0097).
  */
-private val sessionCoverShuffle: String = Random.nextInt().toString()
-
-private fun sessionCoverKey(coverSeed: String): String = "$coverSeed-$sessionCoverShuffle"
-
-/**
- * The cover a collection wears this session: always the generated accent-derived gradient chosen
- * by the session-shuffled seed — never a member's own media, so collection cards read as a
- * considered set rather than a lottery of whatever was saved last. One function serves the Home
- * card and the collection screen the card opens, so the two surfaces carry the same gradient and
- * the container transform between them is continuous (ADR-0065).
- */
-fun resolvedRediscoverCollectionCover(coverSeed: String): SystemCollectionCover =
-    SystemCollectionCover.Generated(sessionCoverKey(coverSeed))
+fun resolvedRediscoverCollectionCover(
+    coverSeed: String,
+    previewAttachments: List<MediaAttachment>,
+    hourBucket: Long,
+): SystemCollectionCover {
+    val photos = previewAttachments.filter { it.type == MediaType.Image }.distinctBy { it.id }
+    if (photos.isEmpty()) return SystemCollectionCover.Generated("$coverSeed-$hourBucket")
+    val startingIndex = stableCoverIndex(coverSeed, photos.size)
+    val hourlyOffset = ((hourBucket % photos.size) + photos.size) % photos.size
+    val photo = photos[(startingIndex + hourlyOffset.toInt()) % photos.size]
+    return SystemCollectionCover.Media(photo.storageRef, photo.type)
+}
 
 /** Renders a resolved collection cover; the fallback for every surface that shows one. */
 @Composable
@@ -120,13 +121,13 @@ class RediscoverRowHitTester {
 /**
  * One card in the Home surface's Rediscover row.
  *
- * [coverSeed] seeds the card's generated-gradient pick. The seed is mixed with the per-launch
- * shuffle above, so every collection reads as a considered card, freshly dealt each session.
+ * [cover] is resolved by Home from the collection's bounded media projection and the current
+ * hourly bucket, then carried unchanged into the opened collection.
  */
 data class RediscoverCollectionCardModel(
     val key: String,
     val title: String,
-    val coverSeed: String,
+    val cover: SystemCollectionCover,
     val onOpen: () -> Unit,
 )
 
@@ -231,7 +232,7 @@ private fun CarouselItemScope.RediscoverCollectionCard(
                 .border(1.dp, Color.White.copy(alpha = 0.16f), shape),
         ) {
             SystemCollectionCoverImage(
-                cover = resolvedRediscoverCollectionCover(card.coverSeed),
+                cover = card.cover,
                 mediaStore = mediaStore,
                 modifier = Modifier
                     .matchParentSize()

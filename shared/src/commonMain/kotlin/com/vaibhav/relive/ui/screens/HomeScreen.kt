@@ -109,6 +109,7 @@ import com.vaibhav.relive.ui.components.rediscover.REDISCOVER_CARD_ALL_PHOTOS
 import com.vaibhav.relive.ui.components.rediscover.REDISCOVER_CARD_FAVOURITES
 import com.vaibhav.relive.ui.components.rediscover.REDISCOVER_CARD_FROM_YOUR_PAST
 import com.vaibhav.relive.ui.components.rediscover.REDISCOVER_CARD_ON_THIS_DAY
+import com.vaibhav.relive.ui.components.rediscover.REDISCOVER_COVER_HOUR_MILLIS
 import com.vaibhav.relive.ui.components.rediscover.RediscoverCollectionCardModel
 import com.vaibhav.relive.ui.components.rediscover.RediscoverCollectionRow
 import com.vaibhav.relive.ui.components.rediscover.RediscoverRowHitTester
@@ -395,6 +396,19 @@ fun HomeScreen(
         today = RediscoverCalendar.localDate(clock.now())
     }
 
+    var rediscoverHour by remember(clock) {
+        mutableStateOf(clock.now().epochMilliseconds / REDISCOVER_COVER_HOUR_MILLIS)
+    }
+    LaunchedEffect(rediscoverHour) {
+        val now = clock.now().epochMilliseconds
+        val nextHour = (rediscoverHour + 1L) * REDISCOVER_COVER_HOUR_MILLIS
+        delay((nextHour - now).coerceAtLeast(1L))
+        rediscoverHour = clock.now().epochMilliseconds / REDISCOVER_COVER_HOUR_MILLIS
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        rediscoverHour = clock.now().epochMilliseconds / REDISCOVER_COVER_HOUR_MILLIS
+    }
+
     val onThisDayPreviews by rediscoverRepository.observeOnThisDayPreviews(
         today = today,
         startOfToday = RediscoverCalendar.startOfDay(today),
@@ -418,17 +432,21 @@ fun HomeScreen(
         surfaceState.lastFromYourPastPreviews = fromYourPastPreviews
     }
 
-    // Each card resolves its cover from the same seed the card composable renders it from, so
-    // what travels to the opened collection is exactly the gradient on screen (ADR-0065). Every
+    // Each card resolves its cover once for the current hour, so what travels to the opened
+    // collection is exactly the photo or fallback on screen (ADR-0065/0097). Every
     // collection opens at its top: no card carries a selected moment.
     val cards = buildList {
         if (behaviorPreferences.showFavorites) {
-            val cover = resolvedRediscoverCollectionCover("collection-favourites")
+            val cover = resolvedRediscoverCollectionCover(
+                coverSeed = "collection-favourites",
+                previewAttachments = favorites.previewAttachments,
+                hourBucket = rediscoverHour,
+            )
             add(
                 RediscoverCollectionCardModel(
                     key = REDISCOVER_CARD_FAVOURITES,
                     title = "Favourites",
-                    coverSeed = "collection-favourites",
+                    cover = cover,
                     onOpen = { onOpenFavorites(null, cover) },
                 ),
             )
@@ -436,33 +454,45 @@ fun HomeScreen(
         // On This Day and From Your Past drop out of the row entirely when they have nothing to
         // show; the row closes up rather than reserving a gap.
         if (behaviorPreferences.showOnThisDay && onThisDayPreviews.isNotEmpty()) {
-            val cover = resolvedRediscoverCollectionCover("collection-on-this-day")
+            val cover = resolvedRediscoverCollectionCover(
+                coverSeed = "collection-on-this-day",
+                previewAttachments = onThisDayPreviews.flatMap { it.attachments },
+                hourBucket = rediscoverHour,
+            )
             add(
                 RediscoverCollectionCardModel(
                     key = REDISCOVER_CARD_ON_THIS_DAY,
                     title = "On This Day",
-                    coverSeed = "collection-on-this-day",
+                    cover = cover,
                     onOpen = { onOpenOnThisDay(null, today, cover) },
                 ),
             )
         }
         if (fromYourPastPreviews.isNotEmpty()) {
-            val cover = resolvedRediscoverCollectionCover("collection-from-your-past")
+            val cover = resolvedRediscoverCollectionCover(
+                coverSeed = "collection-from-your-past",
+                previewAttachments = fromYourPastPreviews.flatMap { it.attachments },
+                hourBucket = rediscoverHour,
+            )
             add(
                 RediscoverCollectionCardModel(
                     key = REDISCOVER_CARD_FROM_YOUR_PAST,
                     title = "From Your Past",
-                    coverSeed = "collection-from-your-past",
+                    cover = cover,
                     onOpen = { onOpenFromYourPast(null, fromYourPastQuery, cover) },
                 ),
             )
         }
-        val allPhotosCover = resolvedRediscoverCollectionCover("collection-all-photos")
+        val allPhotosCover = resolvedRediscoverCollectionCover(
+            coverSeed = "collection-all-photos",
+            previewAttachments = allPhotos.previewAttachments,
+            hourBucket = rediscoverHour,
+        )
         add(
             RediscoverCollectionCardModel(
                 key = REDISCOVER_CARD_ALL_PHOTOS,
                 title = "All Photos",
-                coverSeed = "collection-all-photos",
+                cover = allPhotosCover,
                 onOpen = { onOpenAllPhotos(allPhotosCover) },
             ),
         )
