@@ -347,6 +347,10 @@ fun HomeScreen(
     val settleEasing = motion.easings.standard
     val expansion = surfaceState.backdropExpansion
     val expansionConnection = rememberBackdropExpansionConnection(expansion)
+    val focusSettleConnection = rememberHomeFocusSettleConnection(
+        listState = listState,
+        backdropHeightPx = { headerHeightPx },
+    )
     BackdropSettleEffect(
         listState = listState,
         backdropHeightPx = headerHeightPx,
@@ -581,6 +585,7 @@ fun HomeScreen(
                 onExpand = onNavigationToolbarExpand,
                 onCollapse = onNavigationToolbarCollapse,
             )
+            .nestedScroll(focusSettleConnection)
             .nestedScroll(expansionConnection)
             // The feed rides with the sheet it sits on, so the timeline leaves and re-enters by
             // the bottom edge as one surface instead of standing still while its ground moves.
