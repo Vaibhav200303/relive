@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.ScrollableDefaults
+import androidx.compose.foundation.gestures.TargetedFlingBehavior
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.lazy.LazyListState
@@ -510,7 +511,9 @@ fun HomeScreen(
             if (isRowRestored) surfaceState.rediscoverAnchorItem = item
         }
     }
-    val rediscoverCarouselFling = CarouselDefaults.singleAdvanceFlingBehavior(rediscoverCarouselState)
+    // Preserve the release velocity through both interaction layers. A gentle drag settles to the
+    // nearest card, while a fast flick can naturally decay across multiple cards before snapping.
+    val rediscoverCarouselFling = CarouselDefaults.multiBrowseFlingBehavior(rediscoverCarouselState)
     val rediscoverDragReversed = ScrollableDefaults.reverseDirection(
         LocalLayoutDirection.current,
         Orientation.Horizontal,
@@ -595,6 +598,7 @@ fun HomeScreen(
                 greetingName = greetingName,
                 cards = cards,
                 carouselState = rediscoverCarouselState,
+                carouselFlingBehavior = rediscoverCarouselFling,
                 hitTester = rediscoverRowHitTester,
                 cardContainerModifier = rediscoverCardModifier,
                 mediaStore = mediaStore,
@@ -813,6 +817,7 @@ private fun HomeBackdrop(
     greetingName: String?,
     cards: List<RediscoverCollectionCardModel>,
     carouselState: CarouselState,
+    carouselFlingBehavior: TargetedFlingBehavior,
     hitTester: RediscoverRowHitTester,
     cardContainerModifier: @Composable (RediscoverCollectionCardModel) -> Modifier,
     mediaStore: MediaStore,
@@ -919,6 +924,7 @@ private fun HomeBackdrop(
                             cards = cards,
                             mediaStore = mediaStore,
                             state = carouselState,
+                            flingBehavior = carouselFlingBehavior,
                             hitTester = hitTester,
                             cardContainerModifier = cardContainerModifier,
                         )

@@ -3,6 +3,7 @@ package com.vaibhav.relive.ui.components.rediscover
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.TargetedFlingBehavior
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.material3.carousel.CarouselItemScope
+import androidx.compose.material3.carousel.CarouselDefaults
 import androidx.compose.material3.carousel.CarouselState
 import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
 import androidx.compose.material3.carousel.rememberCarouselState
@@ -148,6 +150,7 @@ fun RediscoverCollectionRow(
     mediaStore: MediaStore,
     modifier: Modifier = Modifier,
     state: CarouselState = rememberCarouselState(itemCount = { cards.size }),
+    flingBehavior: TargetedFlingBehavior = CarouselDefaults.multiBrowseFlingBehavior(state),
     hitTester: RediscoverRowHitTester? = null,
     cardContainerModifier: @Composable (RediscoverCollectionCardModel) -> Modifier = { Modifier },
 ) {
@@ -160,6 +163,7 @@ fun RediscoverCollectionRow(
             .fillMaxWidth()
             .height(dims.rediscover.compactCardHeight),
         itemSpacing = dims.spacing.md,
+        flingBehavior = flingBehavior,
         contentPadding = PaddingValues(horizontal = dims.spacing.xl),
     ) { index ->
         RediscoverCollectionCard(cards[index], mediaStore, hitTester, cardContainerModifier)
