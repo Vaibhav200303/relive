@@ -1361,7 +1361,13 @@ private fun TimelineContent(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = dims.timeline.horizontalPadding)
-                .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime)),
+                // Home's backdrop is responsible for the system gesture area while stretched.
+                // Reserving navigation bars here reduced that layer's height and exposed the All
+                // timeline wallpaper below it. The floating controls still apply navigation-bar
+                // padding themselves; only the IME needs to constrain this content container.
+                .windowInsetsPadding(
+                    if (isHomeSurface) WindowInsets.ime else WindowInsets.navigationBars.union(WindowInsets.ime),
+                ),
         ) {
             // Behind the list, so the timeline sheet slides over it rather than with it.
             if (isHomeSurface) homeBackdrop?.invoke()

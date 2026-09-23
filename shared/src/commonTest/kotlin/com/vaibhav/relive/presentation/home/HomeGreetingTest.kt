@@ -14,17 +14,20 @@ class HomeGreetingTest {
     fun greetingAddressesTheFirstNameOnly() {
         assertEquals("Hey, Vaibhav!!!", homeGreeting("Vaibhav Sharma"))
         assertEquals("Hey, Alex!!!", homeGreeting("Alex  van der Berg"))
+        assertEquals("Vaibhav", homeGreetingName("Vaibhav Sharma"))
     }
 
     @Test
     fun namelessGreetingIsExactlyHey() {
         assertEquals("Hey!!!", homeGreeting(null))
+        assertEquals(null, homeGreetingName(null))
     }
 
     @Test
     fun blankNameIsTreatedAsNoName() {
         assertEquals("Hey!!!", homeGreeting(""))
         assertEquals("Hey!!!", homeGreeting("   "))
+        assertEquals(null, homeGreetingName("   "))
     }
 
     @Test
@@ -34,11 +37,20 @@ class HomeGreetingTest {
         assertEquals("Hey!!!", homeGreeting("Your Relive"))
         assertEquals("Hey!!!", homeGreeting("your relive"))
         assertEquals("Hey!!!", homeGreeting("  Your Relive  "))
+        assertEquals(null, homeGreetingName("Your Relive"))
     }
 
     @Test
     fun surroundingWhitespaceIsTrimmedFromARealName() {
         assertEquals("Hey, Alex!!!", homeGreeting("  Alex  "))
+    }
+
+    @Test
+    fun aLongNameRemainsANameOnlyGreeting() {
+        val name = "Alexanderthegreatwithanunusuallylonggivenname"
+
+        assertEquals("Hey, $name!!!", homeGreeting(name))
+        assertEquals(name, homeGreetingName(name))
     }
 
     @Test

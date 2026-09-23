@@ -67,7 +67,7 @@ Home renders, in one scroll container with one scroll position:
 4. the **inline composer**, collapsed to its rail `+` marker, at the chronological end of the feed — which, because the feed is newest-first, renders at the **head** of the feed directly beneath the `All moments` heading;
 5. the **All moments feed** itself.
 
-Home opens with `Hey, {name}!!!` when a real profile display name exists, and with exactly `Hey!!!` — no placeholder — when it does not. The `Your Relive` fallback label never appears in the greeting, and no device- or account-derived name is ever substituted. The subtitle is always `Your memories are waiting for you.`
+Home opens with `Hey, {name}!!!` when a real profile display name exists, and with exactly `Hey!!!` — no placeholder — when it does not. The `Your Relive` fallback label never appears in the greeting, and no device- or account-derived name is ever substituted. The subtitle is always `Your memories are waiting for you.` Pulling past Home's resting backdrop position exposes one reversible **Home stretch** state without changing the normal scroll model: normalized expansion progress runs continuously from `0` (resting) to `1` (fully expanded). The salutation grows from 1.0× to 1.32× while left-aligned; a real inline name fades out over 0–10% and its fixed second-line layer fades in over 80–100%. The subtitle follows only the greeting's premeasured geometry. Long names remain one line through name-only scaling or ellipsis, and an unnamed greeting never reserves a second line. This is Home-only behavior; Timeline sliding backdrops retain their standard behavior.
 
 Rediscover content and the All moments timeline are parts of **one** surface. Neither is a separate page, route, destination, tab, or screen.
 
@@ -630,7 +630,7 @@ A Moment may carry one optional **feeling**: `Great`, `Good`, or `Low`. Feelings
 ### 10A.3 The mood bar on Home
 
 - The week-over-week **mood bar** (`Last week` / `This week`, each cell a face plus a one-word verdict) lives in Home's backdrop, directly beneath the welcome block.
-- It is **not present in the Home top state at rest**. It is revealed by the backdrop's existing expanded position (§2's sliding-backdrop mechanism): pulling the sheet down past resting expands the welcome area, and the bar animates in beneath the greeting. Collapsing the expansion hides it again.
+- It is **not present in the Home top state at rest**. It is revealed by the backdrop's existing expanded position (§2's sliding-backdrop mechanism): pulling the sheet down past resting expands the welcome area, and the bar fades and rises together from 25–80% normalized stretch progress beneath the greeting. Its full measured height is allocated over that same interval, progressively moving the Rediscover heading and row without a collapsed gap; the subtitle remains governed only by the greeting. The bar neither scales nor changes its own dimensions. While substantially hidden it cannot be tapped, reached by accessibility focus, or run face-idle animation. Collapsing immediately reverses the reveal.
 - Weekly verdicts are the average of that calendar week's felt Moments (weeks run Sunday–Saturday, device-local). A week with no felt Moments shows a quiet em-dash cell rather than a fake value.
 
 ### 10A.4 Mood insights

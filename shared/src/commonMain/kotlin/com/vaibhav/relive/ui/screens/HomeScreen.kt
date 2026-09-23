@@ -1,14 +1,13 @@
 package com.vaibhav.relive.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -42,6 +41,7 @@ import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.Layout
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
@@ -53,6 +53,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
@@ -93,7 +94,7 @@ import com.vaibhav.relive.platform.share.IncomingSharePayload
 import com.vaibhav.relive.presentation.composer.TimelineComposerDraftStore
 import com.vaibhav.relive.presentation.date.RediscoverCalendar
 import com.vaibhav.relive.presentation.home.HOME_GREETING_SUBTITLE
-import com.vaibhav.relive.presentation.home.homeGreeting
+import com.vaibhav.relive.presentation.home.homeGreetingName
 import com.vaibhav.relive.presentation.insights.MoodInsightsViewModel
 import com.vaibhav.relive.presentation.timeline.CurrentTimeline
 import com.vaibhav.relive.platform.system.ReliveBackHandler
@@ -115,11 +116,16 @@ import com.vaibhav.relive.ui.components.timeline.LocalTimelineWallpaperPalette
 import com.vaibhav.relive.ui.components.timeline.TimelineWallpaperSurface
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.theme.canvasBrush
-import com.vaibhav.relive.ui.theme.reliveInContextVerticalEnter
-import com.vaibhav.relive.ui.theme.reliveInContextVerticalExit
 import com.vaibhav.relive.ui.theme.spec
 import com.vaibhav.relive.ui.theme.timelineMomentForegroundColors
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -151,7 +157,7 @@ class HomeSurfaceState {
     var anchorScrollOffset: Int by mutableIntStateOf(0)
 
     /** The backdrop's position also has to survive while Home is off-screen for a route. */
-    val backdropExpansion: BackdropExpansionState = BackdropExpansionState()
+    val backdropExpansion: BackdropExpansionState = BackdropExpansionState(BackdropBehavior.HomeStretch)
 
     /** Live card count backing [rediscoverCarousel]'s item lookup; Home keeps it current. */
     var rediscoverCardCount: Int by mutableIntStateOf(0)
@@ -257,7 +263,7 @@ fun HomeScreen(
     onMoodInsightsVisibilityChanged: (Boolean) -> Unit = {},
 ) {
     val profileSettings by profileSettingsRepository.settings.collectAsState()
-    val greeting = homeGreeting(profileSettings.displayName)
+    val greetingName = homeGreetingName(profileSettings.displayName)
     val density = LocalDensity.current
     val homeScope = rememberCoroutineScope()
 
@@ -347,12 +353,10 @@ fun HomeScreen(
         scrolledIntoBackdrop = { scrolledIntoHeader.value },
     )
 
-    // The mood bar is disclosed by the backdrop's expanded position rather than living on Home
-    // at rest (PRODUCT_SPEC §10A.3). The threshold is the room the bar and its slot need, so the
-    // space exists before the bar occupies it and the sheet has already begun leaving.
-    val moodRevealThresholdPx = with(density) { MoodRevealThreshold.toPx() }
-    val isMoodRevealed by remember(expansion, moodRevealThresholdPx) {
-        derivedStateOf { expansion.expansionPx >= moodRevealThresholdPx }
+    // Keep interaction, accessibility focus and idle face motion dormant until the continuously
+    // revealed bar is materially visible. Its drawing still follows every progress value.
+    val isMoodBarInteractive by remember(expansion) {
+        derivedStateOf { moodBarIsSubstantiallyVisible(expansion.progress) }
     }
     var isMoodInsightsOpen by remember { mutableStateOf(false) }
     val updateMoodInsightsOpen: (Boolean) -> Unit = { isOpen ->
@@ -361,8 +365,8 @@ fun HomeScreen(
     }
     // Collapsing the welcome area takes the whole surface with it: insights cannot outlive the
     // state that disclosed them.
-    LaunchedEffect(isMoodRevealed) {
-        if (!isMoodRevealed) updateMoodInsightsOpen(false)
+    LaunchedEffect(isMoodBarInteractive) {
+        if (!isMoodBarInteractive) updateMoodInsightsOpen(false)
     }
     // Back precedence on Home gains one step ahead of selection and the composer (ADR-0066):
     // open insights close first, and closing them is not a navigation event.
@@ -583,7 +587,7 @@ fun HomeScreen(
             .graphicsLayer { translationY = expansion.expansionPx },
         homeBackdrop = {
             HomeBackdrop(
-                greeting = greeting,
+                greetingName = greetingName,
                 cards = cards,
                 carouselState = rediscoverCarouselState,
                 hitTester = rediscoverRowHitTester,
@@ -594,7 +598,7 @@ fun HomeScreen(
                 expansionState = expansion,
                 wallpaper = wallpaper,
                 moodInsights = moodInsights,
-                isMoodRevealed = isMoodRevealed,
+                isMoodBarInteractive = isMoodBarInteractive,
                 onToggleMoodInsights = { updateMoodInsightsOpen(true) },
                 // The measured height is hoisted so a rebuilt Home can reserve the backdrop's
                 // space immediately, and mirrored into the expansion state, which needs it to know
@@ -688,13 +692,6 @@ private fun homeControlsInset(): Dp {
  * being dragged along by the sheet.
  */
 private const val HOME_WELCOME_EXPAND_DRIFT = 0.12f
-
-/**
- * How far the welcome area must be pulled open before the mood bar is disclosed
- * (PRODUCT_SPEC §10A.3). Enough room has to exist for the bar before it occupies it, so the
- * sheet has visibly begun leaving by the time the bar arrives.
- */
-private val MoodRevealThreshold: Dp = 120.dp
 
 /**
  * Mood insights as a full-screen scrollable surface over Home (PRODUCT_SPEC §10A.4, ADR-0066).
@@ -808,7 +805,7 @@ private fun MoodInsightsOverlay(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HomeBackdrop(
-    greeting: String,
+    greetingName: String?,
     cards: List<RediscoverCollectionCardModel>,
     carouselState: CarouselState,
     hitTester: RediscoverRowHitTester,
@@ -819,15 +816,13 @@ private fun HomeBackdrop(
     expansionState: BackdropExpansionState,
     wallpaper: TimelineWallpaper,
     moodInsights: MoodInsights?,
-    isMoodRevealed: Boolean,
+    isMoodBarInteractive: Boolean,
     onToggleMoodInsights: () -> Unit,
     onHeaderMeasured: (Int) -> Unit,
     onViewportMeasured: (Int) -> Unit,
 ) {
     val dims = ReliveTheme.dimensions
     val colors = ReliveTheme.colors
-    val motion = ReliveTheme.motion
-    val reduceMotion = ReliveTheme.reduceMotion
     val controlsInset = homeControlsInset()
     val controlsInsetPx = with(LocalDensity.current) { controlsInset.roundToPx() }
     val sheetShape = RoundedCornerShape(
@@ -871,7 +866,7 @@ private fun HomeBackdrop(
                     // the disclosed content from feeding back into `maxExpansionPx` and pulling
                     // the sheet (and therefore its own disclosure) back.
                     .onGloballyPositioned {
-                        if (!isMoodRevealed) onHeaderMeasured(it.size.height)
+                        if (expansionState.progress == 0f) onHeaderMeasured(it.size.height)
                     }
                     .graphicsLayer {
                         val scrolled = scrolledIntoHeader.value
@@ -893,38 +888,37 @@ private fun HomeBackdrop(
                     // row's content padding, so all of them start on the Favourites card's leading
                     // edge. The greeting grows once the welcome area is pulled open, so the room the
                     // expansion makes reads as the greeting settling into it rather than a gap.
-                    WelcomeBlock(greeting, enlarged = isMoodRevealed)
+                    WelcomeBlock(
+                        greetingName = greetingName,
+                        expansionState = expansionState,
+                    )
 
-                    AnimatedVisibility(
-                        visible = isMoodRevealed && moodInsights != null,
-                        enter = motion.reliveInContextVerticalEnter(reduceMotion, Alignment.Top),
-                        exit = motion.reliveInContextVerticalExit(reduceMotion, Alignment.Top),
-                        label = "welcome mood bar",
-                    ) {
-                        moodInsights?.let { insights ->
-                            Column {
-                                Spacer(Modifier.height(dims.spacing.md))
+                    CoordinatedHomeLowerContent(
+                        progress = { expansionState.progress },
+                        moodBar = moodInsights?.let { insights ->
+                            {
                                 MoodBar(
                                     lastWeek = insights.lastWeek,
                                     thisWeek = insights.thisWeek,
                                     isInsightsOpen = false,
                                     onToggleInsights = onToggleMoodInsights,
+                                    interactionsEnabled = isMoodBarInteractive,
+                                    animateFaces = isMoodBarInteractive,
                                     modifier = Modifier.padding(horizontal = dims.spacing.xl),
                                 )
-                                Spacer(Modifier.height(dims.spacing.md))
                             }
-                        }
+                        },
+                    ) {
+                        SectionHeading("Relive your memories")
+                        RediscoverCollectionRow(
+                            cards = cards,
+                            mediaStore = mediaStore,
+                            state = carouselState,
+                            hitTester = hitTester,
+                            cardContainerModifier = cardContainerModifier,
+                        )
+                        Spacer(Modifier.height(dims.spacing.xl))
                     }
-
-                    SectionHeading("Relive your memories")
-                    RediscoverCollectionRow(
-                        cards = cards,
-                        mediaStore = mediaStore,
-                        state = carouselState,
-                        hitTester = hitTester,
-                        cardContainerModifier = cardContainerModifier,
-                    )
-                    Spacer(Modifier.height(dims.spacing.xl))
                 }
             }
         }
@@ -980,36 +974,25 @@ private fun Modifier.floatingToolbarNestedScroll(
 }
 
 @Composable
-private fun WelcomeBlock(greeting: String, enlarged: Boolean = false) {
+private fun WelcomeBlock(
+    greetingName: String?,
+    expansionState: BackdropExpansionState,
+) {
     val dims = ReliveTheme.dimensions
     val display = ReliveTheme.typography.display
-    // Pulling the welcome area open grows the greeting so it settles into the room the expansion
-    // makes, rather than leaving a gap above the disclosed mood bar (PRODUCT_SPEC §10A.3).
-    val greetingScale by animateFloatAsState(
-        targetValue = if (enlarged) 1.32f else 1f,
-        animationSpec = tween(
-            durationMillis = ReliveTheme.motion.durations.medium2,
-            easing = ReliveTheme.motion.easings.standard,
-        ),
-        label = "greeting scale",
-    )
-    val verticalPadding by animateDpAsState(
-        targetValue = if (enlarged) dims.spacing.xl else dims.spacing.lg,
-        animationSpec = tween(durationMillis = ReliveTheme.motion.durations.medium2),
-        label = "greeting padding",
-    )
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = dims.spacing.xl, vertical = verticalPadding),
+            .padding(horizontal = dims.spacing.xl, vertical = dims.spacing.lg),
     ) {
-        Text(
-            text = greeting,
-            style = display.copy(
-                fontSize = display.fontSize * greetingScale,
-                lineHeight = display.lineHeight * greetingScale,
+        MeasuredGreeting(
+            name = greetingName,
+            progress = { expansionState.progress },
+            collapsedStyle = display,
+            expandedStyle = display.copy(
+                fontSize = display.fontSize * EXPANDED_GREETING_SCALE,
+                lineHeight = display.lineHeight * EXPANDED_GREETING_SCALE,
             ),
-            color = ReliveTheme.colors.textPrimary,
         )
         Text(
             text = HOME_GREETING_SUBTITLE,
@@ -1018,6 +1001,262 @@ private fun WelcomeBlock(greeting: String, enlarged: Boolean = false) {
         )
     }
 }
+
+/**
+ * Measures Mood Insight at its final size, but keeps it out of the collapsed layout height. The
+ * memories content is placed progressively farther down as the bar reveals; reading [progress]
+ * during placement means dragging does not remeasure this part of Home on every frame.
+ */
+@Composable
+private fun CoordinatedHomeLowerContent(
+    progress: () -> Float,
+    moodBar: (@Composable () -> Unit)?,
+    content: @Composable () -> Unit,
+) {
+    val dims = ReliveTheme.dimensions
+    val revealOffsetPx = with(LocalDensity.current) { dims.spacing.sm.toPx() }
+    val moodSpacingPx = with(LocalDensity.current) { (dims.spacing.md * 2).roundToPx() }
+
+    Layout(
+        content = {
+            if (moodBar != null) {
+                Box(
+                    modifier = Modifier.graphicsLayer {
+                        val reveal = moodBarReveal(progress())
+                        alpha = reveal
+                        translationY = revealOffsetPx * (1f - reveal)
+                    },
+                ) { moodBar() }
+            }
+            Column { content() }
+        },
+    ) { measurables, constraints ->
+        val moodPlaceable = if (moodBar != null) {
+            measurables.first().measure(constraints.copy(minHeight = 0))
+        } else {
+            null
+        }
+        val contentPlaceable = measurables.last().measure(constraints.copy(minHeight = 0))
+        val moodTopPx = moodSpacingPx / 2
+
+        layout(
+            width = maxOf(contentPlaceable.width, moodPlaceable?.width ?: 0)
+                .coerceIn(constraints.minWidth, constraints.maxWidth),
+            // The collapsed geometry remains authoritative for the backdrop and All Moments.
+            // Children may draw into the expansion room opened below it.
+            height = contentPlaceable.height.coerceIn(constraints.minHeight, constraints.maxHeight),
+        ) {
+            moodPlaceable?.placeRelative(0, moodTopPx)
+            contentPlaceable.placeRelativeWithLayer(0, 0) {
+                translationY = moodSlotShiftPx(
+                    moodHeightPx = moodPlaceable?.height ?: 0,
+                    spacingIncreasePx = moodSpacingPx,
+                    progress = progress(),
+                )
+            }
+        }
+    }
+}
+
+private data class GreetingEndpoint(
+    val salutationWidth: Int,
+    val lineHeight: Int,
+    val nameStyle: TextStyle,
+    val nameWidth: Int,
+    val height: Int,
+)
+
+/**
+ * Three permanently composed text layers placed from premeasured endpoint geometry. Visibility
+ * therefore cannot make the greeting wrap or ask the surrounding column to reflow.
+ */
+@Composable
+private fun MeasuredGreeting(
+    name: String?,
+    progress: () -> Float,
+    collapsedStyle: TextStyle,
+    expandedStyle: TextStyle,
+) {
+    val textMeasurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val color = ReliveTheme.colors.textPrimary
+
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val availableWidth = with(density) { maxWidth.roundToPx() }
+        val collapsed = remember(name, availableWidth, collapsedStyle, density) {
+            greetingEndpoint(
+                textMeasurer = textMeasurer,
+                name = name,
+                salutation = if (name == null) "Hey!!!" else "Hey, ",
+                style = collapsedStyle,
+                availableWidth = availableWidth,
+                nameOnSecondLine = false,
+            )
+        }
+        val expandedEndpoint = remember(name, availableWidth, expandedStyle, density) {
+            greetingEndpoint(
+                textMeasurer = textMeasurer,
+                name = name,
+                salutation = if (name == null) "Hey!!!" else "Hey,",
+                style = expandedStyle,
+                availableWidth = availableWidth,
+                nameOnSecondLine = true,
+            )
+        }
+        val spokenGreeting = if (name == null) "Hey!!!" else "Hey, $name!!!"
+
+        Layout(
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { contentDescription = spokenGreeting },
+            content = {
+                Text(
+                    text = if (name == null) "Hey!!!" else "Hey,",
+                    style = collapsedStyle,
+                    color = color,
+                    maxLines = 1,
+                    softWrap = false,
+                    modifier = Modifier
+                        .graphicsLayer {
+                            val scale = greetingSalutationScale(progress())
+                            scaleX = scale
+                            scaleY = scale
+                            transformOrigin = TransformOrigin(0f, 0f)
+                        }
+                        .clearAndSetSemantics {},
+                )
+                Text(
+                    text = name?.let { "$it!!!" }.orEmpty(),
+                    style = collapsed.nameStyle,
+                    color = color,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .graphicsLayer {
+                            alpha = if (name == null) 0f else greetingInlineNameOpacity(progress())
+                        }
+                        .clearAndSetSemantics {},
+                )
+                Text(
+                    text = name?.let { "$it!!!" }.orEmpty(),
+                    style = expandedEndpoint.nameStyle,
+                    color = color,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .graphicsLayer {
+                            alpha = if (name == null) 0f else greetingSecondLineNameOpacity(progress())
+                        }
+                        .clearAndSetSemantics {},
+                )
+            },
+        ) { measurables, constraints ->
+            val salutation = measurables[0].measure(
+                Constraints(maxWidth = constraints.maxWidth, maxHeight = constraints.maxHeight),
+            )
+            val inlineName = measurables[1].measure(
+                Constraints.fixedWidth(collapsed.nameWidth.coerceAtLeast(0)),
+            )
+            val secondLineName = measurables[2].measure(
+                Constraints.fixedWidth(expandedEndpoint.nameWidth.coerceAtLeast(0)),
+            )
+            val currentHeight = greetingHeight(
+                collapsedHeight = collapsed.height,
+                expandedHeight = expandedEndpoint.height,
+                progress = progress(),
+            )
+            layout(constraints.maxWidth, currentHeight) {
+                salutation.placeRelative(0, 0)
+                inlineName.placeRelative(collapsed.salutationWidth, 0)
+                secondLineName.placeRelative(0, expandedEndpoint.lineHeight)
+            }
+        }
+    }
+}
+
+private fun greetingEndpoint(
+    textMeasurer: TextMeasurer,
+    name: String?,
+    salutation: String,
+    style: TextStyle,
+    availableWidth: Int,
+    nameOnSecondLine: Boolean,
+): GreetingEndpoint {
+    val salutationResult = textMeasurer.measure(
+        text = AnnotatedString(salutation),
+        style = style,
+        maxLines = 1,
+        softWrap = false,
+    )
+    val nameAvailableWidth = (
+        availableWidth - if (nameOnSecondLine) 0 else salutationResult.size.width
+    ).coerceAtLeast(0)
+    val nameText = name?.let { "$it!!!" }.orEmpty()
+    val naturalNameWidth = textMeasurer.measure(
+        text = AnnotatedString(nameText),
+        style = style,
+        maxLines = 1,
+        softWrap = false,
+    ).size.width
+    val nameScale = if (naturalNameWidth > nameAvailableWidth && naturalNameWidth > 0) {
+        (nameAvailableWidth.toFloat() / naturalNameWidth).coerceAtLeast(MIN_GREETING_NAME_SCALE)
+    } else {
+        1f
+    }
+    val nameStyle = style.copy(
+        fontSize = style.fontSize * nameScale,
+        lineHeight = style.lineHeight * nameScale,
+    )
+    val lineHeight = salutationResult.size.height
+    return GreetingEndpoint(
+        salutationWidth = salutationResult.size.width,
+        lineHeight = lineHeight,
+        nameStyle = nameStyle,
+        nameWidth = nameAvailableWidth,
+        height = if (nameOnSecondLine && name != null) lineHeight * 2 else lineHeight,
+    )
+}
+
+private const val MIN_GREETING_NAME_SCALE = 0.72f
+private const val EXPANDED_GREETING_SCALE = 1.32f
+
+internal fun greetingSalutationScale(progress: Float): Float =
+    1f + (EXPANDED_GREETING_SCALE - 1f) * smoothstep(progress)
+
+internal fun greetingInlineNameOpacity(progress: Float): Float =
+    1f - smoothstep(progress / INLINE_NAME_FADE_END)
+
+internal fun greetingSecondLineNameOpacity(progress: Float): Float =
+    smoothstep((progress - SECOND_LINE_NAME_FADE_START) / (1f - SECOND_LINE_NAME_FADE_START))
+
+internal fun greetingHeight(
+    collapsedHeight: Int,
+    expandedHeight: Int,
+    progress: Float,
+): Int = (
+    collapsedHeight + (expandedHeight - collapsedHeight) * smoothstep(progress)
+).roundToInt()
+
+private const val INLINE_NAME_FADE_END = 0.1f
+private const val SECOND_LINE_NAME_FADE_START = 0.8f
+
+internal fun moodBarReveal(progress: Float): Float =
+    smoothstep((progress - MOOD_BAR_REVEAL_START) / (MOOD_BAR_REVEAL_END - MOOD_BAR_REVEAL_START))
+
+internal fun moodBarIsSubstantiallyVisible(progress: Float): Boolean =
+    moodBarReveal(progress) >= MOOD_BAR_INTERACTION_ALPHA
+
+internal fun moodSlotShiftPx(
+    moodHeightPx: Int,
+    spacingIncreasePx: Int,
+    progress: Float,
+): Float = (moodHeightPx + spacingIncreasePx) * moodBarReveal(progress)
+
+private const val MOOD_BAR_REVEAL_START = 0.25f
+private const val MOOD_BAR_REVEAL_END = 0.8f
+private const val MOOD_BAR_INTERACTION_ALPHA = 0.5f
 
 @Composable
 private fun SectionHeading(text: String, color: Color = ReliveTheme.colors.textPrimary) {

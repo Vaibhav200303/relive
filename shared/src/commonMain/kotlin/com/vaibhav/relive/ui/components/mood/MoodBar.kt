@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.vaibhav.relive.domain.model.MoodWeekSummary
@@ -48,6 +49,8 @@ fun MoodBar(
     isInsightsOpen: Boolean,
     onToggleInsights: () -> Unit,
     modifier: Modifier = Modifier,
+    interactionsEnabled: Boolean = true,
+    animateFaces: Boolean = true,
 ) {
     val colors = ReliveTheme.colors
     val dims = ReliveTheme.dimensions
@@ -64,12 +67,16 @@ fun MoodBar(
             .clip(shape)
             .background(colors.surfaceCard)
             .border(BorderStroke(dims.stroke.hairline, colors.borderMuted), shape)
-            .clickable(onClick = onToggleInsights)
+            .clickable(enabled = interactionsEnabled, onClick = onToggleInsights)
             .semantics {
-                contentDescription = if (isInsightsOpen) {
-                    "Close mood insights"
+                if (interactionsEnabled) {
+                    contentDescription = if (isInsightsOpen) {
+                        "Close mood insights"
+                    } else {
+                        "Open mood insights"
+                    }
                 } else {
-                    "Open mood insights"
+                    hideFromAccessibility()
                 }
             }
             // Wrap to the cells' own height so the dashed divider's fillMaxHeight resolves to
@@ -82,6 +89,7 @@ fun MoodBar(
             label = "LAST WEEK",
             summary = lastWeek,
             animationDelayMillis = 0,
+            animateFace = animateFaces,
             modifier = Modifier.weight(1f),
         )
         Box(
@@ -104,6 +112,7 @@ fun MoodBar(
             label = "THIS WEEK",
             summary = thisWeek,
             animationDelayMillis = 700,
+            animateFace = animateFaces,
             modifier = Modifier.weight(1f),
         )
     }
@@ -117,6 +126,7 @@ private fun MoodBarCell(
     label: String,
     summary: MoodWeekSummary?,
     animationDelayMillis: Int,
+    animateFace: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val colors = ReliveTheme.colors
@@ -147,7 +157,7 @@ private fun MoodBarCell(
             FeelingFace(
                 feeling = summary.verdict,
                 size = MoodBarFaceSize,
-                animated = true,
+                animated = animateFace,
                 animationDelayMillis = animationDelayMillis,
             )
         }

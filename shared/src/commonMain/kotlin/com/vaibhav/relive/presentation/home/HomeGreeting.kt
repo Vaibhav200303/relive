@@ -10,12 +10,15 @@ package com.vaibhav.relive.presentation.home
  * reach the greeting — "Hey, Your Relive!!!" is not something a person would write.
  */
 fun homeGreeting(displayName: String?): String {
-    val name = displayName?.trim().orEmpty()
-    if (name.isEmpty() || name.equals(PROFILE_PLACEHOLDER_NAME, ignoreCase = true)) {
-        return "Hey!!!"
-    }
-    val firstName = name.split(' ', '\t', '\n').first { it.isNotBlank() }
+    val firstName = homeGreetingName(displayName) ?: return "Hey!!!"
     return "Hey, $firstName!!!"
+}
+
+/** The real first name Home may render independently from its salutation. */
+fun homeGreetingName(displayName: String?): String? {
+    val name = displayName?.trim().orEmpty()
+    if (name.isEmpty() || name.equals(PROFILE_PLACEHOLDER_NAME, ignoreCase = true)) return null
+    return name.split(' ', '\t', '\n').first { it.isNotBlank() }
 }
 
 /** Always shown beneath the greeting. */

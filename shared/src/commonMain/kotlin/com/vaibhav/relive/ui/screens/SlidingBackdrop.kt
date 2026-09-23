@@ -1,6 +1,7 @@
 package com.vaibhav.relive.ui.screens
 
 import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.lazy.LazyListState
@@ -25,7 +26,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import kotlin.math.min
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 
 /**
  * The layered-sheet mechanism shared by every surface built as *a backdrop with a timeline riding
@@ -44,7 +48,9 @@ import kotlinx.coroutines.flow.distinctUntilChanged
  * exactly one scroll container and one scroll position; expansion is a layer offset on top.
  */
 @Stable
-class BackdropExpansionState {
+class BackdropExpansionState(
+    val behavior: BackdropBehavior = BackdropBehavior.Standard,
+) {
     /** How far the sheet is pushed past the bottom edge. Zero at `resting`, max when `expanded`. */
     var expansionPx: Float by mutableFloatStateOf(0f)
 
@@ -54,9 +60,59 @@ class BackdropExpansionState {
     /** Height of the backdrop at rest: the welcome block on Home, the cover photo on a timeline. */
     var backdropHeightPx: Int by mutableIntStateOf(0)
 
+    /** Home's in-flight spring. A new user drag cancels it before changing [expansionPx]. */
+    internal var activeSettlement: Job? = null
+
     /** Expanding past this would push the backdrop's own bottom edge off screen. */
     val maxExpansionPx: Float
         get() = (viewportHeightPx - backdropHeightPx).coerceAtLeast(0).toFloat()
+
+    /** Current expansion independent of viewport size: zero at rest and one fully expanded. */
+    val progress: Float
+        get() = if (maxExpansionPx == 0f) {
+            0f
+        } else {
+            (expansionPx / maxExpansionPx).coerceIn(0f, 1f)
+        }
+}
+
+/** Selects Home's stretch visuals and physics; Standard preserves the original behavior. */
+enum class BackdropBehavior {
+    Standard,
+    HomeStretch,
+}
+
+/** Smooth interpolation with zero velocity at both ends. */
+internal fun smoothstep(value: Float): Float {
+    val progress = value.coerceIn(0f, 1f)
+    return progress * progress * (3f - 2f * progress)
+}
+
+/** Backdrop opacity for a normalized expansion [progress]. */
+internal fun backdropOpacity(
+    progress: Float,
+    behavior: BackdropBehavior = BackdropBehavior.Standard,
+): Float = when (behavior) {
+    BackdropBehavior.Standard -> 1f
+    BackdropBehavior.HomeStretch -> 1f - 0.18f * smoothstep(progress)
+}
+
+/** Backdrop scale for a normalized expansion [progress]. */
+internal fun backdropScale(
+    progress: Float,
+    behavior: BackdropBehavior = BackdropBehavior.Standard,
+): Float = when (behavior) {
+    BackdropBehavior.Standard -> 1f
+    BackdropBehavior.HomeStretch -> 1f + 0.04f * smoothstep(progress)
+}
+
+/** Normalized backdrop position for a normalized expansion [progress]. */
+internal fun backdropPosition(
+    progress: Float,
+    behavior: BackdropBehavior = BackdropBehavior.Standard,
+): Float = when (behavior) {
+    BackdropBehavior.Standard -> progress.coerceIn(0f, 1f)
+    BackdropBehavior.HomeStretch -> smoothstep(progress)
 }
 
 @Composable
@@ -100,6 +156,7 @@ internal fun rememberBackdropExpansionConnection(
     return remember(state, settleDurationMillis, settleEasing) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (source == NestedScrollSource.UserInput) state.cancelActiveSettlement()
                 // Parking the feed again comes before it moves at all, so one continuous downward
                 // gesture closes the backdrop and then scrolls the timeline.
                 if (available.y >= 0f || state.expansionPx <= 0f) return Offset.Zero
@@ -113,33 +170,68 @@ internal fun rememberBackdropExpansionConnection(
                 available: Offset,
                 source: NestedScrollSource,
             ): Offset {
+                if (source == NestedScrollSource.UserInput) state.cancelActiveSettlement()
                 // Only reached once the list itself has nothing left to give at the top, which is
                 // exactly the "scrolling more upward" this state answers.
                 if (source != NestedScrollSource.UserInput || available.y <= 0f) return Offset.Zero
-                val applied = min(available.y, state.maxExpansionPx - state.expansionPx)
+                val response = if (state.behavior == BackdropBehavior.HomeStretch) {
+                    homeExpansionResponseRatio(state.progress)
+                } else {
+                    1f
+                }
+                val applied = min(available.y * response, state.maxExpansionPx - state.expansionPx)
                 if (applied <= 0f) return Offset.Zero
                 state.expansionPx += applied
-                return Offset(0f, applied)
+                // Home owns the full overscroll even though resistance makes its rendered travel
+                // smaller. Returning only the rendered delta would leak the remainder upward.
+                return Offset(0f, if (state.behavior == BackdropBehavior.HomeStretch) available.y else applied)
             }
 
             override suspend fun onPreFling(available: Velocity): Velocity {
                 val max = state.maxExpansionPx
                 if (state.expansionPx <= 0f || max <= 0f) return Velocity.Zero
-                animateExpansionTo(
-                    state = state,
-                    target = settleTargetFor(
-                        expansionPx = state.expansionPx,
-                        maxExpansionPx = max,
-                        velocityY = available.y,
-                    ),
-                    durationMillis = settleDurationMillis,
-                    easing = settleEasing,
+                val target = settleTargetFor(
+                    expansionPx = state.expansionPx,
+                    maxExpansionPx = max,
+                    velocityY = available.y,
                 )
+                if (state.behavior == BackdropBehavior.HomeStretch) {
+                    animateHomeExpansionTo(
+                        state = state,
+                        target = target,
+                        initialVelocity = homeRenderedVelocity(available.y, state.progress),
+                    )
+                } else {
+                    animateExpansionTo(
+                        state = state,
+                        target = target,
+                        durationMillis = settleDurationMillis,
+                        easing = settleEasing,
+                    )
+                }
                 // Consume the fling: the gesture ended on this layer, not in the feed.
                 return available
             }
         }
     }
+}
+
+/** Direct until 80%, then eased resistance down to 30% response at full expansion. */
+internal fun homeExpansionResponseRatio(progress: Float): Float =
+    1f - (1f - HOME_LIMIT_RESPONSE) * smoothstep(
+        (progress - HOME_RESISTANCE_START) / (1f - HOME_RESISTANCE_START),
+    )
+
+/** Collapse velocity stays direct; only outward velocity inherits the current resistance. */
+internal fun homeRenderedVelocity(velocityY: Float, progress: Float): Float =
+    if (velocityY > 0f) velocityY * homeExpansionResponseRatio(progress) else velocityY
+
+private const val HOME_RESISTANCE_START = 0.8f
+private const val HOME_LIMIT_RESPONSE = 0.3f
+
+internal fun BackdropExpansionState.cancelActiveSettlement() {
+    activeSettlement?.cancel()
+    activeSettlement = null
 }
 
 /**
@@ -169,6 +261,34 @@ internal suspend fun animateExpansionTo(
         targetValue = target,
         animationSpec = tween(durationMillis, easing = easing),
     ) { value, _ -> state.expansionPx = value }
+}
+
+/** Home's velocity-preserving, critically damped settlement. */
+private suspend fun animateHomeExpansionTo(
+    state: BackdropExpansionState,
+    target: Float,
+    initialVelocity: Float,
+) = coroutineScope {
+    state.cancelActiveSettlement()
+    val settlement = launch {
+        animate(
+            initialValue = state.expansionPx,
+            targetValue = target,
+            initialVelocity = initialVelocity,
+            animationSpec = spring(
+                dampingRatio = 1f,
+                // Slower than the standard sheet settle so the stretched Home header has time to
+                // read as an elastic surface while still ending without a bounce.
+                stiffness = 260f,
+            ),
+        ) { value, _ -> state.expansionPx = value.coerceIn(0f, state.maxExpansionPx) }
+    }
+    state.activeSettlement = settlement
+    try {
+        settlement.join()
+    } finally {
+        if (state.activeSettlement === settlement) state.activeSettlement = null
+    }
 }
 
 /**

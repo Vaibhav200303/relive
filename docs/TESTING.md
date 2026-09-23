@@ -191,6 +191,11 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 - [ ] The Create Timeline entry point still persists a new timeline, lists it first, and opens it immediately; `+ New` on Home never opens that flow — it expands the inline composer (see Inline composer expansion above).
 - [ ] Detail Back returns to the Home surface at its preserved scroll offset (including focused All moments) on Android and iOS; no profile, menu, or bottom navigation controls appear in detail.
 
+### Home stretch
+- [ ] At 0%, 5%, 10%, 80%, 90%, and 100% stretch, then at those same points while reversing, the greeting, subtitle, Mood bar, Rediscover heading, and carousel move without a jump; the inline and second-line names follow their specified crossfade windows.
+- [ ] At Android large-font settings, named and unnamed greetings remain readable: names do not wrap, unnamed Home leaves no blank second line, and the subtitle, Mood bar, and Rediscover content do not overlap.
+- [ ] Repeat slow pulls, fast flicks, resistance-zone reversals, and a new drag during Home's settle spring. The rendered position must remain continuous; Standard Timeline sliding backdrops must retain their existing gesture response.
+
 ### Adaptive single media
 - [ ] Small image renders at natural size, not stretched.
 - [ ] Large image scales down proportionally, not distorted.
@@ -339,6 +344,8 @@ Behavior introduced by the unified Home surface ([`DECISIONS.md`](DECISIONS.md) 
 ---
 
 ## 13. Moment feelings & Mood insights (Phase 9A)
+
+Home stretch regression coverage lives in shared `commonTest`: normalized expansion is checked at collapsed, intermediate, and full positions; greeting fade boundaries (0%, 5%, 10%, 80%, 90%, 100%), salutation scale, and subtitle geometry are checked as direct reversible mappings; missing, placeholder, and long names are checked independently; Mood bar reveal/allocation is checked at 25% and 80% in both directions; Home-only resistance is checked for direct 0–80% tracking, continuous 80–100% reduction to a 0.3 response ratio, outward-only release-velocity scaling, and cancellation of an active spring without a position change. Standard backdrop behavior remains covered as the regression baseline.
 
 - Persistence: a feeling round-trips (`Great`/`Good`/`Low` and absent); `setFeeling` writes and clears without touching other fields; `updateEditable` never changes a feeling; migration from the pre-feeling schema leaves existing Moments unfelt; the sample projection returns only `(created_at, feeling)` pairs at or after the cutoff.
 - Calculator (pure, `commonTest`): Sunday–Saturday week bucketing on the device-local calendar; weekly verdict is the mean score with the `>= 2.5` / `>= 1.75` boundaries; weeks/days/months with no felt Moments produce null summaries, never fake values; the 28-day split counts only felt Moments while the Moments count and streak count all Moments; six calendar-month buckets end at the current month; epoch-day date arithmetic is exact across month/year boundaries and leap days.
