@@ -4,6 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.TargetedFlingBehavior
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.ScrollableDefaults
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -139,7 +143,10 @@ data class RediscoverCollectionCardModel(
  *
  * [state] is hoisted because on Home the feed's transparent window sits over this row and owns the
  * hit test at rest — the window proxies its horizontal drags into the same state and its taps into
- * [hitTester] (see the window item in `HomeScreen`). [cardContainerModifier] carries the
+ * [hitTester] (see the window item in `HomeScreen`). When that window moves away in the expanded
+ * state, this row deliberately drives the same state through the same direct [scrollable] path.
+ * Material's pager still lays out and masks the cards, but does not install a second gesture path
+ * that can constrain or consume the release velocity. [cardContainerModifier] carries the
  * container-transform bounds for the card being opened (ADR-0065), supplied by the navigation
  * host; the default leaves cards with no shared element.
  */
@@ -156,14 +163,26 @@ fun RediscoverCollectionRow(
 ) {
     if (cards.isEmpty()) return
     val dims = ReliveTheme.dimensions
+    val reverseDirection = ScrollableDefaults.reverseDirection(
+        LocalLayoutDirection.current,
+        Orientation.Horizontal,
+        false,
+    )
     HorizontalMultiBrowseCarousel(
         state = state,
         preferredItemWidth = dims.rediscover.compactCardWidth,
         modifier = modifier
             .fillMaxWidth()
-            .height(dims.rediscover.compactCardHeight),
+            .height(dims.rediscover.compactCardHeight)
+            .scrollable(
+                state = state,
+                orientation = Orientation.Horizontal,
+                reverseDirection = reverseDirection,
+                flingBehavior = flingBehavior,
+            ),
         itemSpacing = dims.spacing.md,
         flingBehavior = flingBehavior,
+        userScrollEnabled = false,
         contentPadding = PaddingValues(horizontal = dims.spacing.xl),
     ) { index ->
         RediscoverCollectionCard(cards[index], mediaStore, hitTester, cardContainerModifier)
