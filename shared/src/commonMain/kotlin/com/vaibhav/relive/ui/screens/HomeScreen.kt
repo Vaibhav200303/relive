@@ -117,6 +117,7 @@ import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.theme.canvasBrush
 import com.vaibhav.relive.ui.theme.reliveInContextVerticalEnter
 import com.vaibhav.relive.ui.theme.reliveInContextVerticalExit
+import com.vaibhav.relive.ui.theme.spec
 import com.vaibhav.relive.ui.theme.timelineMomentForegroundColors
 import androidx.compose.ui.graphics.Color
 import kotlin.math.roundToInt
@@ -149,6 +150,9 @@ class HomeSurfaceState {
     var anchorIndex: Int by mutableIntStateOf(0)
     var anchorScrollOffset: Int by mutableIntStateOf(0)
 
+    /** The backdrop's position also has to survive while Home is off-screen for a route. */
+    val backdropExpansion: BackdropExpansionState = BackdropExpansionState()
+
     /** Live card count backing [rediscoverCarousel]'s item lookup; Home keeps it current. */
     var rediscoverCardCount: Int by mutableIntStateOf(0)
 
@@ -166,6 +170,9 @@ class HomeSurfaceState {
     var lastAllPhotosSummary: AllPhotosCollectionSummary by mutableStateOf(AllPhotosCollectionSummary(0, emptyList()))
     var lastOnThisDayPreviews: List<OnThisDayMomentPreview> by mutableStateOf(emptyList())
     var lastFromYourPastPreviews: List<FromYourPastMomentPreview> by mutableStateOf(emptyList())
+
+    /** Keeps an expanded Home's mood bar present on the first frame after navigation returns. */
+    var lastMoodInsights: MoodInsights? by mutableStateOf(null)
 }
 
 @Composable
@@ -263,7 +270,10 @@ fun HomeScreen(
             scope = homeScope,
         )
     }
-    val moodInsights by moodViewModel.insights.collectAsState()
+    val moodInsights by moodViewModel.insights.collectAsState(surfaceState.lastMoodInsights)
+    SideEffect {
+        if (moodInsights != null) surfaceState.lastMoodInsights = moodInsights
+    }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { moodViewModel.refreshToday() }
 
     // Geometry of the sheet riding over the welcome area. The backdrop measures itself — the
@@ -329,7 +339,7 @@ fun HomeScreen(
     val reduceMotion = ReliveTheme.reduceMotion
     val settleDurationMillis = motion.durations.standardMillis
     val settleEasing = motion.easings.standard
-    val expansion = rememberBackdropExpansionState()
+    val expansion = surfaceState.backdropExpansion
     val expansionConnection = rememberBackdropExpansionConnection(expansion)
     BackdropSettleEffect(
         listState = listState,
@@ -707,10 +717,25 @@ private fun MoodInsightsOverlay(
     val colors = ReliveTheme.colors
     val motion = ReliveTheme.motion
     val reduceMotion = ReliveTheme.reduceMotion
+    val enterSpec = motion.spec<Float>(
+        reduceMotion = reduceMotion,
+        full = tween(
+            durationMillis = motion.durations.medium4,
+            easing = motion.easings.emphasizedDecelerate,
+        ),
+    )
+    val exitSpec = motion.spec<Float>(
+        reduceMotion = reduceMotion,
+        full = tween(
+            durationMillis = motion.durations.short4,
+            easing = motion.easings.emphasizedAccelerate,
+        ),
+    )
     AnimatedVisibility(
         visible = visible && insights != null,
-        enter = fadeIn(animationSpec = tween(motion.durations.medium2)),
-        exit = fadeOut(animationSpec = tween(motion.durations.short4)),
+        enter = fadeIn(animationSpec = enterSpec),
+        exit = fadeOut(animationSpec = exitSpec),
+        label = "mood insights overlay",
     ) {
         val current = insights ?: return@AnimatedVisibility
         Box(
@@ -874,6 +899,7 @@ private fun HomeBackdrop(
                         visible = isMoodRevealed && moodInsights != null,
                         enter = motion.reliveInContextVerticalEnter(reduceMotion, Alignment.Top),
                         exit = motion.reliveInContextVerticalExit(reduceMotion, Alignment.Top),
+                        label = "welcome mood bar",
                     ) {
                         moodInsights?.let { insights ->
                             Column {

@@ -35,9 +35,8 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.Density
 import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.platform.media.RelivedImageTile
@@ -46,6 +45,7 @@ import com.vaibhav.relive.presentation.timeline.SystemCollectionCover
 import com.vaibhav.relive.ui.theme.ReliveCoverLabelScrim
 import com.vaibhav.relive.ui.theme.ReliveGeneratedCover
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import androidx.compose.ui.unit.LayoutDirection
 import kotlin.random.Random
 
 /** Stable card keys, shared with the navigation host that keys the container transform on them. */
@@ -172,14 +172,9 @@ fun RediscoverCollectionRow(
 }
 
 /**
- * An elevation shadow that tracks the carousel item's *visible* (masked) bounds, so the card
- * reads as lifted off the backdrop. A plain [androidx.compose.ui.draw.shadow] cannot serve here:
- * carousel items are laid out at full slot size and masked down per frame, so a fixed-shape
- * shadow would cast around the unmasked bounds and bleed across neighbouring cards. Reading
- * `maskRect` inside the layer block keeps the outline current per frame — the rect is
- * snapshot-state-backed, exactly like the label layer's alpha ramp below. The shadow sits a
- * touch lower on masked medium/small items than on the focal card, so the card the row invites
- * you to open is also the one lifted highest.
+ * An elevation shadow that tracks the carousel item's visible bounds. The carousel itself draws
+ * each item in a full slot then masks it, so a conventional fixed-size shadow would bleed into
+ * neighbouring cards.
  */
 @Composable
 private fun CarouselItemScope.maskShadow(elevation: Dp, cornerRadius: Dp, color: Color): Modifier =
@@ -193,8 +188,6 @@ private fun CarouselItemScope.maskShadow(elevation: Dp, cornerRadius: Dp, color:
         spotShadowColor = color
         clip = false
         shape = object : Shape {
-            // A fresh instance per invalidation, so the cached outline recomputes as the mask
-            // moves — a remembered Shape would freeze the shadow at its first-frame bounds.
             override fun createOutline(
                 size: Size,
                 layoutDirection: LayoutDirection,
@@ -218,9 +211,6 @@ private fun CarouselItemScope.RediscoverCollectionCard(
         }
     }
     Box(
-        // The shadow lives inside the shared element (after [cardContainerModifier]) so it
-        // travels and fades with the container transform instead of ghosting behind it, and
-        // before [maskClip] because the mask is a clipping layer that would cut the cast off.
         modifier = cardContainerModifier(card)
             .fillMaxSize()
             .then(
@@ -234,8 +224,6 @@ private fun CarouselItemScope.RediscoverCollectionCard(
             .background(ReliveTheme.colors.surfaceCard)
             .clickable(onClick = card.onOpen)
             .onGloballyPositioned { coordinates ->
-                // The card's tap target for Home's window proxy is what the mask actually shows,
-                // so a tap between two masked cards opens the one whose imagery is under it.
                 if (hitTester != null) {
                     val mask = carouselItemDrawInfo.maskRect
                     hitTester.register(
@@ -250,14 +238,11 @@ private fun CarouselItemScope.RediscoverCollectionCard(
             }
             .semantics { contentDescription = "Open ${card.title}" },
     ) {
-        SystemCollectionCoverImage(
-            cover = resolvedRediscoverCollectionCover(card.coverSeed),
-            mediaStore = mediaStore,
-            modifier = Modifier.matchParentSize(),
-        )
-        // The label belongs to the focal card only: scrim and title share one layer whose alpha
-        // rises as a card grows into the large slot, so the cover is dimmed exactly while text
-        // is overlaid on it and masked medium/small items stay pure, undimmed imagery.
+            SystemCollectionCoverImage(
+                cover = resolvedRediscoverCollectionCover(card.coverSeed),
+                mediaStore = mediaStore,
+                modifier = Modifier.matchParentSize(),
+            )
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -281,11 +266,7 @@ private fun CarouselItemScope.RediscoverCollectionCard(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .graphicsLayer {
-                        // The mask is centred in the item, so pin the title to its visible left
-                        // edge instead of letting letters get sliced mid-glyph.
-                        translationX = carouselItemDrawInfo.maskRect.left
-                    }
+                    .graphicsLayer { translationX = carouselItemDrawInfo.maskRect.left }
                     .padding(dims.spacing.lg),
             )
         }

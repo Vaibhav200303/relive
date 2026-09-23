@@ -66,14 +66,7 @@ import com.vaibhav.relive.ui.components.navigation.ReliveFloatingBottomControls
 import com.vaibhav.relive.ui.components.navigation.ReliveTopLevelDestination
 import com.vaibhav.relive.ui.components.composer.quickCaptureSharedBounds
 import com.vaibhav.relive.ui.components.timeline.timelineCardSharedBounds
-import com.vaibhav.relive.ui.components.timeline.rediscoverCardSharedBounds
-import com.vaibhav.relive.ui.components.rediscover.REDISCOVER_CARD_ALL_PHOTOS
-import com.vaibhav.relive.ui.components.rediscover.REDISCOVER_CARD_FAVOURITES
-import com.vaibhav.relive.ui.components.rediscover.REDISCOVER_CARD_FROM_YOUR_PAST
-import com.vaibhav.relive.ui.components.rediscover.REDISCOVER_CARD_ON_THIS_DAY
 import com.vaibhav.relive.presentation.timeline.SystemCollectionCover
-import androidx.compose.animation.AnimatedVisibilityScope
-import androidx.compose.animation.SharedTransitionScope
 import com.vaibhav.relive.platform.media.ActivePlayback
 import com.vaibhav.relive.ui.screens.ProfileScreen
 import com.vaibhav.relive.ui.screens.PreferencesScreen
@@ -164,44 +157,6 @@ private sealed interface RediscoverDestination {
         val query: RediscoverQuery,
         val cover: SystemCollectionCover? = null,
     ) : RediscoverDestination
-}
-
-/** The routes entered by tapping a Rediscover card, which the container transform animates. */
-private val RediscoverDestination.opensFromCard: Boolean
-    get() = this !is RediscoverDestination.Root && this !is RediscoverDestination.AllTheme
-
-/**
- * The morphing frame around a Rediscover collection screen (ADR-0065): the same
- * container-transform pattern the custom timeline detail uses, keyed by the collection so the
- * screen morphs out of — and back into — exactly the card that opened it.
- */
-@OptIn(ExperimentalSharedTransitionApi::class)
-@Composable
-private fun RediscoverCollectionTransformFrame(
-    collectionKey: String,
-    activeTransformKey: String?,
-    sharedScope: SharedTransitionScope,
-    animatedScope: AnimatedVisibilityScope,
-    reduceMotion: Boolean,
-    content: @Composable () -> Unit,
-) {
-    val isTransformTarget = activeTransformKey == collectionKey
-    val containerModifier = if (isTransformTarget) {
-        Modifier.fillMaxSize().rediscoverCardSharedBounds(
-            collectionKey = collectionKey,
-            sharedScope = sharedScope,
-            animatedScope = animatedScope,
-            reduceMotion = reduceMotion,
-        )
-    } else {
-        Modifier.fillMaxSize()
-    }
-    val innerModifier = if (isTransformTarget && !reduceMotion) {
-        with(sharedScope) { Modifier.fillMaxSize().skipToLookaheadSize() }
-    } else {
-        Modifier.fillMaxSize()
-    }
-    Box(containerModifier) { Box(innerModifier) { content() } }
 }
 
 @Composable
@@ -333,7 +288,6 @@ fun App(
         var cardTransformTimelineId by remember { mutableStateOf<TimelineId?>(null) }
         // The Rediscover card a collection screen morphs out of and back into (ADR-0065), held the
         // same way: past the forward navigation, so Back still has a source card to return to.
-        var rediscoverCardTransformKey by remember { mutableStateOf<String?>(null) }
         var quickCaptureTransformActive by remember { mutableStateOf(false) }
         /** Bumped by `+ New` while on Home; the Home surface expands its composer in place. */
         var homeComposerRequest by remember { mutableIntStateOf(0) }
@@ -584,16 +538,12 @@ fun App(
                         },
                         onRetry = container.incomingShareGateway::retry,
                         cardContainerModifier = { timeline ->
-                            if (cardTransformTimelineId == timeline.id) {
-                                Modifier.timelineCardSharedBounds(
-                                    timelineId = timeline.id,
-                                    sharedScope = sharedTransitionScope,
-                                    animatedScope = shareRouteScope,
-                                    reduceMotion = reduceMotion,
-                                )
-                            } else {
-                                Modifier
-                            }
+                            Modifier.timelineCardSharedBounds(
+                                timelineId = timeline.id,
+                                sharedScope = sharedTransitionScope,
+                                animatedScope = shareRouteScope,
+                                reduceMotion = reduceMotion,
+                            )
                         },
                     )
                 } else if (!onboardingBypassedForSession && onboardingVisible == true) {
@@ -912,16 +862,16 @@ fun App(
                                 )
                             },
                             cardContainerModifier = { timeline ->
-                                if (cardTransformTimelineId == timeline.id) {
-                                    Modifier.timelineCardSharedBounds(
-                                        timelineId = timeline.id,
-                                        sharedScope = sharedTransitionScope,
-                                        animatedScope = animatedScope,
-                                        reduceMotion = reduceMotion,
-                                    )
-                                } else {
-                                    Modifier
-                                }
+                                // Register every composed card before it can be tapped. Waiting
+                                // for cardTransformTimelineId means the first source is registered
+                                // in the same frame that navigation removes it, so SharedTransition
+                                // has no stable measured bounds for the forward transform.
+                                Modifier.timelineCardSharedBounds(
+                                    timelineId = timeline.id,
+                                    sharedScope = sharedTransitionScope,
+                                    animatedScope = animatedScope,
+                                    reduceMotion = reduceMotion,
+                                )
                             },
                             onOpenProfile = { profileNavigation = profileNavigation.openProfile() },
                             profilePhoto = profileSettings.profilePhoto,
@@ -934,109 +884,77 @@ fun App(
                             },
                         )
                         ReliveTopLevelDestination.Home -> {
+                // Home remains composed while a Rediscover collection is visible. Disposing it in
+                // the route swap meant Back exposed a newly measured expanded backdrop and
+                // carousel halfway through its fade, which made their independent settle motion
+                // visible. The collection is therefore a fading layer over the settled surface,
+                // just like Mood insights.
+                Box(Modifier.fillMaxSize()) {
+                    HomeScreen(
+                        momentRepository = container.momentRepository,
+                        timelineRepository = container.timelineRepository,
+                        appearanceRepository = container.appearanceRepository,
+                        rediscoverRepository = container.rediscoverRepository,
+                        profileSettingsRepository = container.profileSettingsRepository,
+                        clock = container.clock,
+                        idGenerator = container.idGenerator,
+                        mediaStore = container.mediaStore,
+                        mediaProcessor = container.mediaProcessor,
+                        listState = homeFeedListState,
+                        surfaceState = homeSurfaceState,
+                        draftStore = composerDraftStore,
+                        onOpenFavorites = { selectedMomentId, cover ->
+                            rediscoverDestination = RediscoverDestination.Favorites(selectedMomentId, cover)
+                        },
+                        onOpenOnThisDay = { selectedMomentId, date, cover ->
+                            rediscoverDestination = RediscoverDestination.OnThisDay(selectedMomentId, date, cover)
+                        },
+                        onOpenFromYourPast = { selectedMomentId, query, cover ->
+                            rediscoverDestination = RediscoverDestination.FromYourPast(selectedMomentId, query, cover)
+                        },
+                        onOpenAllPhotos = { cover ->
+                            rediscoverDestination = RediscoverDestination.AllPhotos(cover)
+                        },
+                        expandComposerRequest = homeComposerRequest,
+                        // Cleared once Home has expanded the composer, so re-entering Home
+                        // later does not replay a stale request.
+                        onExpandComposerRequestHandled = { homeComposerRequest = 0 },
+                        onOpenTimelineTheme = {
+                            rediscoverDestination = RediscoverDestination.AllTheme
+                        },
+                        onOpenProfile = { profileNavigation = profileNavigation.openProfile() },
+                        navigationToolbarExpanded = navigationToolbarExpanded,
+                        onNavigationToolbarExpand = { navigationToolbarExpanded = true },
+                        onNavigationToolbarCollapse = { navigationToolbarExpanded = false },
+                        behaviorPreferences = behaviorState.preferences,
+                        wallpaper = appearanceState.preferences.allTimelineAppearance.wallpaper,
+                        onMediaCaptureOverlayChanged = { homeCaptureOverlayActive = it },
+                        onMoodInsightsVisibilityChanged = { moodInsightsOpen = it },
+                    )
                 AnimatedContent(
                     targetState = rediscoverDestination,
                     transitionSpec = {
-                        // Opening a collection from its card is a container transform (ADR-0065):
-                        // the route swap cross-fades over the morph, exactly as the custom
-                        // timeline card transform does. Every other swap — the theme screen, or a
-                        // collection reached with no source card — keeps the fade-through.
-                        val isCardTransform = rediscoverCardTransformKey != null &&
-                            ((initialState == RediscoverDestination.Root && targetState.opensFromCard) ||
-                                (initialState.opensFromCard && targetState == RediscoverDestination.Root))
-                        if (isCardTransform && !reduceMotion) {
-                            val spec = tween<Float>(
-                                durationMillis = motion.durations.long2,
-                                easing = motion.easings.emphasized,
-                            )
-                            fadeIn(animationSpec = spec) togetherWith fadeOut(animationSpec = spec)
-                        } else {
-                            val exitSpec = motion.spec<Float>(
-                                reduceMotion = reduceMotion,
-                                full = tween(
-                                    durationMillis = motion.durations.short4,
-                                    easing = motion.easings.emphasizedAccelerate,
-                                ),
-                            )
-                            val enterSpec = motion.spec<Float>(
-                                reduceMotion = reduceMotion,
-                                full = tween(
-                                    durationMillis = motion.durations.medium2,
-                                    delayMillis = motion.durations.short4,
-                                    easing = motion.easings.emphasizedDecelerate,
-                                ),
-                                reduced = tween(
-                                    durationMillis = motion.durations.short3,
-                                    easing = motion.easings.standard,
-                                ),
-                            )
-                            fadeIn(enterSpec) togetherWith fadeOut(exitSpec)
-                        }
+                        // Collections use the same direct fade character as Mood insights. There
+                        // is no shared geometry between the masked carousel card and destination,
+                        // so opening and Back cannot collapse through a transient card position.
+                        val enterSpec = motion.spec<Float>(
+                            reduceMotion = reduceMotion,
+                            full = tween(durationMillis = motion.durations.medium2),
+                            reduced = tween(durationMillis = motion.durations.short3),
+                        )
+                        val exitSpec = motion.spec<Float>(
+                            reduceMotion = reduceMotion,
+                            full = tween(durationMillis = motion.durations.short4),
+                            reduced = tween(durationMillis = motion.durations.short3),
+                        )
+                        fadeIn(enterSpec) togetherWith fadeOut(exitSpec)
                     },
                     label = "rediscover collection navigation",
                 ) { destination ->
-                    val rediscoverAnimatedScope = this
                     when (destination) {
-                        RediscoverDestination.Root -> HomeScreen(
-                            momentRepository = container.momentRepository,
-                            timelineRepository = container.timelineRepository,
-                            appearanceRepository = container.appearanceRepository,
-                            rediscoverRepository = container.rediscoverRepository,
-                            profileSettingsRepository = container.profileSettingsRepository,
-                            clock = container.clock,
-                            idGenerator = container.idGenerator,
-                            mediaStore = container.mediaStore,
-                            mediaProcessor = container.mediaProcessor,
-                            listState = homeFeedListState,
-                            surfaceState = homeSurfaceState,
-                            draftStore = composerDraftStore,
-                            // The tapped card is what the collection screen grows out of, so the
-                            // key that pairs the two halves is recorded before the route changes
-                            // (ADR-0065), exactly as the timeline card transform records its id.
-                            onOpenFavorites = { selectedMomentId, cover ->
-                                rediscoverCardTransformKey = REDISCOVER_CARD_FAVOURITES
-                                rediscoverDestination = RediscoverDestination.Favorites(selectedMomentId, cover)
-                            },
-                            onOpenOnThisDay = { selectedMomentId, date, cover ->
-                                rediscoverCardTransformKey = REDISCOVER_CARD_ON_THIS_DAY
-                                rediscoverDestination = RediscoverDestination.OnThisDay(selectedMomentId, date, cover)
-                            },
-                            onOpenFromYourPast = { selectedMomentId, query, cover ->
-                                rediscoverCardTransformKey = REDISCOVER_CARD_FROM_YOUR_PAST
-                                rediscoverDestination = RediscoverDestination.FromYourPast(selectedMomentId, query, cover)
-                            },
-                            onOpenAllPhotos = { cover ->
-                                rediscoverCardTransformKey = REDISCOVER_CARD_ALL_PHOTOS
-                                rediscoverDestination = RediscoverDestination.AllPhotos(cover)
-                            },
-                            rediscoverCardModifier = { card ->
-                                if (rediscoverCardTransformKey == card.key) {
-                                    Modifier.rediscoverCardSharedBounds(
-                                        collectionKey = card.key,
-                                        sharedScope = sharedTransitionScope,
-                                        animatedScope = rediscoverAnimatedScope,
-                                        reduceMotion = reduceMotion,
-                                    )
-                                } else {
-                                    Modifier
-                                }
-                            },
-                            expandComposerRequest = homeComposerRequest,
-                            // Cleared once Home has expanded the composer, so re-entering Home
-                            // later does not replay a stale request.
-                            onExpandComposerRequestHandled = { homeComposerRequest = 0 },
-                            onOpenTimelineTheme = {
-                                rediscoverDestination = RediscoverDestination.AllTheme
-                            },
-                            onOpenProfile = { profileNavigation = profileNavigation.openProfile() },
-                            navigationToolbarExpanded = navigationToolbarExpanded,
-                            onNavigationToolbarExpand = { navigationToolbarExpanded = true },
-                            onNavigationToolbarCollapse = { navigationToolbarExpanded = false },
-                            behaviorPreferences = behaviorState.preferences,
-                            wallpaper = appearanceState.preferences.allTimelineAppearance.wallpaper,
-                            onMediaCaptureOverlayChanged = { homeCaptureOverlayActive = it },
-                            onMoodInsightsVisibilityChanged = { moodInsightsOpen = it },
-                        )
+                        // Home is already the base layer. This empty target holds its geometry
+                        // still while the departing collection fades away on Back.
+                        RediscoverDestination.Root -> Box(Modifier.fillMaxSize())
                         RediscoverDestination.AllTheme -> TimelineThemeScreen(
                             timelineRepository = container.timelineRepository,
                             appearanceRepository = container.appearanceRepository,
@@ -1049,13 +967,6 @@ fun App(
                         )
                         is RediscoverDestination.Favorites -> {
                             val favorites = destination
-                            RediscoverCollectionTransformFrame(
-                                collectionKey = REDISCOVER_CARD_FAVOURITES,
-                                activeTransformKey = rediscoverCardTransformKey,
-                                sharedScope = sharedTransitionScope,
-                                animatedScope = rediscoverAnimatedScope,
-                                reduceMotion = reduceMotion,
-                            ) {
                                 TimelineScreen(
                                     momentRepository = container.momentRepository,
                                     timelineRepository = container.timelineRepository,
@@ -1073,17 +984,9 @@ fun App(
                                     onBackToTimelineHome = { rediscoverDestination = RediscoverDestination.Root },
                                     behaviorPreferences = behaviorState.preferences,
                                 )
-                            }
                         }
                         is RediscoverDestination.OnThisDay -> {
                             val onThisDay = destination
-                            RediscoverCollectionTransformFrame(
-                                collectionKey = REDISCOVER_CARD_ON_THIS_DAY,
-                                activeTransformKey = rediscoverCardTransformKey,
-                                sharedScope = sharedTransitionScope,
-                                animatedScope = rediscoverAnimatedScope,
-                                reduceMotion = reduceMotion,
-                            ) {
                                 TimelineScreen(
                                     momentRepository = container.momentRepository,
                                     timelineRepository = container.timelineRepository,
@@ -1101,17 +1004,9 @@ fun App(
                                     onBackToTimelineHome = { rediscoverDestination = RediscoverDestination.Root },
                                     behaviorPreferences = behaviorState.preferences,
                                 )
-                            }
                         }
                         is RediscoverDestination.AllPhotos -> {
                             val allPhotos = destination
-                            RediscoverCollectionTransformFrame(
-                                collectionKey = REDISCOVER_CARD_ALL_PHOTOS,
-                                activeTransformKey = rediscoverCardTransformKey,
-                                sharedScope = sharedTransitionScope,
-                                animatedScope = rediscoverAnimatedScope,
-                                reduceMotion = reduceMotion,
-                            ) {
                                 TimelineScreen(
                                     momentRepository = container.momentRepository,
                                     timelineRepository = container.timelineRepository,
@@ -1128,17 +1023,9 @@ fun App(
                                     onBackToTimelineHome = { rediscoverDestination = RediscoverDestination.Root },
                                     behaviorPreferences = behaviorState.preferences,
                                 )
-                            }
                         }
                         is RediscoverDestination.FromYourPast -> {
                             val fromYourPast = destination
-                            RediscoverCollectionTransformFrame(
-                                collectionKey = REDISCOVER_CARD_FROM_YOUR_PAST,
-                                activeTransformKey = rediscoverCardTransformKey,
-                                sharedScope = sharedTransitionScope,
-                                animatedScope = rediscoverAnimatedScope,
-                                reduceMotion = reduceMotion,
-                            ) {
                                 TimelineScreen(
                                     momentRepository = container.momentRepository,
                                     timelineRepository = container.timelineRepository,
@@ -1156,9 +1043,9 @@ fun App(
                                     onBackToTimelineHome = { rediscoverDestination = RediscoverDestination.Root },
                                     behaviorPreferences = behaviorState.preferences,
                                 )
-                            }
                         }
                     }
+                }
                 }
                         }
                         ReliveTopLevelDestination.Search -> SearchScreen(

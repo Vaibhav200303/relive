@@ -890,9 +890,17 @@ Format for each entry:
 - **Decision:** All five onboarding chapters use the shared shell in `ONBOARDING_DESIGN.md`: one interpolated dark atmospheric canvas, compact header, generous native visual stage, and a lower shell with five segmented progress, heading, concise caption, primary forward action, and contextually available Back. The carried square sample Moment retains one focused position and size across Capture → Organize; timeline chrome appears during its handoff, and the Organize preview uses smooth focused auto-scroll. Relive, Privacy, and Ready keep their already-approved content, actions, palette order, privacy constraints, and completion behavior, but extend this shell rather than creating alternate page layouts.
 - **Consequences:** Later onboarding work has a stable presentation contract while Capture and Organize retain their approved appearance. No onboarding chapter is added, removed, or implemented by this decision; there is no change to completion persistence, permissions, archive state, dependencies, palettes, or app behavior outside onboarding.
 
+## ADR-0095 — Rediscover collection navigation uses a direct full-screen fade
+
+- **Date:** 2026-09-23 · **Status:** Accepted · amends ADR-0065 motion only
+- **Context:** The shared container transform between Home's Material carousel cards and read-only collection surfaces repeatedly exposed transient carousel mask and layout positions, producing a visible ghost collapse and neighboring-card settlement on Back. Recreating Home in the direct-fade route still made the expanded backdrop, carousel, and Mood bar enter and measure independently while the collection was fading away. The product owner explicitly requested replacing that transform while retaining Mood insights as its existing fade overlay.
+- **Decision:** Opening and closing a read-only Rediscover collection uses a tokenized full-screen fade with the same direct visual character as the Mood insights overlay. Home remains composed below the collection layer for the whole route, so the route fades over the existing settled Home surface. Rediscover cards and collection destinations no longer register or consume shared bounds, and no carousel measurement participates in route motion. Mood insights remains the full-screen scrollable fade overlay specified by ADR-0066. Collection destinations, carried covers, navigation callbacks, Back behavior, and reduced-motion support remain unchanged.
+- **Consequences:** ADR-0065 remains authoritative for Rediscover hit testing, collection ordering, sliding-cover presentation, and carrying the tapped card's cover, but its container-transform clause is superseded. Custom timeline cards continue using ADR-0063's container transform. The Rediscover route no longer depends on the source card remaining composed or retaining a stable mask during navigation, eliminating first-open and return-only geometry divergence without delays or alternate first-open behavior.
+
 ## Template for new decisions
 
 ```text
+
 ## ADR-XXXX — <short title>
 - **Date:** YYYY-MM-DD · **Status:** Proposed | Accepted | Superseded
 - **Context:** …
