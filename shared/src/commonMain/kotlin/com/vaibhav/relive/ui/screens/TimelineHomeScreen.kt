@@ -92,6 +92,7 @@ import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.theme.ReliveOpacity
 import com.vaibhav.relive.ui.theme.canvasBrush
 import com.vaibhav.relive.ui.theme.rememberGrainBrush
+import com.vaibhav.relive.ui.theme.ReliveTimelineThumbnail
 import com.vaibhav.relive.ui.theme.reliveSequentialSlideFade
 import com.vaibhav.relive.ui.icons.ProfileIcons
 import com.vaibhav.relive.ui.icons.TimelineActionIcons
@@ -887,7 +888,6 @@ internal fun TimelineHomeMediaPreview(
             if (cover == null || !mediaStore.exists(cover)) {
                 NoCoverPhotoPlaceholder(
                     modifier = Modifier.matchParentSize(),
-                    useFixedCardBackground = true,
                 )
             } else {
                 RelivedImageTile(cover, mediaStore, Modifier.matchParentSize())
@@ -901,25 +901,26 @@ internal fun NoCoverPhotoPlaceholder(
     modifier: Modifier = Modifier,
     useFixedCardBackground: Boolean = false,
 ) {
-    val colors = ReliveTheme.colors
+    if (!useFixedCardBackground) {
+        ReliveTimelineThumbnail(modifier)
+        return
+    }
     val dims = ReliveTheme.dimensions
-    val background = if (useFixedCardBackground) NeutralCoverPlaceholderBackground else colors.surfaceCardTranslucent
-    val foreground = if (useFixedCardBackground) Color.White else colors.surfaceOverlay
-    Canvas(modifier = modifier.background(background)) {
+    Canvas(modifier = modifier.background(NeutralCoverPlaceholderBackground)) {
         val iconWidth = size.minDimension * .54f
         val iconHeight = iconWidth * .58f
         val left = (size.width - iconWidth) / 2f
         val top = (size.height - iconHeight) / 2f
         val stroke = dims.stroke.icon.toPx() * 2f
         drawRoundRect(
-            color = foreground,
+            color = Color.White,
             topLeft = Offset(left, top),
             size = Size(iconWidth, iconHeight),
             cornerRadius = CornerRadius(iconHeight * .08f),
             style = Stroke(width = stroke),
         )
         drawCircle(
-            color = foreground,
+            color = Color.White,
             radius = iconHeight * .12f,
             center = Offset(left + iconWidth * .67f, top + iconHeight * .30f),
         )
@@ -933,7 +934,7 @@ internal fun NoCoverPhotoPlaceholder(
                 lineTo(left + iconWidth - stroke, top + iconHeight - stroke)
                 close()
             },
-            color = foreground,
+            color = Color.White,
         )
     }
 }

@@ -897,6 +897,13 @@ Format for each entry:
 - **Decision:** Opening and closing a read-only Rediscover collection uses a tokenized full-screen fade with the same direct visual character as the Mood insights overlay. Home remains composed below the collection layer for the whole route, so the route fades over the existing settled Home surface. Rediscover cards and collection destinations no longer register or consume shared bounds, and no carousel measurement participates in route motion. Mood insights remains the full-screen scrollable fade overlay specified by ADR-0066. Collection destinations, carried covers, navigation callbacks, Back behavior, and reduced-motion support remain unchanged.
 - **Consequences:** ADR-0065 remains authoritative for Rediscover hit testing, collection ordering, sliding-cover presentation, and carrying the tapped card's cover, but its container-transform clause is superseded. Custom timeline cards continue using ADR-0063's container transform. The Rediscover route no longer depends on the source card remaining composed or retaining a stable mask during navigation, eliminating first-open and return-only geometry divergence without delays or alternate first-open behavior.
 
+## ADR-0096 — Empty custom timelines use a theme-aware landscape cover
+
+- **Date:** 2026-09-24 · **Status:** Accepted
+- **Context:** Custom timelines without a chosen cover photo used a neutral gray media placeholder. The onboarding's custom timeline card instead establishes the desired abstract landscape language while remaining visibly connected to the surrounding palette.
+- **Decision:** A custom timeline with no selected cover photo renders the shared abstract landscape thumbnail on both its Timeline Home card and its detail cover. The thumbnail uses a sky, sun, layered mountain, and foreground composition matching the onboarding custom-card family, with colors derived from the active Relive semantic palette. Explicit cover photos still take precedence. The All Photos no-cover placeholder and generated collection covers do not change.
+- **Consequences:** Empty custom timelines retain a visually continuous source/destination cover for their container transform and no longer look like missing media. No cover image is persisted or fabricated, and there is no schema, media, dependency, or archive-behavior change.
+
 ## Template for new decisions
 
 ```text

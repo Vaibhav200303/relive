@@ -178,6 +178,8 @@ Concrete visual tokens (colors, typography, dimensions) are defined in [`DESIGN_
 
 Opening a custom timeline is a **container transform** from the card that was tapped: the card's bounds morph into the screen's, which is honest here because the card's cover photo is the screen's cover photo. Back reverses it. What it opens is a **sliding-cover surface**: one scroll container in which the timeline's cover photo is a backdrop and the feed of Moments is a sheet riding over it. It is the same motion as the Home surface (§2), with the cover standing where Home's welcome block stands.
 
+When a custom timeline has no chosen cover photo, its card and detail cover use the same theme-aware abstract landscape thumbnail. It carries the onboarding custom-card visual language — sky, sun, layered mountains, and a dark foreground — with every color derived from the active palette; it is not a neutral media placeholder or a fabricated photograph.
+
 It has three resting places along one axis, and never comes to rest between them:
 
 - **expanded** — the cover fills the whole screen and the feed is parked below the bottom edge;
