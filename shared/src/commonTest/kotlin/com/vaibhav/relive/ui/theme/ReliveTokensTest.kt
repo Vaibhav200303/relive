@@ -126,7 +126,8 @@ class ReliveTokensTest {
     @Test
     fun rediscoverShelfWidthsPreserveTheFeaturedHierarchy() {
         val rediscover = DefaultReliveDimensions.rediscover
-        assertEquals(20.dp, rediscover.cardOuterRadius)
+        assertEquals(28.dp, rediscover.cardOuterRadius)
+        assertEquals(20.dp, rediscover.cardElevation)
         assertEquals(0.68f, rediscover.favoriteShelfCardWidthFraction)
         assertTrue(rediscover.onThisDayShelfCardWidthFraction > rediscover.favoriteShelfCardWidthFraction)
         assertEquals(272.dp, rediscover.favoriteShelfCardHeight)
@@ -149,14 +150,16 @@ class ReliveTokensTest {
     @Test
     fun timelineCreationDimensionsMatchReferenceAndAccessibilityMinimums() {
         val creation = DefaultReliveDimensions.timelineCreation
-        assertEquals(560.dp, creation.maxWidth)
-        assertEquals(760.dp, creation.maxHeight)
-        assertEquals(32.dp, creation.contentInset)
-        assertEquals(70.dp, creation.fieldHeight)
-        assertEquals(212.dp, creation.coverZoneHeight)
-        assertEquals(80.dp, creation.emptyIconSurfaceSize)
-        assertEquals(32.dp, creation.emptyIconSize)
-        assertEquals(64.dp, creation.primaryActionHeight)
+        assertEquals(640.dp, creation.maxWidth)
+        assertEquals(640.dp, creation.maxHeight)
+        assertEquals(24.dp, creation.contentInset)
+        assertEquals(48.dp, creation.headerCloseSize)
+        assertEquals(20.dp, creation.headerCloseGlyphSize)
+        assertEquals(56.dp, creation.fieldHeight)
+        assertEquals(160.dp, creation.coverZoneHeight)
+        assertEquals(64.dp, creation.emptyIconSurfaceSize)
+        assertEquals(24.dp, creation.emptyIconSize)
+        assertEquals(56.dp, creation.primaryActionHeight)
         assertEquals(240.dp, creation.primaryActionMaxWidth)
         assertTrue(creation.headerCloseSize >= DefaultReliveDimensions.minTouchTarget)
         assertTrue(creation.primaryActionHeight >= DefaultReliveDimensions.minTouchTarget)

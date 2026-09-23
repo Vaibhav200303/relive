@@ -98,9 +98,9 @@ data class ReliveTimelineHomeDimensions(
 
 @Immutable
 data class ReliveRediscoverDimensions(
-    val cardOuterRadius: Dp = 20.dp,
+    val cardOuterRadius: Dp = 28.dp,
     /** Resting elevation for a Rediscover card, lifting it off the backdrop like a print. */
-    val cardElevation: Dp = 8.dp,
+    val cardElevation: Dp = 20.dp,
     val heroMediaHeight: Dp = 280.dp,
     val compactMediaHeight: Dp = 144.dp,
     val compactInfoAreaHeight: Dp = 128.dp,
@@ -155,15 +155,16 @@ data class ReliveComposerDimensions(
 /** Layout tokens for the custom-timeline creation dialog. */
 @Immutable
 data class ReliveTimelineCreationDimensions(
-    val maxWidth: Dp = 560.dp,
-    val maxHeight: Dp = 760.dp,
-    val contentInset: Dp = 32.dp,
-    val headerCloseSize: Dp = 56.dp,
-    val fieldHeight: Dp = 70.dp,
-    val coverZoneHeight: Dp = 212.dp,
-    val emptyIconSurfaceSize: Dp = 80.dp,
-    val emptyIconSize: Dp = 32.dp,
-    val primaryActionHeight: Dp = 64.dp,
+    val maxWidth: Dp = 640.dp,
+    val maxHeight: Dp = 640.dp,
+    val contentInset: Dp = 24.dp,
+    val headerCloseSize: Dp = 48.dp,
+    val headerCloseGlyphSize: Dp = 20.dp,
+    val fieldHeight: Dp = 56.dp,
+    val coverZoneHeight: Dp = 160.dp,
+    val emptyIconSurfaceSize: Dp = 64.dp,
+    val emptyIconSize: Dp = 24.dp,
+    val primaryActionHeight: Dp = 56.dp,
     val primaryActionMaxWidth: Dp = 240.dp,
 )
 

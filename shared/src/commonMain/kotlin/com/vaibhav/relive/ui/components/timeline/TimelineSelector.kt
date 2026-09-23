@@ -32,7 +32,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
@@ -98,13 +97,6 @@ fun TimelineCreationDialog(
                             color = colors.textSecondary,
                         )
                     }
-                    TimelineBotanicalSprig(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .size(creation.headerCloseSize * 2),
-                        color = colors.accentMuted,
-                        strokeWidth = dims.stroke.icon,
-                    )
                     IconButton(
                         onClick = { if (!state.isSaving) onDismiss() },
                         enabled = !state.isSaving,
@@ -113,7 +105,7 @@ fun TimelineCreationDialog(
                             .size(creation.headerCloseSize)
                             .background(colors.tint, RoundedCornerShape(dims.radii.full)),
                     ) {
-                        CloseGlyph(dims.icon.lg, colors.textPrimary, dims.stroke.icon)
+                        CloseGlyph(creation.headerCloseGlyphSize, colors.textPrimary, dims.stroke.icon)
                     }
                 }
                 Spacer(Modifier.height(dims.spacing.md))
@@ -306,46 +298,6 @@ private fun TimelineCoverDropZone(
                 Text("No cover photo", style = ReliveTheme.typography.body, color = colors.textSecondary)
             }
         }
-    }
-}
-
-@Composable
-private fun TimelineBotanicalSprig(modifier: Modifier, color: Color, strokeWidth: Dp) {
-    Canvas(modifier = modifier.alpha(ReliveOpacity.Medium)) {
-        val stem = color
-        val width = size.width
-        val height = size.height
-        drawLine(
-            stem,
-            androidx.compose.ui.geometry.Offset(width * .55f, height * .95f),
-            androidx.compose.ui.geometry.Offset(width * .5f, height * .18f),
-            strokeWidth = strokeWidth.toPx(),
-        )
-        drawOval(
-            stem,
-            androidx.compose.ui.geometry.Offset(width * .44f, height * .08f),
-            androidx.compose.ui.geometry.Size(width * .28f, height * .38f),
-        )
-        drawOval(
-            stem,
-            androidx.compose.ui.geometry.Offset(width * .57f, height * .26f),
-            androidx.compose.ui.geometry.Size(width * .25f, height * .36f),
-        )
-        drawOval(
-            stem,
-            androidx.compose.ui.geometry.Offset(width * .22f, height * .31f),
-            androidx.compose.ui.geometry.Size(width * .3f, height * .18f),
-        )
-        drawOval(
-            stem,
-            androidx.compose.ui.geometry.Offset(width * .58f, height * .5f),
-            androidx.compose.ui.geometry.Size(width * .27f, height * .2f),
-        )
-        drawOval(
-            stem,
-            androidx.compose.ui.geometry.Offset(width * .28f, height * .56f),
-            androidx.compose.ui.geometry.Size(width * .26f, height * .17f),
-        )
     }
 }
 

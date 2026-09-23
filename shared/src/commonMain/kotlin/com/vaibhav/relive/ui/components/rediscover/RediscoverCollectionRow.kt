@@ -1,6 +1,7 @@
 package com.vaibhav.relive.ui.components.rediscover
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -21,22 +22,17 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.RoundRect
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Outline
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.platform.media.RelivedImageTile
@@ -45,7 +41,6 @@ import com.vaibhav.relive.presentation.timeline.SystemCollectionCover
 import com.vaibhav.relive.ui.theme.ReliveCoverLabelScrim
 import com.vaibhav.relive.ui.theme.ReliveGeneratedCover
 import com.vaibhav.relive.ui.theme.ReliveTheme
-import androidx.compose.ui.unit.LayoutDirection
 import kotlin.random.Random
 
 /** Stable card keys, shared with the navigation host that keys the container transform on them. */
@@ -171,31 +166,6 @@ fun RediscoverCollectionRow(
     }
 }
 
-/**
- * An elevation shadow that tracks the carousel item's visible bounds. The carousel itself draws
- * each item in a full slot then masks it, so a conventional fixed-size shadow would bleed into
- * neighbouring cards.
- */
-@Composable
-private fun CarouselItemScope.maskShadow(elevation: Dp, cornerRadius: Dp, color: Color): Modifier =
-    Modifier.graphicsLayer {
-        val info = carouselItemDrawInfo
-        val mask = info.maskRect
-        val range = info.maxSize - info.minSize
-        val grown = if (range > 0f) ((info.size - info.minSize) / range).coerceIn(0f, 1f) else 1f
-        shadowElevation = elevation.toPx() * (0.6f + 0.4f * grown)
-        ambientShadowColor = color
-        spotShadowColor = color
-        clip = false
-        shape = object : Shape {
-            override fun createOutline(
-                size: Size,
-                layoutDirection: LayoutDirection,
-                density: Density,
-            ): Outline = Outline.Rounded(RoundRect(mask, CornerRadius(cornerRadius.toPx())))
-        }
-    }
-
 @Composable
 private fun CarouselItemScope.RediscoverCollectionCard(
     card: RediscoverCollectionCardModel,
@@ -213,15 +183,7 @@ private fun CarouselItemScope.RediscoverCollectionCard(
     Box(
         modifier = cardContainerModifier(card)
             .fillMaxSize()
-            .then(
-                maskShadow(
-                    elevation = dims.rediscover.cardElevation,
-                    cornerRadius = dims.rediscover.cardOuterRadius,
-                    color = ReliveTheme.colors.shadow,
-                ),
-            )
             .maskClip(shape)
-            .background(ReliveTheme.colors.surfaceCard)
             .clickable(onClick = card.onOpen)
             .onGloballyPositioned { coordinates ->
                 if (hitTester != null) {
@@ -238,37 +200,48 @@ private fun CarouselItemScope.RediscoverCollectionCard(
             }
             .semantics { contentDescription = "Open ${card.title}" },
     ) {
-            SystemCollectionCoverImage(
-                cover = resolvedRediscoverCollectionCover(card.coverSeed),
-                mediaStore = mediaStore,
-                modifier = Modifier.matchParentSize(),
-            )
         Box(
             modifier = Modifier
                 .matchParentSize()
-                .graphicsLayer {
-                    val info = carouselItemDrawInfo
-                    val range = info.maxSize - info.minSize
-                    val grown = if (range > 0f) {
-                        ((info.size - info.minSize) / range).coerceIn(0f, 1f)
-                    } else {
-                        1f
-                    }
-                    alpha = ((grown - 0.8f) / 0.2f).coerceIn(0f, 1f)
-                }
-                .background(ReliveCoverLabelScrim),
+                .clip(shape)
+                .background(ReliveTheme.colors.surfaceCard)
+                .border(1.dp, Color.White.copy(alpha = 0.16f), shape),
         ) {
-            Text(
-                text = card.title,
-                style = ReliveTheme.typography.title,
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+            SystemCollectionCoverImage(
+                cover = resolvedRediscoverCollectionCover(card.coverSeed),
+                mediaStore = mediaStore,
                 modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .graphicsLayer { translationX = carouselItemDrawInfo.maskRect.left }
-                    .padding(dims.spacing.lg),
+                    .matchParentSize()
+                    .clip(shape),
             )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clip(shape)
+                    .graphicsLayer {
+                        val info = carouselItemDrawInfo
+                        val range = info.maxSize - info.minSize
+                        val grown = if (range > 0f) {
+                            ((info.size - info.minSize) / range).coerceIn(0f, 1f)
+                        } else {
+                            1f
+                        }
+                        alpha = ((grown - 0.8f) / 0.2f).coerceIn(0f, 1f)
+                    }
+                    .background(ReliveCoverLabelScrim, shape),
+            ) {
+                Text(
+                    text = card.title,
+                    style = ReliveTheme.typography.title,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .graphicsLayer { translationX = carouselItemDrawInfo.maskRect.left }
+                        .padding(dims.spacing.lg),
+                )
+            }
         }
     }
 }
