@@ -128,6 +128,8 @@ fun MomentComposer(
      * rail instead leaves the marker downward toward the first moment's dot (ADR-0061).
      */
     railContinuesBelow: Boolean = false,
+    /** Whether the rail also enters this marker from the item above it. */
+    railContinuesAbove: Boolean = !railContinuesBelow,
     /** Whether an existing Moment is present for this marker's rail to connect to. */
     hasConnectedMoment: Boolean = false,
     modifier: Modifier = Modifier,
@@ -162,6 +164,7 @@ fun MomentComposer(
                     colors.borderMuted,
                     dims,
                     dims.minTouchTarget,
+                    railContinuesAbove,
                     railContinuesBelow,
                     hasConnectedMoment,
                 )
@@ -395,6 +398,8 @@ fun CollapsedComposerMarker(
     onExpand: () -> Unit,
     /** See `MomentComposer`'s `railContinuesBelow`. */
     railContinuesBelow: Boolean = false,
+    /** See `MomentComposer`'s `railContinuesAbove`. */
+    railContinuesAbove: Boolean = !railContinuesBelow,
     /** See `MomentComposer`'s `hasConnectedMoment`. */
     hasConnectedMoment: Boolean = false,
     modifier: Modifier = Modifier,
@@ -411,6 +416,7 @@ fun CollapsedComposerMarker(
                     colors.borderMuted,
                     dims,
                     dims.minTouchTarget,
+                    railContinuesAbove,
                     railContinuesBelow,
                     hasConnectedMoment,
                 )
@@ -466,6 +472,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawComposerRail(
     color: androidx.compose.ui.graphics.Color,
     dims: com.vaibhav.relive.ui.theme.ReliveDimensions,
     markerSize: androidx.compose.ui.unit.Dp,
+    continuesAbove: Boolean,
     continuesBelow: Boolean,
     hasConnectedMoment: Boolean,
 ) {
@@ -473,15 +480,24 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawComposerRail(
     val axis = dims.timeline.contentInset.toPx() / 2f
     val markerCenter = (dims.spacing.xl.toPx() + markerSize.toPx() / 2f)
         .coerceAtMost(size.height)
-    // The rail always terminates at the marker's centre; only the side it arrives from changes.
-    val start = if (continuesBelow) markerCenter else 0f
-    val end = if (continuesBelow) size.height else markerCenter
-    drawLine(
-        color = color,
-        start = androidx.compose.ui.geometry.Offset(axis, start),
-        end = androidx.compose.ui.geometry.Offset(axis, end),
-        strokeWidth = dims.timeline.railWidth.toPx(),
-    )
+    // A new-Moment composer is terminal and uses one side. An inline editor replaces a Moment in
+    // place, so it can connect on both sides without introducing another marker or rail segment.
+    if (continuesAbove) {
+        drawLine(
+            color = color,
+            start = androidx.compose.ui.geometry.Offset(axis, 0f),
+            end = androidx.compose.ui.geometry.Offset(axis, markerCenter),
+            strokeWidth = dims.timeline.railWidth.toPx(),
+        )
+    }
+    if (continuesBelow) {
+        drawLine(
+            color = color,
+            start = androidx.compose.ui.geometry.Offset(axis, markerCenter),
+            end = androidx.compose.ui.geometry.Offset(axis, size.height),
+            strokeWidth = dims.timeline.railWidth.toPx(),
+        )
+    }
 }
 
 @Composable

@@ -1460,15 +1460,16 @@ private fun TimelineContent(
                 }
                 // The composer counts toward the offset only where it is actually emitted — the
                 // read-only collections are newest-first sliding surfaces with no composer at all.
+                val showsStandaloneComposer = mode.allowsMutations && !composerState.isEditing
                 val feedOffset = if (isNewestFirst) {
-                    headerItemCount + (if (mode.allowsMutations) 1 else 0)
+                    headerItemCount + (if (showsStandaloneComposer) 1 else 0)
                 } else {
                     0
                 }
                 // The composer is one item emitted at whichever end of the feed is the
                 // chronological end: the head on Home (newest-first), the tail everywhere else.
                 val composerItem: LazyListScope.() -> Unit = {
-                    if (mode.allowsMutations) item(key = "composer", contentType = "composer") {
+                    if (showsStandaloneComposer) item(key = "composer", contentType = "composer") {
                         AnimatedContent(
                             targetState = isComposerExpanded,
                             transitionSpec = {
@@ -1796,6 +1797,9 @@ private fun TimelineContent(
                                 onMicPermissionResult = onMicPermissionResult,
                                 onDismissMicPermissionMessage = onDismissMicPermissionMessage,
                                 onOpenAppSettings = onOpenAppSettings,
+                                railContinuesAbove = index > 0,
+                                railContinuesBelow = index < moments.lastIndex,
+                                hasConnectedMoment = moments.size > 1,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .onGloballyPositioned { onEditorBoundsChanged(it.boundsInRoot()) },
@@ -1830,7 +1834,7 @@ private fun TimelineContent(
                                 // On Home the composer sits above the newest moment, so the very
                                 // first card still needs rail above its dot for the composer's
                                 // rail to meet it. Elsewhere the first card starts the rail.
-                                hasPreviousMoment = index > 0 || isNewestFirst,
+                                hasPreviousMoment = index > 0 || (isNewestFirst && showsStandaloneComposer),
                                 hasNextMoment = index < moments.lastIndex,
                                 showLocation = momentVisibility.showLocations,
                                 showTags = momentVisibility.showTags,
