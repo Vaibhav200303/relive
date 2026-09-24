@@ -106,7 +106,6 @@ private fun MoodChartPanel(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    val colors = ReliveTheme.colors
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
     val shape = RoundedCornerShape(dims.radii.large)
@@ -114,8 +113,8 @@ private fun MoodChartPanel(
         modifier = modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(colors.surfaceCard)
-            .border(BorderStroke(dims.stroke.hairline, colors.borderMuted), shape)
+            .background(MoodInsightSurfaceColors.surface)
+            .border(BorderStroke(dims.stroke.hairline, MoodInsightSurfaceColors.border), shape)
             .padding(
                 start = dims.spacing.md,
                 end = dims.spacing.md,
@@ -126,7 +125,7 @@ private fun MoodChartPanel(
         Text(
             text = title,
             style = type.title,
-            color = colors.textPrimary,
+            color = MoodInsightSurfaceColors.ink,
             modifier = Modifier.padding(start = dims.spacing.xs),
         )
         Spacer(Modifier.height(dims.spacing.xs))
@@ -146,7 +145,6 @@ private fun MoodAreaChart(
     highlightIndex: Int,
     modifier: Modifier = Modifier,
 ) {
-    val colors = ReliveTheme.colors
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
 
@@ -184,7 +182,7 @@ private fun MoodAreaChart(
             // Score guides at Low / Good / Great, so the curve's height is readable.
             for (score in 1..3) {
                 drawLine(
-                    color = colors.borderMuted,
+                    color = MoodInsightSurfaceColors.border,
                     start = Offset(startPx, py(score.toFloat())),
                     end = Offset(endPx, py(score.toFloat())),
                     strokeWidth = dims.stroke.hairline.toPx(),
@@ -291,7 +289,7 @@ private fun MoodAreaChart(
             Text(
                 text = point.label,
                 style = type.eyebrow,
-                color = if (isHighlighted) FeelingFaceColors.chartFill else colors.accentMuted,
+                color = if (isHighlighted) FeelingFaceColors.chartFill else MoodInsightSurfaceColors.inkMuted,
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .offset(
@@ -306,7 +304,7 @@ private fun MoodAreaChart(
             Text(
                 text = "Nothing felt yet",
                 style = type.subtitle,
-                color = colors.textMuted,
+                color = MoodInsightSurfaceColors.inkMuted,
                 modifier = Modifier.align(Alignment.Center),
             )
         }
@@ -319,7 +317,6 @@ fun MoodSplitRows(
     insights: MoodInsights,
     modifier: Modifier = Modifier,
 ) {
-    val colors = ReliveTheme.colors
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
     val order = listOf(MomentFeeling.Great, MomentFeeling.Good, MomentFeeling.Low)
@@ -338,7 +335,7 @@ fun MoodSplitRows(
                         .weight(1f)
                         .height(dims.spacing.md)
                         .clip(RoundedCornerShape(dims.radii.pill))
-                        .background(colors.surfaceCard),
+                        .background(MoodInsightSurfaceColors.surface),
                 ) {
                     if (count > 0) {
                         Box(
@@ -354,7 +351,7 @@ fun MoodSplitRows(
                 Text(
                     text = count.toString(),
                     style = type.caption,
-                    color = colors.textSecondary,
+                    color = MoodInsightSurfaceColors.inkMuted,
                     textAlign = TextAlign.End,
                     modifier = Modifier.width(dims.spacing.xl),
                 )
@@ -396,24 +393,23 @@ private fun MoodTile(
     suffix: String?,
     modifier: Modifier = Modifier,
 ) {
-    val colors = ReliveTheme.colors
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(dims.radii.large))
-            .background(colors.surfaceCard)
+            .background(MoodInsightSurfaceColors.surface)
             .padding(horizontal = dims.spacing.md, vertical = dims.spacing.sm),
     ) {
-        Text(text = label, style = type.eyebrow, color = colors.accentMuted)
+        Text(text = label, style = type.eyebrow, color = MoodInsightSurfaceColors.inkMuted)
         Row(verticalAlignment = Alignment.Bottom) {
-            Text(text = value, style = type.dateLarge, color = colors.textPrimary)
+            Text(text = value, style = type.dateLarge, color = MoodInsightSurfaceColors.ink)
             if (suffix != null) {
                 Spacer(Modifier.width(dims.spacing.xs))
                 Text(
                     text = suffix,
                     style = type.caption,
-                    color = colors.accentMuted,
+                    color = MoodInsightSurfaceColors.inkMuted,
                     modifier = Modifier.padding(bottom = dims.spacing.xs),
                 )
             }

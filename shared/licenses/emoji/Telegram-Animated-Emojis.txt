@@ -1,0 +1,10 @@
+Source: https://github.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis
+Assets:
+- Smileys/Grinning Face With Big Eyes.webp
+- Smileys/Slightly Smiling Face.webp
+- Smileys/Slightly Frowning Face.webp
+
+Personal Use Only License
+- This repository is for strictly personal use only.
+- All rights are reserved by Telegram, which retains the authority to restrict its use in personal projects.
+- The repository owner and contributors hold no liability for any consequences arising from its use.

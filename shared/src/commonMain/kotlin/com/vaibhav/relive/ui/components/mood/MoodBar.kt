@@ -65,8 +65,8 @@ fun MoodBar(
                 spotColor = colors.shadow,
             )
             .clip(shape)
-            .background(colors.surfaceCard)
-            .border(BorderStroke(dims.stroke.hairline, colors.borderMuted), shape)
+            .background(MoodInsightSurfaceColors.surface)
+            .border(BorderStroke(dims.stroke.hairline, MoodInsightSurfaceColors.border), shape)
             .clickable(enabled = interactionsEnabled, onClick = onToggleInsights)
             .semantics {
                 if (interactionsEnabled) {
@@ -99,7 +99,7 @@ fun MoodBar(
                 .heightIn(min = MoodBarCellHeight)
                 .drawBehind {
                     drawLine(
-                        color = colors.borderMuted,
+                        color = MoodInsightSurfaceColors.border,
                         start = androidx.compose.ui.geometry.Offset(size.width / 2f, 0f),
                         end = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height),
                         strokeWidth = size.width,
@@ -129,7 +129,6 @@ private fun MoodBarCell(
     animateFace: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val colors = ReliveTheme.colors
     val type = ReliveTheme.typography
     val dims = ReliveTheme.dimensions
     Column(
@@ -140,7 +139,7 @@ private fun MoodBarCell(
         Text(
             text = label,
             style = type.eyebrow,
-            color = colors.accentMuted,
+            color = MoodInsightSurfaceColors.inkMuted,
         )
         Spacer(Modifier.height(dims.spacing.xs))
         if (summary == null) {
@@ -151,7 +150,7 @@ private fun MoodBarCell(
                     .semantics { contentDescription = "No moments felt" },
                 contentAlignment = Alignment.Center,
             ) {
-                Text(text = "—", style = type.display, color = colors.textMuted)
+                Text(text = "—", style = type.display, color = MoodInsightSurfaceColors.inkMuted)
             }
         } else {
             FeelingFace(
@@ -165,7 +164,7 @@ private fun MoodBarCell(
         Text(
             text = summary?.let { moodVerdictLabel(it.verdict) } ?: "No moments",
             style = type.subtitle,
-            color = if (summary == null) colors.textMuted else colors.accent,
+            color = if (summary == null) MoodInsightSurfaceColors.inkMuted else MoodInsightSurfaceColors.ink,
         )
     }
 }

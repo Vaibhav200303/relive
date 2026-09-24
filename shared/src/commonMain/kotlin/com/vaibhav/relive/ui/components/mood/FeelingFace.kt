@@ -1,17 +1,14 @@
 package com.vaibhav.relive.ui.components.mood
 
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.keyframes
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -24,6 +21,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import com.vaibhav.relive.domain.model.MomentFeeling
 import com.vaibhav.relive.ui.theme.ReliveTheme
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
+import relive.shared.generated.resources.*
 
 /**
  * Fixed face palette (ADR-0066): like the print card's white and the audio tile's black,
@@ -47,19 +47,33 @@ internal object FeelingFaceColors {
 }
 
 /**
+ * The Mood insights surfaces preserve their light editorial paper treatment in every app
+ * appearance. These inks travel with that fixed white surface so Dark mode remains legible.
+ */
+internal object MoodInsightSurfaceColors {
+    val surface = Color.White
+    val ink = Color(0xFF2F2218)
+    val inkMuted = Color(0xFF806957)
+    val border = Color(0xFFE1D6CC)
+}
+
+/**
  * Draws one feeling face: a gradient-shaded gold sphere with eyes, a per-feeling mouth,
  * and a blush on the warmer two. Shared by the standalone composable, the mood bar and
  * the chart canvases, so every face in the app is the same face.
  *
- * [eyeOpenFraction] is 1 for open eyes and near zero mid-blink.
+ * [eyeOpenFraction] is 1 for open eyes and near zero mid-blink. [expressionFraction]
+ * travels from the resting expression to the more animated pose used by the large faces.
  */
 internal fun DrawScope.drawFeelingFace(
     feeling: MomentFeeling,
     center: Offset,
     radius: Float,
     eyeOpenFraction: Float = 1f,
+    expressionFraction: Float = 0f,
 ) {
     val muted = feeling == MomentFeeling.Low
+    val expression = expressionFraction.coerceIn(0f, 1f)
     fun tone(color: Color): Color = if (muted) desaturate(color, 0.45f) else color
 
     drawCircle(
@@ -77,16 +91,37 @@ internal fun DrawScope.drawFeelingFace(
         center = center,
     )
 
+    // A soft highlight and lower-edge shade give the face the glossy emoji depth of the
+    // reference while keeping it entirely vector-drawn and crisp at every size.
+    drawOval(
+        color = Color.White.copy(alpha = 0.30f),
+        topLeft = Offset(center.x - radius * 0.57f, center.y - radius * 0.66f),
+        size = Size(radius * 0.56f, radius * 0.26f),
+    )
+    drawArc(
+        color = tone(FeelingFaceColors.rim).copy(alpha = 0.42f),
+        startAngle = 24f,
+        sweepAngle = 132f,
+        useCenter = false,
+        topLeft = Offset(center.x - radius * 0.89f, center.y - radius * 0.89f),
+        size = Size(radius * 1.78f, radius * 1.78f),
+        style = Stroke(width = radius * 0.055f, cap = StrokeCap.Round),
+    )
+
     val feature = FeelingFaceColors.feature
-    val eyeRadiusY = radius * (if (muted) 0.12f else 0.15f) * eyeOpenFraction.coerceIn(0.07f, 1f)
+    val eyeOpen = eyeOpenFraction.coerceIn(0.07f, 1f)
+    val greatRest = if (feeling == MomentFeeling.Great) expression else 0f
+    val eyeWidth = radius * (0.22f - 0.07f * greatRest)
+    val eyeRadiusY = radius * (if (muted) 0.12f else 0.15f) *
+        (1f - 0.42f * greatRest) * eyeOpen
     for (side in intArrayOf(-1, 1)) {
         drawOval(
             color = feature,
             topLeft = Offset(
-                center.x + side * radius * 0.31f - radius * 0.11f,
+                center.x + side * radius * 0.31f - eyeWidth / 2f,
                 center.y - radius * 0.21f - eyeRadiusY,
             ),
-            size = Size(radius * 0.22f, eyeRadiusY * 2f),
+            size = Size(eyeWidth, eyeRadiusY * 2f),
         )
     }
 
@@ -106,26 +141,58 @@ internal fun DrawScope.drawFeelingFace(
 
     when (feeling) {
         MomentFeeling.Great -> {
-            // A filled open smile, the one face that reads as delight at small sizes.
-            val mouth = Path().apply {
-                moveTo(center.x - radius * 0.44f, center.y + radius * 0.08f)
-                quadraticTo(
-                    center.x, center.y + radius * 0.62f,
-                    center.x + radius * 0.44f, center.y + radius * 0.08f,
-                )
-                quadraticTo(
-                    center.x, center.y + radius * 0.31f,
-                    center.x - radius * 0.44f, center.y + radius * 0.08f,
-                )
-                close()
+            // The reference briefly closes into a tiny white smile, then opens back into
+            // a broad purple grin with a single bright upper-teeth band.
+            val grinAlpha = 1f - expression
+            if (grinAlpha > 0f) {
+                val halfWidth = radius * 0.48f
+                val mouthTop = center.y + radius * 0.04f
+                val mouth = Path().apply {
+                    moveTo(center.x - halfWidth, mouthTop)
+                    quadraticTo(center.x, center.y + radius * 0.16f, center.x + halfWidth, mouthTop)
+                    quadraticTo(center.x, center.y + radius * 0.73f, center.x - halfWidth, mouthTop)
+                    close()
+                }
+                drawPath(mouth, color = feature.copy(alpha = grinAlpha))
+
+                val teeth = Path().apply {
+                    moveTo(center.x - halfWidth * 0.88f, mouthTop + radius * 0.04f)
+                    quadraticTo(
+                        center.x,
+                        center.y + radius * 0.20f,
+                        center.x + halfWidth * 0.88f,
+                        mouthTop + radius * 0.04f,
+                    )
+                    quadraticTo(
+                        center.x,
+                        center.y + radius * 0.35f,
+                        center.x - halfWidth * 0.88f,
+                        mouthTop + radius * 0.04f,
+                    )
+                    close()
+                }
+                drawPath(teeth, color = Color.White.copy(alpha = 0.96f * grinAlpha))
             }
-            drawPath(mouth, color = feature)
+            if (expression > 0f) {
+                drawArc(
+                    color = Color.White.copy(alpha = expression),
+                    startAngle = 18f,
+                    sweepAngle = 144f,
+                    useCenter = false,
+                    topLeft = Offset(
+                        center.x - radius * 0.20f,
+                        center.y + radius * 0.09f,
+                    ),
+                    size = Size(radius * 0.40f, radius * 0.16f),
+                    style = Stroke(width = radius * 0.055f, cap = StrokeCap.Round),
+                )
+            }
         }
         MomentFeeling.Good -> drawPath(
             path = Path().apply {
                 moveTo(center.x - radius * 0.35f, center.y + radius * 0.15f)
                 quadraticTo(
-                    center.x, center.y + radius * 0.44f,
+                    center.x, center.y + radius * (0.38f + 0.13f * expression),
                     center.x + radius * 0.35f, center.y + radius * 0.15f,
                 )
             },
@@ -136,7 +203,7 @@ internal fun DrawScope.drawFeelingFace(
             path = Path().apply {
                 moveTo(center.x - radius * 0.33f, center.y + radius * 0.30f)
                 quadraticTo(
-                    center.x, center.y + radius * 0.155f,
+                    center.x, center.y + radius * (0.155f - 0.08f * expression),
                     center.x + radius * 0.33f, center.y + radius * 0.30f,
                 )
             },
@@ -162,8 +229,8 @@ private fun desaturate(color: Color, amount: Float): Color {
 }
 
 /**
- * A feeling face at [size]. [animated] adds the approved idle bob and occasional blink;
- * both stop entirely under reduced motion. Small inline faces stay static.
+ * A feeling face at [size]. [animated] plays the supplied emoji motion unless reduced motion is
+ * enabled. Small inline faces stay on their first frame.
  */
 @Composable
 fun FeelingFace(
@@ -174,50 +241,196 @@ fun FeelingFace(
     /** Staggers the idle animation so two faces side by side do not move in lockstep. */
     animationDelayMillis: Int = 0,
 ) {
-    val animate = animated && !ReliveTheme.reduceMotion
-    var bob = 0f
-    var eyeOpen = 1f
-    if (animate) {
-        val transition = rememberInfiniteTransition(label = "feeling face idle")
-        val bobValue by transition.animateFloat(
-            initialValue = 0f,
-            targetValue = 1f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(
-                    durationMillis = 1400,
-                    delayMillis = animationDelayMillis,
-                    easing = FastOutSlowInEasing,
-                ),
-                repeatMode = RepeatMode.Reverse,
-            ),
-            label = "bob",
-        )
-        val blinkValue by transition.animateFloat(
-            initialValue = 1f,
-            targetValue = 1f,
-            animationSpec = infiniteRepeatable(
-                animation = keyframes {
-                    durationMillis = 4600
-                    1f at 0 using LinearEasing
-                    1f at 4180 using LinearEasing
-                    0.08f at 4320 using LinearEasing
-                    1f at 4460 using LinearEasing
-                },
-                initialStartOffset = androidx.compose.animation.core.StartOffset(animationDelayMillis),
-            ),
-            label = "blink",
-        )
-        bob = bobValue
-        eyeOpen = blinkValue
+    val telegramFrames = when (feeling) {
+        MomentFeeling.Great -> GreatEmojiFrames
+        MomentFeeling.Good -> GoodEmojiFrames
+        MomentFeeling.Low -> LowEmojiFrames
     }
-    Canvas(modifier = modifier.size(size)) {
-        val radius = this.size.minDimension / 2f * 0.96f
-        val lift = bob * radius * 0.09f
-        drawFeelingFace(
-            feeling = feeling,
-            center = Offset(this.size.width / 2f, this.size.height / 2f - lift),
-            radius = radius,
-            eyeOpenFraction = eyeOpen,
-        )
+    TelegramEmoji(
+        frames = telegramFrames,
+        size = size,
+        animated = animated,
+        animationDelayMillis = animationDelayMillis,
+        modifier = modifier,
+    )
+}
+
+private const val TelegramEmojiFrameMillis = 66L
+
+private val GreatEmojiFrames: List<DrawableResource> = listOf(
+    Res.drawable.great_emoji_00,
+    Res.drawable.great_emoji_01,
+    Res.drawable.great_emoji_02,
+    Res.drawable.great_emoji_03,
+    Res.drawable.great_emoji_04,
+    Res.drawable.great_emoji_05,
+    Res.drawable.great_emoji_06,
+    Res.drawable.great_emoji_07,
+    Res.drawable.great_emoji_08,
+    Res.drawable.great_emoji_09,
+    Res.drawable.great_emoji_10,
+    Res.drawable.great_emoji_11,
+    Res.drawable.great_emoji_12,
+    Res.drawable.great_emoji_13,
+    Res.drawable.great_emoji_14,
+    Res.drawable.great_emoji_15,
+    Res.drawable.great_emoji_16,
+    Res.drawable.great_emoji_17,
+    Res.drawable.great_emoji_18,
+    Res.drawable.great_emoji_19,
+    Res.drawable.great_emoji_20,
+    Res.drawable.great_emoji_21,
+    Res.drawable.great_emoji_22,
+    Res.drawable.great_emoji_23,
+    Res.drawable.great_emoji_24,
+    Res.drawable.great_emoji_25,
+    Res.drawable.great_emoji_26,
+    Res.drawable.great_emoji_27,
+    Res.drawable.great_emoji_28,
+    Res.drawable.great_emoji_29,
+    Res.drawable.great_emoji_30,
+    Res.drawable.great_emoji_31,
+    Res.drawable.great_emoji_32,
+    Res.drawable.great_emoji_33,
+    Res.drawable.great_emoji_34,
+    Res.drawable.great_emoji_35,
+    Res.drawable.great_emoji_36,
+    Res.drawable.great_emoji_37,
+    Res.drawable.great_emoji_38,
+    Res.drawable.great_emoji_39,
+    Res.drawable.great_emoji_40,
+    Res.drawable.great_emoji_41,
+    Res.drawable.great_emoji_42,
+    Res.drawable.great_emoji_43,
+    Res.drawable.great_emoji_44,
+)
+
+private val GoodEmojiFrames: List<DrawableResource> = listOf(
+    Res.drawable.good_emoji_00,
+    Res.drawable.good_emoji_01,
+    Res.drawable.good_emoji_02,
+    Res.drawable.good_emoji_03,
+    Res.drawable.good_emoji_04,
+    Res.drawable.good_emoji_05,
+    Res.drawable.good_emoji_06,
+    Res.drawable.good_emoji_07,
+    Res.drawable.good_emoji_08,
+    Res.drawable.good_emoji_09,
+    Res.drawable.good_emoji_10,
+    Res.drawable.good_emoji_11,
+    Res.drawable.good_emoji_12,
+    Res.drawable.good_emoji_13,
+    Res.drawable.good_emoji_14,
+    Res.drawable.good_emoji_15,
+    Res.drawable.good_emoji_16,
+    Res.drawable.good_emoji_17,
+    Res.drawable.good_emoji_18,
+    Res.drawable.good_emoji_19,
+    Res.drawable.good_emoji_20,
+    Res.drawable.good_emoji_21,
+    Res.drawable.good_emoji_22,
+    Res.drawable.good_emoji_23,
+    Res.drawable.good_emoji_24,
+    Res.drawable.good_emoji_25,
+    Res.drawable.good_emoji_26,
+    Res.drawable.good_emoji_27,
+    Res.drawable.good_emoji_28,
+    Res.drawable.good_emoji_29,
+    Res.drawable.good_emoji_30,
+    Res.drawable.good_emoji_31,
+    Res.drawable.good_emoji_32,
+    Res.drawable.good_emoji_33,
+    Res.drawable.good_emoji_34,
+    Res.drawable.good_emoji_35,
+    Res.drawable.good_emoji_36,
+    Res.drawable.good_emoji_37,
+    Res.drawable.good_emoji_38,
+    Res.drawable.good_emoji_39,
+    Res.drawable.good_emoji_40,
+    Res.drawable.good_emoji_41,
+    Res.drawable.good_emoji_42,
+    Res.drawable.good_emoji_43,
+    Res.drawable.good_emoji_44,
+)
+
+private val LowEmojiFrames: List<DrawableResource> = listOf(
+    Res.drawable.low_emoji_00,
+    Res.drawable.low_emoji_01,
+    Res.drawable.low_emoji_02,
+    Res.drawable.low_emoji_03,
+    Res.drawable.low_emoji_04,
+    Res.drawable.low_emoji_05,
+    Res.drawable.low_emoji_06,
+    Res.drawable.low_emoji_07,
+    Res.drawable.low_emoji_08,
+    Res.drawable.low_emoji_09,
+    Res.drawable.low_emoji_10,
+    Res.drawable.low_emoji_11,
+    Res.drawable.low_emoji_12,
+    Res.drawable.low_emoji_13,
+    Res.drawable.low_emoji_14,
+    Res.drawable.low_emoji_15,
+    Res.drawable.low_emoji_16,
+    Res.drawable.low_emoji_17,
+    Res.drawable.low_emoji_18,
+    Res.drawable.low_emoji_19,
+    Res.drawable.low_emoji_20,
+    Res.drawable.low_emoji_21,
+    Res.drawable.low_emoji_22,
+    Res.drawable.low_emoji_23,
+    Res.drawable.low_emoji_24,
+    Res.drawable.low_emoji_25,
+    Res.drawable.low_emoji_26,
+    Res.drawable.low_emoji_27,
+    Res.drawable.low_emoji_28,
+    Res.drawable.low_emoji_29,
+    Res.drawable.low_emoji_30,
+    Res.drawable.low_emoji_31,
+    Res.drawable.low_emoji_32,
+    Res.drawable.low_emoji_33,
+    Res.drawable.low_emoji_34,
+    Res.drawable.low_emoji_35,
+    Res.drawable.low_emoji_36,
+    Res.drawable.low_emoji_37,
+    Res.drawable.low_emoji_38,
+    Res.drawable.low_emoji_39,
+    Res.drawable.low_emoji_40,
+    Res.drawable.low_emoji_41,
+    Res.drawable.low_emoji_42,
+    Res.drawable.low_emoji_43,
+    Res.drawable.low_emoji_44,
+)
+
+@Composable
+private fun TelegramEmoji(
+    frames: List<DrawableResource>,
+    size: Dp,
+    animated: Boolean,
+    animationDelayMillis: Int,
+    modifier: Modifier,
+) {
+    val shouldAnimate = animated && !ReliveTheme.reduceMotion
+    var frameIndex by remember(frames) { mutableIntStateOf(0) }
+
+    LaunchedEffect(frames, shouldAnimate, animationDelayMillis) {
+        frameIndex = 0
+        if (!shouldAnimate) return@LaunchedEffect
+
+        var startedAt = Long.MIN_VALUE
+        while (true) {
+            withFrameMillis { frameTime ->
+                if (startedAt == Long.MIN_VALUE) {
+                    startedAt = frameTime + animationDelayMillis
+                }
+                val elapsed = (frameTime - startedAt).coerceAtLeast(0L)
+                frameIndex = ((elapsed / TelegramEmojiFrameMillis) % frames.size).toInt()
+            }
+        }
     }
+
+    Image(
+        painter = painterResource(frames[frameIndex]),
+        contentDescription = null,
+        modifier = modifier.size(size),
+    )
 }

@@ -961,6 +961,13 @@ Format for each entry:
 - **Decision:** Every palette keeps its existing light roles and identity. Its dark canvas moves to a hue-bearing near-black and its surface to a restrained chromatic lift; accent, spark, and tint retain the palette's established color story while being tuned for depth and accessible contrast. The existing app-wide canvas brush turns those roles into distinct dark atmospheric gradients. The selectable palette formerly labelled Sunset is labelled **Velvet Rose**; the internal `ThemeReference.Sunset` identity and `sunset` preference value remain compatibility details so saved choices, free-entitlement policy, and platform launcher aliases continue to resolve without migration.
 - **Consequences:** All dark palettes now share the onboarding scene's depth while remaining visually distinct. Existing selections receive the deeper treatment automatically. Light mode, palette availability, layouts, stored media, navigation state, and archive records are unchanged. Historical references to Sunset describe the same stable internal palette slot now presented as Velvet Rose.
 
+## ADR-0105 — Mood faces use expressive emoji motion
+
+- **Date:** 2026-09-24 · **Status:** Accepted · amends ADR-0066 motion only
+- **Context:** The original large Mood faces continuously bobbed and occasionally blinked. The product owner supplied an animated-emoji reference and requested its dimensional emoji character and facial movement.
+- **Decision:** Great uses the exact supplied Telegram “Grinning Face With Big Eyes” animation, Good uses the exact supplied Telegram “Slightly Smiling Face” animation, and Low uses the exact supplied Telegram “Slightly Frowning Face” animation. Each is bundled locally as its 45 source frames and played at the source WebP's 66 ms cadence; non-animated and reduced-motion presentations use the corresponding first source frame. The former continuous vertical bob is removed. Animation phases stay staggered and reduced motion disables all movement.
+- **Consequences:** Great, Good, and Low are now personal-use-only third-party visual assets; their source and license are retained under `shared/licenses/emoji`, and distributing them beyond personal use requires separate permission from Telegram. Feeling values, aggregation, persistence, accessibility semantics, Mood layout, and chart colors are unchanged; no runtime dependency is introduced.
+
 ---
 
 ## Template for new decisions
