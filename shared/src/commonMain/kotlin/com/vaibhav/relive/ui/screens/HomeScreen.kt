@@ -97,6 +97,7 @@ import com.vaibhav.relive.platform.share.IncomingSharePayload
 import com.vaibhav.relive.presentation.composer.TimelineComposerDraftStore
 import com.vaibhav.relive.presentation.date.RediscoverCalendar
 import com.vaibhav.relive.presentation.home.HOME_GREETING_SUBTITLE
+import com.vaibhav.relive.presentation.home.HomeRediscoverSnapshot
 import com.vaibhav.relive.presentation.home.homeGreetingName
 import com.vaibhav.relive.presentation.insights.MoodInsightsViewModel
 import com.vaibhav.relive.presentation.timeline.CurrentTimeline
@@ -180,6 +181,17 @@ class HomeSurfaceState {
     var lastAllPhotosSummary: AllPhotosCollectionSummary by mutableStateOf(AllPhotosCollectionSummary(0, emptyList()))
     var lastOnThisDayPreviews: List<OnThisDayMomentPreview> by mutableStateOf(emptyList())
     var lastFromYourPastPreviews: List<FromYourPastMomentPreview> by mutableStateOf(emptyList())
+
+    /** True once every bounded Rediscover projection is available for the first visible frame. */
+    var isRediscoverPrepared: Boolean by mutableStateOf(false)
+
+    fun seedRediscover(snapshot: HomeRediscoverSnapshot) {
+        lastFavoritesSummary = snapshot.favorites
+        lastAllPhotosSummary = snapshot.allPhotos
+        lastOnThisDayPreviews = snapshot.onThisDay
+        lastFromYourPastPreviews = snapshot.fromYourPast
+        isRediscoverPrepared = true
+    }
 
     /** Keeps an expanded Home's mood bar present on the first frame after navigation returns. */
     var lastMoodInsights: MoodInsights? by mutableStateOf(null)

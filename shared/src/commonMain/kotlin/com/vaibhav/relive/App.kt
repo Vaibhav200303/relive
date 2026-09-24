@@ -98,6 +98,7 @@ import com.vaibhav.relive.presentation.profile.RediscoverReminderController
 import com.vaibhav.relive.presentation.onboarding.CURRENT_ONBOARDING_VERSION
 import com.vaibhav.relive.presentation.onboarding.OnboardingResolution
 import com.vaibhav.relive.presentation.onboarding.resolveOnboarding
+import com.vaibhav.relive.presentation.home.preloadHomeRediscover
 import com.vaibhav.relive.platform.system.openAppSettings
 import com.vaibhav.relive.platform.system.ReliveBackHandler
 import com.vaibhav.relive.platform.system.toLauncherIcon
@@ -218,6 +219,10 @@ fun App(
         val homeFeedListState = remember { LazyListState() }
         // Survives Home being swapped out for Profile, a collection or another destination.
         val homeSurfaceState = rememberHomeSurfaceState()
+        LaunchedEffect(container, homeSurfaceState) {
+            val snapshot = preloadHomeRediscover(container.rediscoverRepository, container.clock)
+            homeSurfaceState.seedRediscover(snapshot)
+        }
         val incomingShareState by container.incomingShareGateway.state.collectAsState()
         val rediscoverListState = rememberLazyListState()
         val searchListState = rememberLazyListState()
@@ -894,7 +899,8 @@ fun App(
                 // visible. The collection is therefore a fading layer over the settled surface,
                 // just like Mood insights.
                 Box(Modifier.fillMaxSize()) {
-                    HomeScreen(
+                    if (homeSurfaceState.isRediscoverPrepared) {
+                        HomeScreen(
                         momentRepository = container.momentRepository,
                         timelineRepository = container.timelineRepository,
                         appearanceRepository = container.appearanceRepository,
@@ -935,7 +941,8 @@ fun App(
                         wallpaper = appearanceState.preferences.allTimelineAppearance.wallpaper,
                         onMediaCaptureOverlayChanged = { homeCaptureOverlayActive = it },
                         onMoodInsightsVisibilityChanged = { moodInsightsOpen = it },
-                    )
+                        )
+                    }
                 AnimatedContent(
                     targetState = rediscoverDestination,
                     transitionSpec = {
@@ -1077,7 +1084,8 @@ fun App(
                 }
                 if (
                     (topLevel != ReliveTopLevelDestination.Home ||
-                        rediscoverDestination is RediscoverDestination.Root) &&
+                        (rediscoverDestination is RediscoverDestination.Root &&
+                            homeSurfaceState.isRediscoverPrepared)) &&
                         !moodInsightsOpen
                 ) AnimatedVisibility(
                     // The floating chrome stands down while Home's full-screen camera is up —
