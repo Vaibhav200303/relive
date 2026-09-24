@@ -933,6 +933,13 @@ Format for each entry:
 - **Decision:** Images and videos may be copied from Relive's app-owned archive into the user's platform media library. The full-screen viewer exposes a one-tap action for its current item. All Photos and the per-Moment media gallery use Material 3 contextual selection: long-press enters selection, subsequent taps toggle items, and contextual actions provide Select all, Cancel, and Download. Completion is reported with a snackbar. Android writes through MediaStore; iOS writes through Photos with add-only usage disclosure.
 - **Consequences:** Downloading never moves, deletes, or changes Relive's original file or Moment data. A batch can report partial failure. Audio remains outside this visual-media download action. No schema, backend, sync, sharing flow, or new runtime dependency is introduced.
 
+## ADR-0101 — Saved Moments embed time and use soft-blur markers
+
+- **Date:** 2026-09-24 · **Status:** Accepted · amends the approved timeline reference for saved-Moment metadata and markers
+- **Context:** The reference's small dot and combined `DATE • TIME` eyebrow left location capable of disrupting the marker/date alignment and kept the timestamp visually detached from the physical-print treatment. The product owner explicitly approved superseding those settled details.
+- **Decision:** Each saved Moment uses the supplied reference's soft-blur circle: a compact, slightly deepened theme-primary core that fades through progressively lower opacity to a transparent edge, centred on the rail with no glyph, border, or hard perimeter. An explicit content gap separates the marker from the abbreviated `MMM d, yyyy` chip, which uses a light translucent highlight-accent fill and border. Marker, date, and favorite occupy one fixed 48dp top row and share its centreline. Optional location renders in a separate row with its own top gap, so it never changes that geometry. Time leaves the external metadata row and appears as low-emphasis text at the print card's bottom-right. The composer plus marker and its own date/time presentation do not change.
+- **Consequences:** The saved timeline marker and metadata intentionally differ from the original reference. The rail is increased from 1dp to 4dp and uses the active theme's primary → highlight accent → primary gradient through saved Moments and the composer. Card geometry, location value rules, feed order, composer behavior, persistence, and Moment identity are unchanged; no dependency or schema change is introduced.
+
 ## Template for new decisions
 
 ```text

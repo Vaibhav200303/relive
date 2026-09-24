@@ -18,7 +18,7 @@ The lower shell is deliberately minimal: no secondary page dots, continuous prog
 
 Use the real Relive `MomentCard` presentation for a sample memory, including its pinned-paper treatment, metadata, media area, rail, and dots where timeline context is shown. Preview content stays in memory, cannot open or mutate the archive, and uses themed placeholder media when photography is not required by the chapter.
 
-The carried sample Moment is square, with one shared focused size and focus-zone position. When a chapter hands it to a timeline, the destination card is measured and placed at the same bounds before motion begins; the rail and first dot appear with that handoff, not afterward. Surrounding timeline cards remain visible, smaller, and softened so the focused card is unmistakable. Metadata, rail, dots, and pins use a visible color derived from the active atmospheric palette.
+The carried sample Moment is square, with one shared focused size and focus-zone position. When a chapter hands it to a timeline, the destination card is measured and placed at the same bounds before motion begins; the rail and first soft-blur marker appear with that handoff, not afterward. Surrounding timeline cards remain visible, smaller, and softened so the focused card is unmistakable. Metadata, rail, markers, and pins use a visible color derived from the active atmospheric palette.
 
 ## Capture and Organize pattern
 

@@ -37,7 +37,7 @@ class MomentPresentationMapperTest {
             isFavorite = true,
         )
         val presentation = moment.toPresentation()
-        assertEquals("SEPTEMBER 28, 2023", presentation.formattedDate)
+        assertEquals("Sep 28, 2023", presentation.formattedDate)
         assertEquals("3:00 PM", presentation.formattedTime)
         assertEquals("Quiet morning light", presentation.title)
         assertTrue(presentation.hasTitle)

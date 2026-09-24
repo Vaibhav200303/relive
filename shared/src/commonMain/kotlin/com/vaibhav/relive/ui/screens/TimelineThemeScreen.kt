@@ -257,7 +257,15 @@ private fun TimelineThemePreview(
                         .padding(top = dims.spacing.xs)
                         .weight(1f)
                         .width(dims.timeline.railWidth)
-                        .background(momentColors.textMuted),
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    ReliveTheme.colors.accent,
+                                    ReliveTheme.colors.spark,
+                                    ReliveTheme.colors.accent,
+                                ),
+                            ),
+                        ),
                 )
             }
 

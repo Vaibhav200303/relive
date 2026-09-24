@@ -23,10 +23,10 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 
 ## Phase 2 — Basic All moments feed  ☑
 
-- Render the **All moments** feed: rail, dots, moment presentation (title, subtitle, content), newest-first order (ADR-0061 amends ADR-0015 for this feed), bounded/windowed/paged with incremental loading as the user scrolls toward older Moments — the root never observes or hydrates the complete archive on launch. Visual treatment matches the reference. There is no programmatic scroll on entry: the app opens at the top of the Home surface and the feed's visible position follows the user's own scrolling.
+- Render the **All moments** feed: rail, soft-blur markers, moment presentation (title, subtitle, content), newest-first order (ADR-0061 amends ADR-0015 for this feed), bounded/windowed/paged with incremental loading as the user scrolls toward older Moments — the root never observes or hydrates the complete archive on launch. Visual treatment follows the reference except for the approved saved-Moment metadata override in ADR-0101. There is no programmatic scroll on entry: the app opens at the top of the Home surface and the feed's visible position follows the user's own scrolling.
 - Content expansion (`... more` / `less`).
 - Favorite action (subtle).
-- Date + time metadata eyebrow (`DATE • TIME`) with an optional readable saved location on the following metadata line.
+- Abbreviated date chip beside the soft-blur marker, optional readable saved location beneath it, and subdued time embedded at the card's bottom-right.
 - **Exit:** the All moments feed displays persisted text moments correctly under bounded paged loading; Compose UI tests for core rendering.
 
 ## Phase 3 — Inline composer (+ location data model)  ☑

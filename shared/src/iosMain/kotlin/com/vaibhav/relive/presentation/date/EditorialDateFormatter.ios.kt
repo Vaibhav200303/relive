@@ -13,10 +13,9 @@ actual object EditorialDateFormatter {
         val formatter = NSDateFormatter().apply {
             locale = NSLocale(localeIdentifier = "en_US_POSIX")
             timeZone = NSTimeZone.localTimeZone
-            dateFormat = "MMMM d, yyyy"
+            dateFormat = "MMM d, yyyy"
         }
         val date = NSDate.dateWithTimeIntervalSince1970(instant.epochMilliseconds / 1000.0)
-        // `en_US_POSIX` yields ASCII month names, so `uppercase()` is locale-safe here.
-        return formatter.stringFromDate(date).uppercase()
+        return formatter.stringFromDate(date)
     }
 }

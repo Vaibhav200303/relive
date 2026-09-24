@@ -84,8 +84,9 @@ class ReliveTokensTest {
     @Test
     fun timelineDimensionsMatchDesignSystem() {
         val t = DefaultReliveDimensions.timeline
-        assertEquals(1.dp, t.railWidth)
+        assertEquals(4.dp, t.railWidth)
         assertEquals(10.dp, t.dotSize)
+        assertEquals(32.dp, t.markerSize)
         assertEquals(32.dp, t.plusSize)
         assertEquals(48.dp, t.itemGap)
         assertEquals(32.dp, t.contentInset)

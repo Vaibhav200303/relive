@@ -23,11 +23,11 @@ class EditorialDateFormatterHostTest {
     }
 
     @Test
-    fun formatsInEditorialUppercaseStyle() {
+    fun formatsWithAnAbbreviatedMonth() {
         // 2023-09-28T15:00:00Z is still 2023-09-28 in UTC.
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
         val instant = Instant(1_695_913_200_000L)
-        assertEquals("SEPTEMBER 28, 2023", EditorialDateFormatter.format(instant))
+        assertEquals("Sep 28, 2023", EditorialDateFormatter.format(instant))
     }
 
     @Test
@@ -35,6 +35,6 @@ class EditorialDateFormatterHostTest {
         // 2024-01-01T02:30:00Z is 2023-12-31 in a UTC-4 zone.
         TimeZone.setDefault(TimeZone.getTimeZone("Etc/GMT+4"))
         val instant = Instant(1_704_076_200_000L)
-        assertEquals("DECEMBER 31, 2023", EditorialDateFormatter.format(instant))
+        assertEquals("Dec 31, 2023", EditorialDateFormatter.format(instant))
     }
 }

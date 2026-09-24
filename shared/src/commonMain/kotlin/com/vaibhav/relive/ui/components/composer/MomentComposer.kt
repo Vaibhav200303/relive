@@ -161,7 +161,8 @@ fun MomentComposer(
             .fillMaxWidth()
             .drawBehind {
                 drawComposerRail(
-                    colors.borderMuted,
+                    colors.accent,
+                    colors.spark,
                     dims,
                     dims.minTouchTarget,
                     railContinuesAbove,
@@ -413,7 +414,8 @@ fun CollapsedComposerMarker(
             .fillMaxWidth()
             .drawBehind {
                 drawComposerRail(
-                    colors.borderMuted,
+                    colors.accent,
+                    colors.spark,
                     dims,
                     dims.minTouchTarget,
                     railContinuesAbove,
@@ -469,7 +471,8 @@ fun CollapsedComposerMarker(
 }
 
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawComposerRail(
-    color: androidx.compose.ui.graphics.Color,
+    primaryColor: androidx.compose.ui.graphics.Color,
+    accentColor: androidx.compose.ui.graphics.Color,
     dims: com.vaibhav.relive.ui.theme.ReliveDimensions,
     markerSize: androidx.compose.ui.unit.Dp,
     continuesAbove: Boolean,
@@ -480,11 +483,20 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawComposerRail(
     val axis = dims.timeline.contentInset.toPx() / 2f
     val markerCenter = (dims.spacing.xl.toPx() + markerSize.toPx() / 2f)
         .coerceAtMost(size.height)
+    val railBrush = androidx.compose.ui.graphics.Brush.verticalGradient(
+        colors = listOf(
+            primaryColor.copy(alpha = 0.62f),
+            accentColor.copy(alpha = 0.78f),
+            primaryColor.copy(alpha = 0.62f),
+        ),
+        startY = 0f,
+        endY = size.height,
+    )
     // A new-Moment composer is terminal and uses one side. An inline editor replaces a Moment in
     // place, so it can connect on both sides without introducing another marker or rail segment.
     if (continuesAbove) {
         drawLine(
-            color = color,
+            brush = railBrush,
             start = androidx.compose.ui.geometry.Offset(axis, 0f),
             end = androidx.compose.ui.geometry.Offset(axis, markerCenter),
             strokeWidth = dims.timeline.railWidth.toPx(),
@@ -492,7 +504,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawComposerRail(
     }
     if (continuesBelow) {
         drawLine(
-            color = color,
+            brush = railBrush,
             start = androidx.compose.ui.geometry.Offset(axis, markerCenter),
             end = androidx.compose.ui.geometry.Offset(axis, size.height),
             strokeWidth = dims.timeline.railWidth.toPx(),

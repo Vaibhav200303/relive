@@ -53,7 +53,7 @@ Users may create **custom timelines** representing chapters of their life, such 
 - Travel
 - Relationship
 
-All timelines — built-in and custom — share the **same Moment presentation and interaction model**: rail, dots, Moment cards, media treatment, and the inline composer are identical everywhere, and the information hierarchy inside a Moment never varies. A timeline may have its own visual theme. Navigation and chrome are what differ by surface: All moments is a section of the Home surface, reached by scrolling and carrying no header or Back of its own, while a custom timeline opens as a scoped detail screen with its own header, Back, and timeline actions.
+All timelines — built-in and custom — share the **same Moment presentation and interaction model**: rail, soft-blur markers, Moment cards, media treatment, and the inline composer are identical everywhere, and the information hierarchy inside a Moment never varies. A timeline may have its own visual theme. Navigation and chrome are what differ by surface: All moments is a section of the Home surface, reached by scrolling and carrying no header or Back of its own, while a custom timeline opens as a scoped detail screen with its own header, Back, and timeline actions.
 
 Selecting a custom timeline opens the shared timeline detail experience scoped to that selection; returning goes back to the Home surface with its scroll offset preserved exactly as the user left it — focused All moments stays focused and never jumps back to the top state. The logical All timeline is not a separate destination: it renders on Home under the `All moments` heading and is reached by scrolling, never by tapping a Rediscover card.
 
@@ -151,7 +151,7 @@ Visual direction:
 - subtle brown/sepia accents
 - cream background
 - thin vertical timeline rail
-- small circular timeline dots for existing moments
+- soft blurred theme-colored circles for existing moments
 - a plus-circle integrated into the timeline for creating a new moment
 - subtle borders
 - minimal shadows
@@ -214,16 +214,17 @@ Rules:
 
 ### 4.1 Timeline metadata format
 
-Saved moments display metadata on the eyebrow row as:
+Saved moments display an abbreviated date chip above the card:
 
-`DATE • TIME`
+`MMM d, yyyy`
 
-Example: `AUGUST 22, 2026 • 10:48 AM`
+Example: `Aug 22, 2026`
 
 - Both date and time are derived from the same immutable `createdAt`.
 - Both are rendered in the device's local time zone.
-- Date and time appear on the **same eyebrow row**, separated by a centered dot (`•`).
-- Location, when present, is optional secondary metadata on the same row.
+- The date appears in an accent-filled pill aligned with the soft-blur marker's centre.
+- Location, when present, is optional secondary metadata directly beneath the date.
+- Time appears as subdued embedded text at the Moment card's bottom-right.
 
 ### 4.2 Tags
 
@@ -266,7 +267,7 @@ Rules:
 - Smaller media is **not** stretched to fill — it remains at its natural size.
 - Large media scales down proportionally when either max bound is exceeded.
 - The image/video/audio container follows the actual displayed media shape.
-- A visible border uses the same semantic color as timeline dots (`color.accent` / `#6F4E37`).
+- A visible border uses the same semantic color as timeline markers (`color.accent` / `#6F4E37`).
 - Single-media outer border thickness matches multi-media outer border thickness.
 
 ### 5.2 Multi-media collage
@@ -471,14 +472,14 @@ Active recording row layout: **Stop | flexible waveform | duration | ×/remove**
 Pressing **Keep Moment** saves the moment. After save:
 
 - the composer resets and collapses to its rail `+` marker
-- the saved moment renders immediately in the timeline adjacent to the collapsed composer, taking a normal timeline dot and adopting the standard timeline presentation
+- the saved moment renders immediately in the timeline adjacent to the collapsed composer, taking a soft-blur marker and adopting the standard timeline presentation
 - the surface does not move: there is **no app-initiated scroll of any kind** — not to the top, not to the newest item, not to the composer. Saved from Home, the user remains in focused All moments at the same scroll offset, and the welcome and Rediscover sections are never restored.
 
 ---
 
 ## 7. Location
 
-Relive currently supports **optional manual location entry** when creating or editing a Moment. The lightweight location-pin field sits directly below the automatically generated date/time and accepts an unstructured readable label such as `Jalandhar`, `NIT Jalandhar`, `Home`, or `Central Park`. Empty location is valid. The value is persisted with the Moment, survives media round-trips, participates in the existing edit flow, and resets with the rest of the composer after a successful save or explicit reset. Saved Moment cards render a readable location directly below `DATE • TIME`; display trims surrounding whitespace and capitalizes only the first character without mutating persisted data.
+Relive currently supports **optional manual location entry** when creating or editing a Moment. The lightweight location-pin field sits directly below the automatically generated date/time and accepts an unstructured readable label such as `Jalandhar`, `NIT Jalandhar`, `Home`, or `Central Park`. Empty location is valid. The value is persisted with the Moment, survives media round-trips, participates in the existing edit flow, and resets with the rest of the composer after a successful save or explicit reset. Saved Moments render a readable location directly below the date chip; display trims surrounding whitespace and capitalizes only the first character without mutating persisted data.
 
 GPS/location detection, Maps, geocoding, and location permission requests are **future work**. This release does not attempt device location. When detection is later activated it remains moment-scoped and on-demand: never continuous/background tracking and never collection while merely browsing.
 

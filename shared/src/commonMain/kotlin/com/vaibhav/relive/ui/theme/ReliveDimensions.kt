@@ -77,8 +77,9 @@ data class ReliveStrokes(
 
 @Immutable
 data class ReliveTimelineDimensions(
-    val railWidth: Dp = 1.dp,
+    val railWidth: Dp = 4.dp,
     val dotSize: Dp = 10.dp,
+    val markerSize: Dp = 32.dp,
     val plusSize: Dp = 32.dp,
     val coverHeroHeight: Dp = 300.dp,
     val itemGap: Dp = 48.dp,

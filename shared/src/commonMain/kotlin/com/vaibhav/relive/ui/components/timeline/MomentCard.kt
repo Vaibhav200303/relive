@@ -44,6 +44,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.lerp
@@ -120,9 +121,10 @@ fun MomentCard(
     val dims = ReliveTheme.dimensions
     val haptics = rememberReliveHaptics()
     val motion = ReliveTheme.motion
-    val chromeColor = timelineChromeColor ?: colors.accent
-    val railColor = timelineChromeColor?.copy(alpha = 0.46f) ?: colors.borderMuted
-    val metadataAccent = timelineMetadataColor ?: momentColors.accentMuted
+    val markerPrimaryColor = colors.accent
+    val markerAccentColor = timelineChromeColor ?: colors.spark
+    val railPrimaryColor = markerPrimaryColor.copy(alpha = 0.62f)
+    val railAccentColor = markerAccentColor.copy(alpha = 0.78f)
     val metadataSecondary = timelineMetadataColor ?: momentColors.textSecondary
     val selectionColor by animateColorAsState(
         targetValue = if (isContextuallySelected) {
@@ -146,7 +148,11 @@ fun MomentCard(
                         val axis = dims.timeline.contentInset.toPx() / 2f
                         val markerCenter = dims.spacing.xl.toPx() + dims.minTouchTarget.toPx() / 2f
                         drawLine(
-                            color = railColor,
+                            brush = Brush.verticalGradient(
+                                colors = listOf(railPrimaryColor, railAccentColor, railPrimaryColor),
+                                startY = 0f,
+                                endY = size.height,
+                            ),
                             start = androidx.compose.ui.geometry.Offset(
                                 axis,
                                 if (hasPreviousMoment) 0f else markerCenter,
@@ -213,78 +219,66 @@ fun MomentCard(
             contentAlignment = Alignment.Center,
         ) {
             if (showTimelineChrome) {
-                Box(
-                    modifier = Modifier
-                        .size(dims.timeline.dotSize)
-                        .clip(CircleShape)
-                        .background(chromeColor),
-                )
+                SoftBlurTimelineMarker(color = markerPrimaryColor, size = dims.timeline.markerSize)
             }
         }
-        Spacer(Modifier.width(dims.spacing.none))
+        Spacer(Modifier.width(dims.spacing.md))
         Column(
             modifier = Modifier
                 .weight(1f)
                 .padding(end = dims.spacing.none),
         ) {
-            // The saved location is a second metadata line, aligned with DATE • TIME.
+            // Marker, date, and favorite own one fixed top row. Location is deliberately outside
+            // that row so its presence can never shift their shared centreline.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = dims.minTouchTarget),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column(
-                    modifier = Modifier.weight(1f),
+                Box(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(markerAccentColor.copy(alpha = 0.20f))
+                        .border(
+                            dims.stroke.hairline,
+                            markerAccentColor.copy(alpha = 0.55f),
+                            CircleShape,
+                        )
+                        .padding(horizontal = dims.spacing.md, vertical = dims.spacing.xs),
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm),
-                    ) {
-                        Text(
-                            text = moment.formattedDate,
-                            style = type.eyebrow,
-                            color = metadataAccent,
-                        )
-                        Box(
-                            modifier = Modifier
-                                .size(3.dp)
-                                .clip(CircleShape)
-                                .background(metadataAccent),
-                        )
-                        Text(
-                            text = moment.formattedTime,
-                            style = type.eyebrow,
-                            color = metadataAccent,
-                        )
-                    }
-                    if (showLocation && moment.locationLabel != null) {
-                        Row(
-                            modifier = Modifier.padding(top = dims.spacing.xs),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(dims.spacing.xs),
-                        ) {
-                            // The same stroked pin the composer's location field wears, in the
-                            // label's own wallpaper-corrected tone — input and display agree on
-                            // what a location looks like.
-                            PinGlyph(
-                                size = dims.icon.sm,
-                                color = metadataSecondary,
-                                strokeWidth = dims.stroke.icon,
-                            )
-                            Text(
-                                text = moment.locationLabel,
-                                style = type.eyebrow,
-                                color = metadataSecondary,
-                            )
-                        }
-                    }
+                    Text(
+                        text = moment.formattedDate,
+                        style = type.tag,
+                        color = momentColors.textPrimary,
+                    )
                 }
+                Spacer(Modifier.weight(1f))
                 onToggleFavorite?.let { toggle ->
                     FavoriteHeart(
                         isFavorite = moment.isFavorite,
                         momentColors = momentColors,
                         onToggle = { toggle(!moment.isFavorite) },
+                    )
+                }
+            }
+            if (showLocation && moment.locationLabel != null) {
+                Row(
+                    modifier = Modifier.padding(top = dims.spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(dims.spacing.xs),
+                ) {
+                    // The same stroked pin the composer's location field wears, in the label's
+                    // own wallpaper-corrected tone — input and display agree on location.
+                    PinGlyph(
+                        size = dims.icon.sm,
+                        color = metadataSecondary,
+                        strokeWidth = dims.stroke.icon,
+                    )
+                    Text(
+                        text = moment.locationLabel,
+                        style = type.eyebrow,
+                        color = metadataSecondary,
                     )
                 }
             }
@@ -300,6 +294,7 @@ fun MomentCard(
                 onOpenMedia = onOpenMedia,
                 sharedTransition = sharedTransition,
                 showTags = showTags,
+                formattedTime = moment.formattedTime,
                 previewMediaContent = previewMediaContent,
                 pinColor = timelineChromeColor,
                 previewPrintAspectRatio = previewPrintAspectRatio,
@@ -383,6 +378,7 @@ private fun PinnedMomentCard(
     onOpenMedia: (List<MomentAttachmentPresentation>, Int) -> Unit,
     sharedTransition: TimelineMediaSharedTransition?,
     showTags: Boolean,
+    formattedTime: String,
     previewMediaContent: (@Composable () -> Unit)?,
     pinColor: Color?,
     previewPrintAspectRatio: Float?,
@@ -496,11 +492,20 @@ private fun PinnedMomentCard(
                 }
             }
 
-            // The feeling closes the card at its bottom-left, in the print's lower band
-            // (PRODUCT_SPEC §10A.2). An unfelt Moment reserves nothing at all.
-            moment.feeling?.let { feeling ->
-                Spacer(Modifier.height(dims.spacing.md))
-                MomentFeelingMark(feeling = feeling)
+            Spacer(Modifier.height(dims.spacing.md))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                // The feeling closes the card at its bottom-left (PRODUCT_SPEC §10A.2).
+                moment.feeling?.let { feeling -> MomentFeelingMark(feeling = feeling) }
+                Spacer(Modifier.weight(1f))
+                Text(
+                    text = formattedTime,
+                    style = type.tag,
+                    color = onCardSecondary.copy(alpha = 0.58f),
+                )
             }
         }
 
@@ -612,6 +617,31 @@ private fun MomentPin(
 }
 
 private const val MinExpandThreshold = 140
+
+/** Reference marker: a compact opaque core dissolving into a smooth theme-colored halo. */
+@Composable
+private fun SoftBlurTimelineMarker(color: Color, size: Dp) {
+    Canvas(
+        modifier = Modifier
+            .size(size)
+            .clearAndSetSemantics {},
+    ) {
+        drawCircle(
+            brush = Brush.radialGradient(
+                colorStops = arrayOf(
+                    0.00f to lerp(color, Color.Black, 0.18f).copy(alpha = 0.98f),
+                    0.24f to lerp(color, Color.Black, 0.08f).copy(alpha = 0.86f),
+                    0.52f to color.copy(alpha = 0.42f),
+                    0.78f to color.copy(alpha = 0.14f),
+                    1.00f to Color.Transparent,
+                ),
+                center = center,
+                radius = this.size.minDimension / 2f,
+            ),
+            radius = this.size.minDimension / 2f,
+        )
+    }
+}
 
 /** Resting lift for a pinned Moment card — enough shadow to read as a card off the paper. */
 private val MomentCardElevation: Dp = 10.dp
