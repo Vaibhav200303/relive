@@ -173,6 +173,18 @@ class SqlDelightMomentRepository(
             .mapToList(dispatcher)
             .map { rows -> withContext(dispatcher) { rows.map { hydrate(it) } } }
 
+    override fun observeSearchByTag(query: String): Flow<List<Moment>> =
+        database.momentsQueries.selectMomentsMatchingTag(query)
+            .asFlow()
+            .mapToList(dispatcher)
+            .map { rows -> withContext(dispatcher) { rows.map { hydrate(it) } } }
+
+    override fun observeSearchByPlace(query: String): Flow<List<Moment>> =
+        database.momentsQueries.selectMomentsMatchingPlace(query)
+            .asFlow()
+            .mapToList(dispatcher)
+            .map { rows -> withContext(dispatcher) { rows.map { hydrate(it) } } }
+
     override suspend fun findDateNavigationTarget(
         scope: MomentDateNavigationScope,
         dayStart: Instant,

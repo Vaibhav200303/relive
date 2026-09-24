@@ -207,4 +207,24 @@ class MomentPersistenceTest {
 
         assertTrue(fx.moments.observeSearch("night").first().isEmpty())
     }
+
+    @Test fun searchMatchesTagsAndReadablePlacesCaseInsensitively() = runTest {
+        fx.moments.insert(
+            sampleMoment(
+                id = "tagged",
+                tags = listOf(Tag.of("College Friends")),
+                location = ReliveLocation(placeName = "Himachal Valley"),
+            ),
+        )
+        fx.moments.insert(sampleMoment(id = "other", title = "Unrelated"))
+
+        assertEquals(
+            listOf("tagged"),
+            fx.moments.observeSearchByTag("FRIENDS").first().map { it.id.value },
+        )
+        assertEquals(
+            listOf("tagged"),
+            fx.moments.observeSearchByPlace("himachal").first().map { it.id.value },
+        )
+    }
 }

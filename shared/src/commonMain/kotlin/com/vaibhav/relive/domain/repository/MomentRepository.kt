@@ -115,6 +115,12 @@ interface MomentRepository {
      */
     fun observeSearch(query: String): Flow<List<Moment>>
 
+    /** Local, case-insensitive search over canonical and display tag labels. */
+    fun observeSearchByTag(query: String): Flow<List<Moment>> = observeSearch(query)
+
+    /** Local, case-insensitive search over readable saved location fields. */
+    fun observeSearchByPlace(query: String): Flow<List<Moment>> = observeSearch(query)
+
     /**
      * Resolves calendar navigation with bounded, scope-aware reads.  [dayStart]
      * and [nextDayStart] are current-device-local calendar boundaries.

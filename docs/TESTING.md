@@ -46,7 +46,9 @@ Verify the local storage layer against its contract:
 Search v1 is global and local ([`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) §9).
 
 - Empty query and no-match states remain empty; the archive is never loaded into Compose for filtering.
-- SQL search matches title/content case-insensitively and preserves a stable chronological ordering in presentation.
+- Entering Search does not focus the field or open the keyboard; tapping the field does.
+- All, Tags, and Places perform case-insensitive SQL matching over title/content, tag labels, and readable location fields respectively, preserving stable chronological presentation ordering.
+- Suggestions submit a query. Up to five de-duplicated process-session recent searches can be recalled, removed individually, or cleared together.
 - The first result is active; Next/Previous do not pass their bounds; query changes and clear reset active state; the active result targets the correct Moment ID for scroll.
 - Search is read-only: no composer, edit, Forget, membership, or favorite mutation; media viewer/playback remains available.
 - Query, active result, and scroll position survive a same-session move from Search back to Home and into Search again, including when Home is left in focused All moments.

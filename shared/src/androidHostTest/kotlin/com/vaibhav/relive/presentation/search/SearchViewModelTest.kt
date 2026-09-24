@@ -59,10 +59,43 @@ class SearchViewModelTest {
         assertEquals("", viewModel.state.value.query)
         assertNull(viewModel.state.value.activeIndex)
     }
+
+    @Test fun filterChangeUsesItsSqlBackedRepositoryPath() = runTest {
+        val repository = SearchFakeRepository(listOf(moment("all", 1)))
+        val viewModel = SearchViewModel(repository, TestScope(UnconfinedTestDispatcher(testScheduler)))
+
+        viewModel.updateQuery("trip")
+        viewModel.selectFilter(SearchFilter.Tags)
+        advanceTimeBy(SearchDebounceMillis)
+        runCurrent()
+        assertEquals(SearchFilter.Tags, viewModel.state.value.filter)
+        assertEquals("trip", repository.lastTagQuery)
+
+        viewModel.selectFilter(SearchFilter.Places)
+        advanceTimeBy(SearchDebounceMillis)
+        runCurrent()
+        assertEquals("trip", repository.lastPlaceQuery)
+    }
+
+    @Test fun recentSearchesAreDeduplicatedBoundedAndRemovable() = runTest {
+        val viewModel = SearchViewModel(
+            SearchFakeRepository(emptyList()),
+            TestScope(UnconfinedTestDispatcher(testScheduler)),
+        )
+
+        listOf("one", "two", "three", "four", "five", "six", "TWO").forEach(viewModel::useSuggestion)
+        assertEquals(listOf("TWO", "six", "five", "four", "three"), viewModel.state.value.recentSearches)
+        viewModel.removeRecentSearch("five")
+        assertEquals(listOf("TWO", "six", "four", "three"), viewModel.state.value.recentSearches)
+        viewModel.clearRecentSearches()
+        assertEquals(emptyList(), viewModel.state.value.recentSearches)
+    }
 }
 
 private class SearchFakeRepository(initial: List<Moment>) : MomentRepository {
     private val moments = MutableStateFlow(initial)
+    var lastTagQuery: String? = null
+    var lastPlaceQuery: String? = null
     override suspend fun insert(moment: Moment, timelineIds: Set<TimelineId>) = Unit
     override suspend fun findById(id: MomentId): Moment? = null
     override suspend fun updateEditable(moment: Moment) = Unit
@@ -75,6 +108,14 @@ private class SearchFakeRepository(initial: List<Moment>) : MomentRepository {
     override suspend fun listAll(): List<Moment> = moments.value
     override fun observeAll(): Flow<List<Moment>> = moments.asStateFlow()
     override fun observeSearch(query: String): Flow<List<Moment>> = moments.asStateFlow()
+    override fun observeSearchByTag(query: String): Flow<List<Moment>> {
+        lastTagQuery = query
+        return moments.asStateFlow()
+    }
+    override fun observeSearchByPlace(query: String): Flow<List<Moment>> {
+        lastPlaceQuery = query
+        return moments.asStateFlow()
+    }
     override suspend fun listInTimeline(timelineId: TimelineId): List<Moment> = emptyList()
     override fun observeInTimeline(timelineId: TimelineId): Flow<List<Moment>> = MutableStateFlow(emptyList())
 }

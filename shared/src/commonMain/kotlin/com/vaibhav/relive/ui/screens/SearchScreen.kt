@@ -10,12 +10,14 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,6 +25,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -31,9 +34,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,21 +52,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.presentation.search.SearchViewModel
+import com.vaibhav.relive.presentation.search.SearchFilter
+import com.vaibhav.relive.ui.icons.ProfileIcons
 import com.vaibhav.relive.ui.components.timeline.BackGlyph
 import com.vaibhav.relive.ui.components.timeline.CalendarGlyph
 import com.vaibhav.relive.ui.components.timeline.DateNavigationPicker
 import com.vaibhav.relive.ui.components.timeline.MomentCard
 import com.vaibhav.relive.ui.components.timeline.TimelineMediaSharedTransition
 import com.vaibhav.relive.ui.components.timeline.sharedTransitionKey
+import com.vaibhav.relive.ui.components.composer.CloseGlyph
 import com.vaibhav.relive.ui.components.viewer.MediaViewer
 import com.vaibhav.relive.ui.components.viewer.MomentMediaGallery
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
@@ -76,6 +85,7 @@ import com.vaibhav.relive.presentation.viewer.openFromGallery
 import com.vaibhav.relive.presentation.date.RediscoverCalendar
 import com.vaibhav.relive.domain.model.TimelineWallpaper
 import com.vaibhav.relive.domain.time.Clock
+import com.vaibhav.relive.platform.system.ReliveBackHandler
 import kotlinx.coroutines.delay
 
 @Composable
@@ -93,15 +103,21 @@ fun SearchScreen(
     onNavigationToolbarCollapse: () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsState()
-    val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     var navState by remember { mutableStateOf(TimelineMediaNavState.Idle) }
     var showDatePicker by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-        keyboard?.show()
+    val clearOrNavigateBack: () -> Unit = {
+        if (state.query.isNotBlank()) {
+            viewModel.clear()
+            keyboard?.hide()
+        } else {
+            onBack()
+        }
+        Unit
     }
+
+    ReliveBackHandler(enabled = true, onBack = clearOrNavigateBack)
+
     LaunchedEffect(state.activeMomentId) {
         state.activeMomentId?.let { id ->
             val index = state.results.indexOfFirst { it.id == id }
@@ -161,9 +177,12 @@ fun SearchScreen(
             query = state.query,
             resultCount = state.resultCount,
             activeIndex = state.activeIndex,
-            focusRequester = focusRequester,
-            onBack = onBack,
+            onBack = clearOrNavigateBack,
             onQueryChange = viewModel::updateQuery,
+            onSearch = {
+                viewModel.submitQuery()
+                keyboard?.hide()
+            },
             onClear = viewModel::clear,
             onPrevious = {
                 viewModel.selectPrevious()
@@ -175,6 +194,7 @@ fun SearchScreen(
             },
             onJumpToDate = { showDatePicker = true },
         )
+        SearchFilterBar(filter = state.filter, onFilterSelected = viewModel::selectFilter)
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -182,7 +202,13 @@ fun SearchScreen(
                 .windowInsetsPadding(WindowInsets.ime),
         ) {
             when {
-                state.query.isBlank() -> SearchEditorialState("Find anything you've saved.")
+                state.query.isBlank() -> SearchLanding(
+                    recentSearches = state.recentSearches,
+                    onSuggestionSelected = viewModel::useSuggestion,
+                    onRecentSelected = viewModel::useSuggestion,
+                    onRemoveRecent = viewModel::removeRecentSearch,
+                    onClearRecent = viewModel::clearRecentSearches,
+                )
                 state.results.isEmpty() -> SearchEditorialState("No moments found.")
                 else -> LazyColumn(
                     state = listState,
@@ -295,9 +321,9 @@ private fun SearchHeader(
     query: String,
     resultCount: Int,
     activeIndex: Int?,
-    focusRequester: FocusRequester,
     onBack: () -> Unit,
     onQueryChange: (String) -> Unit,
+    onSearch: () -> Unit,
     onClear: () -> Unit,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
@@ -313,7 +339,12 @@ private fun SearchHeader(
             .fillMaxWidth()
             // No header band: like every root, the search field floats on the canvas gradient.
             .windowInsetsPadding(WindowInsets.statusBars)
-            .padding(horizontal = dims.spacing.xl, vertical = dims.spacing.sm),
+            .padding(
+                start = dims.spacing.xl,
+                top = dims.spacing.none,
+                end = dims.spacing.xl,
+                bottom = dims.spacing.lg,
+            ),
     ) {
         val showClear = query.isNotEmpty() && maxWidth >= 400.dp
         val showSearchControls = query.isNotBlank()
@@ -322,7 +353,7 @@ private fun SearchHeader(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(dims.search.containerHeight)
+                .height(48.dp)
                 .clip(shape)
                 .background(colors.surfaceCard)
                 .border(dims.stroke.hairline, colors.borderMuted, shape)
@@ -341,11 +372,12 @@ private fun SearchHeader(
                 onValueChange = onQueryChange,
                 modifier = Modifier
                     .weight(1f)
-                    .focusRequester(focusRequester)
                     .semantics { contentDescription = "Search memories" },
                 textStyle = ReliveTheme.typography.body.copy(color = colors.textPrimary),
                 cursorBrush = SolidColor(colors.accent),
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { onSearch() }),
                 decorationBox = { innerTextField ->
                     Box(
                         modifier = Modifier
@@ -418,6 +450,190 @@ private fun SearchHeader(
                     CalendarGlyph(dims.icon.lg, colors.textPrimary, dims.stroke.icon)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SearchLanding(
+    recentSearches: List<String>,
+    onSuggestionSelected: (String) -> Unit,
+    onRecentSelected: (String) -> Unit,
+    onRemoveRecent: (String) -> Unit,
+    onClearRecent: () -> Unit,
+) {
+    val dims = ReliveTheme.dimensions
+    val colors = ReliveTheme.colors
+    val suggestions = listOf("beach", "birthday", "college", "friends", "food", "notes")
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = dims.spacing.huge * 2),
+    ) {
+        item {
+            Text(
+                text = "Find anything you've saved.",
+                style = ReliveTheme.typography.subtitle,
+                color = colors.textSecondary,
+                modifier = Modifier.padding(top = dims.spacing.md, bottom = dims.spacing.md),
+            )
+        }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(dims.spacing.none)) {
+                suggestions.chunked(3).forEach { row ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm),
+                    ) {
+                        row.forEach { suggestion ->
+                            SearchSuggestionChip(
+                                label = suggestion,
+                                onClick = { onSuggestionSelected(suggestion) },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        if (recentSearches.isNotEmpty()) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = dims.spacing.md),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Recent searches", style = ReliveTheme.typography.body, color = colors.textPrimary)
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        "Clear all",
+                        style = ReliveTheme.typography.caption,
+                        color = colors.accent,
+                        modifier = Modifier.clickable(onClick = onClearRecent).padding(dims.spacing.sm),
+                    )
+                }
+            }
+            items(recentSearches, key = { it }) { query ->
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onRecentSelected(query) }
+                            .height(dims.minTouchTarget),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = ProfileIcons.Restore,
+                            contentDescription = null,
+                            modifier = Modifier.size(dims.icon.md),
+                            tint = colors.textSecondary,
+                        )
+                        Spacer(Modifier.width(dims.spacing.md))
+                        Text(query, style = ReliveTheme.typography.body, color = colors.textSecondary, modifier = Modifier.weight(1f))
+                        IconButton(
+                            onClick = { onRemoveRecent(query) },
+                            modifier = Modifier.size(dims.minTouchTarget).semantics {
+                                contentDescription = "Remove $query from recent searches"
+                            },
+                        ) {
+                            CloseGlyph(dims.icon.md, colors.textMuted, dims.stroke.iconBold)
+                        }
+                    }
+                    HorizontalDivider(color = colors.borderMuted, thickness = dims.stroke.hairline)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchFilterBar(filter: SearchFilter, onFilterSelected: (SearchFilter) -> Unit) {
+    val dims = ReliveTheme.dimensions
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = dims.timeline.horizontalPadding, vertical = dims.spacing.xs),
+    ) {
+        SearchFilter.entries.forEach { option ->
+            SearchFilterChip(
+                filter = option,
+                selected = option == filter,
+                onClick = { onFilterSelected(option) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun SearchFilterChip(filter: SearchFilter, selected: Boolean, onClick: () -> Unit) {
+    val dims = ReliveTheme.dimensions
+    val colors = ReliveTheme.colors
+    val label = when (filter) {
+        SearchFilter.All -> "All"
+        SearchFilter.Tags -> "Tags"
+        SearchFilter.Places -> "Places"
+    }
+    Box(
+        modifier = Modifier
+            .height(dims.minTouchTarget)
+            .clickable(onClick = onClick)
+            .padding(vertical = 6.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(
+            modifier = Modifier
+                .height(36.dp)
+                .clip(RoundedCornerShape(dims.radii.pill))
+                .background(if (selected) colors.accent else colors.surfaceCard)
+                .border(
+                    dims.stroke.hairline,
+                    if (selected) colors.accent else colors.borderMuted,
+                    RoundedCornerShape(dims.radii.pill),
+                )
+                .padding(horizontal = dims.spacing.lg),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(dims.spacing.xs),
+        ) {
+            if (filter != SearchFilter.All) {
+                Icon(
+                    imageVector = if (filter == SearchFilter.Tags) ProfileIcons.Tag else ProfileIcons.Location,
+                    contentDescription = null,
+                    modifier = Modifier.size(dims.icon.sm),
+                    tint = if (selected) colors.textOnAccent else colors.textSecondary,
+                )
+            }
+            Text(
+                label,
+                style = ReliveTheme.typography.tag,
+                color = if (selected) colors.textOnAccent else colors.textSecondary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SearchSuggestionChip(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val dims = ReliveTheme.dimensions
+    val colors = ReliveTheme.colors
+    Box(
+        modifier = Modifier
+            .then(modifier)
+            .height(dims.minTouchTarget)
+            .clickable(onClick = onClick)
+            .padding(vertical = 6.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(36.dp)
+                .clip(RoundedCornerShape(dims.radii.pill))
+                .background(colors.surfaceCard)
+                .padding(horizontal = dims.spacing.md),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(dims.spacing.sm),
+        ) {
+            Icon(ProfileIcons.Search, null, Modifier.size(dims.icon.md), colors.accent)
+            Text(label, style = ReliveTheme.typography.caption, color = colors.textSecondary)
         }
     }
 }

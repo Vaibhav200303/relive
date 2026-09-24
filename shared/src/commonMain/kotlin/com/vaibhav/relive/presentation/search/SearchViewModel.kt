@@ -16,11 +16,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+enum class SearchFilter { All, Tags, Places }
+
 data class SearchState(
     val query: String = "",
+    val filter: SearchFilter = SearchFilter.All,
     val results: List<MomentPresentation> = emptyList(),
     val activeIndex: Int? = null,
     val dateNavigation: SearchDateNavigation? = null,
+    val recentSearches: List<String> = emptyList(),
 ) {
     val activeMomentId: MomentId? get() = activeIndex?.let(results::getOrNull)?.id
     val resultCount: Int get() = results.size
@@ -42,7 +46,7 @@ class SearchViewModel(
         if (query.isBlank()) return
         searchJob = scope.launch {
             delay(SearchDebounceMillis)
-            momentRepository.observeSearch(query).collect { moments ->
+            searchFlow(query, _state.value.filter).collect { moments ->
                 // Repositories are newest-first; All Timeline is oldest-first.
                 _state.update { current ->
                     if (current.query != query) current else current.copy(
@@ -52,6 +56,41 @@ class SearchViewModel(
                 }
             }
         }
+    }
+
+    fun selectFilter(filter: SearchFilter) {
+        if (_state.value.filter == filter) return
+        searchJob?.cancel()
+        _state.update { it.copy(filter = filter, results = emptyList(), activeIndex = null) }
+        updateQuery(_state.value.query)
+    }
+
+    fun submitQuery(query: String = _state.value.query) {
+        val normalized = query.trim()
+        if (normalized.isEmpty()) return
+        if (normalized != _state.value.query) updateQuery(normalized)
+        _state.update { current ->
+            current.copy(
+                recentSearches = listOf(normalized) + current.recentSearches
+                    .filterNot { it.equals(normalized, ignoreCase = true) }
+                    .take(MaxRecentSearches - 1),
+            )
+        }
+    }
+
+    fun useSuggestion(query: String) {
+        updateQuery(query)
+        submitQuery(query)
+    }
+
+    fun removeRecentSearch(query: String) {
+        _state.update { current ->
+            current.copy(recentSearches = current.recentSearches.filterNot { it == query })
+        }
+    }
+
+    fun clearRecentSearches() {
+        _state.update { it.copy(recentSearches = emptyList()) }
     }
 
     fun selectNext() = moveActiveBy(1)
@@ -82,6 +121,13 @@ class SearchViewModel(
             current.copy(activeIndex = next)
         }
     }
+
+    private fun searchFlow(query: String, filter: SearchFilter) = when (filter) {
+        SearchFilter.All -> momentRepository.observeSearch(query)
+        SearchFilter.Tags -> momentRepository.observeSearchByTag(query)
+        SearchFilter.Places -> momentRepository.observeSearchByPlace(query)
+    }
 }
 
 const val SearchDebounceMillis = 150L
+private const val MaxRecentSearches = 5

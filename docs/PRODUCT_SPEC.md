@@ -586,13 +586,14 @@ Long-pressing a Moment in **All moments** on Home selects it and smoothly animat
 
 Search v1 is the one separate destination alongside the Home surface. It searches the complete local archive, not a selected timeline.
 
-- The autofocus `Search memories...` field performs a debounced, case-insensitive SQL search across Moment title and content.
-- Empty queries show `Find anything you've saved.` and never render the whole archive. No results show `No moments found.`
+- The `Search memories...` field receives focus and opens the keyboard only after the person taps it; entering Search never opens the keyboard automatically. It performs a debounced, case-insensitive SQL search.
+- Three compact modes sit below the field: **All** searches Moment title/content, **Tags** searches canonical/display tag labels, and **Places** searches readable saved location fields. All is selected initially.
+- Empty queries show `Find anything you've saved.`, six compact suggestion chips (`beach`, `birthday`, `college`, `friends`, `food`, `notes`), and up to five process-session recent searches. Choosing a suggestion or recent item runs it; recent items can be removed individually or cleared together. Empty queries never render the whole archive. No results show `No moments found.`
 - Matches keep their own chronological ordering and the full timeline rail/card/media presentation, but are strictly read-only. Media viewing/playback remains available. Search results are not the All moments feed, so Home's newest-first, bounded/paged feed rules do not govern them.
 - The first match is active. The `N / total` counter and up/down controls move through matches without wrapping and scroll the active Moment into view.
 - Search state (query, result selection, and scroll position) persists while the user leaves Search for Home and returns during the app session. Home's own scroll state — top state or focused All moments — is likewise preserved across those returns, except when the Search Calendar action resolves a Moment, which returns to Home in focused All moments positioned at that Moment (§3.1).
 
-Filters, chips, categories, Tags/Places tabs, suggestions, search history, relevance ranking, AI search, and timeline-name results are not part of Search v1. Text highlighting is deferred unless it can be added without restructuring MomentCard.
+Additional filters, categories, persisted search history, relevance ranking, AI search, and timeline-name results are not part of Search. Text highlighting is deferred unless it can be added without restructuring MomentCard.
 
 ---
 

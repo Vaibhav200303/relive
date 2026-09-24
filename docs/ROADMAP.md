@@ -88,12 +88,12 @@ Current implementation note: Favourites, On This Day, From Your Past, and All Ph
 
 ## Phase 8 — Search  ◐
 
-- Add Search as the third destination in the floating navigation toolbar (Home / Timelines / Search), with a dedicated, autofocus search screen; it reinstates no Rediscover destination.
-- Search globally and locally across Moment title/content using case-insensitive SQL `LIKE`; results keep their own chronological ordering and the full timeline rail/card/media presentation; they are not the All moments feed, so Home's newest-first, bounded/paged rules do not govern them.
-- Provide match count, up/down active-match navigation, scroll-to-Moment, and read-only results. Filters, categories, Places, Tags, ranking, history, and AI search remain out of scope for v1.
+- Add Search as the third destination in the floating navigation toolbar (Home / Timelines / Search), with a dedicated screen whose field focuses only when tapped; it reinstates no Rediscover destination.
+- Search globally and locally using case-insensitive SQL `LIKE`: All covers Moment title/content, Tags covers tag labels, and Places covers readable saved location fields. Results keep their own chronological ordering and the full timeline rail/card/media presentation; they are not the All moments feed, so Home's newest-first, bounded/paged rules do not govern them.
+- Provide suggestion chips, process-session recent searches, match count, up/down active-match navigation, scroll-to-Moment, and read-only results. Additional filters, categories, persisted history, ranking, and AI search remain out of scope.
 - **Exit:** Search v1 is SQL-backed, globally scoped, read-only, state-preserving across a Search round trip — returning restores the Home surface's scroll offset, including focused All moments, except where the Search Calendar action resolves a Moment — and covered by focused search/navigation tests.
 
-Current implementation note: the dedicated autofocus screen, debounced SQL-backed matching, active-result counter/navigation, read-only timeline presentation, and preservation of the Home surface's scroll state across a Search round trip are implemented. The phase remains in progress for final verification.
+Current implementation note: the dedicated tap-to-focus screen, All/Tags/Places SQL-backed matching, suggestions and process-session history, active-result counter/navigation, read-only timeline presentation, and preservation of the Home surface's scroll state across a Search round trip are implemented. The phase remains in progress for final verification.
 
 ## Phase 9 — Themes & settings  ◐
 

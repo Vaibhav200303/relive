@@ -63,6 +63,22 @@ WHERE title LIKE '%' || :query || '%' COLLATE NOCASE
    OR content LIKE '%' || :query || '%' COLLATE NOCASE
 ORDER BY created_at DESC, id DESC;
 
+selectMomentsMatchingTag:
+SELECT DISTINCT m.* FROM moments m
+JOIN moment_tags mt ON mt.moment_id = m.id
+JOIN tags t ON t.canonical = mt.tag_canonical
+WHERE t.label LIKE '%' || :query || '%' COLLATE NOCASE
+   OR t.canonical LIKE '%' || :query || '%' COLLATE NOCASE
+ORDER BY m.created_at DESC, m.id DESC;
+
+selectMomentsMatchingPlace:
+SELECT * FROM moments
+WHERE location_display_name LIKE '%' || :query || '%' COLLATE NOCASE
+   OR location_locality LIKE '%' || :query || '%' COLLATE NOCASE
+   OR location_region LIKE '%' || :query || '%' COLLATE NOCASE
+   OR location_country LIKE '%' || :query || '%' COLLATE NOCASE
+ORDER BY created_at DESC, id DESC;
+
 selectMomentsInTimeline:
 SELECT m.* FROM moments m
 JOIN moment_timeline_memberships mtm ON mtm.moment_id = m.id

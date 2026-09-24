@@ -947,6 +947,15 @@ Format for each entry:
 - **Decision:** Every Moment on an editable All or custom timeline surface may be edited or forgotten regardless of its `createdAt` value. Long-press always offers Edit and Forget on those surfaces; All additionally offers Add to timeline when a custom timeline exists. Editing remains inline, preserves immutable `createdAt`, updates `updatedAt`, and never reopens the post-save feeling prompt. Forgetting still requires confirmation and permanently removes the single stored Moment and its references. Read-only collections and Search remain non-mutating.
 - **Consequences:** The `EditWindow` domain policy and its boundary tests are removed, and action eligibility no longer depends on a clock. ADR-0048's post-window action distinction and ADR-0066's references to feeling being independent of the four-day window are obsolete; feeling remains a dedicated write operation. No schema, migration, dependency, backend, or duplicate persistence is introduced.
 
+## ADR-0103 — Search discovery modes and intentional focus
+
+- **Date:** 2026-09-24 · **Status:** Accepted
+- **Context:** The approved Search v1 shipped as an autofocus title/content field. The revised product reference calls for a calmer entry state that can be browsed without immediately raising the keyboard, plus direct discovery through the archive's existing tags and readable saved places.
+- **Decision:** Search opens unfocused and the keyboard appears only after the field is tapped. Its empty state presents All, Tags, and Places modes, six fixed vocabulary suggestion chips, and up to five de-duplicated recent queries owned by the process-lifetime Search state. All three modes remain debounced, case-insensitive, SQL-backed reads: All matches title/content, Tags matches persisted tag labels, and Places matches readable persisted location fields. Selecting a suggestion or recent query submits it; recent queries support individual removal and Clear all. Results retain the existing read-only Moment presentation, chronological order, Calendar action, count, and bounded active-match navigation.
+- **Consequences:** This supersedes ADR-0034 only for autofocus and its deferral of Tags, Places, suggestions, and history. Recent searches are intentionally session-only and add no schema or platform preference. Fixed suggestion vocabulary is a query shortcut, never synthetic content or a claim that matches exist. Search remains local-first and introduces no backend, ranking, AI, dependency, or archive hydration in Compose.
+
+---
+
 ## Template for new decisions
 
 ```text
