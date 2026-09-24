@@ -65,10 +65,10 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 
 ## Phase 6 — Edit / forget rules  ☑
 
-- Long-press in All moments opens a swift contextual app bar that animates in over Home's app bar in either Home state and needs no persistent header of its own: Edit / Forget remain within 4 days (keyed on `createdAt`), while add-to-custom-timeline organization remains available afterward. Back precedence on Home runs open contextual selection bar, then expanded inline composer, then the platform default.
+- Long-press in All moments opens a swift contextual app bar that animates in over Home's app bar in either Home state and needs no persistent header of its own: Edit / Forget remain available at any Moment age, while add-to-custom-timeline organization is also available from All. Back precedence on Home runs open contextual selection bar, then expanded inline composer, then the platform default.
 - Inline editing (add/remove media while editing); tap-outside save that does not trigger on control interactions.
 - Forget with confirmation → permanent removal.
-- **Exit:** 4-day rule enforced everywhere; edit/forget and window-boundary tests pass.
+- **Exit:** edit/forget availability is enforced consistently and covered by tests.
 
 ## Phase 7 — Rediscover  ◐
 
@@ -116,7 +116,7 @@ Current implementation note: global appearance, Profile, Preferences, Media & St
 
 ## Phase 9A — Moment feelings & Mood insights  ◐
 
-- Add the optional three-value Moment feeling (`Great` / `Good` / `Low`) as a nullable `moments.feeling` column (migration `4.sqm`), a dedicated repository write independent of the 4-day edit window, and a bounded `(created_at, feeling)` sample projection (ADR-0066, PRODUCT_SPEC §10A).
+- Add the optional three-value Moment feeling (`Great` / `Good` / `Low`) as a nullable `moments.feeling` column (migration `4.sqm`), a dedicated repository write separate from general Moment editing, and a bounded `(created_at, feeling)` sample projection (ADR-0066, PRODUCT_SPEC §10A).
 - Post-save prompt: after a successful Keep Moment for a new Moment, an inline, skippable `How does this moment feel?` strip renders beneath the saved card — no modal, sheet, screen, or scroll. Choosing persists the feeling; dismissing persists nothing.
 - Moment presentation: a felt Moment shows one small drawn face at the bottom-left of its print card; unfelt Moments show nothing.
 - Mood bar on Home: revealed beneath the welcome block by the backdrop's existing expanded resting place, showing `Last week` / `This week` verdicts computed from device-local Sunday–Saturday weeks; quiet em-dash cells when a week has no felt Moments.

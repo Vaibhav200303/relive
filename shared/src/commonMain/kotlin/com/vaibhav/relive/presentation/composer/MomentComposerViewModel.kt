@@ -12,7 +12,6 @@ import com.vaibhav.relive.domain.model.ReliveLocation
 import com.vaibhav.relive.domain.model.Tag
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.repository.MomentRepository
-import com.vaibhav.relive.domain.policy.EditWindow
 import com.vaibhav.relive.domain.time.Clock
 import com.vaibhav.relive.platform.media.AudioRecorder
 import com.vaibhav.relive.platform.media.MediaProcessor
@@ -433,9 +432,8 @@ class MomentComposerViewModel(
         }
     }
 
-    /** Starts a separate, unpersisted inline draft for an eligible saved Moment. */
+    /** Starts a separate, unpersisted inline draft for a saved Moment. */
     fun beginEdit(moment: Moment): Boolean {
-        if (!EditWindow.isEditable(moment, clock)) return false
         if (_state.value.hasUserDraft || _state.value.isSaving) return false
         _state.value = MomentComposerState(
             editingMoment = moment,

@@ -561,26 +561,13 @@ Platform-specific camera behavior should not be described as identical between A
 
 ## 8. Editing and forgetting
 
-A moment may be **edited** or **forgotten** only during the **first 4 days after its original creation time**.
-
-- The rule uses the immutable `createdAt`.
-- **Never extend the edit window based on `updatedAt`.**
-
-### Within the first 4 days
+A moment may be **edited** or **forgotten at any time**. `createdAt` remains immutable and `updatedAt` records the latest edit.
 
 Long-pressing a Moment in **All moments** on Home selects it and smoothly animates a contextual Material 3 app bar in over Home's app bar, in either Home state, without leaving the surface or restoring the Home top state; All moments needs no persistent header of its own. Long-pressing in a custom timeline replaces that timeline's header the same way. Back exits selection before any other Back behavior (§2), and the bar itself has a Back action that exits selection, plus:
 
 - **Edit**
 - **Add to timeline** — opens a single-choice add-only picker for custom timelines. Already assigned timelines remain visible but disabled. Choosing an unassigned timeline immediately creates only that membership; it does not duplicate the Moment.
 - **Forget**
-
-### After 4 days
-
-- no editing
-- no forgetting
-- Edit and Forget are absent from contextual actions.
-- **Add to timeline** remains available when at least one custom timeline exists because membership is archive organization, not content editing.
-- When no custom timeline exists, long-press exposes no action after the edit window closes.
 
 ### Editing behavior
 
@@ -625,7 +612,7 @@ A Moment may carry one optional **feeling**: `Great`, `Good`, or `Low`. Feelings
 
 - After a successful **Keep Moment** for a **new** Moment on an editable surface, a small `How does this moment feel?` prompt renders inline beneath the freshly saved Moment card, inside the timeline flow. It is never a modal, dialog, bottom sheet, or separate screen, and it causes no scroll.
 - The prompt offers exactly the three feelings as face chips plus a dismiss `×`. Choosing writes the feeling; dismissing writes nothing. The prompt also leaves when another Moment is saved or the surface is left. Ignoring it forever is a fully supported path — a Moment with no feeling is a normal Moment, not an incomplete one.
-- Editing a Moment never shows the prompt and never clears an existing feeling; the feeling write path is independent of the 4-day edit window, like the favorite toggle.
+- Editing a Moment never shows the prompt and never clears an existing feeling; the feeling write path remains separate from general Moment editing, like the favorite toggle.
 
 ### 10A.2 Presentation on the Moment
 

@@ -16,7 +16,7 @@ Relive is a private, local-first personal memory timeline built with Kotlin Mult
 4. **No unrequested dependencies.** Do not add libraries, plugins, or Gradle modules unless the task explicitly calls for them. Prefer the standard library and what is already declared in `gradle/libs.versions.toml`.
 5. **Preserve architecture boundaries.** Respect the layering defined in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): domain, data, presentation, and platform integrations stay separated. Shared business logic must not depend on Android or iOS APIs.
 6. **Small changes.** Prefer focused, reviewable diffs over large rewrites. Split large tasks into steps.
-7. **Tests for important behavior.** Any non-trivial behavior — especially domain rules, persistence, search, and the 4-day edit/forget rule — ships with tests. See [`docs/TESTING.md`](docs/TESTING.md).
+7. **Tests for important behavior.** Any non-trivial behavior — especially domain rules, persistence, search, and anytime edit/forget availability — ships with tests. See [`docs/TESTING.md`](docs/TESTING.md).
 8. **Formatting and static analysis before completion.** Run the project's formatting and static-analysis checks and fix issues before declaring a task done.
 9. **Review `git diff`.** Read your own diff end to end before finishing. Confirm nothing unrelated changed.
 10. **Never commit, merge, or push without explicit approval.** Leave changes staged or unstaged for human review. The human decides when history changes.

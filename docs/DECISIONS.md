@@ -74,7 +74,7 @@ Format for each entry:
 
 ## ADR-0005 — 4-day edit/forget window keyed on immutable `createdAt`
 
-- **Date:** 2026-08-20 · **Status:** Accepted
+- **Date:** 2026-08-20 · **Status:** Superseded by ADR-0102
 - **Context:** Memories should feel permanent shortly after capture, with a brief correction window, and must not be endlessly editable.
 - **Decision:** A moment may be edited or forgotten only within 4 days of its **immutable `createdAt`**. `updatedAt` **never** extends the window. The rule is centralized in the domain layer using a `Clock` abstraction and governs long-press actions, inline editing, and forgetting. Forgetting requires confirmation.
 - **Consequences:** Deterministic, testable rule. UI must hide Edit/Forget after the window closes. See [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) §8 and [`TESTING.md`](TESTING.md).
@@ -939,6 +939,13 @@ Format for each entry:
 - **Context:** The reference's small dot and combined `DATE • TIME` eyebrow left location capable of disrupting the marker/date alignment and kept the timestamp visually detached from the physical-print treatment. The product owner explicitly approved superseding those settled details.
 - **Decision:** Each saved Moment uses the supplied reference's soft-blur circle: a compact, slightly deepened theme-primary core that fades through progressively lower opacity to a transparent edge, centred on the rail with no glyph, border, or hard perimeter. An explicit content gap separates the marker from the abbreviated `MMM d, yyyy` chip, which uses a light translucent highlight-accent fill and border. Marker, date, and favorite occupy one fixed 48dp top row and share its centreline. Optional location renders in a separate row with its own top gap, so it never changes that geometry. Time leaves the external metadata row and appears as low-emphasis text at the print card's bottom-right. The composer plus marker and its own date/time presentation do not change.
 - **Consequences:** The saved timeline marker and metadata intentionally differ from the original reference. The rail is increased from 1dp to 4dp and uses the active theme's primary → highlight accent → primary gradient through saved Moments and the composer. Card geometry, location value rules, feed order, composer behavior, persistence, and Moment identity are unchanged; no dependency or schema change is introduced.
+
+## ADR-0102 — Moments remain editable and forgettable at any age
+
+- **Date:** 2026-09-24 · **Status:** Accepted · supersedes ADR-0005 and amends ADR-0048 and ADR-0066
+- **Context:** The four-day correction window prevented people from maintaining or removing older entries in their own private, local-first archive. The product owner explicitly requested permanent access to both actions.
+- **Decision:** Every Moment on an editable All or custom timeline surface may be edited or forgotten regardless of its `createdAt` value. Long-press always offers Edit and Forget on those surfaces; All additionally offers Add to timeline when a custom timeline exists. Editing remains inline, preserves immutable `createdAt`, updates `updatedAt`, and never reopens the post-save feeling prompt. Forgetting still requires confirmation and permanently removes the single stored Moment and its references. Read-only collections and Search remain non-mutating.
+- **Consequences:** The `EditWindow` domain policy and its boundary tests are removed, and action eligibility no longer depends on a clock. ADR-0048's post-window action distinction and ADR-0066's references to feeling being independent of the four-day window are obsolete; feeling remains a dedicated write operation. No schema, migration, dependency, backend, or duplicate persistence is introduced.
 
 ## Template for new decisions
 

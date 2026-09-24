@@ -22,7 +22,7 @@ Run:
 Pure-Kotlin tests in `commonTest`, no platform or framework dependencies.
 
 - Timeline membership rules (see §5).
-- The 4-day edit/forget rule (see §4).
+- Edit/forget availability and confirmation (see §4).
 - Content-expansion logic if any lives in the domain/presentation (more/less thresholds).
 - Location model behavior: optional fields, readable representation, coordinate handling (see §6).
 - Favorite toggling.
@@ -51,15 +51,13 @@ Search v1 is global and local ([`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) §9).
 - Search is read-only: no composer, edit, Forget, membership, or favorite mutation; media viewer/playback remains available.
 - Query, active result, and scroll position survive a same-session move from Search back to Home and into Search again, including when Home is left in focused All moments.
 
-## 4. 4-day rule tests
+## 4. Edit and forget tests
 
-Central, high-value behavior. Use a deterministic `Clock`.
+Central, high-value behavior.
 
-- Editable/forgettable **within** 4 days of `createdAt`.
-- **Not** editable/forgettable after 4 days.
-- Boundary: at exactly the 4-day threshold (define and test the boundary precisely).
-- `updatedAt` **never** extends the window: editing a moment (advancing `updatedAt`) does not reopen or extend eligibility.
-- Long-press exposes Edit/Forget only while eligible; never after.
+- Editable/forgettable regardless of the Moment's age.
+- Long-press exposes Edit/Forget on editable All and custom timeline surfaces.
+- Editing preserves immutable `createdAt` and advances `updatedAt`.
 - Forget requires confirmation before removal.
 
 ## 5. Timeline membership tests
@@ -118,7 +116,7 @@ Using Compose Multiplatform UI testing:
 ## 10. Regression checks
 
 - Before completing a task, run the relevant test tasks and confirm previously passing tests still pass.
-- Guard settled rules with tests so they cannot silently regress: the 4-day window, store-once/reference membership, timeline-scoped search, and location privacy (no background tracking, no coordinate exposure).
+- Guard settled rules with tests so they cannot silently regress: anytime edit/forget, store-once/reference membership, timeline-scoped search, and location privacy (no background tracking, no coordinate exposure).
 - Review the full `git diff` to confirm no unrelated behavior changed ([`../AGENTS.md`](../AGENTS.md)).
 
 ### Behavior preferences
@@ -260,7 +258,7 @@ Behavior that requires visual or interaction verification beyond unit/UI tests. 
 
 ### Phase 6 — Edit / forget (physical-device checklist complete)
 - [ ] In focused All moments, long-press and accessibility actions smoothly enter the contextual app bar over Home's own app bar; Back exits selection first and leaves the surface in focused All moments at the same scroll offset, without popping or scrolling toward the welcome/Rediscover top state.
-- [ ] Edit / Forget appear only before `createdAt + 4 days`; verify the exact boundary is ineligible while Add to timeline remains available when custom timelines exist.
+- [ ] Edit / Forget appear for Moments of any age; Add to timeline remains available from All when custom timelines exist.
 - [ ] Add to timeline lists current assignments as disabled, adds one selected unassigned custom timeline without duplicating the Moment, and retains the picker for retry after failure.
 - [x] Edit saves inline without changing Moment identity, creation time, favorite state, or custom-timeline memberships; an edit already open may save after expiry.
 - [x] Tap outside the edit container saves; every editor control (text, tags, media, recording, playback, location, favorite) does not.

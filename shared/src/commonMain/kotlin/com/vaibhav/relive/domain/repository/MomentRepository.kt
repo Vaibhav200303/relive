@@ -10,9 +10,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 /**
- * Persistence-facing operations on [Moment]. The 4-day edit/forget policy is
- * enforced by the application layer, not here; the repository still refuses to
- * change immutable persistence fields (in particular `createdAt`).
+ * Persistence-facing operations on [Moment]. The repository refuses to change
+ * immutable persistence fields (in particular `createdAt`).
  */
 interface MomentRepository {
 
@@ -41,8 +40,8 @@ interface MomentRepository {
     suspend fun setFavorite(id: MomentId, isFavorite: Boolean)
 
     /**
-     * Writes or clears the Moment's optional feeling. Like [setFavorite] this is
-     * independent of [updateEditable] and of the 4-day edit window (ADR-0066).
+     * Writes or clears the Moment's optional feeling independently of [updateEditable],
+     * like [setFavorite] (ADR-0066).
      */
     suspend fun setFeeling(id: MomentId, feeling: MomentFeeling?)
 

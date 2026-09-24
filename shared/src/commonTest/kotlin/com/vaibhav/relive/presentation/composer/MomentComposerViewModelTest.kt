@@ -84,7 +84,7 @@ class MomentComposerViewModelTest {
             title = "Before",
         )
         val repo = RecordingRepository(persisted = existing)
-        // Inside the 4-day edit window, so the inline edit is permitted.
+        // Inline editing is available regardless of the Moment's age.
         val vm = newViewModel(repo, clockValue = Instant(2_000L))
         val outcomes = mutableListOf<MomentSaveOutcome>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.saveOutcomes.toList(outcomes) }
@@ -782,14 +782,14 @@ class MomentComposerViewModelTest {
     }
 
     @Test
-    fun expiredMomentCannotEnterEdit() = runTest {
+    fun oldMomentCanEnterEdit() = runTest {
         val vm = newViewModel(RecordingRepository(), clockValue = Instant(4 * 24 * 60 * 60 * 1000L))
-        assertFalse(vm.beginEdit(Moment(MomentId("saved"), Instant(0L), title = "Saved")))
-        assertFalse(vm.state.value.isEditing)
+        assertTrue(vm.beginEdit(Moment(MomentId("saved"), Instant(0L), title = "Saved")))
+        assertTrue(vm.state.value.isEditing)
     }
 
     @Test
-    fun activeEditMaySaveAfterExpiry() = runTest {
+    fun activeEditMaySaveAfterClockAdvances() = runTest {
         var now = Instant(4 * 24 * 60 * 60 * 1000L - 1)
         val repo = RecordingRepository()
         val vm = newViewModel(repo, clock = Clock { now })

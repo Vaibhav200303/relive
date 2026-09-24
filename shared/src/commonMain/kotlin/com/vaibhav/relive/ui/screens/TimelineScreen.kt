@@ -114,7 +114,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import com.vaibhav.relive.domain.id.IdGenerator
-import com.vaibhav.relive.domain.policy.EditWindow
 import com.vaibhav.relive.domain.model.MomentFeeling
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.MediaAttachment
@@ -202,9 +201,6 @@ import com.vaibhav.relive.presentation.cardcover.allTimelineCollageBucket
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.min
-
-private fun timelineViewModelCanEdit(moment: MomentPresentation, clock: Clock): Boolean =
-    EditWindow.isEditable(moment.toMoment(), clock)
 
 private fun allTimelineCoverAttachments(moments: List<MomentPresentation>): List<MediaAttachment> =
     moments.flatMap { moment ->
@@ -766,9 +762,7 @@ fun TimelineScreen(
             mediaStore = mediaStore,
             onToggleFavorite = timelineViewModel::setFavorite,
             onEditMoment = { moment ->
-                if (mode.allowsMutations && timelineViewModel.canEditOrForget(moment.toMoment()) &&
-                    composerViewModel.beginEdit(moment.toMoment())
-                ) {
+                if (mode.allowsMutations && composerViewModel.beginEdit(moment.toMoment())) {
                     ActivePlayback.stopActive()
                     timelineViewModel.clearMomentActionSelection()
                 }
@@ -1313,7 +1307,6 @@ private fun TimelineContent(
         resolveMomentContextualActionAvailability(
             mode = mode,
             currentTimeline = timelineState.currentTimeline,
-            isWithinEditWindow = timelineViewModelCanEdit(moment, clock),
             hasCustomTimelines = timelineState.customTimelines.isNotEmpty(),
         )
     }
@@ -1988,14 +1981,13 @@ private fun TimelineContent(
                                 },
                                 onOpenMedia = onOpenMedia,
                                 sharedTransition = sharedTransition,
-                                canEditOrForget = mode.allowsMutations && timelineViewModelCanEdit(moment, clock),
+                                canEditOrForget = mode.allowsMutations,
                                 onEdit = { onEditMoment(moment) },
                                 onForget = { onForgetMoment(moment) },
                                 onShowContextualActions = if (
                                     resolveMomentContextualActionAvailability(
                                         mode = mode,
                                         currentTimeline = timelineState.currentTimeline,
-                                        isWithinEditWindow = timelineViewModelCanEdit(moment, clock),
                                         hasCustomTimelines = timelineState.customTimelines.isNotEmpty(),
                                     ).canEnter
                                 ) {

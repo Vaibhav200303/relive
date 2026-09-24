@@ -92,16 +92,17 @@ data class MomentContextualActionAvailability(
     val canForget: Boolean,
 )
 
-/** Contextual actions are intentionally an All-timeline-only interaction. */
+/** Editable timelines expose their available actions through the shared contextual action bar. */
 fun resolveMomentContextualActionAvailability(
     mode: TimelineMode,
     currentTimeline: CurrentTimeline,
-    isWithinEditWindow: Boolean,
     hasCustomTimelines: Boolean,
 ): MomentContextualActionAvailability {
-    val isEditableAll = mode.allowsMutations && currentTimeline == CurrentTimeline.All
+    val isEditableTimeline = mode.allowsMutations &&
+        (currentTimeline == CurrentTimeline.All || currentTimeline is CurrentTimeline.Custom)
+    val isEditableAll = isEditableTimeline && currentTimeline == CurrentTimeline.All
     val canAddToTimeline = isEditableAll && hasCustomTimelines
-    val canEditOrForget = isEditableAll && isWithinEditWindow
+    val canEditOrForget = isEditableTimeline
     return MomentContextualActionAvailability(
         canEnter = canAddToTimeline || canEditOrForget,
         canEdit = canEditOrForget,

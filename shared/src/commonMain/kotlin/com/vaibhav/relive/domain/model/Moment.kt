@@ -9,8 +9,7 @@ import com.vaibhav.relive.domain.time.Instant
  * [MomentValidation].
  *
  * [createdAt] is set at construction and must never change afterwards. [updatedAt]
- * reflects the last edit and must never be used to compute the 4-day edit/forget
- * window (ADR-0005).
+ * reflects the last edit.
  */
 data class Moment(
     val id: MomentId,

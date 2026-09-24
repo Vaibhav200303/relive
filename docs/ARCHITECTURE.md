@@ -56,7 +56,7 @@ shared/src/commonMain/kotlin/com/vaibhav/relive/
 ├── domain/          # pure business logic — no framework, no platform, no Compose
 │   ├── model/       # Moment, Timeline, MediaAttachment, Tag, ReliveLocation, ...
 │   ├── repository/  # repository interfaces (MomentRepository, TimelineRepository, ...)
-│   ├── time/        # Clock abstraction, 4-day edit-window rule
+│   ├── time/        # Clock abstraction and platform-neutral time types
 │   └── usecase/     # use cases / interactors (optional; add when logic warrants)
 ├── data/            # implements domain repository interfaces
 │   ├── local/       # local persistence (DB, DAOs, entities, mappers)
@@ -86,7 +86,7 @@ shared/src/iosMain/kotlin/com/vaibhav/relive/      # iOS impls (Core Location, m
 
 ### Layer rules
 
-- **domain** — pure Kotlin. No Compose, no Android/iOS, no persistence framework types. Holds the moment model, timeline membership logic, and the 4-day rule.
+- **domain** — pure Kotlin. No Compose, no Android/iOS, no persistence framework types. Holds the moment model and timeline membership logic.
 - **data** — implements domain repository interfaces using the local database and media storage. Maps between persistence entities and domain models.
 - **platform** — declares interfaces (and `expect` where appropriate) for capabilities that must be implemented per platform. Shared code depends on these interfaces, never on `android.*` or Core Location directly.
 - **presentation** — ViewModels/state holders expose UI state and consume domain use cases/repositories. No platform imports.
@@ -100,8 +100,8 @@ The following domain model is implemented and persisted through the repository i
 
 - **Moment**
   - `id`
-  - `createdAt` — **immutable** creation instant; source of truth for the 4-day rule
-  - `updatedAt` — last edit; **never** used to compute the edit window
+  - `createdAt` — **immutable** creation instant
+  - `updatedAt` — last persisted edit
   - `title`
   - `content`
   - `location: ReliveLocation?`
@@ -116,12 +116,11 @@ The following domain model is implemented and persisted through the repository i
 - **Tag** — queryable; associated with moments (many-to-many)
 - **ReliveLocation** — all fields optional: `latitude?`, `longitude?`, `placeName?`, `locality?`, `region?`, `country?`
 
-### The 4-day edit/forget rule
+### Editing and forgetting
 
-- Centralize the rule in the domain layer (e.g. `EditWindow` using a `Clock`).
-- `isEditable(moment, now) = now < moment.createdAt + 4 days`.
-- Uses `createdAt` only. The rule governs whether Edit/Forget appear on long-press, whether inline editing is permitted, and whether a moment may be forgotten.
-- A `Clock` abstraction makes this deterministically testable. See [`TESTING.md`](TESTING.md).
+- Editable timeline surfaces allow a Moment to be edited or forgotten at any age.
+- `createdAt` remains immutable; an edit changes `updatedAt` only.
+- Forgetting remains a confirmed permanent deletion.
 
 ---
 
@@ -248,7 +247,7 @@ Both debug and release builds use **persistent SQLDelight/SQLite storage** (ADR-
 
 ## 13. Testing seams
 
-The layering above is designed for testability: pure domain logic, a `Clock` for the 4-day rule, repository interfaces for fakes, and platform capabilities behind interfaces for substitution in tests. See [`TESTING.md`](TESTING.md).
+The layering above is designed for testability: pure domain logic, controllable clocks, repository interfaces for fakes, and platform capabilities behind interfaces for substitution in tests. See [`TESTING.md`](TESTING.md).
 
 ## 14. Rediscover read model
 

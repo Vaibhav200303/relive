@@ -11,7 +11,6 @@ import com.vaibhav.relive.domain.repository.MomentRepository
 import com.vaibhav.relive.domain.repository.MomentDateNavigationScope
 import com.vaibhav.relive.domain.repository.TimelineRepository
 import com.vaibhav.relive.domain.repository.RediscoverRepository
-import com.vaibhav.relive.domain.policy.EditWindow
 import com.vaibhav.relive.domain.time.Clock
 import com.vaibhav.relive.presentation.date.RediscoverCalendar
 import com.vaibhav.relive.presentation.date.editorialDayMonth
@@ -94,7 +93,7 @@ class TimelineViewModel(
         scope.launch { momentRepository.setFavorite(id, isFavorite) }
     }
 
-    /** Post-save feeling write; independent of the 4-day edit window like [setFavorite]. */
+    /** Post-save feeling write, kept separate from general Moment editing like [setFavorite]. */
     fun setFeeling(id: MomentId, feeling: MomentFeeling?) {
         if (!mode.allowsMutations) return
         scope.launch { momentRepository.setFeeling(id, feeling) }
@@ -147,11 +146,19 @@ class TimelineViewModel(
         _state.update { it.copy(dateNavigation = null) }
     }
 
-    fun canEditOrForget(moment: Moment): Boolean = EditWindow.isEditable(moment, clock)
-
-    /** Opens All's single-Moment contextual action mode and loads current memberships. */
+    /** Opens single-Moment contextual action mode, loading memberships only when All needs them. */
     fun selectMomentForActions(momentId: MomentId, onAssignmentLoadFailure: () -> Unit) {
-        if (!mode.allowsMutations || _state.value.currentTimeline != CurrentTimeline.All) return
+        if (!mode.allowsMutations) return
+        val currentTimeline = _state.value.currentTimeline
+        if (currentTimeline != CurrentTimeline.All && currentTimeline !is CurrentTimeline.Custom) return
+
+        if (currentTimeline is CurrentTimeline.Custom) {
+            _state.update {
+                it.copy(momentActions = MomentContextualActionState(selectedMomentId = momentId))
+            }
+            return
+        }
+
         _state.update {
             it.copy(
                 momentActions = MomentContextualActionState(
@@ -243,10 +250,6 @@ class TimelineViewModel(
     /** Checks the policy again at the destructive boundary before touching persistence. */
     fun forget(moment: Moment, onDeleted: (Moment) -> Unit, onFailure: () -> Unit) {
         if (!mode.allowsMutations) {
-            onFailure()
-            return
-        }
-        if (!EditWindow.isForgettable(moment, clock)) {
             onFailure()
             return
         }
