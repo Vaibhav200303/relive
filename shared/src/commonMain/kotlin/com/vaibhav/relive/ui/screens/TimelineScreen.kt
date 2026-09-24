@@ -2034,6 +2034,15 @@ private fun TimelineContent(
                 val showReturnToBottom = !isNewestFirst &&
                     returnToBottomState.isVisible(listState.canScrollForward)
                 val showReturnToTop = isNewestFirst && returnToTopState.isVisible(canReturnToFeedTop)
+                val returnToTopBottomPadding = returnToTopBottomPadding(
+                    isHomeSurface = isHomeSurface,
+                    navigationBarInset = WindowInsets.navigationBars
+                        .asPaddingValues()
+                        .calculateBottomPadding(),
+                    floatingToolbarHeight = dims.floatingToolbar.height,
+                    toolbarBottomPadding = dims.spacing.lg,
+                    controlGap = dims.spacing.md,
+                )
                 if (isNewestFirst) SmallFloatingActionButton(
                     onClick = {
                         if (canReturnToFeedTop) {
@@ -2059,15 +2068,10 @@ private fun TimelineContent(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         // Clear of the floating navigation bar and `+ New`, which Home carries at
-                        // the bottom of this same surface. A custom timeline carries neither, so
-                        // its control sits where every other timeline's does.
-                        .padding(
-                            bottom = if (isHomeSurface) {
-                                dims.floatingToolbar.height + dims.spacing.lg + dims.spacing.md
-                            } else {
-                                dims.spacing.lg
-                            },
-                        )
+                        // the bottom of this same surface, including the system navigation inset
+                        // beneath them. A custom timeline carries neither, so its control sits
+                        // where every other timeline's does.
+                        .padding(bottom = returnToTopBottomPadding)
                         .size(dims.minTouchTarget)
                         .animateFloatingActionButton(
                             visible = showReturnToTop,

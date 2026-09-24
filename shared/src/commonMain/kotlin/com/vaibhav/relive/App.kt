@@ -226,6 +226,9 @@ fun App(
         val incomingShareState by container.incomingShareGateway.state.collectAsState()
         val rediscoverListState = rememberLazyListState()
         val searchListState = rememberLazyListState()
+        // Profile is temporarily removed while one of its sections is open. Keep its list state
+        // here with the navigation owner so returning to Profile restores the row that opened it.
+        val profileListState = rememberLazyListState()
         val searchViewModel = remember(container, scope) { SearchViewModel(container.momentRepository, scope) }
         val profileViewModel = remember(container, scope) { ProfileViewModel(container.profileRepository, container.profileSettingsRepository, container.mediaStore, scope) }
         val profileSettings by container.profileSettingsRepository.settings.collectAsState()
@@ -595,6 +598,7 @@ fun App(
             ProfileDestination.Profile -> ProfileScreen(
                 viewModel = profileViewModel,
                 appearanceViewModel = appearanceViewModel,
+                listState = profileListState,
                 onBack = { profileNavigation = profileNavigation.returnToTimelineHome() },
                 onOpenPreferences = { profileNavigation = profileNavigation.openPreferences() },
                 onOpenMediaStorage = { profileNavigation = profileNavigation.openMediaStorage() },

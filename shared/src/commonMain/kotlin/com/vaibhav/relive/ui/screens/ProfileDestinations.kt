@@ -148,91 +148,108 @@ private fun SettingsReferenceIllustration(kind: SettingsIllustration) {
 }
 
 private fun DrawScope.drawReminderHero(colors: ReliveColors) {
-    val ink = colors.accentMuted
-    val page = colors.surfaceCard
-    drawCircle(
-        colors.tint.copy(alpha = .86f),
-        39.dp.toPx(),
-        Offset(size.width * .34f, size.height * .35f),
-    )
+    val centerX = size.width / 2f
+    val bellWidth = 112.dp.toPx().coerceAtMost(size.width * .52f)
+    val bellHeight = 108.dp.toPx().coerceAtMost(size.height * .68f)
+    val left = centerX - bellWidth / 2f
+    val top = size.height * .08f
+    val accent = colors.accent
+
     drawOval(
-        colors.accent.copy(alpha = .10f),
-        Offset(size.width * .42f, size.height * .64f),
-        Size(size.width * .37f, size.height * .13f),
+        color = colors.shadow.copy(alpha = .12f),
+        topLeft = Offset(centerX - bellWidth * .24f, top + bellHeight * 1.05f),
+        size = Size(bellWidth * .48f, bellHeight * .08f),
     )
 
-    // The dark folded stand remains visible beneath the loose calendar page.
-    drawPath(
-        Path().apply {
-            moveTo(size.width * .43f, size.height * .33f)
-            lineTo(size.width * .35f, size.height * .73f)
-            quadraticTo(size.width * .35f, size.height * .76f, size.width * .39f, size.height * .77f)
-            lineTo(size.width * .48f, size.height * .78f)
-            lineTo(size.width * .47f, size.height * .34f)
-            close()
-        },
-        ink.copy(alpha = .75f),
-    )
-    drawPath(
-        Path().apply {
-            moveTo(size.width * .43f, size.height * .33f)
-            lineTo(size.width * .47f, size.height * .35f)
-            lineTo(size.width * .48f, size.height * .78f)
-            close()
-        },
-        ink.copy(alpha = .92f),
-    )
-
-    val sheet = Path().apply {
-        moveTo(size.width * .43f, size.height * .32f)
-        quadraticTo(size.width * .435f, size.height * .29f, size.width * .46f, size.height * .29f)
-        lineTo(size.width * .65f, size.height * .26f)
-        quadraticTo(size.width * .675f, size.height * .26f, size.width * .68f, size.height * .29f)
-        lineTo(size.width * .70f, size.height * .65f)
-        quadraticTo(size.width * .705f, size.height * .68f, size.width * .675f, size.height * .69f)
-        lineTo(size.width * .48f, size.height * .77f)
-        quadraticTo(size.width * .455f, size.height * .77f, size.width * .45f, size.height * .73f)
+    val body = Path().apply {
+        moveTo(centerX - bellWidth * .10f, top + bellHeight * .09f)
+        quadraticTo(centerX - bellWidth * .10f, top, centerX, top)
+        quadraticTo(centerX + bellWidth * .10f, top, centerX + bellWidth * .10f, top + bellHeight * .09f)
+        cubicTo(
+            centerX + bellWidth * .36f,
+            top + bellHeight * .13f,
+            centerX + bellWidth * .38f,
+            top + bellHeight * .42f,
+            centerX + bellWidth * .38f,
+            top + bellHeight * .58f,
+        )
+        quadraticTo(
+            centerX + bellWidth * .38f,
+            top + bellHeight * .71f,
+            centerX + bellWidth * .43f,
+            top + bellHeight * .78f,
+        )
+        quadraticTo(
+            centerX + bellWidth * .51f,
+            top + bellHeight * .78f,
+            centerX + bellWidth * .51f,
+            top + bellHeight * .88f,
+        )
+        quadraticTo(
+            centerX + bellWidth * .51f,
+            top + bellHeight * .98f,
+            centerX + bellWidth * .42f,
+            top + bellHeight * .98f,
+        )
+        lineTo(centerX - bellWidth * .42f, top + bellHeight * .98f)
+        quadraticTo(
+            centerX - bellWidth * .51f,
+            top + bellHeight * .98f,
+            centerX - bellWidth * .51f,
+            top + bellHeight * .88f,
+        )
+        quadraticTo(
+            centerX - bellWidth * .51f,
+            top + bellHeight * .78f,
+            centerX - bellWidth * .43f,
+            top + bellHeight * .78f,
+        )
+        quadraticTo(
+            centerX - bellWidth * .38f,
+            top + bellHeight * .71f,
+            centerX - bellWidth * .38f,
+            top + bellHeight * .58f,
+        )
+        cubicTo(
+            centerX - bellWidth * .38f,
+            top + bellHeight * .42f,
+            centerX - bellWidth * .36f,
+            top + bellHeight * .13f,
+            centerX - bellWidth * .10f,
+            top + bellHeight * .09f,
+        )
         close()
     }
-    drawPath(sheet, page)
+    drawPath(body, accent)
 
-    repeat(6) { index ->
-        val x = size.width * (.455f + index * .039f)
-        drawArc(
-            color = ink,
-            startAngle = 180f,
-            sweepAngle = 180f,
-            useCenter = false,
-            topLeft = Offset(x - 3.25.dp.toPx(), size.height * .235f - index * .006f * size.height),
-            size = Size(7.dp.toPx(), 14.dp.toPx()),
-            style = Stroke(1.55.dp.toPx(), cap = StrokeCap.Round),
-        )
-        drawLine(
-            ink,
-            Offset(x + 3.25.dp.toPx(), size.height * (.284f - index * .006f)),
-            Offset(x + 3.25.dp.toPx(), size.height * (.325f - index * .006f)),
-            1.55.dp.toPx(),
-            StrokeCap.Round,
-        )
-    }
+    drawArc(
+        color = accent,
+        startAngle = 0f,
+        sweepAngle = 180f,
+        useCenter = true,
+        topLeft = Offset(centerX - bellWidth * .17f, top + bellHeight * 1.04f),
+        size = Size(bellWidth * .34f, bellHeight * .28f),
+    )
 
-    val bellCenterX = size.width * .565f
-    val bell = Path().apply {
-        moveTo(bellCenterX - 10.dp.toPx(), size.height * .61f)
-        quadraticTo(bellCenterX - 6.dp.toPx(), size.height * .57f, bellCenterX - 6.dp.toPx(), size.height * .49f)
-        quadraticTo(bellCenterX - 6.dp.toPx(), size.height * .44f, bellCenterX, size.height * .425f)
-        quadraticTo(bellCenterX + 6.dp.toPx(), size.height * .44f, bellCenterX + 6.dp.toPx(), size.height * .49f)
-        quadraticTo(bellCenterX + 6.dp.toPx(), size.height * .57f, bellCenterX + 10.dp.toPx(), size.height * .61f)
-        quadraticTo(bellCenterX, size.height * .64f, bellCenterX - 10.dp.toPx(), size.height * .61f)
-        close()
-    }
-    drawPath(bell, colors.accent.copy(alpha = .68f))
-    drawCircle(colors.accent.copy(alpha = .74f), 1.5.dp.toPx(), Offset(bellCenterX, size.height * .415f))
-    drawCircle(ink, 1.9.dp.toPx(), Offset(bellCenterX, size.height * .655f))
-
-    drawLine(ink, Offset(size.width * .70f, size.height * .28f), Offset(size.width * .73f, size.height * .18f), 1.6.dp.toPx(), StrokeCap.Round)
-    drawLine(ink, Offset(size.width * .74f, size.height * .36f), Offset(size.width * .79f, size.height * .31f), 1.6.dp.toPx(), StrokeCap.Round)
-    drawLine(ink, Offset(size.width * .75f, size.height * .45f), Offset(size.width * .81f, size.height * .45f), 1.6.dp.toPx(), StrokeCap.Round)
+    val ringStroke = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Round)
+    drawArc(
+        color = accent.copy(alpha = .92f),
+        startAngle = 196f,
+        sweepAngle = 44f,
+        useCenter = false,
+        topLeft = Offset(left - bellWidth * .10f, top + bellHeight * .04f),
+        size = Size(bellWidth * .34f, bellHeight * .48f),
+        style = ringStroke,
+    )
+    drawArc(
+        color = accent.copy(alpha = .92f),
+        startAngle = 300f,
+        sweepAngle = 44f,
+        useCenter = false,
+        topLeft = Offset(centerX + bellWidth * .27f, top + bellHeight * .04f),
+        size = Size(bellWidth * .34f, bellHeight * .48f),
+        style = ringStroke,
+    )
 }
 
 private fun DrawScope.drawLocationHero(colors: ReliveColors) {

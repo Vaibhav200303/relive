@@ -1,5 +1,6 @@
 package com.vaibhav.relive.ui.screens
 
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -12,6 +13,30 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TimelineReturnToBottomTest {
+    @Test
+    fun homeReturnToTopClearsFloatingToolbarAndSystemNavigationInset() {
+        assertEquals(
+            116.dp,
+            returnToTopBottomPadding(
+                isHomeSurface = true,
+                navigationBarInset = 24.dp,
+                floatingToolbarHeight = 64.dp,
+                toolbarBottomPadding = 16.dp,
+                controlGap = 12.dp,
+            ),
+        )
+        assertEquals(
+            16.dp,
+            returnToTopBottomPadding(
+                isHomeSurface = false,
+                navigationBarInset = 24.dp,
+                floatingToolbarHeight = 64.dp,
+                toolbarBottomPadding = 16.dp,
+                controlGap = 12.dp,
+            ),
+        )
+    }
+
     @Test
     fun affordanceIsHiddenUntilManualMovementTowardOlderMoments() {
         val state = TimelineReturnToBottomState()

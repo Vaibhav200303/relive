@@ -23,6 +23,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -90,6 +91,7 @@ import com.vaibhav.relive.domain.entitlement.EntitlementPolicy
 fun ProfileScreen(
     viewModel: ProfileViewModel,
     appearanceViewModel: AppearanceViewModel,
+    listState: LazyListState,
     onBack: () -> Unit,
     onOpenPreferences: () -> Unit,
     onOpenMediaStorage: () -> Unit,
@@ -157,6 +159,7 @@ fun ProfileScreen(
             ) { focusManager.clearFocus() },
     ) {
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {

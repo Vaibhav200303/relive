@@ -1,8 +1,21 @@
 package com.vaibhav.relive.ui.screens
 
+import androidx.compose.ui.unit.Dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+
+internal fun returnToTopBottomPadding(
+    isHomeSurface: Boolean,
+    navigationBarInset: Dp,
+    floatingToolbarHeight: Dp,
+    toolbarBottomPadding: Dp,
+    controlGap: Dp,
+): Dp = if (isHomeSurface) {
+    navigationBarInset + floatingToolbarHeight + toolbarBottomPadding + controlGap
+} else {
+    toolbarBottomPadding
+}
 
 /** Presentation state for the timeline's return-to-newest affordance. */
 internal data class TimelineReturnToBottomState(
