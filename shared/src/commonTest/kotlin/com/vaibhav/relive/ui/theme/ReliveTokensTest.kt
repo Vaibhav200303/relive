@@ -429,13 +429,33 @@ class ReliveTokensTest {
     @Test
     fun suppliedPaletteRolesAreExact() {
         assertEquals(Color(0xFF5A3E2F), WarmJournalPalette.light.primary)
+        assertEquals(Color(0xFF0D0A08), WarmJournalPalette.dark.canvas)
+        assertEquals(Color(0xFF211712), WarmJournalPalette.dark.surface)
         assertEquals(Color(0xFFF4EEE8), WarmJournalPalette.dark.ink)
         assertEquals(Color(0xFF17184B), InkLilacPalette.light.ink)
+        assertEquals(Color(0xFF090A16), InkLilacPalette.dark.canvas)
+        assertEquals(Color(0xFF17172B), InkLilacPalette.dark.surface)
         assertEquals(Color(0xFFC4A9F2), InkLilacPalette.dark.primary)
         assertEquals(Color(0xFF2E8079), TealSaffronPalette.light.primary)
+        assertEquals(Color(0xFF071011), TealSaffronPalette.dark.canvas)
+        assertEquals(Color(0xFF102326), TealSaffronPalette.dark.surface)
         assertEquals(Color(0xFFFF6B3D), EmberAquaPalette.light.spark)
+        assertEquals(Color(0xFF110B09), EmberAquaPalette.dark.canvas)
+        assertEquals(Color(0xFF261612), EmberAquaPalette.dark.surface)
         assertEquals(Color(0xFF6E3F97), PlumGoldPalette.light.primary)
+        assertEquals(Color(0xFF0D0912), PlumGoldPalette.dark.canvas)
+        assertEquals(Color(0xFF21142B), PlumGoldPalette.dark.surface)
         assertEquals(Color(0xFF63C6A0), RoseSagePalette.light.spark)
+        assertEquals(Color(0xFF100A0A), RoseSagePalette.dark.canvas)
+        assertEquals(Color(0xFF251616), RoseSagePalette.dark.surface)
+        assertEquals(Color(0xFF0D0912), SunrisePalette.dark.canvas)
+        assertEquals(Color(0xFF21172A), SunrisePalette.dark.surface)
+        assertEquals("Velvet Rose", SunsetPalette.label)
+        assertEquals(Color(0xFF0B090B), SunsetPalette.dark.canvas)
+        assertEquals(Color(0xFF21131C), SunsetPalette.dark.surface)
+        assertEquals(Color(0xFFB94D77), SunsetPalette.dark.primary)
+        assertEquals(Color(0xFFE789AC), SunsetPalette.dark.spark)
+        assertEquals(Color(0xFF65263E), SunsetPalette.dark.tint)
     }
 
     @Test

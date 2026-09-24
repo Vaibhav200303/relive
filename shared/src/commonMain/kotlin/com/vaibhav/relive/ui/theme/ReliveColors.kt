@@ -111,7 +111,7 @@ private fun readableTextOn(background: Color, preferredInk: Color): Color =
  * frame), drifts down through the palette's soft tint like haze in the middle air, settles onto
  * the flat [ReliveColors.bgCanvas], and finally deepens a touch toward the shadow tone in the far
  * corner so the surface has depth instead of ending flat. Every stop is derived from the active
- * palette's own roles, so each theme — including Sunrise and Sunset — carries its own weather.
+ * palette's own roles, so each theme — including Sunrise and Velvet Rose — carries its own weather.
  *
  * `Offset.Infinite` as the end lets the gradient span whatever area it fills, so it runs
  * corner-to-corner on any screen size. Applied at the screen root so content scrolls over a

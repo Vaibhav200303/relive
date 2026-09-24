@@ -54,12 +54,12 @@ val WarmJournalPalette = RelivePalette(
         tint = Color(0xFFE7D6C7),
     ),
     dark = RelivePaletteRoles(
-        canvas = Color(0xFF2B1B15),
-        surface = Color(0xFF39241B),
+        canvas = Color(0xFF0D0A08),
+        surface = Color(0xFF211712),
         ink = Color(0xFFF4EEE8),
         inkSoft = Color(0xFFCFB9A8),
-        primary = Color(0xFFC89B77),
-        spark = Color(0xFFE4B56F),
+        primary = Color(0xFFB88763),
+        spark = Color(0xFFD9A85D),
         tint = Color(0xFF4B3025),
     ),
 )
@@ -80,8 +80,8 @@ val InkLilacPalette = RelivePalette(
         tint = Color(0xFFD3DDE7),
     ),
     dark = RelivePaletteRoles(
-        canvas = Color(0xFF1D2049),
-        surface = Color(0xFF282B57),
+        canvas = Color(0xFF090A16),
+        surface = Color(0xFF17172B),
         ink = Color(0xFFF1EFF7),
         inkSoft = Color(0xFFADAAC9),
         primary = Color(0xFFC4A9F2),
@@ -104,11 +104,11 @@ val TealSaffronPalette = RelivePalette(
         tint = Color(0xFFD7E7E2),
     ),
     dark = RelivePaletteRoles(
-        canvas = Color(0xFF163640),
-        surface = Color(0xFF1F4550),
+        canvas = Color(0xFF071011),
+        surface = Color(0xFF102326),
         ink = Color(0xFFE9F3F0),
         inkSoft = Color(0xFF9CBDB7),
-        primary = Color(0xFF5FC2B6),
+        primary = Color(0xFF56B7AD),
         spark = Color(0xFFFFC94F),
         tint = Color(0xFF244E58),
     ),
@@ -128,13 +128,13 @@ val EmberAquaPalette = RelivePalette(
         tint = Color(0xFFA9CDCE),
     ),
     dark = RelivePaletteRoles(
-        canvas = Color(0xFF34231E),
-        surface = Color(0xFF452F28),
+        canvas = Color(0xFF110B09),
+        surface = Color(0xFF261612),
         ink = Color(0xFFF4EAE3),
         inkSoft = Color(0xFFC3A89D),
-        primary = Color(0xFFE08A6C),
+        primary = Color(0xFFD77C60),
         spark = Color(0xFFFF7A4D),
-        tint = Color(0xFF6FA6A8),
+        tint = Color(0xFF315A5C),
     ),
 )
 
@@ -152,8 +152,8 @@ val PlumGoldPalette = RelivePalette(
         tint = Color(0xFFE2D2EB),
     ),
     dark = RelivePaletteRoles(
-        canvas = Color(0xFF2A1B3D),
-        surface = Color(0xFF382650),
+        canvas = Color(0xFF0D0912),
+        surface = Color(0xFF21142B),
         ink = Color(0xFFF1ECF5),
         inkSoft = Color(0xFFB8A6CC),
         primary = Color(0xFFB98CE0),
@@ -176,13 +176,13 @@ val RoseSagePalette = RelivePalette(
         tint = Color(0xFFEAD6D3),
     ),
     dark = RelivePaletteRoles(
-        canvas = Color(0xFF3A2523),
-        surface = Color(0xFF4B322E),
+        canvas = Color(0xFF100A0A),
+        surface = Color(0xFF251616),
         ink = Color(0xFFF5E8E6),
         inkSoft = Color(0xFFCBA7A4),
-        primary = Color(0xFFD98A93),
+        primary = Color(0xFFCF7C87),
         spark = Color(0xFF6FD3AC),
-        tint = Color(0xFF523633),
+        tint = Color(0xFF4A302E),
     ),
 )
 
@@ -202,21 +202,23 @@ val SunrisePalette = RelivePalette(
         tint = Color(0xFFF3DCC0),
     ),
     dark = RelivePaletteRoles(
-        canvas = Color(0xFF32213E),
-        surface = Color(0xFF413052),
+        canvas = Color(0xFF0D0912),
+        surface = Color(0xFF21172A),
         ink = Color(0xFFF7EEE3),
         inkSoft = Color(0xFFC7AFA6),
-        primary = Color(0xFFF3A356),
+        primary = Color(0xFFE4934C),
         spark = Color(0xFFFFCF7D),
         tint = Color(0xFF473556),
     ),
 )
 
-// 08 · Sunset — dusk: rose-washed sky, deep plum ink, a low orange sun. Light mode is the warm
-// blush just before the light goes; dark mode is the burgundy afterglow once it has.
+// 08 · Velvet Rose — the rose-and-burgundy atmosphere introduced by onboarding. The persisted
+// ThemeReference remains Sunset so existing selections and launcher aliases continue to resolve,
+// but the selectable identity is now Velvet Rose. Its light treatment stays unchanged; dark mode
+// falls from the opening scene's rose light into plum and the onboarding shell's near-black base.
 val SunsetPalette = RelivePalette(
     theme = ThemeReference.Sunset,
-    label = "Sunset",
+    label = "Velvet Rose",
     light = RelivePaletteRoles(
         canvas = Color(0xFFF9ECE9),
         surface = Color(0xFFFFFFFF),
@@ -227,13 +229,13 @@ val SunsetPalette = RelivePalette(
         tint = Color(0xFFF0D3D5),
     ),
     dark = RelivePaletteRoles(
-        canvas = Color(0xFF381D2F),
-        surface = Color(0xFF4A2940),
-        ink = Color(0xFFF8ECEF),
-        inkSoft = Color(0xFFCEA9B9),
-        primary = Color(0xFFEC8FA3),
-        spark = Color(0xFFFFB068),
-        tint = Color(0xFF56304A),
+        canvas = Color(0xFF0B090B),
+        surface = Color(0xFF21131C),
+        ink = Color(0xFFFAF7F8),
+        inkSoft = Color(0xFFD0BEC6),
+        primary = Color(0xFFB94D77),
+        spark = Color(0xFFE789AC),
+        tint = Color(0xFF65263E),
     ),
 )
 
