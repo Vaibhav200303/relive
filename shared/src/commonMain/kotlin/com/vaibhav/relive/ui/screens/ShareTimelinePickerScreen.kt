@@ -1,11 +1,14 @@
 package com.vaibhav.relive.ui.screens
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +25,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -33,9 +37,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.vaibhav.relive.domain.model.Timeline
 import com.vaibhav.relive.domain.model.TimelineHomeSummary
 import com.vaibhav.relive.platform.media.MediaStore
@@ -160,6 +167,80 @@ fun ShareTimelinePickerScreen(
                     }
                 }
             }
+        }
+        AnimatedVisibility(
+            visible = pending != null && shareState is IncomingShareState.Reading,
+            enter = fadeIn(
+                motion.spec(
+                    reduceMotion = reduceMotion,
+                    full = tween(
+                        durationMillis = motion.durations.short4,
+                        easing = motion.easings.emphasizedDecelerate,
+                    ),
+                ),
+            ),
+            exit = fadeOut(
+                motion.spec(
+                    reduceMotion = reduceMotion,
+                    full = tween(
+                        durationMillis = motion.durations.short3,
+                        easing = motion.easings.emphasizedAccelerate,
+                    ),
+                ),
+            ),
+            label = "shared media preparation",
+        ) {
+            SharePreparationOverlay()
+        }
+    }
+}
+
+/**
+ * Explicit feedback for the only unavoidable wait in the share path: Android is still granting
+ * and copying the selected provider files into Relive-owned temporary storage. The full-screen
+ * scrim consumes taps so another timeline cannot be selected while that one request is pending.
+ */
+@Composable
+private fun SharePreparationOverlay() {
+    val colors = ReliveTheme.colors
+    val dims = ReliveTheme.dimensions
+    val type = ReliveTheme.typography
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.56f))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {},
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(dims.spacing.xl)
+                .clip(RoundedCornerShape(dims.radii.largeIncreased))
+                .background(colors.surfaceFloating)
+                .padding(horizontal = dims.spacing.xl, vertical = dims.spacing.lg),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(dims.spacing.md),
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier
+                    .size(dims.icon.lg)
+                    .semantics { contentDescription = "Preparing shared media" },
+                color = colors.accent,
+            )
+            Text(
+                text = "Preparing your media…",
+                style = type.subtitle,
+                color = colors.textPrimary,
+            )
+            Text(
+                text = "Large selections may take a moment.",
+                style = type.body,
+                color = colors.textSecondary,
+            )
         }
     }
 }

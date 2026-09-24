@@ -15,6 +15,10 @@ import kotlinx.coroutines.withContext
 @Composable
 expect fun RelivedImage(ref: MediaStorageRef, mediaStore: MediaStore, modifier: Modifier)
 
+/** Bounded image surface for the inline composer; it never decodes at viewer resolution. */
+@Composable
+expect fun RelivedImagePreview(ref: MediaStorageRef, mediaStore: MediaStore, modifier: Modifier)
+
 /**
  * Composer callers pass [posterFallbackPath] — the pre-processing source
  * file — so the ready surface can show an instant poster frame from the

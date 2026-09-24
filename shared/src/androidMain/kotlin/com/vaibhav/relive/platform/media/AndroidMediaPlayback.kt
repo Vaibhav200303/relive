@@ -53,6 +53,8 @@ import com.vaibhav.relive.ui.theme.ReliveTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.concurrent.Volatile
@@ -82,6 +84,38 @@ actual fun RelivedImage(ref: MediaStorageRef, mediaStore: MediaStore, modifier: 
         )
     } else {
         Box(modifier = modifier.background(Color(0x22000000)))
+    }
+}
+
+private val composerPreviewDecodeLimiter = Semaphore(1)
+
+@Composable
+actual fun RelivedImagePreview(ref: MediaStorageRef, mediaStore: MediaStore, modifier: Modifier) {
+    val path = mediaStore.resolveAbsolutePath(ref)
+    val key = ref.value + ":composer"
+    val cached = AndroidImageTileCache.get(key)
+    val bitmap by produceState<Bitmap?>(initialValue = cached, key1 = key) {
+        if (value != null) return@produceState
+        val decoded = withContext(Dispatchers.Default) {
+            composerPreviewDecodeLimiter.withPermit {
+                decodeOriented(path, targetLongEdgePx = 768)
+            }
+        }
+        if (decoded != null) {
+            AndroidImageTileCache.put(key, decoded)
+            value = decoded
+        }
+    }
+    val current = bitmap
+    if (current != null) {
+        Image(
+            bitmap = current.asImageBitmap(),
+            contentDescription = "Photo",
+            modifier = modifier,
+            contentScale = ContentScale.Fit,
+        )
+    } else {
+        Box(modifier.background(Color.Black))
     }
 }
 

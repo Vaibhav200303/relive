@@ -302,6 +302,12 @@ fun TimelineScreen(
     selectedMomentId: MomentId? = null,
     openComposerOnEnter: Boolean = false,
     incomingShare: IncomingSharePayload? = null,
+    /**
+     * External-share media normalization is intentionally held until the card-to-timeline
+     * transform has finished. Decoding and encoding camera photos during that transform competes
+     * with Compose's lookahead/layout and bitmap uploads, producing visibly missed frames.
+     */
+    incomingShareApplyReady: Boolean = true,
     onIncomingShareApplied: ((String) -> Unit)? = null,
     onBackToTimelineHome: (() -> Unit)? = null,
     onOpenTimelineTheme: (() -> Unit)? = null,
@@ -405,6 +411,10 @@ fun TimelineScreen(
             mediaStore = mediaStore,
             mediaProcessor = mediaProcessor,
             draftStore = draftStore,
+            // An incoming Android share can contain many full-resolution camera photos. Process
+            // those serially so scrolling the review composer retains main/GPU headroom.
+            processingConcurrency = if (incomingShare != null) 1 else
+                MomentComposerViewModel.DEFAULT_PROCESSING_CONCURRENCY,
         )
     }
     val timelineState by timelineViewModel.state.collectAsState()
@@ -415,10 +425,17 @@ fun TimelineScreen(
         timelineState
     }
     val composerState by composerViewModel.state.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val leaveTimeline: () -> Unit = {
-        composerViewModel.preserveDraft()
-        onBackToTimelineHome?.invoke()
+        if (composerState.hasProcessingAttachments) {
+            scope.launch {
+                snackbarHostState.showSnackbar("Preparing media. You can go back when it finishes.")
+            }
+        } else {
+            composerViewModel.preserveDraft()
+            onBackToTimelineHome?.invoke()
+        }
         Unit
     }
     ReliveBackHandler(enabled = onBackToTimelineHome != null) {
@@ -471,7 +488,6 @@ fun TimelineScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var discardConfirmation by remember { mutableStateOf(ComposerDiscardConfirmationState()) }
     var showCoverPicker by remember { mutableStateOf(false) }
-    val snackbarHostState = remember { SnackbarHostState() }
     var downloadProgress by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     var downloadJob by remember { mutableStateOf<Job?>(null) }
     val haptics = rememberReliveHaptics()
@@ -512,8 +528,15 @@ fun TimelineScreen(
 
     val composerDestinationSettled = timelineState.moments != TimelineMomentsState.Loading
     val isTimelineEmpty = timelineState.moments == TimelineMomentsState.Empty
-    LaunchedEffect(openComposerOnEnter, incomingShare?.requestId, timelineState.currentTimeline, composerDestinationSettled, isTimelineEmpty) {
-        if (mode.allowsMutations && shouldExpandComposerOnEnter(
+    LaunchedEffect(
+        openComposerOnEnter,
+        incomingShare?.requestId,
+        incomingShareApplyReady,
+        timelineState.currentTimeline,
+        composerDestinationSettled,
+        isTimelineEmpty,
+    ) {
+        if (incomingShareApplyReady && mode.allowsMutations && shouldExpandComposerOnEnter(
                 requested = openComposerOnEnter && !composerOpenIntentConsumed,
                 currentTimeline = timelineState.currentTimeline,
                 isAlreadyExpanded = isComposerExpanded,

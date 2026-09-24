@@ -2,7 +2,6 @@ package com.vaibhav.relive.ui.components.composer
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -39,7 +38,7 @@ import com.vaibhav.relive.domain.model.MediaType
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.platform.media.NaturalSizePx
 import com.vaibhav.relive.platform.media.RelivedAudio
-import com.vaibhav.relive.platform.media.RelivedImage
+import com.vaibhav.relive.platform.media.RelivedImagePreview
 import com.vaibhav.relive.platform.media.RelivedVideo
 import com.vaibhav.relive.platform.media.VideoSourceThumbnail
 import com.vaibhav.relive.platform.media.rememberImageNaturalSizeFor
@@ -52,7 +51,6 @@ import com.vaibhav.relive.ui.media.fallbackAdaptivePreviewSize
 import com.vaibhav.relive.ui.feedback.ReliveHapticCue
 import com.vaibhav.relive.ui.feedback.rememberReliveHaptics
 import com.vaibhav.relive.ui.theme.ReliveTheme
-import com.vaibhav.relive.ui.theme.reliveInContextVerticalEnter
 
 /**
  * Vertical stack of composer draft attachments. Each preview shrink-wraps
@@ -72,26 +70,18 @@ internal fun DraftAttachmentColumn(
     modifier: Modifier = Modifier,
 ) {
     val dims = ReliveTheme.dimensions
-    val motion = ReliveTheme.motion
-    val reduceMotion = ReliveTheme.reduceMotion
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(dims.spacing.md),
     ) {
         attachments.forEach { att ->
             key(att.draftId) {
-                AnimatedVisibility(
-                    visible = true,
-                    enter = motion.reliveInContextVerticalEnter(reduceMotion),
-                    label = "composer attachment ${att.draftId}",
-                ) {
-                    DraftAttachmentTile(
-                        attachment = att,
-                        mediaStore = mediaStore,
-                        onRemove = { onRemove(att.draftId) },
-                        onRetry = { onRetry(att.draftId) },
-                    )
-                }
+                DraftAttachmentTile(
+                    attachment = att,
+                    mediaStore = mediaStore,
+                    onRemove = { onRemove(att.draftId) },
+                    onRetry = { onRetry(att.draftId) },
+                )
             }
         }
     }
@@ -198,7 +188,7 @@ private fun AdaptiveMediaTile(
     ) {
         if (readyRef != null) {
             when (attachment.type) {
-                MediaType.Image -> RelivedImage(
+                MediaType.Image -> RelivedImagePreview(
                     ref = readyRef,
                     mediaStore = mediaStore,
                     modifier = Modifier.size(displaySize.width, displaySize.height),

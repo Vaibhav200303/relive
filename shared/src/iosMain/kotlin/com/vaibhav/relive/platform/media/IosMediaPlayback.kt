@@ -78,6 +78,11 @@ actual fun RelivedImage(ref: MediaStorageRef, mediaStore: MediaStore, modifier: 
     )
 }
 
+@Composable
+actual fun RelivedImagePreview(ref: MediaStorageRef, mediaStore: MediaStore, modifier: Modifier) {
+    RelivedImage(ref, mediaStore, modifier)
+}
+
 @OptIn(ExperimentalForeignApi::class)
 @Composable
 actual fun RelivedVideo(

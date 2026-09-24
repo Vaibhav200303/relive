@@ -774,11 +774,15 @@ fun App(
                         selectedMomentId = active.selectedMomentId,
                         openComposerOnEnter = active.openComposerOnEnter,
                         incomingShare = active.incomingShare,
+                        incomingShareApplyReady = !shareCardTransformActive,
                         onIncomingShareApplied = { requestId ->
+                            // Claiming transfers the temporary media to the existing composer.
+                            // Keep the route itself stable: clearing `incomingShare` here changes
+                            // AnimatedContent's target identity, which disposes and recreates the
+                            // TimelineScreen (and its remembered composer) while media processing
+                            // is starting. That both loses the newly appended attachments and
+                            // starts a second, visibly jarring destination transition.
                             container.incomingShareGateway.claim(requestId)
-                            (timelinesDestination as? TimelinesDestination.TimelineDetail)?.let { current ->
-                                timelinesDestination = current.copy(incomingShare = null)
-                            }
                         },
                         onBackToTimelineHome = {
                             if (active.cameFromQuickCapture) {
