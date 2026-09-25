@@ -16,7 +16,6 @@ import com.vaibhav.relive.widget.ReliveQuickCaptureWidget
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -51,7 +50,12 @@ class MainActivity : ComponentActivity() {
             container.appearanceRepository.preferences
                 .map { it.mode to it.defaultTheme }
                 .distinctUntilChanged()
-                .drop(1)
+                .collect { ReliveQuickCaptureWidget().updateAll(applicationContext) }
+        }
+        shareScope.launch {
+            container.profileSettingsRepository.settings
+                .map { it.profilePhoto }
+                .distinctUntilChanged()
                 .collect { ReliveQuickCaptureWidget().updateAll(applicationContext) }
         }
     }

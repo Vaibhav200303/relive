@@ -3,12 +3,21 @@ package com.vaibhav.relive.widget
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.BitmapShader
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Shader
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.glance.ColorFilter
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
+import androidx.glance.Image
+import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
@@ -19,6 +28,7 @@ import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
+import androidx.glance.layout.ContentScale
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
@@ -32,8 +42,12 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.vaibhav.relive.MainActivity
+import com.vaibhav.relive.R
 import com.vaibhav.relive.ReliveIntents
 import com.vaibhav.relive.data.settings.AndroidAppearanceRepository
+import com.vaibhav.relive.data.settings.AndroidProfileSettingsRepository
+import com.vaibhav.relive.domain.model.MediaStorageRef
+import com.vaibhav.relive.platform.media.AndroidMediaStore
 import com.vaibhav.relive.presentation.settings.resolveDarkMode
 import com.vaibhav.relive.ui.theme.RelivePaletteRoles
 import com.vaibhav.relive.ui.theme.paletteFor
@@ -50,55 +64,137 @@ import com.vaibhav.relive.ui.theme.paletteFor
 class ReliveQuickCaptureWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val preferences = AndroidAppearanceRepository(context).preferences.value
+        val profilePhoto = AndroidProfileSettingsRepository(context).settings.value.profilePhoto
         val isDark = resolveDarkMode(preferences.mode, systemDark = context.isSystemDark())
         val roles = paletteFor(preferences.defaultTheme).roles(isDark)
-        provideContent { QuickCaptureContent(roles) }
+        val avatar = profilePhoto?.let { loadCircularAvatar(context, it) }
+        provideContent { QuickCaptureContent(roles, avatar) }
     }
 }
 
 @Composable
-private fun QuickCaptureContent(roles: RelivePaletteRoles) {
+private fun QuickCaptureContent(roles: RelivePaletteRoles, avatar: Bitmap?) {
     val context = LocalContext.current
     val ink = ColorProvider(roles.ink)
     val inkSoft = ColorProvider(roles.inkSoft)
     val accent = ColorProvider(roles.primary)
     val onAccent = ColorProvider(contrastOn(roles.primary))
+    val glass = ColorProvider(roles.surface.copy(alpha = WIDGET_GLASS_ALPHA))
+    val glassEdge = ColorProvider(roles.ink.copy(alpha = WIDGET_EDGE_ALPHA))
+    val avatarSurface = ColorProvider(roles.surface)
     Box(
         modifier = GlanceModifier
             .fillMaxSize()
-            .background(ColorProvider(roles.canvas))
-            .cornerRadius(24.dp)
-            .padding(20.dp)
+            .background(glassEdge)
+            .cornerRadius(28.dp)
+            .padding(1.dp)
             .clickable(actionStartActivity(addMomentIntent(context))),
-        contentAlignment = Alignment.CenterStart,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = GlanceModifier.size(44.dp).cornerRadius(22.dp).background(accent),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("+", style = TextStyle(color = onAccent, fontSize = 26.sp, fontWeight = FontWeight.Medium))
-            }
-            Spacer(GlanceModifier.width(14.dp))
-            Column {
-                Text(
-                    "Capture a moment",
-                    style = TextStyle(
-                        color = ink,
-                        fontSize = 17.sp,
-                        fontFamily = FontFamily.Serif,
-                        fontWeight = FontWeight.Medium,
-                    ),
-                )
-                Spacer(GlanceModifier.height(3.dp))
-                Text(
-                    "Add today to your archive",
-                    style = TextStyle(color = inkSoft, fontSize = 12.sp, fontFamily = FontFamily.SansSerif),
-                )
+        Box(
+            modifier = GlanceModifier
+                .fillMaxSize()
+                .background(glass)
+                .cornerRadius(27.dp)
+                .padding(horizontal = 18.dp, vertical = 8.dp),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = GlanceModifier.size(52.dp).cornerRadius(26.dp).background(accent).padding(2.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Box(
+                        modifier = GlanceModifier.size(48.dp).cornerRadius(24.dp).background(avatarSurface),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (avatar != null) {
+                            Image(
+                                provider = ImageProvider(avatar),
+                                contentDescription = "Profile photo",
+                                modifier = GlanceModifier.size(48.dp),
+                                contentScale = ContentScale.Crop,
+                            )
+                        } else {
+                            Image(
+                                provider = ImageProvider(R.drawable.widget_profile_placeholder),
+                                contentDescription = "Profile",
+                                modifier = GlanceModifier.size(24.dp),
+                                colorFilter = ColorFilter.tint(inkSoft),
+                            )
+                        }
+                    }
+                }
+                Spacer(GlanceModifier.width(16.dp))
+                Column(modifier = GlanceModifier.defaultWeight()) {
+                    Text(
+                        "Capture a moment",
+                        style = TextStyle(
+                            color = ink,
+                            fontSize = 18.sp,
+                            fontFamily = FontFamily.Serif,
+                            fontWeight = FontWeight.Medium,
+                        ),
+                        maxLines = 1,
+                    )
+                    Spacer(GlanceModifier.height(3.dp))
+                    Text(
+                        "Add today to your archive",
+                        style = TextStyle(color = inkSoft, fontSize = 12.sp, fontFamily = FontFamily.SansSerif),
+                        maxLines = 1,
+                    )
+                }
+                Spacer(GlanceModifier.width(12.dp))
+                Box(
+                    // Match the expanded + New control from the floating navigation toolbar.
+                    modifier = GlanceModifier
+                        .width(136.dp)
+                        .height(64.dp)
+                        .cornerRadius(32.dp)
+                        .background(accent),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        "+ New",
+                        style = TextStyle(
+                            color = onAccent,
+                            fontSize = 16.sp,
+                            fontFamily = FontFamily.SansSerif,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                    )
+                }
             }
         }
     }
 }
+
+private const val WIDGET_GLASS_ALPHA = 0.78f
+private const val WIDGET_EDGE_ALPHA = 0.18f
+private const val AVATAR_SIZE_PX = 96
+
+/** Decodes the locally managed profile image at widget scale and crops it to the avatar circle. */
+private fun loadCircularAvatar(context: Context, ref: MediaStorageRef): Bitmap? = runCatching {
+    val path = AndroidMediaStore(context).resolveAbsolutePath(ref)
+    val decoded = BitmapFactory.decodeFile(path) ?: return null
+    val output = Bitmap.createBitmap(AVATAR_SIZE_PX, AVATAR_SIZE_PX, Bitmap.Config.ARGB_8888)
+    val shader = BitmapShader(decoded, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
+    val scale = maxOf(
+        AVATAR_SIZE_PX.toFloat() / decoded.width,
+        AVATAR_SIZE_PX.toFloat() / decoded.height,
+    )
+    val dx = (AVATAR_SIZE_PX - decoded.width * scale) / 2f
+    val dy = (AVATAR_SIZE_PX - decoded.height * scale) / 2f
+    val matrix = android.graphics.Matrix().apply { setScale(scale, scale); postTranslate(dx, dy) }
+    shader.setLocalMatrix(matrix)
+    Canvas(output).drawCircle(
+        AVATAR_SIZE_PX / 2f,
+        AVATAR_SIZE_PX / 2f,
+        AVATAR_SIZE_PX / 2f,
+        Paint(Paint.ANTI_ALIAS_FLAG).apply { this.shader = shader },
+    )
+    decoded.recycle()
+    output
+}.getOrNull()
 
 private fun Context.isSystemDark(): Boolean =
     (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
