@@ -297,7 +297,7 @@
 				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = (
 					AppIconWarmJournal,
 					AppIconOriginal,
-					AppIconSunrise,
+					AppIconVelvetRose,
 					AppIconEvergreen,
 					AppIconEmberAqua,
 					AppIconPlumGold,
@@ -334,7 +334,7 @@
 				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = (
 					AppIconWarmJournal,
 					AppIconOriginal,
-					AppIconSunrise,
+					AppIconVelvetRose,
 					AppIconEvergreen,
 					AppIconEmberAqua,
 					AppIconPlumGold,

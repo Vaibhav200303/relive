@@ -13,17 +13,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.glance.ColorFilter
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
+import androidx.glance.currentState
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
+import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
@@ -41,12 +46,15 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+import androidx.glance.state.PreferencesGlanceStateDefinition
 import com.vaibhav.relive.MainActivity
 import com.vaibhav.relive.R
 import com.vaibhav.relive.ReliveIntents
-import com.vaibhav.relive.data.settings.AndroidAppearanceRepository
-import com.vaibhav.relive.data.settings.AndroidProfileSettingsRepository
+import com.vaibhav.relive.domain.model.AppearanceMode
+import com.vaibhav.relive.domain.model.AppearancePreferences
 import com.vaibhav.relive.domain.model.MediaStorageRef
+import com.vaibhav.relive.domain.model.ProfileSettings
+import com.vaibhav.relive.domain.model.ThemeReference
 import com.vaibhav.relive.platform.media.AndroidMediaStore
 import com.vaibhav.relive.presentation.settings.resolveDarkMode
 import com.vaibhav.relive.ui.theme.RelivePaletteRoles
@@ -58,17 +66,50 @@ import com.vaibhav.relive.ui.theme.paletteFor
  * into the Home quick-capture composer via [ReliveIntents.ACTION_ADD_MOMENT].
  *
  * Colors follow whatever palette and light/dark mode the user has chosen in Appearance: the widget
- * reads the saved [com.vaibhav.relive.domain.model.AppearancePreferences] at render time, and
- * `MainActivity` re-renders it (`updateAll`) whenever that choice changes.
+ * renders from observable Glance state, and `MainActivity` writes the latest appearance into that
+ * state before requesting a redraw whenever the selected palette, mode, or profile photo changes.
  */
 class ReliveQuickCaptureWidget : GlanceAppWidget() {
+    override val stateDefinition = PreferencesGlanceStateDefinition
+
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val preferences = AndroidAppearanceRepository(context).preferences.value
-        val profilePhoto = AndroidProfileSettingsRepository(context).settings.value.profilePhoto
-        val isDark = resolveDarkMode(preferences.mode, systemDark = context.isSystemDark())
-        val roles = paletteFor(preferences.defaultTheme).roles(isDark)
-        val avatar = profilePhoto?.let { loadCircularAvatar(context, it) }
-        provideContent { QuickCaptureContent(roles, avatar) }
+        provideContent {
+            QuickCaptureWidgetContent(context)
+        }
+    }
+}
+
+@Composable
+private fun QuickCaptureWidgetContent(context: Context) {
+    val state = currentState<Preferences>()
+    val mode = state[WIDGET_MODE_KEY]?.let { encoded ->
+        AppearanceMode.entries.firstOrNull { it.name == encoded }
+    } ?: AppearanceMode.System
+    val theme = state[WIDGET_THEME_KEY]?.let { encoded ->
+        ThemeReference.entries.firstOrNull { it.name == encoded }
+    } ?: ThemeReference.IvoryGold
+    val profilePhoto = state[WIDGET_PROFILE_PHOTO_KEY]
+        ?.takeIf(String::isNotEmpty)
+        ?.let(::MediaStorageRef)
+    val isDark = resolveDarkMode(mode, systemDark = context.isSystemDark())
+    val roles = paletteFor(theme).roles(isDark)
+    val avatar = profilePhoto?.let { loadCircularAvatar(context, it) }
+    QuickCaptureContent(roles, avatar)
+}
+
+suspend fun updateQuickCaptureWidgets(
+    context: Context,
+    appearance: AppearancePreferences,
+    profile: ProfileSettings,
+) {
+    val widget = ReliveQuickCaptureWidget()
+    GlanceAppWidgetManager(context).getGlanceIds(ReliveQuickCaptureWidget::class.java).forEach { id ->
+        updateAppWidgetState(context, id) { state ->
+            state[WIDGET_MODE_KEY] = appearance.mode.name
+            state[WIDGET_THEME_KEY] = appearance.defaultTheme.name
+            state[WIDGET_PROFILE_PHOTO_KEY] = profile.profilePhoto?.value.orEmpty()
+        }
+        widget.update(context, id)
     }
 }
 
@@ -171,6 +212,9 @@ private fun QuickCaptureContent(roles: RelivePaletteRoles, avatar: Bitmap?) {
 private const val WIDGET_GLASS_ALPHA = 0.78f
 private const val WIDGET_EDGE_ALPHA = 0.18f
 private const val AVATAR_SIZE_PX = 96
+private val WIDGET_MODE_KEY = stringPreferencesKey("appearance_mode")
+private val WIDGET_THEME_KEY = stringPreferencesKey("appearance_theme")
+private val WIDGET_PROFILE_PHOTO_KEY = stringPreferencesKey("profile_photo")
 
 /** Decodes the locally managed profile image at widget scale and crops it to the avatar circle. */
 private fun loadCircularAvatar(context: Context, ref: MediaStorageRef): Bitmap? = runCatching {

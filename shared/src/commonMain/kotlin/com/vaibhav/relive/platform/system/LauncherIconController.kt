@@ -6,8 +6,8 @@ import com.vaibhav.relive.domain.model.ThemeReference
 enum class LauncherIcon {
     WarmJournal,
     Original,
-    Sunrise,
-    Sunset,
+    IvoryGold,
+    VelvetRose,
     Evergreen,
     EmberAqua,
     PlumGold,
@@ -17,8 +17,8 @@ enum class LauncherIcon {
 fun ThemeReference.toLauncherIcon(): LauncherIcon = when (this) {
     ThemeReference.WarmJournal -> LauncherIcon.WarmJournal
     ThemeReference.InkLilac -> LauncherIcon.Original
-    ThemeReference.Sunrise -> LauncherIcon.Sunrise
-    ThemeReference.Sunset -> LauncherIcon.Sunset
+    ThemeReference.IvoryGold -> LauncherIcon.IvoryGold
+    ThemeReference.VelvetRose -> LauncherIcon.VelvetRose
     ThemeReference.TealSaffron -> LauncherIcon.Evergreen
     ThemeReference.EmberAqua -> LauncherIcon.EmberAqua
     ThemeReference.PlumGold -> LauncherIcon.PlumGold

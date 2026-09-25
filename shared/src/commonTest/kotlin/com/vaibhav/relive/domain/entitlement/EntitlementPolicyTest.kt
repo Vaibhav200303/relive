@@ -29,13 +29,13 @@ class EntitlementPolicyTest {
 
     @Test fun freeTierOnlyAllowsApprovedAppearance() {
         assertEquals(
-            setOf(ThemeReference.WarmJournal, ThemeReference.Sunrise, ThemeReference.Sunset),
+            setOf(ThemeReference.WarmJournal, ThemeReference.IvoryGold, ThemeReference.VelvetRose),
             ReliveMonetization.freePalettes,
         )
         assertEquals(setOf(TimelineWallpaper.WarmCream, TimelineWallpaper.BlushPink), ReliveMonetization.freeWallpapers)
         assertTrue(free.maySelectPalette(ThemeReference.WarmJournal))
-        assertTrue(free.maySelectPalette(ThemeReference.Sunrise))
-        assertTrue(free.maySelectPalette(ThemeReference.Sunset))
+        assertTrue(free.maySelectPalette(ThemeReference.IvoryGold))
+        assertTrue(free.maySelectPalette(ThemeReference.VelvetRose))
         assertFalse(free.maySelectPalette(ThemeReference.InkLilac))
         assertFalse(free.maySelectPalette(ThemeReference.EmberAqua))
         assertTrue(free.maySelectWallpaper(TimelineWallpaper.WarmCream))

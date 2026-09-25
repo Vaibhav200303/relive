@@ -8,8 +8,8 @@ enum class AppearanceMode {
 
 data class AppearancePreferences(
     val mode: AppearanceMode = AppearanceMode.System,
-    /** Velvet Rose (the persisted Sunset identity) is the install-time palette. */
-    val defaultTheme: ThemeReference = ThemeReference.Sunset,
+    /** Ivory Gold is the install-time palette. */
+    val defaultTheme: ThemeReference = ThemeReference.IvoryGold,
     /** Appearance owned by the logical All timeline; it never changes the app palette. */
     val allTimelineAppearance: TimelineAppearance = TimelineAppearance(),
 )

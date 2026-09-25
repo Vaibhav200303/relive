@@ -10,10 +10,14 @@ class AndroidLauncherIconController(context: Context) : LauncherIconController {
     private val appContext = context.applicationContext
     private val packageManager = appContext.packageManager
     private val pendingUpdate = PendingLauncherIconUpdate()
+    private val manifestPackage = requireNotNull(appContext.applicationInfo.className)
+        .substringBeforeLast('.')
 
     override fun synchronize(icon: LauncherIcon) {
-        // Changing an activity-alias while the activity is visible can make some launchers kill
-        // or recreate the process. Keep only the latest palette and apply it from Activity.onStop.
+        // Never mutate launcher components while the activity is visible. Enabling the selected
+        // alias first exposes two Relive icons, while disabling the current alias can remove the
+        // foreground task despite DONT_KILL_APP. onStop() applies the complete swap atomically on
+        // Android 13+, at the first lifecycle point where the launcher can actually be visible.
         pendingUpdate.request(icon)
     }
 
@@ -31,7 +35,7 @@ class AndroidLauncherIconController(context: Context) : LauncherIconController {
 
     private fun apply(icon: LauncherIcon) {
         val aliasesAlreadyMatch = LauncherIcon.entries.all { candidate ->
-            isEffectivelyEnabled(component(candidate), candidate == LauncherIcon.Sunset) ==
+            isEffectivelyEnabled(component(candidate), candidate == LauncherIcon.IvoryGold) ==
                 (candidate == icon)
         }
         if (aliasesAlreadyMatch) return
@@ -79,9 +83,12 @@ class AndroidLauncherIconController(context: Context) : LauncherIconController {
 
     private fun component(icon: LauncherIcon): ComponentName = ComponentName(
         appContext,
-        "${appContext.packageName}.${icon.aliasClassName}",
+        launcherComponentClassName(manifestPackage, icon),
     )
 }
+
+internal fun launcherComponentClassName(manifestPackage: String, icon: LauncherIcon): String =
+    "$manifestPackage.${icon.aliasClassName}"
 
 private const val TAG = "ReliveLauncherIcon"
 
@@ -89,8 +96,8 @@ private val LauncherIcon.aliasClassName: String
     get() = when (this) {
         LauncherIcon.WarmJournal -> "LauncherWarmJournal"
         LauncherIcon.Original -> "LauncherOriginal"
-        LauncherIcon.Sunrise -> "LauncherSunrise"
-        LauncherIcon.Sunset -> "LauncherSunset"
+        LauncherIcon.IvoryGold -> "LauncherIvoryGold"
+        LauncherIcon.VelvetRose -> "LauncherVelvetRose"
         LauncherIcon.Evergreen -> "LauncherEvergreen"
         LauncherIcon.EmberAqua -> "LauncherEmberAqua"
         LauncherIcon.PlumGold -> "LauncherPlumGold"

@@ -10,8 +10,8 @@ class LauncherIconControllerTest {
     fun every_palette_maps_to_its_stable_launcher_icon() {
         assertEquals(LauncherIcon.WarmJournal, ThemeReference.WarmJournal.toLauncherIcon())
         assertEquals(LauncherIcon.Original, ThemeReference.InkLilac.toLauncherIcon())
-        assertEquals(LauncherIcon.Sunrise, ThemeReference.Sunrise.toLauncherIcon())
-        assertEquals(LauncherIcon.Sunset, ThemeReference.Sunset.toLauncherIcon())
+        assertEquals(LauncherIcon.IvoryGold, ThemeReference.IvoryGold.toLauncherIcon())
+        assertEquals(LauncherIcon.VelvetRose, ThemeReference.VelvetRose.toLauncherIcon())
         assertEquals(LauncherIcon.Evergreen, ThemeReference.TealSaffron.toLauncherIcon())
         assertEquals(LauncherIcon.EmberAqua, ThemeReference.EmberAqua.toLauncherIcon())
         assertEquals(LauncherIcon.PlumGold, ThemeReference.PlumGold.toLauncherIcon())

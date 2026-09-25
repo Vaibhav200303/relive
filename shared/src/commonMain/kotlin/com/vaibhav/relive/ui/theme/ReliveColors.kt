@@ -94,7 +94,7 @@ internal fun reliveColorsFor(
     )
 }
 
-/** The app-wide default token bundle (Warm Journal, light). */
+/** The app-wide default token bundle (Ivory Gold, light). */
 val DefaultReliveColors: ReliveColors = reliveColorsFor(DefaultRelivePalette.light, isDark = false)
 
 /** Prefer the palette ink on a filled accent when it is legible; otherwise fall back to B/W. */
@@ -111,7 +111,7 @@ private fun readableTextOn(background: Color, preferredInk: Color): Color =
  * frame), drifts down through the palette's soft tint like haze in the middle air, settles onto
  * the flat [ReliveColors.bgCanvas], and finally deepens a touch toward the shadow tone in the far
  * corner so the surface has depth instead of ending flat. Every stop is derived from the active
- * palette's own roles, so each theme — including Sunrise and Velvet Rose — carries its own weather.
+ * palette's own roles, so each theme — including Ivory Gold and Velvet Rose — carries its own weather.
  *
  * `Offset.Infinite` as the end lets the gradient span whatever area it fills, so it runs
  * corner-to-corner on any screen size. Applied at the screen root so content scrolls over a

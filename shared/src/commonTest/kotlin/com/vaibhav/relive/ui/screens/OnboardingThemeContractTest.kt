@@ -15,8 +15,8 @@ class OnboardingThemeContractTest {
                 ReliveThemeId.TealSaffron,
                 ReliveThemeId.InkLilac,
                 ReliveThemeId.PlumGold,
-                ReliveThemeId.Sunrise,
-                ReliveThemeId.Sunset,
+                ReliveThemeId.IvoryGold,
+                ReliveThemeId.VelvetRose,
             ),
             ONBOARDING_CHAPTER_THEME_IDS,
         )

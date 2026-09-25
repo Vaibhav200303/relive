@@ -6,14 +6,22 @@ import kotlin.test.assertNull
 
 class PendingLauncherIconUpdateTest {
     @Test
+    fun launcherAliasUsesManifestPackageInsteadOfSuffixedApplicationId() {
+        assertEquals(
+            "com.vaibhav.relive.LauncherVelvetRose",
+            launcherComponentClassName("com.vaibhav.relive", LauncherIcon.VelvetRose),
+        )
+    }
+
+    @Test
     fun requestsCoalesceToTheLatestIcon() {
         val update = PendingLauncherIconUpdate()
 
         update.request(LauncherIcon.WarmJournal)
-        update.request(LauncherIcon.Sunrise)
-        update.request(LauncherIcon.Sunset)
+        update.request(LauncherIcon.IvoryGold)
+        update.request(LauncherIcon.VelvetRose)
 
-        assertEquals(LauncherIcon.Sunset, update.take())
+        assertEquals(LauncherIcon.VelvetRose, update.take())
         assertNull(update.take())
     }
 

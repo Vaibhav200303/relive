@@ -186,12 +186,12 @@ val RoseSagePalette = RelivePalette(
     ),
 )
 
-// 07 · Sunrise — the approved ivory-and-gold editorial treatment. Light mode carries warm paper,
+// 07 · Ivory Gold — the approved ivory-and-gold editorial treatment. Light mode carries warm paper,
 // honeyed surfaces, and grounded brown ink; dark mode keeps the same gold identity over a deep,
 // near-black amber atmosphere. The shared canvas brush gives both modes their broad ambient light.
-val SunrisePalette = RelivePalette(
-    theme = ThemeReference.Sunrise,
-    label = "Sunrise",
+val IvoryGoldPalette = RelivePalette(
+    theme = ThemeReference.IvoryGold,
+    label = "Ivory Gold",
     light = RelivePaletteRoles(
         canvas = Color(0xFFFDFBF4),
         surface = Color(0xFFF2E3BD),
@@ -212,12 +212,11 @@ val SunrisePalette = RelivePalette(
     ),
 )
 
-// 08 · Velvet Rose — the rose-and-burgundy atmosphere introduced by onboarding. The persisted
-// ThemeReference remains Sunset so existing selections and launcher aliases continue to resolve,
-// but the selectable identity is now Velvet Rose. Its light treatment stays unchanged; dark mode
+// 08 · Velvet Rose — the rose-and-burgundy atmosphere introduced by onboarding. Its light
+// treatment stays unchanged; dark mode
 // falls from the opening scene's rose light into plum and the onboarding shell's near-black base.
-val SunsetPalette = RelivePalette(
-    theme = ThemeReference.Sunset,
+val VelvetRosePalette = RelivePalette(
+    theme = ThemeReference.VelvetRose,
     label = "Velvet Rose",
     light = RelivePaletteRoles(
         canvas = Color(0xFFF9ECE9),
@@ -241,8 +240,8 @@ val SunsetPalette = RelivePalette(
 
 val RelivePaletteOptions: List<RelivePalette> = listOf(
     WarmJournalPalette,
-    SunrisePalette,
-    SunsetPalette,
+    IvoryGoldPalette,
+    VelvetRosePalette,
     InkLilacPalette,
     TealSaffronPalette,
     EmberAquaPalette,
@@ -255,7 +254,7 @@ val ReliveSelectablePaletteOptions: List<RelivePalette> =
     RelivePaletteOptions.filterNot { it.theme == ThemeReference.InkLilac }
 
 /** The app-wide default palette. */
-val DefaultRelivePalette: RelivePalette = WarmJournalPalette
+val DefaultRelivePalette: RelivePalette = IvoryGoldPalette
 
 fun paletteFor(theme: ThemeReference): RelivePalette =
     RelivePaletteOptions.first { it.theme == theme }

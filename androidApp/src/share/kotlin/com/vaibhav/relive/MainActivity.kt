@@ -5,19 +5,17 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.glance.appwidget.updateAll
 import com.vaibhav.relive.di.createDefaultReliveAppContainer
 import com.vaibhav.relive.platform.backup.AndroidBackupPreferencesRepository
 import com.vaibhav.relive.platform.capture.QuickCaptureRequestBus
 import com.vaibhav.relive.platform.exporting.PortableArchiveRequestBus
 import com.vaibhav.relive.platform.share.AndroidIncomingShareGateway
 import com.vaibhav.relive.platform.system.LauncherIconController
-import com.vaibhav.relive.widget.ReliveQuickCaptureWidget
+import com.vaibhav.relive.widget.updateQuickCaptureWidgets
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 /** Shareable friends entry point; it intentionally uses the same production app wiring. */
@@ -62,11 +60,17 @@ class MainActivity : ComponentActivity() {
         setIntent(Intent(this, MainActivity::class.java))
         setContent { App(container, onIncomingShareCancelled = ::finish) }
         shareScope.launch {
-            container.appearanceRepository.preferences
-                .map { it.mode to it.defaultTheme }
+            combine(
+                container.appearanceRepository.preferences,
+                container.profileSettingsRepository.settings,
+                ::Pair,
+            )
                 .distinctUntilChanged()
-                .drop(1)
-                .collect { ReliveQuickCaptureWidget().updateAll(applicationContext) }
+                .collect { (appearance, profile) ->
+                    runCatching {
+                        updateQuickCaptureWidgets(applicationContext, appearance, profile)
+                    }
+                }
         }
     }
 
@@ -91,6 +95,8 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
+        // Swap aliases only after the app is off-screen; changing the active launcher component
+        // while visible can remove this task or temporarily expose two Relive entries.
         super.onStop()
         launcherIconController?.applyPending()
     }

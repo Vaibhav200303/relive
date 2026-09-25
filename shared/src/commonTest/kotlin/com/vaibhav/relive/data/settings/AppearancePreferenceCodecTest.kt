@@ -8,12 +8,12 @@ import kotlin.test.assertEquals
 
 class AppearancePreferenceCodecTest {
     @Test
-    fun missingAndInvalidValuesUseSystemSunset() {
+    fun missingAndInvalidValuesUseSystemIvoryGold() {
         val missing = decodeAppearancePreferences(null, null)
         val invalid = decodeAppearancePreferences("unexpected", "unknown")
 
         assertEquals(AppearanceMode.System, missing.mode)
-        assertEquals(ThemeReference.Sunset, missing.defaultTheme)
+        assertEquals(ThemeReference.IvoryGold, missing.defaultTheme)
         assertEquals(missing, invalid)
     }
 
@@ -22,6 +22,18 @@ class AppearancePreferenceCodecTest {
         assertEquals(
             ThemeReference.InkLilac,
             decodeAppearancePreferences(null, "ink_lilac").defaultTheme,
+        )
+    }
+
+    @Test
+    fun legacySunriseAndSunsetPreferencesMigrateToVisibleThemeIdentities() {
+        assertEquals(
+            ThemeReference.IvoryGold,
+            decodeAppearancePreferences(null, "sunrise").defaultTheme,
+        )
+        assertEquals(
+            ThemeReference.VelvetRose,
+            decodeAppearancePreferences(null, "sunset").defaultTheme,
         )
     }
 

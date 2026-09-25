@@ -13,8 +13,8 @@ object ReliveMonetization {
 
     val freePalettes = setOf(
         ThemeReference.WarmJournal,
-        ThemeReference.Sunrise,
-        ThemeReference.Sunset,
+        ThemeReference.IvoryGold,
+        ThemeReference.VelvetRose,
     )
     val freeWallpapers = setOf(TimelineWallpaper.WarmCream, TimelineWallpaper.BlushPink)
 }

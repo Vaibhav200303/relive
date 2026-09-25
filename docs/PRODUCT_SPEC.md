@@ -28,7 +28,7 @@ The product must feel like a **beautiful personal life archive**, never a notes/
 
 On a fresh, empty installation, Relive opens with a five-chapter introduction before revealing Home. It is an install-level introduction, not a destination, account flow, permission wizard, or archive surface. The visible story begins with Capture and continues through Organize, Relive, Privacy, and Ready; there is no separate Welcome chapter. Each chapter uses native Relive components over a dark atmospheric treatment drawn from an existing selectable app palette, with stable brand/navigation regions and a recognizable memory that carries continuously between adjacent chapters. [`ONBOARDING_DESIGN.md`](ONBOARDING_DESIGN.md) defines the shared chapter shell that each preview extends.
 
-The chapters use the app's dark Evergreen, Original, Plum & Gold, Sunrise, and Velvet Rose semantic palettes in that order. The path keeps canvas depth close while rotating gradually from teal through indigo and plum into burgundy. Background canvas, glow, tint, accent, and shadow interpolate together from the shared scene progress, while native Moment cards, timeline cards, chips, icons, composer treatment, and controls inherit the matching app tokens. Continue and Back coordinate the persistent memory, surrounding components, and palette transition over the existing long-duration motion tokens. Supporting elements use restrained fade/position/scale entrances. Reduced motion removes travel, scale, morphing, and stagger. Continue advances one chapter; `Create my first timeline` and `Not now` retain the same completion callback from the final chapter; `Skip` completes from chapters one through four. Back from Capture follows platform root behavior. Completion or Skip records the unchanged current version in native preferences outside the archive database and reveals Home at scroll offset zero. An interrupted introduction stores no partial chapter and restarts at Capture.
+The chapters use the app's dark Evergreen, Original, Plum & Gold, Ivory Gold, and Velvet Rose semantic palettes in that order. The path keeps canvas depth close while rotating gradually from teal through indigo and plum into burgundy. Background canvas, glow, tint, accent, and shadow interpolate together from the shared scene progress, while native Moment cards, timeline cards, chips, icons, composer treatment, and controls inherit the matching app tokens. Continue and Back coordinate the persistent memory, surrounding components, and palette transition over the existing long-duration motion tokens. Supporting elements use restrained fade/position/scale entrances. Reduced motion removes travel, scale, morphing, and stagger. Continue advances one chapter; `Create my first timeline` and `Not now` retain the same completion callback from the final chapter; `Skip` completes from chapters one through four. Back from Capture follows platform root behavior. Completion or Skip records the unchanged current version in native preferences outside the archive database and reveals Home at scroll offset zero. An interrupted introduction stores no partial chapter and restarts at Capture.
 
 App Lock remains the outer privacy gate. An authoritative incoming share or deep-link entry takes priority over onboarding and leaves it pending for the next ordinary launch. When this capability first ships, an installation that already contains a Moment or custom timeline is marked complete through the existing bounded Profile counts and is never interrupted by onboarding; an existing but still-empty installation may receive the introduction.
 
@@ -641,24 +641,23 @@ A Moment may carry one optional **feeling**: `Great`, `Good`, or `Low`. Feelings
 All timelines share the **same Moment presentation and interaction model**. Themes only change **presentation**.
 
 The Appearance row presents palettes in entitlement order. The three Free choices come first:
-**Warm Journal**, **Sunrise**, and **Sunset**. Premium choices follow in their existing order:
+**Warm Journal**, **Ivory Gold**, and **Velvet Rose**. Premium choices follow in their existing order:
 **Evergreen**, **Ember & Aqua**, **Plum & Gold**, and **Rose & Sage**. The retired **Original**
 palette remains resolvable for an existing saved preference but is not offered for new selection.
 Warm Journal matches the former primary launcher's cream paper, leather brown, and quiet tan
-details. Sunrise is the ivory-and-gold atmospheric palette in both light and dark mode. The
-appearance and launcher default for a fresh install is **Sunset**. Sunset is the
-primary launcher icon on both platforms; Warm Journal remains selectable and is retained as the former
-primary icon through the `AppIconWarmJournal` iOS alternate and Android launcher alias.
+details. Ivory Gold is the ivory-and-gold atmospheric palette in both light and dark mode. The
+appearance and launcher default for a fresh install is **Ivory Gold**. Ivory Gold is the
+primary launcher icon on both platforms; Velvet Rose remains selectable through its iOS alternate and Android launcher alias.
 
 Each global palette owns one matching launcher icon that remains the same in Light and Dark mode.
 Changing the selected palette changes the installed app icon through the platform's supported
-alternate-icon mechanism. Sunset keeps the primary icon; Warm Journal keeps its cream-diary-on-brown
+alternate-icon mechanism. Ivory Gold keeps the primary icon; Warm Journal keeps its cream-diary-on-brown
 alternate icon; the retired
 Original palette keeps a matching legacy icon for an existing saved preference.
 
 The global appearance mode is **System**, **Light**, or **Dark**. System follows the live platform appearance. The selected palette is the app default. All moments and each custom timeline own independent `TimelineAppearance` values; All's appearance is stored in native local preferences because All is logical, while custom timeline appearances are archive data. On Home, All's `TimelineAppearance` governs the **All moments band only**: the welcome block, the `Relive your memories` heading, and the Rediscover row always render on the plain canvas. Profile, Search, the Rediscover row, and read-only system collections use the app default. A timeline's mode always remains global.
 
-Warm Journal, Sunrise, and Sunset are available in Free. Warm Cream and Blush Pink are the Free wallpapers. Coral Bloom, Aqua Sky, Golden Hour, Violet Haze, and Sapphire Blue are retired from new selection but remain readable when already stored. All other selectable palettes and wallpapers are Relive Pro appearance options. A former Pro subscriber continues to see an already-selected premium appearance, but cannot select a new premium appearance without Pro.
+Warm Journal, Ivory Gold, and Velvet Rose are available in Free. Warm Cream and Blush Pink are the Free wallpapers. Coral Bloom, Aqua Sky, Golden Hour, Violet Haze, and Sapphire Blue are retired from new selection but remain readable when already stored. All other selectable palettes and wallpapers are Relive Pro appearance options. A former Pro subscriber continues to see an already-selected premium appearance, but cannot select a new premium appearance without Pro.
 
 Themes **may** affect:
 
@@ -741,7 +740,7 @@ Persistence design detail lives in [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 Relive launches with exactly two product tiers: **Free** and **Relive Pro**. Monthly, annual, and lifetime are billing choices for the single `relive_pro` entitlement, not feature tiers. `relive_pro_monthly` and `relive_pro_annual` are subscriptions; `relive_pro_lifetime` is a non-consumable one-time purchase. Any annual trial is configured in the relevant store, never in application logic.
 
-Free includes unlimited Moments; text, photos, video, and audio; Search; Favorites; On This Day; From Your Past; App Lock and privacy controls; manual backup; every restore operation; and permanent access to existing content. Free users may create three custom timelines. Warm Journal, Sunrise, and Sunset palettes plus Warm Cream and Blush Pink wallpapers are free.
+Free includes unlimited Moments; text, photos, video, and audio; Search; Favorites; On This Day; From Your Past; App Lock and privacy controls; manual backup; every restore operation; and permanent access to existing content. Free users may create three custom timelines. Warm Journal, Ivory Gold, and Velvet Rose palettes plus Warm Cream and Blush Pink wallpapers are free.
 
 Relive Pro adds scheduled automatic backup and its cadence/network controls, unlimited custom timelines, all premium palettes and wallpapers, and creation of Keepsake PDF and `.relive` exports. When Pro expires, existing timelines, Moments, and premium appearance selections remain visible and editable. A person cannot create a further custom timeline while above the free limit, and cannot select a new premium appearance until Pro is active. Manual backup, restore, and opening received `.relive` archives are never gated.
 

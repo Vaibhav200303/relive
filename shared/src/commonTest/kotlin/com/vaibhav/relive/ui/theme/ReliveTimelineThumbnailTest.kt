@@ -9,7 +9,7 @@ class ReliveTimelineThumbnailTest {
     @Test
     fun thumbnailColorsAreDerivedFromTheActiveTheme() {
         val warm = reliveTokensFor(ReliveThemeId.WarmJournal).colors
-        val sunset = reliveTokensFor(ReliveThemeId.Sunset).colors
+        val sunset = reliveTokensFor(ReliveThemeId.VelvetRose).colors
 
         assertEquals(timelineThumbnailColorsFor(warm), timelineThumbnailColorsFor(warm))
         assertNotEquals(timelineThumbnailColorsFor(warm), timelineThumbnailColorsFor(sunset))

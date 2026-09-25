@@ -982,6 +982,34 @@ Format for each entry:
 - **Decision:** The existing free Sunrise palette slot adopts the supplied ivory, cream, honey-gold, amber, and brown roles in light mode. Its dark variant keeps the same gold identity over a hue-bearing near-black amber canvas, and both modes continue using the shared app-wide atmospheric canvas brush. The five named wallpapers are retired from every new-selection surface. Their enum values, artwork, codecs, and render palettes remain compatibility-only so existing timeline preferences and portable archives continue to decode and display. Demo data no longer selects a retired wallpaper.
 - **Consequences:** Selecting Sunrise changes the whole app presentation without adding a palette identity, preference migration, launcher alias, dependency, or schema. New wallpaper choices contain eleven supported identities instead of sixteen. Existing content that already references a retired wallpaper is preserved and remains visible, but a person who changes away from it cannot select it again.
 
+## ADR-0108 — Sunrise is the fresh-install palette and launcher baseline
+
+- **Date:** 2026-09-25 · **Status:** Accepted · supersedes ADR-0084's fresh-install and primary-icon clauses
+- **Context:** Sunrise now carries Relive's approved ivory-and-gold atmosphere, and the product owner requested it as the app's default. The launcher icon must continue to reflect every selected global palette.
+- **Decision:** An absent or invalid appearance palette resolves to **Sunrise**. Sunrise is the Android application icon and enabled launcher-alias baseline and the iOS primary `AppIcon`; Sunset becomes the corresponding iOS alternate and Android alias. The existing palette-to-icon mapping, Android safe lifecycle application, and iOS alternate-icon mechanism remain unchanged.
+- **Consequences:** Fresh installations begin with Sunrise in the app and launcher. Explicitly saved palette selections, archive data, entitlement policy, dependencies, and platform behavior outside launcher configuration remain unchanged.
+
+## ADR-0109 — Launcher icon changes with the visible palette change
+
+- **Date:** 2026-09-25 · **Status:** Accepted · amends ADR-0084 and ADR-0108 for Android update timing
+- **Context:** Deferring Android alias changes until `MainActivity.onStop` left the launcher icon stale while a person changed a palette in the app.
+- **Decision:** Android records the selected palette while the activity is visible and performs the complete launcher-alias swap from `MainActivity.onStop`. Android 13+ applies all alias states atomically; older releases enable the selected alias immediately before retiring the former one. A package-manager failure remains queued and retries at the next lifecycle boundary.
+- **Consequences:** Exactly one Relive launcher entry remains visible, and the alias that owns the foreground task is never changed while that task is on screen. The selected icon is applied when the launcher can first become visible. No palette, persistence, dependency, or archive behavior changes.
+
+## ADR-0110 — Sunrise is presented as Ivory Gold
+
+- **Date:** 2026-09-25 · **Status:** Accepted
+- **Context:** The Sunrise palette now uses ivory, cream, honey-gold, amber, and brown rather than a literal sunrise color story.
+- **Decision:** The selectable palette is labelled **Ivory Gold**. Its internal `ThemeReference.Sunrise` identity, `sunrise` preference value, launcher aliases, and asset names remain compatibility details.
+- **Consequences:** Existing saved selections, icon mapping, entitlement policy, and onboarding palette sequence continue unchanged; only the person-facing name changes.
+
+## ADR-0111 — Palette identities match their visible names
+
+- **Date:** 2026-09-25 · **Status:** Accepted · supersedes ADR-0110's compatibility-only naming decision
+- **Context:** Keeping Sunrise and Sunset as active internal identities after the palettes became Ivory Gold and Velvet Rose made source, launcher, and asset configuration disagree with the names people see. The product owner also required launcher icons and the Android widget to follow an appearance change immediately.
+- **Decision:** The active domain, UI-token, launcher-icon, Android alias/resource, and iOS alternate-icon identities are **Ivory Gold** and **Velvet Rose**. New preferences persist as `ivory_gold` and `velvet_rose`; the retired `sunrise` and `sunset` values remain decode-only migration aliases for existing installs. Android resolves launcher aliases in the manifest namespace rather than the potentially suffixed application ID, queues the selected alias while the activity is visible, and performs one complete swap after the foreground activity stops. Every launcher alias targets the same `singleTask` `MainActivity`, so a changed alias, widget, share, or archive launch is delivered through `onNewIntent` instead of stacking another themed activity. Android copies every observed palette, mode, and profile-photo value into observable per-widget Glance state before requesting each Quick Capture widget render; widget content renders exclusively from that state instead of a captured repository snapshot. A lifecycle retry remains for launcher package-manager failures.
+- **Consequences:** Source and packaged platform identifiers now match the visible palette names while existing saved selections migrate losslessly. The app, launcher icon, and placed Android widgets resolve from the same appearance preference without duplicate launcher entries, stale Glance sessions, or an older themed activity appearing after Back. Launcher display timing can still be subject to an OEM launcher's own cache after Android accepts the alias change. No schema, dependency, archive record, or iOS widget is introduced.
+
 ---
 
 ## Template for new decisions

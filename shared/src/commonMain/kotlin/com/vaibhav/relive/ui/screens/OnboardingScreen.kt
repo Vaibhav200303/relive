@@ -84,8 +84,8 @@ internal val ONBOARDING_CHAPTER_THEME_IDS = listOf(
     ReliveThemeId.TealSaffron,
     ReliveThemeId.InkLilac,
     ReliveThemeId.PlumGold,
-    ReliveThemeId.Sunrise,
-    ReliveThemeId.Sunset,
+    ReliveThemeId.IvoryGold,
+    ReliveThemeId.VelvetRose,
 )
 
 internal val ONBOARDING_RELIVE_MOMENT_PREVIEWS = listOf(

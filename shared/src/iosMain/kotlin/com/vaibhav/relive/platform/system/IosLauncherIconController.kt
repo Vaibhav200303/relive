@@ -12,8 +12,8 @@ private val LauncherIcon.assetName: String?
     get() = when (this) {
         LauncherIcon.WarmJournal -> "AppIconWarmJournal"
         LauncherIcon.Original -> "AppIconOriginal"
-        LauncherIcon.Sunrise -> "AppIconSunrise"
-        LauncherIcon.Sunset -> null
+        LauncherIcon.IvoryGold -> null
+        LauncherIcon.VelvetRose -> "AppIconVelvetRose"
         LauncherIcon.Evergreen -> "AppIconEvergreen"
         LauncherIcon.EmberAqua -> "AppIconEmberAqua"
         LauncherIcon.PlumGold -> "AppIconPlumGold"

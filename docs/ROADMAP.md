@@ -97,7 +97,7 @@ Current implementation note: the dedicated tap-to-focus screen, All/Tags/Places 
 
 ## Phase 9 — Themes & settings  ◐
 
-- System/Light/Dark appearance plus the icon-matched **Sunset fresh-install default**, Warm Journal, Sunrise, and the retained premium token sets. Each global palette synchronizes one matching launcher icon shared by its Light and Dark modes; Android applies alias changes at a safe lifecycle boundary and iOS keeps Warm Journal as an alternate to the Sunset primary. Custom timelines persist a dedicated `TimelineAppearance` independently of global app appearance; themes otherwise change only presentation.
+- System/Light/Dark appearance plus the icon-matched **Ivory Gold fresh-install default**, Warm Journal, Ivory Gold, and the retained premium token sets. Each global palette synchronizes one matching launcher icon shared by its Light and Dark modes; Android applies alias changes immediately with a retained safe-boundary retry and iOS keeps Velvet Rose as an alternate to the Ivory Gold primary. Custom timelines persist a dedicated `TimelineAppearance` independently of global app appearance; themes otherwise change only presentation.
 - Settings screen: Profile, Themes, Upgrade to Pro, Export (entries present; detailed behavior deferred where unspecified).
 - Profile Media & Storage: read-only local archive storage/category insights; management actions remain deferred.
 - Profile Preferences: native-local observable behavior settings for explicit composer-discard confirmation, editable-Timeline location/tag presentation, and visibility of the On This Day and Favourites cards within the Home Rediscover row. There is no startup-destination preference: Home is the single root, so the app always launches at the top of the Home surface. Fixed 12-hour time and passive media playback remain unchanged; 24-hour time and media autoplay controls are deferred.
@@ -127,7 +127,7 @@ Current implementation note: global appearance, Profile, Preferences, Media & St
 
 - Implement the `relive_pro` entitlement behind a swappable shared interface using RevenueCat; wire upgrade and store restore flows.
 - Offer monthly (`relive_pro_monthly`), annual (`relive_pro_annual`), and non-consumable lifetime (`relive_pro_lifetime`) billing choices. Configure annual trials store-side only.
-- Gate scheduled automatic backup, creation beyond three custom timelines, premium appearance, and PDF/portable-archive creation; retain manual backup, every restore operation, free opening of `.relive`, existing archive access, Warm Journal/Sunrise/Sunset palettes, and Warm Cream/Blush Pink wallpapers in Free.
+- Gate scheduled automatic backup, creation beyond three custom timelines, premium appearance, and PDF/portable-archive creation; retain manual backup, every restore operation, free opening of `.relive`, existing archive access, Warm Journal/Ivory Gold/Velvet Rose palettes, and Warm Cream/Blush Pink wallpapers in Free.
 - Keep platform public API keys and product IDs configuration-driven. A missing key must degrade to Free without a crash.
 - (Later/optional) RevenueCat Funnels + Stripe for web subscription conversion — see [`RELEASE.md`](RELEASE.md).
 - **Exit:** Pro state drives the approved gates; entitlement is swappable; purchase/restore state is graceful when unavailable; monetization dependencies are isolated to this phase.

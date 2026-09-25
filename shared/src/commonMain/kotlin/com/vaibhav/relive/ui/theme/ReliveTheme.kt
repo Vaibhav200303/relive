@@ -26,8 +26,8 @@ enum class ReliveThemeId {
     EmberAqua,
     PlumGold,
     RoseSage,
-    Sunrise,
-    Sunset,
+    IvoryGold,
+    VelvetRose,
 }
 
 fun ThemeReference.toReliveThemeId(): ReliveThemeId = when (this) {
@@ -37,8 +37,8 @@ fun ThemeReference.toReliveThemeId(): ReliveThemeId = when (this) {
     ThemeReference.EmberAqua -> ReliveThemeId.EmberAqua
     ThemeReference.PlumGold -> ReliveThemeId.PlumGold
     ThemeReference.RoseSage -> ReliveThemeId.RoseSage
-    ThemeReference.Sunrise -> ReliveThemeId.Sunrise
-    ThemeReference.Sunset -> ReliveThemeId.Sunset
+    ThemeReference.IvoryGold -> ReliveThemeId.IvoryGold
+    ThemeReference.VelvetRose -> ReliveThemeId.VelvetRose
 }
 
 /**
@@ -64,9 +64,9 @@ data class ReliveThemeTokens(
     val systemBarIconsDark: Boolean,
 )
 
-/** The app-wide default token bundle (Warm Journal, light). */
+/** The app-wide default token bundle (Ivory Gold, light). */
 val DefaultReliveTokens: ReliveThemeTokens = ReliveThemeTokens(
-    id = ReliveThemeId.WarmJournal,
+    id = ReliveThemeId.IvoryGold,
     colors = DefaultReliveColors,
     typography = DefaultReliveTypography,
     dimensions = DefaultReliveDimensions,
@@ -81,7 +81,7 @@ fun reliveTokensFor(
     id: ReliveThemeId,
     isDark: Boolean = false,
 ): ReliveThemeTokens {
-    if (id == ReliveThemeId.WarmJournal && !isDark) return DefaultReliveTokens
+    if (id == ReliveThemeId.IvoryGold && !isDark) return DefaultReliveTokens
     val palette = paletteFor(id.toThemeReference())
     return DefaultReliveTokens.copy(
         id = id,
@@ -99,15 +99,15 @@ private fun ReliveThemeId.toThemeReference(): ThemeReference = when (this) {
     ReliveThemeId.EmberAqua -> ThemeReference.EmberAqua
     ReliveThemeId.PlumGold -> ThemeReference.PlumGold
     ReliveThemeId.RoseSage -> ThemeReference.RoseSage
-    ReliveThemeId.Sunrise -> ThemeReference.Sunrise
-    ReliveThemeId.Sunset -> ThemeReference.Sunset
+    ReliveThemeId.IvoryGold -> ThemeReference.IvoryGold
+    ReliveThemeId.VelvetRose -> ThemeReference.VelvetRose
 }
 
 private val LocalReliveTokens = staticCompositionLocalOf { DefaultReliveTokens }
 
 @Composable
 fun ReliveTheme(
-    themeId: ReliveThemeId = ReliveThemeId.WarmJournal,
+    themeId: ReliveThemeId = ReliveThemeId.IvoryGold,
     darkMode: Boolean = false,
     content: @Composable () -> Unit,
 ) {

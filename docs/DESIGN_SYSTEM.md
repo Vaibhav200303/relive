@@ -375,21 +375,21 @@ Opacity variants for colors come from this scale rather than one-off alpha value
 
 Themes are presentation-only token sets resolved by palette plus global appearance mode. The legacy Original palette preserves its approved light tokens exactly. Evergreen, Lilac Dusk, Crimson Keepsake, Blue Hour, and Rosewood use these ordered light/mid/strong/dark anchors:
 
-Sunset is the fresh-install default and mirrors the primary launcher icon. Warm Journal remains a
+Ivory Gold is the fresh-install default and mirrors the primary launcher icon. Warm Journal remains a
 selectable retained palette and mirrors its `AppIconWarmJournal`/Android alias artwork: cream paper (`#F5EFE9`),
 leather brown (`#5A3E2F`), deep brown ink (`#3B251B`), and a restrained tan spark (`#C99455`).
-Its dark variant uses chocolate canvases with cream text. Sunrise uses the approved ivory-and-gold
+Its dark variant uses chocolate canvases with cream text. Ivory Gold uses the approved ivory-and-gold
 system: an `#FDFBF4` canvas, `#F7F1E1` secondary background, `#F2E3BD` surface, accessible
 deep-gold `#A8770A` controls, `#D0843B` highlights, and grounded brown text. Its dark variant retains
 the supplied brighter `#D9A428` gold over a near-black amber atmospheric gradient. The light
 workhorse gold and secondary ink are deliberately deepened from the supplied swatches so controls
 and card copy retain the design system's contrast floors. In the Appearance row, the Free palettes are grouped
-first as Warm Journal, Sunrise, and Sunset; premium palettes follow. Sunset is the
+first as Warm Journal, Ivory Gold, and Velvet Rose; premium palettes follow. Ivory Gold is the
 fallback whenever no native palette preference exists.
 
 The launcher icon is palette-aware, not mode-aware. Every selectable palette uses one full-bleed
 theme-gradient variant of the same safe-zone diary composition in both Light and Dark mode.
-Sunset owns the primary icon. Warm Journal retains its matching Android alias and iOS alternate.
+Ivory Gold owns the primary icon. Velvet Rose retains its matching Android alias and iOS alternate.
 Palette changes synchronize the corresponding Android launcher alias or iOS alternate icon;
 mode-only changes never replace the icon. The retired
 Original palette retains an icon only for compatibility with an existing saved selection.
@@ -436,7 +436,7 @@ The bottom controls are a matched Material 3 `HorizontalFloatingToolbar` pair: n
 
 ## 20A. First-launch onboarding
 
-Onboarding is one dark, full-canvas first-launch scene with five chapters and no separate Welcome page. Capture, Organize, Relive, Privacy, and Ready use the existing app palettes Evergreen, Original, Plum & Gold, Sunrise, and Sunset respectively. This ordered hue path holds the dark canvas depth nearly steady while turning gradually from teal through indigo and plum into burgundy. The brand region, progress, and navigation remain spatially stable; chapters one through four expose Skip and a circular forward action, while Ready exposes `Create my first timeline` and `Not now`.
+Onboarding is one dark, full-canvas first-launch scene with five chapters and no separate Welcome page. Capture, Organize, Relive, Privacy, and Ready use the existing app palettes Evergreen, Original, Plum & Gold, Ivory Gold, and Velvet Rose respectively. This ordered hue path holds the dark canvas depth nearly steady while turning gradually from teal through indigo and plum into burgundy. The brand region, progress, and navigation remain spatially stable; chapters one through four expose Skip and a circular forward action, while Ready exposes `Create my first timeline` and `Not now`.
 
 Product previews use production components: the pinned `MomentCard` and global New control in Capture, the composer's timeline-assignment chips and production timeline cards in Organize, a bounded production Moment feed with rail and dots in Relive, native semantic surfaces and icons in Privacy, and the same Moment/timeline identities in Ready. Project-owned photographs enter through non-persisted preview slots, never open the viewer, and never reach repositories or platform services. Decorative atmosphere remains separate from readable native content and accessibility traversal.
 

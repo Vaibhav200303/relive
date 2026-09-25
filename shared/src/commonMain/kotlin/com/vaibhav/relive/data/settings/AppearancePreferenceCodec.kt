@@ -25,8 +25,8 @@ internal fun ThemeReference.encodePreference(): String = when (this) {
     ThemeReference.EmberAqua -> "ember_aqua"
     ThemeReference.PlumGold -> "plum_gold"
     ThemeReference.RoseSage -> "rose_sage"
-    ThemeReference.Sunrise -> "sunrise"
-    ThemeReference.Sunset -> "sunset"
+    ThemeReference.IvoryGold -> "ivory_gold"
+    ThemeReference.VelvetRose -> "velvet_rose"
 }
 
 internal fun TimelineWallpaper.encodePreference(): String = name
@@ -51,10 +51,10 @@ internal fun decodeAppearancePreferences(
             "ember_aqua" -> ThemeReference.EmberAqua
             "plum_gold" -> ThemeReference.PlumGold
             "rose_sage" -> ThemeReference.RoseSage
-            "sunrise" -> ThemeReference.Sunrise
-            "sunset" -> ThemeReference.Sunset
+            "ivory_gold", "sunrise" -> ThemeReference.IvoryGold
+            "velvet_rose", "sunset" -> ThemeReference.VelvetRose
             // Retired palette keys and a missing preference resolve to the install-time default.
-            else -> ThemeReference.Sunset
+            else -> ThemeReference.IvoryGold
         },
         allTimelineAppearance = TimelineAppearance(
             wallpaper = TimelineWallpaper.entries.firstOrNull { it.name == allTimelineWallpaper }

@@ -18,16 +18,16 @@ import kotlin.test.assertTrue
 class ReliveTokensTest {
 
     @Test
-    fun defaultColorsMatchWarmJournalLight() {
+    fun defaultColorsMatchIvoryGoldLight() {
         val c = DefaultReliveColors
-        assertEquals(Color(0xFFF5EFE9), c.bgCanvas)
-        assertEquals(Color(0xFF3B251B), c.textPrimary)
-        assertEquals(Color(0xFF72594D), c.textSecondary)
-        assertEquals(Color(0xFF5A3E2F), c.accent)
-        assertEquals(Color(0xFFC99455), c.spark)
-        assertEquals(Color(0xFFE7D6C7), c.tint)
-        assertEquals(Color(0xFFFFFDFC), c.surfaceCard)
-        assertEquals(Color(0xFFFFFDFC), c.surfaceOverlay)
+        assertEquals(Color(0xFFFDFBF4), c.bgCanvas)
+        assertEquals(Color(0xFF5C4A1E), c.textPrimary)
+        assertEquals(Color(0xFF806018), c.textSecondary)
+        assertEquals(Color(0xFFA8770A), c.accent)
+        assertEquals(Color(0xFFD0843B), c.spark)
+        assertEquals(Color(0xFFF7F1E1), c.tint)
+        assertEquals(Color(0xFFF2E3BD), c.surfaceCard)
+        assertEquals(Color(0xFFF2E3BD), c.surfaceOverlay)
         assertEquals(Color(0xFF98111E), c.actionDestructive)
     }
 
@@ -418,9 +418,9 @@ class ReliveTokensTest {
 
     @Test
     fun generatedCoverPalettesRespectTheActiveTheme() {
-        assertEquals(ReliveThemeId.WarmJournal, DefaultReliveTokens.id)
-        assertEquals(DefaultGeneratedCoverPalette, reliveTokensFor(ReliveThemeId.WarmJournal).generatedCoverPalette)
-        ReliveThemeId.entries.drop(1).forEach { theme ->
+        assertEquals(ReliveThemeId.IvoryGold, DefaultReliveTokens.id)
+        assertEquals(DefaultGeneratedCoverPalette, reliveTokensFor(ReliveThemeId.IvoryGold).generatedCoverPalette)
+        ReliveThemeId.entries.forEach { theme ->
             assertTrue(reliveTokensFor(theme).generatedCoverPalette.covers.isNotEmpty())
             assertTrue(reliveTokensFor(theme, isDark = true).generatedCoverPalette.covers.isNotEmpty())
         }
@@ -448,26 +448,26 @@ class ReliveTokensTest {
         assertEquals(Color(0xFF63C6A0), RoseSagePalette.light.spark)
         assertEquals(Color(0xFF100A0A), RoseSagePalette.dark.canvas)
         assertEquals(Color(0xFF251616), RoseSagePalette.dark.surface)
-        assertEquals(Color(0xFFFDFBF4), SunrisePalette.light.canvas)
-        assertEquals(Color(0xFFF2E3BD), SunrisePalette.light.surface)
-        assertEquals(Color(0xFF5C4A1E), SunrisePalette.light.ink)
-        assertEquals(Color(0xFF806018), SunrisePalette.light.inkSoft)
-        assertEquals(Color(0xFFA8770A), SunrisePalette.light.primary)
-        assertEquals(Color(0xFFD0843B), SunrisePalette.light.spark)
-        assertEquals(Color(0xFFF7F1E1), SunrisePalette.light.tint)
-        assertEquals(Color(0xFF090804), SunrisePalette.dark.canvas)
-        assertEquals(Color(0xFF1B170B), SunrisePalette.dark.surface)
-        assertEquals(Color(0xFFFDFBF4), SunrisePalette.dark.ink)
-        assertEquals(Color(0xFFD8C99D), SunrisePalette.dark.inkSoft)
-        assertEquals(Color(0xFFD9A428), SunrisePalette.dark.primary)
-        assertEquals(Color(0xFFEACA6D), SunrisePalette.dark.spark)
-        assertEquals(Color(0xFF49380E), SunrisePalette.dark.tint)
-        assertEquals("Velvet Rose", SunsetPalette.label)
-        assertEquals(Color(0xFF0B090B), SunsetPalette.dark.canvas)
-        assertEquals(Color(0xFF21131C), SunsetPalette.dark.surface)
-        assertEquals(Color(0xFFB94D77), SunsetPalette.dark.primary)
-        assertEquals(Color(0xFFE789AC), SunsetPalette.dark.spark)
-        assertEquals(Color(0xFF65263E), SunsetPalette.dark.tint)
+        assertEquals(Color(0xFFFDFBF4), IvoryGoldPalette.light.canvas)
+        assertEquals(Color(0xFFF2E3BD), IvoryGoldPalette.light.surface)
+        assertEquals(Color(0xFF5C4A1E), IvoryGoldPalette.light.ink)
+        assertEquals(Color(0xFF806018), IvoryGoldPalette.light.inkSoft)
+        assertEquals(Color(0xFFA8770A), IvoryGoldPalette.light.primary)
+        assertEquals(Color(0xFFD0843B), IvoryGoldPalette.light.spark)
+        assertEquals(Color(0xFFF7F1E1), IvoryGoldPalette.light.tint)
+        assertEquals(Color(0xFF090804), IvoryGoldPalette.dark.canvas)
+        assertEquals(Color(0xFF1B170B), IvoryGoldPalette.dark.surface)
+        assertEquals(Color(0xFFFDFBF4), IvoryGoldPalette.dark.ink)
+        assertEquals(Color(0xFFD8C99D), IvoryGoldPalette.dark.inkSoft)
+        assertEquals(Color(0xFFD9A428), IvoryGoldPalette.dark.primary)
+        assertEquals(Color(0xFFEACA6D), IvoryGoldPalette.dark.spark)
+        assertEquals(Color(0xFF49380E), IvoryGoldPalette.dark.tint)
+        assertEquals("Velvet Rose", VelvetRosePalette.label)
+        assertEquals(Color(0xFF0B090B), VelvetRosePalette.dark.canvas)
+        assertEquals(Color(0xFF21131C), VelvetRosePalette.dark.surface)
+        assertEquals(Color(0xFFB94D77), VelvetRosePalette.dark.primary)
+        assertEquals(Color(0xFFE789AC), VelvetRosePalette.dark.spark)
+        assertEquals(Color(0xFF65263E), VelvetRosePalette.dark.tint)
     }
 
     @Test
@@ -475,8 +475,8 @@ class ReliveTokensTest {
         assertEquals(
             listOf(
                 ThemeReference.WarmJournal,
-                ThemeReference.Sunrise,
-                ThemeReference.Sunset,
+                ThemeReference.IvoryGold,
+                ThemeReference.VelvetRose,
                 ThemeReference.TealSaffron,
                 ThemeReference.EmberAqua,
                 ThemeReference.PlumGold,
