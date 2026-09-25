@@ -9,6 +9,12 @@ fun configurationValue(name: String): String? =
         ?: System.getenv(name)
         ?: localProperties.getProperty(name)
 
+fun revenueCatPublicKey(name: String): String? = configurationValue(name)?.also { value ->
+    require(!value.trim().startsWith("sk_")) {
+        "$name is a RevenueCat secret key. Secret keys must never be embedded in a mobile build."
+    }
+}
+
 fun String.asBuildConfigString(): String =
     "\"${replace("\\", "\\\\").replace("\"", "\\\"")}\""
 
@@ -86,8 +92,8 @@ android {
             signingConfig = signingConfigs.getByName("debug")
             buildConfigField("boolean", "IS_DEMO", "true")
             buildConfigField("boolean", "IS_FRIENDS", "false")
-            val key = configurationValue("RELIVE_REVENUECAT_DEMO_ANDROID_PUBLIC_API_KEY")
-                ?: configurationValue("RELIVE_REVENUECAT_ANDROID_PUBLIC_API_KEY")
+            val key = revenueCatPublicKey("RELIVE_REVENUECAT_DEMO_ANDROID_PUBLIC_API_KEY")
+                ?: revenueCatPublicKey("RELIVE_REVENUECAT_ANDROID_PUBLIC_API_KEY")
                 ?: "RELIVE_REVENUECAT_DEMO_ANDROID_PUBLIC_API_KEY"
             buildConfigField("String", "REVENUECAT_PUBLIC_API_KEY", key.asBuildConfigString())
         }
@@ -98,8 +104,8 @@ android {
             signingConfigs.findByName("friendsRelease")?.let { signingConfig = it }
             buildConfigField("boolean", "IS_DEMO", "false")
             buildConfigField("boolean", "IS_FRIENDS", "true")
-            val key = configurationValue("RELIVE_REVENUECAT_FRIENDS_ANDROID_PUBLIC_API_KEY")
-                ?: configurationValue("RELIVE_REVENUECAT_ANDROID_PUBLIC_API_KEY")
+            val key = revenueCatPublicKey("RELIVE_REVENUECAT_FRIENDS_ANDROID_PUBLIC_API_KEY")
+                ?: revenueCatPublicKey("RELIVE_REVENUECAT_ANDROID_PUBLIC_API_KEY")
                 ?: "RELIVE_REVENUECAT_FRIENDS_ANDROID_PUBLIC_API_KEY"
             buildConfigField("String", "REVENUECAT_PUBLIC_API_KEY", key.asBuildConfigString())
         }
@@ -108,8 +114,8 @@ android {
             signingConfigs.findByName("productionRelease")?.let { signingConfig = it }
             buildConfigField("boolean", "IS_DEMO", "false")
             buildConfigField("boolean", "IS_FRIENDS", "false")
-            val key = configurationValue("RELIVE_REVENUECAT_PRODUCTION_ANDROID_PUBLIC_API_KEY")
-                ?: configurationValue("RELIVE_REVENUECAT_ANDROID_PUBLIC_API_KEY")
+            val key = revenueCatPublicKey("RELIVE_REVENUECAT_PRODUCTION_ANDROID_PUBLIC_API_KEY")
+                ?: revenueCatPublicKey("RELIVE_REVENUECAT_ANDROID_PUBLIC_API_KEY")
                     ?.takeUnless { it.trim().startsWith("test_") }
                 ?: "RELIVE_REVENUECAT_PRODUCTION_ANDROID_PUBLIC_API_KEY"
             buildConfigField("String", "REVENUECAT_PUBLIC_API_KEY", key.asBuildConfigString())

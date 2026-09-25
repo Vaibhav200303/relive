@@ -128,6 +128,8 @@ The following domain model is implemented and persisted through the repository i
 
 Local-first, on-device. The implemented engine is SQLDelight/SQLite (ADR-0013), and its schema satisfies [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) §13:
 
+The live Android database is encrypted by SQLCipher. Its random passphrase is wrapped by a non-exportable Android Keystore key, and a fail-safe first-open migration validates an encrypted copy before replacing any legacy plaintext database. iOS keeps the database inside the app container under iOS hardware-backed Data Protection. Neither platform exports its live database or database key; logical Google Drive backup/restore remains independent so a new device reconstructs its own protected database without needing the old device key (ADR-0112).
+
 - **moments** — one row per moment, stored once.
 - **custom timelines** — reference moments; never duplicate moment data.
 - **moment ↔ timeline** — a many-to-many membership table for custom-timeline references.

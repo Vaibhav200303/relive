@@ -1464,4 +1464,5 @@ private fun DestinationHero(eyebrow: String, title: String, body: String, icon: 
 fun LicensesScreen(onBack: () -> Unit) = ProfileScaffold("Open-source licenses", onBack = onBack) {
     ProfileSectionHeading("RELIVE DEPENDENCIES")
     listOf("Kotlin", "Compose Multiplatform", "Material 3", "SQLDelight", "kotlinx.coroutines", "AndroidX Activity, Core, Lifecycle, Credentials, CameraX, Media3, and WorkManager", "Google Identity and Play services").forEach { ProfileSettingRow(it, "Apache License 2.0") }
+    ProfileSettingRow("SQLCipher Community Edition", "BSD 3-Clause License")
 }

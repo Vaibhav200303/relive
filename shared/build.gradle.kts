@@ -48,6 +48,8 @@ kotlin {
             implementation(libs.compose.uiTooling)
             implementation(libs.androidx.core.ktx)
             implementation(libs.sqldelight.androidDriver)
+            implementation(libs.sqlcipher.android)
+            implementation(libs.androidx.sqlite)
             implementation(libs.androidx.camera.core)
             implementation(libs.androidx.camera.camera2)
             implementation(libs.androidx.camera.lifecycle)
