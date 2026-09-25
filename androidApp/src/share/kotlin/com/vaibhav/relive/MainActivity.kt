@@ -105,7 +105,7 @@ class MainActivity : ComponentActivity() {
         if (incoming?.action == Intent.ACTION_VIEW && incoming.data != null) {
             val destination = java.io.File(cacheDir, "incoming-${java.util.UUID.randomUUID()}.relive")
             runCatching {
-                contentResolver.openInputStream(incoming.data!!)?.use { input -> destination.outputStream().use { input.copyTo(it) } } ?: error("Unreadable archive")
+                contentResolver.openInputStream(incoming.data!!)?.use { input -> copyIncomingArchive(input, destination) } ?: error("Unreadable archive")
                 portableArchiveRequestBus.open(destination.absolutePath)
             }.onFailure { destination.delete() }
         } else if (incoming?.action == ReliveIntents.ACTION_ADD_MOMENT) {

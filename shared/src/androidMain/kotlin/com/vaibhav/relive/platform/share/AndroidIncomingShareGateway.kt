@@ -118,7 +118,7 @@ class AndroidIncomingShareGateway(
         val directory = File(context.cacheDir, "relive-shares").apply { mkdirs() }
         val target = File.createTempFile("share-", ".${extensionFor(type)}", directory)
         try {
-            resolver.openInputStream(uri)?.use { input -> target.outputStream().use(input::copyTo) }
+            resolver.openInputStream(uri)?.use { input -> target.outputStream().use { output -> input.copyToLimited(output) } }
                 ?: throw ShareReadException("Relive couldn't read this shared item.")
             return RawMedia(type = type, sourcePath = target.absolutePath, ownedByRelive = true)
         } catch (error: Throwable) {
@@ -139,6 +139,20 @@ class AndroidIncomingShareGateway(
         return output.toByteArray()
     }
 
+    private fun InputStream.copyToLimited(output: java.io.OutputStream) {
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        var copied = 0L
+        while (true) {
+            val read = read(buffer)
+            if (read < 0) break
+            copied += read
+            if (copied > MAX_MEDIA_BYTES) {
+                throw ShareReadException("Shared media is too large to add to a moment.")
+            }
+            output.write(buffer, 0, read)
+        }
+    }
+
     private sealed interface ShareKind {
         data object Text : ShareKind
         data class Media(val type: MediaType) : ShareKind
@@ -149,6 +163,7 @@ class AndroidIncomingShareGateway(
 
     private companion object {
         const val MAX_MEDIA_ITEMS = 50
+        const val MAX_MEDIA_BYTES = 512L * 1024L * 1024L
         const val MAX_TEXT_BYTES = 1024 * 1024
         const val SUPPORTED_TYPES_MESSAGE = "Relive supports photos, videos, audio, and text."
     }
