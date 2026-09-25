@@ -765,7 +765,6 @@ private fun HelpHeader() {
 @Composable
 private fun HelpEnvelopeArt(modifier: Modifier = Modifier) {
     val colors = ReliveTheme.colors
-    val handwriting = rememberReliveHandwritingFamily()
     Box(modifier, contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {
             val envelopeLeft = size.width * .10f
@@ -846,46 +845,12 @@ private fun HelpEnvelopeArt(modifier: Modifier = Modifier) {
                     close()
                 }
                 drawPath(frontFold, blushLight)
-                drawCircle(
-                    color = colors.accentMuted.copy(alpha = .76f),
-                    radius = 7.dp.toPx(),
-                    center = Offset(envelopeLeft + envelopeWidth / 2f, envelopeTop + envelopeHeight * .57f),
-                )
-                val heart = Path().apply {
-                    val heartCenter = Offset(envelopeLeft + envelopeWidth / 2f, envelopeTop + envelopeHeight * .57f)
-                    moveTo(heartCenter.x, heartCenter.y + 3.dp.toPx())
-                    cubicTo(
-                        heartCenter.x - 7.dp.toPx(),
-                        heartCenter.y - 1.dp.toPx(),
-                        heartCenter.x - 4.dp.toPx(),
-                        heartCenter.y - 5.dp.toPx(),
-                        heartCenter.x,
-                        heartCenter.y - 1.dp.toPx(),
-                    )
-                    cubicTo(
-                        heartCenter.x + 4.dp.toPx(),
-                        heartCenter.y - 5.dp.toPx(),
-                        heartCenter.x + 7.dp.toPx(),
-                        heartCenter.y - 1.dp.toPx(),
-                        heartCenter.x,
-                        heartCenter.y + 3.dp.toPx(),
-                    )
-                    close()
-                }
-                drawPath(heart, colors.surfaceCard.copy(alpha = .92f))
             }
             val rayColor = colors.accentMuted.copy(alpha = .85f)
             drawLine(rayColor, Offset(size.width * .78f, size.height * .17f), Offset(size.width * .80f, size.height * .05f), 2.dp.toPx(), StrokeCap.Round)
             drawLine(rayColor, Offset(size.width * .85f, size.height * .21f), Offset(size.width * .94f, size.height * .13f), 2.dp.toPx(), StrokeCap.Round)
             drawLine(rayColor, Offset(size.width * .88f, size.height * .30f), Offset(size.width * .99f, size.height * .31f), 2.dp.toPx(), StrokeCap.Round)
         }
-        Text(
-            "Your thoughts\nmake Relive better  ♡",
-            modifier = Modifier.align(Alignment.BottomEnd),
-            color = colors.accentMuted,
-            style = TextStyle(fontFamily = handwriting, fontSize = 11.sp, lineHeight = 13.sp),
-            textAlign = TextAlign.Center,
-        )
     }
 }
 

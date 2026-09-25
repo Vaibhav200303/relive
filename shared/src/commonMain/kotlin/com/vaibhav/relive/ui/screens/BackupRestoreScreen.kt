@@ -44,11 +44,9 @@ import com.vaibhav.relive.ui.components.ReliveAlertDialog
 import com.vaibhav.relive.ui.components.ReliveBottomSheet
 import com.vaibhav.relive.ui.components.profile.ProfileChevronGlyph
 import com.vaibhav.relive.ui.components.profile.ProfilePageHeader
-import com.vaibhav.relive.ui.components.timeline.HeartGlyph
 import com.vaibhav.relive.ui.icons.ProfileIcons
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.theme.canvasBrush
-import com.vaibhav.relive.ui.theme.rememberReliveHandwritingFamily
 import org.jetbrains.compose.resources.painterResource
 import relive.shared.generated.resources.Res
 import relive.shared.generated.resources.google_drive_logo
@@ -90,7 +88,6 @@ fun BackupRestoreScreen(
                     .padding(horizontal = dims.spacing.xl).padding(bottom = dims.spacing.huge),
                 verticalArrangement = Arrangement.spacedBy(dims.spacing.lg),
             ) {
-                BackupIntro()
                 BackupStatusCard(state.remoteSummary, state.operation, viewModel::backUpNow)
 
                 BackupSurface {
@@ -239,52 +236,6 @@ fun BackupRestoreScreen(
             },
             dismissButton = { TextButton(onClick = viewModel::clearUpgradeRequired) { Text("Not now") } },
         )
-    }
-}
-
-@Composable
-private fun BackupIntro() {
-    val handwriting = rememberReliveHandwritingFamily()
-    Box(
-        Modifier
-            .fillMaxWidth()
-            // Reserve enough vertical room for the two-line handwritten note. Keeping the
-            // note inside its own measured area prevents the rotated glyphs being clipped.
-            .height(44.dp)
-            .padding(horizontal = ReliveTheme.dimensions.spacing.xs),
-    ) {
-        Text(
-            "Keep your memories safe in Google Drive.",
-            modifier = Modifier.align(Alignment.CenterStart),
-            color = ReliveTheme.colors.textSecondary,
-            style = ReliveTheme.typography.body.copy(fontSize = 13.sp, lineHeight = 18.sp),
-        )
-        Text(
-            "Memories\nsafe, always",
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 2.dp, end = 6.dp)
-                .rotate(-4f),
-            color = ReliveTheme.colors.accentMuted,
-            style = androidx.compose.ui.text.TextStyle(
-                fontFamily = handwriting,
-                fontWeight = FontWeight.Normal,
-                fontSize = 15.sp,
-                lineHeight = 18.sp,
-            ),
-        )
-        Box(
-            Modifier
-                .align(Alignment.BottomEnd)
-                .offset(x = 20.dp, y = 16.dp),
-        ) {
-            HeartGlyph(
-                size = 17.dp,
-                color = ReliveTheme.colors.accentMuted,
-                strokeWidth = 1.5.dp,
-                filled = false,
-            )
-        }
     }
 }
 
@@ -820,7 +771,6 @@ private fun BackupChoice(label: String, selected: Boolean, onClick: () -> Unit) 
 private fun BackupCloudArtwork(modifier: Modifier = Modifier) {
     val accent = ReliveTheme.colors.accent
     val surface = ReliveTheme.colors.surfaceCard
-    val handwriting = rememberReliveHandwritingFamily()
     Box(modifier.semantics { contentDescription = "Google Drive backup illustration" }) {
         Canvas(Modifier.matchParentSize()) {
             val stem = accent.copy(alpha = 0.36f)
@@ -934,17 +884,6 @@ private fun BackupCloudArtwork(modifier: Modifier = Modifier) {
             contentDescription = null,
             modifier = Modifier.size(46.dp).align(Alignment.Center).offset(x = 18.dp, y = (-4).dp),
             contentScale = ContentScale.Fit,
-        )
-        Text(
-            "safe in Drive",
-            modifier = Modifier.align(Alignment.BottomEnd).offset(x = (-3).dp, y = (-1).dp).rotate(-4f),
-            color = accent.copy(alpha = 0.72f),
-            style = androidx.compose.ui.text.TextStyle(
-                fontFamily = handwriting,
-                fontWeight = FontWeight.Normal,
-                fontSize = 15.sp,
-                lineHeight = 18.sp,
-            ),
         )
     }
 }

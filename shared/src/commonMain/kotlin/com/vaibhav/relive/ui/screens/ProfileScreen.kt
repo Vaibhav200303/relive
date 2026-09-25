@@ -221,11 +221,6 @@ fun ProfileScreen(
                                 }.semantics { contentDescription = "Edit display name, ${state.displayName}" },
                             )
                         }
-                        Text(
-                            "Your private memory space",
-                            style = ReliveTheme.typography.subtitle,
-                            color = ReliveTheme.colors.textSecondary,
-                        )
                         state.joiningDate?.let { createdAt ->
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
