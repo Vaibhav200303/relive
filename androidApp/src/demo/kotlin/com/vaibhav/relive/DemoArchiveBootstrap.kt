@@ -42,7 +42,7 @@ object DemoArchiveBootstrap {
 
     private suspend fun seedArchive(context: Context, container: ReliveAppContainer) {
         val timelines = listOf(
-            DemoTimeline("shipaton-demo-timeline-adventures-v1", "Adventures", TimelineWallpaper.GoldenHour),
+            DemoTimeline("shipaton-demo-timeline-adventures-v1", "Adventures", TimelineWallpaper.SoftPeach),
             DemoTimeline("shipaton-demo-timeline-together-v1", "Together", TimelineWallpaper.BlushPink),
             DemoTimeline("shipaton-demo-timeline-small-wins-v1", "Small wins", TimelineWallpaper.SageGreen),
         )

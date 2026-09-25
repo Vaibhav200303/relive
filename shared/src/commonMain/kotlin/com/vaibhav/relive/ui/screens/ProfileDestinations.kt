@@ -443,9 +443,9 @@ private fun SettingsReferencePanel(content: @Composable ColumnScope.() -> Unit) 
 @Composable
 private fun SettingsReferenceSwitchRow(label: String, supporting: String?, checked: Boolean, onCheckedChange: (Boolean) -> Unit, enabled: Boolean = true, icon: SettingsOptionIcon? = null) {
     val d = ReliveTheme.dimensions
-    Row(Modifier.fillMaxWidth().heightIn(min = d.minTouchTarget).toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange).padding(horizontal = d.spacing.md, vertical = d.spacing.sm).semantics(mergeDescendants = true) { contentDescription = "$label, ${if (checked) "on" else "off"}" }, verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().heightIn(min = d.minTouchTarget + d.spacing.xs).toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange).padding(horizontal = d.spacing.md, vertical = d.spacing.sm).semantics(mergeDescendants = true) { contentDescription = "$label, ${if (checked) "on" else "off"}" }, verticalAlignment = Alignment.CenterVertically) {
         icon?.let { SettingsOptionIcon(it, enabled); Spacer(Modifier.width(d.spacing.sm)) }
-        Column(Modifier.weight(1f)) { Text(label, color = if (enabled) ReliveTheme.colors.textPrimary else ReliveTheme.colors.textMuted, style = ReliveTheme.typography.action); supporting?.let { Text(it, color = ReliveTheme.colors.textSecondary, style = ReliveTheme.typography.tag) } }
+        Column(Modifier.weight(1f)) { Text(label, color = if (enabled) ReliveTheme.colors.textPrimary else ReliveTheme.colors.textMuted, style = ReliveTheme.typography.action.copy(fontSize = 15.sp, lineHeight = 22.sp)); supporting?.let { Text(it, color = ReliveTheme.colors.textMuted, style = ReliveTheme.typography.tag.copy(fontSize = 11.sp, lineHeight = 15.sp)) } }
         androidx.compose.material3.Switch(checked, null, enabled = enabled)
     }
 }
@@ -456,9 +456,9 @@ private fun SettingsReferenceActionRow(label: String, supporting: String?, onCli
 @Composable
 private fun SettingsReferenceStaticRow(label: String, supporting: String?, icon: SettingsOptionIcon? = null, enabled: Boolean = true, onClick: (() -> Unit)? = null, showChevron: Boolean = onClick != null) {
     val d = ReliveTheme.dimensions
-    Row(Modifier.fillMaxWidth().heightIn(min = d.minTouchTarget).then(if (onClick != null && enabled) Modifier.clickable(onClick = onClick) else Modifier).padding(horizontal = d.spacing.md, vertical = d.spacing.sm), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().heightIn(min = d.minTouchTarget + d.spacing.xs).then(if (onClick != null && enabled) Modifier.clickable(onClick = onClick) else Modifier).padding(horizontal = d.spacing.md, vertical = d.spacing.sm), verticalAlignment = Alignment.CenterVertically) {
         icon?.let { SettingsOptionIcon(it, enabled); Spacer(Modifier.width(d.spacing.sm)) }
-        Column(Modifier.weight(1f)) { Text(label, color = if (enabled) ReliveTheme.colors.textPrimary else ReliveTheme.colors.textMuted, style = ReliveTheme.typography.action); supporting?.let { Text(it, color = ReliveTheme.colors.textSecondary, style = ReliveTheme.typography.tag) } }
+        Column(Modifier.weight(1f)) { Text(label, color = if (enabled) ReliveTheme.colors.textPrimary else ReliveTheme.colors.textMuted, style = ReliveTheme.typography.action.copy(fontSize = 15.sp, lineHeight = 22.sp)); supporting?.let { Text(it, color = ReliveTheme.colors.textMuted, style = ReliveTheme.typography.tag.copy(fontSize = 11.sp, lineHeight = 15.sp)) } }
         if (showChevron && enabled) SettingsChevron()
     }
 }
@@ -467,7 +467,11 @@ private fun SettingsReferenceStaticRow(label: String, supporting: String?, icon:
 private fun SettingsOptionIcon(icon: SettingsOptionIcon, enabled: Boolean) {
     val d = ReliveTheme.dimensions
     val colors = ReliveTheme.colors
-    val glyph = if (enabled) colors.accentMuted else colors.textMuted
+    val glyph = when {
+        !enabled -> colors.textMuted
+        ReliveTheme.isDark -> colors.textPrimary
+        else -> colors.accentMuted
+    }
     val tile = when (icon) {
         SettingsOptionIcon.Cloud -> colors.spark.copy(alpha = .10f)
         SettingsOptionIcon.Fingerprint -> colors.accent.copy(alpha = .08f)
@@ -477,7 +481,9 @@ private fun SettingsOptionIcon(icon: SettingsOptionIcon, enabled: Boolean) {
         Modifier.size(36.dp).clip(RoundedCornerShape(d.radii.medium)).background(tile),
         contentAlignment = Alignment.Center,
     ) {
-        Canvas(Modifier.size(21.dp)) {
+        if (icon == SettingsOptionIcon.Fingerprint) {
+            Icon(ProfileIcons.Fingerprint, null, Modifier.size(21.dp), glyph)
+        } else Canvas(Modifier.size(21.dp)) {
             val stroke = 1.5.dp.toPx()
             val outline = Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Round)
             when (icon) {
@@ -486,12 +492,7 @@ private fun SettingsOptionIcon(icon: SettingsOptionIcon, enabled: Boolean) {
                     drawRoundRect(glyph, Offset(size.width * .18f, size.height * .39f), Size(size.width * .64f, size.height * .54f), CornerRadius(2.5.dp.toPx()), style = outline)
                     drawCircle(glyph, 1.5.dp.toPx(), Offset(size.width * .50f, size.height * .65f))
                 }
-                SettingsOptionIcon.Fingerprint -> {
-                    drawArc(glyph, 205f, 225f, false, Offset(size.width * .16f, size.height * .13f), Size(size.width * .68f, size.height * .76f), style = outline)
-                    drawArc(glyph, 205f, 225f, false, Offset(size.width * .27f, size.height * .24f), Size(size.width * .46f, size.height * .58f), style = outline)
-                    drawArc(glyph, 205f, 190f, false, Offset(size.width * .38f, size.height * .35f), Size(size.width * .24f, size.height * .37f), style = outline)
-                    drawArc(glyph, 135f, 90f, false, Offset(size.width * .08f, size.height * .28f), Size(size.width * .84f, size.height * .70f), style = outline)
-                }
+                SettingsOptionIcon.Fingerprint -> Unit
                 SettingsOptionIcon.Clock -> {
                     drawCircle(glyph, size.minDimension * .38f, center, style = outline)
                     drawLine(glyph, center, Offset(center.x, size.height * .27f), stroke, StrokeCap.Round)

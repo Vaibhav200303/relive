@@ -409,8 +409,17 @@ private fun ProfileHeader(onBack: () -> Unit, onEdit: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(dims.spacing.xs),
         ) {
-            Icon(ProfileIcons.Edit, contentDescription = null, modifier = Modifier.size(dims.icon.sm), tint = colors.accentMuted)
-            Text("Edit", style = ReliveTheme.typography.action, color = colors.accentMuted)
+            Icon(
+                ProfileIcons.Edit,
+                contentDescription = null,
+                modifier = Modifier.size(dims.icon.sm),
+                tint = if (ReliveTheme.isDark) colors.textPrimary else colors.accentMuted,
+            )
+            Text(
+                "Edit",
+                style = ReliveTheme.typography.action,
+                color = if (ReliveTheme.isDark) colors.textPrimary else colors.accentMuted,
+            )
         }
     }
 }
@@ -492,7 +501,12 @@ private fun ProfileStatistic(value: Long, label: String, icon: ImageVector, modi
             modifier = Modifier.size(dims.spacing.xxl).clip(RoundedCornerShape(dims.radii.medium)).background(colors.tint),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(dims.icon.md), tint = colors.accentMuted)
+            Icon(
+                icon,
+                contentDescription = null,
+                modifier = Modifier.size(dims.icon.md),
+                tint = if (ReliveTheme.isDark) colors.textPrimary else colors.accentMuted,
+            )
         }
         Column(verticalArrangement = Arrangement.spacedBy(dims.spacing.xs)) {
             Text(value.toString(), style = ReliveTheme.typography.action, color = colors.textPrimary)
@@ -726,7 +740,12 @@ private fun ProfileSettingRow(
                 .background(ReliveTheme.colors.tint),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(dims.icon.md), tint = ReliveTheme.colors.accentMuted)
+            Icon(
+                icon,
+                contentDescription = null,
+                modifier = Modifier.size(dims.icon.md),
+                tint = if (ReliveTheme.isDark) ReliveTheme.colors.textPrimary else ReliveTheme.colors.accentMuted,
+            )
         }
         Column(Modifier.weight(1f).padding(start = dims.spacing.md), verticalArrangement = Arrangement.spacedBy(dims.spacing.xs)) {
             Text(

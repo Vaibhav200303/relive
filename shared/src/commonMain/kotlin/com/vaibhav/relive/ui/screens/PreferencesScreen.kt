@@ -45,6 +45,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.sp
 import com.vaibhav.relive.platform.system.ReliveBackHandler
 import com.vaibhav.relive.presentation.settings.BehaviorPreferencesViewModel
 import com.vaibhav.relive.ui.components.timeline.BackGlyph
@@ -165,7 +166,7 @@ private fun PreferenceSwitchRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = dims.minTouchTarget)
+            .heightIn(min = dims.minTouchTarget + dims.spacing.xs)
             .toggleable(
                 value = checked,
                 role = Role.Switch,
@@ -181,8 +182,16 @@ private fun PreferenceSwitchRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(text = label, style = ReliveTheme.typography.action, color = ReliveTheme.colors.textPrimary)
-            Text(text = supporting, style = ReliveTheme.typography.tag, color = ReliveTheme.colors.textSecondary)
+            Text(
+                text = label,
+                style = ReliveTheme.typography.action.copy(fontSize = 15.sp, lineHeight = 22.sp),
+                color = ReliveTheme.colors.textPrimary,
+            )
+            Text(
+                text = supporting,
+                style = ReliveTheme.typography.tag.copy(fontSize = 11.sp, lineHeight = 15.sp),
+                color = ReliveTheme.colors.textMuted,
+            )
         }
         Switch(checked = checked, onCheckedChange = null)
     }

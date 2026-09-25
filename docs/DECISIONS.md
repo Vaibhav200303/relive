@@ -975,6 +975,13 @@ Format for each entry:
 - **Decision:** The six fixed suggestion chips remain while fewer than ten Moments are saved. At ten or more Moments, Search derives up to six chips from the most-used persisted tag labels and readable saved-place labels. Each chip selects its matching Tags or Places search mode. If the mature archive has no usable tag or place terms, the fixed vocabulary remains the fallback.
 - **Consequences:** Suggestions stay local, deterministic, and cheap to observe through aggregate SQL reads. Moment title/body tokenization, relevance ranking, persisted history, AI, and archive hydration in Compose remain out of scope.
 
+## ADR-0107 — Sunrise adopts the ivory-and-gold atmosphere
+
+- **Date:** 2026-09-25 · **Status:** Accepted · amends ADR-0104 for Sunrise and the Phase 9 wallpaper catalogue
+- **Context:** The product owner supplied a light ivory-and-yellow palette and paired light/dark visual reference, requested its atmospheric treatment throughout the app, and explicitly requested removing Coral Bloom, Aqua Sky, Golden Hour, Violet Haze, and Sapphire Blue from the wallpaper choices.
+- **Decision:** The existing free Sunrise palette slot adopts the supplied ivory, cream, honey-gold, amber, and brown roles in light mode. Its dark variant keeps the same gold identity over a hue-bearing near-black amber canvas, and both modes continue using the shared app-wide atmospheric canvas brush. The five named wallpapers are retired from every new-selection surface. Their enum values, artwork, codecs, and render palettes remain compatibility-only so existing timeline preferences and portable archives continue to decode and display. Demo data no longer selects a retired wallpaper.
+- **Consequences:** Selecting Sunrise changes the whole app presentation without adding a palette identity, preference migration, launcher alias, dependency, or schema. New wallpaper choices contain eleven supported identities instead of sixteen. Existing content that already references a retired wallpaper is preserved and remains visible, but a person who changes away from it cannot select it again.
+
 ---
 
 ## Template for new decisions
