@@ -3,6 +3,8 @@ package com.vaibhav.relive.presentation.search
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.repository.MomentRepository
 import com.vaibhav.relive.domain.repository.MomentDateNavigationScope
+import com.vaibhav.relive.domain.repository.SearchSuggestion
+import com.vaibhav.relive.domain.repository.SearchSuggestionScope
 import com.vaibhav.relive.domain.model.LocalCalendarDate
 import com.vaibhav.relive.presentation.date.RediscoverCalendar
 import com.vaibhav.relive.presentation.timeline.MomentPresentation
@@ -13,6 +15,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -25,6 +28,7 @@ data class SearchState(
     val activeIndex: Int? = null,
     val dateNavigation: SearchDateNavigation? = null,
     val recentSearches: List<String> = emptyList(),
+    val suggestions: List<SearchSuggestion> = defaultSearchSuggestions,
 ) {
     val activeMomentId: MomentId? get() = activeIndex?.let(results::getOrNull)?.id
     val resultCount: Int get() = results.size
@@ -39,6 +43,19 @@ class SearchViewModel(
     private val _state = MutableStateFlow(SearchState())
     val state: StateFlow<SearchState> = _state.asStateFlow()
     private var searchJob: Job? = null
+
+    init {
+        scope.launch {
+            combine(
+                momentRepository.observeAllCount(),
+                momentRepository.observeSearchSuggestions(),
+            ) { count, suggestions ->
+                if (count >= DynamicSuggestionThreshold && suggestions.isNotEmpty()) suggestions else defaultSearchSuggestions
+            }.collect { suggestions ->
+                _state.update { it.copy(suggestions = suggestions) }
+            }
+        }
+    }
 
     fun updateQuery(query: String) {
         searchJob?.cancel()
@@ -78,7 +95,19 @@ class SearchViewModel(
         }
     }
 
-    fun useSuggestion(query: String) {
+    fun useSuggestion(suggestion: SearchSuggestion) {
+        selectFilter(
+            when (suggestion.scope) {
+                SearchSuggestionScope.All -> SearchFilter.All
+                SearchSuggestionScope.Tag -> SearchFilter.Tags
+                SearchSuggestionScope.Place -> SearchFilter.Places
+            },
+        )
+        updateQuery(suggestion.query)
+        submitQuery(suggestion.query)
+    }
+
+    fun useRecentSearch(query: String) {
         updateQuery(query)
         submitQuery(query)
     }
@@ -131,3 +160,7 @@ class SearchViewModel(
 
 const val SearchDebounceMillis = 150L
 private const val MaxRecentSearches = 5
+private const val DynamicSuggestionThreshold = 10L
+
+val defaultSearchSuggestions = listOf("beach", "birthday", "college", "friends", "food", "notes")
+    .map { SearchSuggestion(query = it, scope = SearchSuggestionScope.All) }

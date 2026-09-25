@@ -968,6 +968,13 @@ Format for each entry:
 - **Decision:** Great uses the exact supplied Telegram “Grinning Face With Big Eyes” animation, Good uses the exact supplied Telegram “Slightly Smiling Face” animation, and Low uses the exact supplied Telegram “Slightly Frowning Face” animation. Each is bundled locally as its 45 source frames and played at the source WebP's 66 ms cadence; non-animated and reduced-motion presentations use the corresponding first source frame. The former continuous vertical bob is removed. Animation phases stay staggered and reduced motion disables all movement.
 - **Consequences:** Great, Good, and Low are now personal-use-only third-party visual assets; their source and license are retained under `shared/licenses/emoji`, and distributing them beyond personal use requires separate permission from Telegram. Feeling values, aggregation, persistence, accessibility semantics, Mood layout, and chart colors are unchanged; no runtime dependency is introduced.
 
+## ADR-0106 — Search suggestions adapt to a mature archive
+
+- **Date:** 2026-09-25 · **Status:** Accepted · amends ADR-0103
+- **Context:** Fixed search vocabulary is useful before a person has established an archive, but becomes less relevant once their saved memories contain their own recurring places and tags.
+- **Decision:** The six fixed suggestion chips remain while fewer than ten Moments are saved. At ten or more Moments, Search derives up to six chips from the most-used persisted tag labels and readable saved-place labels. Each chip selects its matching Tags or Places search mode. If the mature archive has no usable tag or place terms, the fixed vocabulary remains the fallback.
+- **Consequences:** Suggestions stay local, deterministic, and cheap to observe through aggregate SQL reads. Moment title/body tokenization, relevance ranking, persisted history, AI, and archive hydration in Compose remain out of scope.
+
 ---
 
 ## Template for new decisions

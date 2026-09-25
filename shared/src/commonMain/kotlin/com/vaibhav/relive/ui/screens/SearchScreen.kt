@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import com.vaibhav.relive.platform.media.MediaStore
 import com.vaibhav.relive.presentation.search.SearchViewModel
 import com.vaibhav.relive.presentation.search.SearchFilter
+import com.vaibhav.relive.domain.repository.SearchSuggestion
 import com.vaibhav.relive.ui.icons.ProfileIcons
 import com.vaibhav.relive.ui.components.timeline.BackGlyph
 import com.vaibhav.relive.ui.components.timeline.CalendarGlyph
@@ -203,9 +204,10 @@ fun SearchScreen(
         ) {
             when {
                 state.query.isBlank() -> SearchLanding(
+                    suggestions = state.suggestions,
                     recentSearches = state.recentSearches,
                     onSuggestionSelected = viewModel::useSuggestion,
-                    onRecentSelected = viewModel::useSuggestion,
+                    onRecentSelected = viewModel::useRecentSearch,
                     onRemoveRecent = viewModel::removeRecentSearch,
                     onClearRecent = viewModel::clearRecentSearches,
                 )
@@ -456,15 +458,15 @@ private fun SearchHeader(
 
 @Composable
 private fun SearchLanding(
+    suggestions: List<SearchSuggestion>,
     recentSearches: List<String>,
-    onSuggestionSelected: (String) -> Unit,
+    onSuggestionSelected: (SearchSuggestion) -> Unit,
     onRecentSelected: (String) -> Unit,
     onRemoveRecent: (String) -> Unit,
     onClearRecent: () -> Unit,
 ) {
     val dims = ReliveTheme.dimensions
     val colors = ReliveTheme.colors
-    val suggestions = listOf("beach", "birthday", "college", "friends", "food", "notes")
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = dims.spacing.huge * 2),
@@ -486,7 +488,7 @@ private fun SearchLanding(
                     ) {
                         row.forEach { suggestion ->
                             SearchSuggestionChip(
-                                label = suggestion,
+                                label = suggestion.query,
                                 onClick = { onSuggestionSelected(suggestion) },
                                 modifier = Modifier.weight(1f),
                             )

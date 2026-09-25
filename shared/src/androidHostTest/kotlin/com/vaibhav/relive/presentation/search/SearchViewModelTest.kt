@@ -4,6 +4,8 @@ import com.vaibhav.relive.domain.model.Moment
 import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.repository.MomentRepository
+import com.vaibhav.relive.domain.repository.SearchSuggestion
+import com.vaibhav.relive.domain.repository.SearchSuggestionScope
 import com.vaibhav.relive.domain.time.Instant
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -83,16 +85,35 @@ class SearchViewModelTest {
             TestScope(UnconfinedTestDispatcher(testScheduler)),
         )
 
-        listOf("one", "two", "three", "four", "five", "six", "TWO").forEach(viewModel::useSuggestion)
+        listOf("one", "two", "three", "four", "five", "six", "TWO")
+            .map { SearchSuggestion(it, SearchSuggestionScope.Tag) }
+            .forEach(viewModel::useSuggestion)
         assertEquals(listOf("TWO", "six", "five", "four", "three"), viewModel.state.value.recentSearches)
         viewModel.removeRecentSearch("five")
         assertEquals(listOf("TWO", "six", "four", "three"), viewModel.state.value.recentSearches)
         viewModel.clearRecentSearches()
         assertEquals(emptyList(), viewModel.state.value.recentSearches)
     }
+
+    @Test fun matureArchiveUsesDynamicSuggestionsAndTheirMatchingFilter() = runTest {
+        val repository = SearchFakeRepository(
+            List(10) { index -> moment("moment-$index", index.toLong()) },
+            suggestions = listOf(SearchSuggestion("Weekend", SearchSuggestionScope.Tag)),
+        )
+        val viewModel = SearchViewModel(repository, TestScope(UnconfinedTestDispatcher(testScheduler)))
+        runCurrent()
+
+        assertEquals(listOf("Weekend"), viewModel.state.value.suggestions.map { it.query })
+        viewModel.useSuggestion(viewModel.state.value.suggestions.single())
+        assertEquals(SearchFilter.Tags, viewModel.state.value.filter)
+        assertEquals("Weekend", viewModel.state.value.query)
+    }
 }
 
-private class SearchFakeRepository(initial: List<Moment>) : MomentRepository {
+private class SearchFakeRepository(
+    initial: List<Moment>,
+    private val suggestions: List<SearchSuggestion> = emptyList(),
+) : MomentRepository {
     private val moments = MutableStateFlow(initial)
     var lastTagQuery: String? = null
     var lastPlaceQuery: String? = null
@@ -116,6 +137,7 @@ private class SearchFakeRepository(initial: List<Moment>) : MomentRepository {
         lastPlaceQuery = query
         return moments.asStateFlow()
     }
+    override fun observeSearchSuggestions(): Flow<List<SearchSuggestion>> = MutableStateFlow(suggestions)
     override suspend fun listInTimeline(timelineId: TimelineId): List<Moment> = emptyList()
     override fun observeInTimeline(timelineId: TimelineId): Flow<List<Moment>> = MutableStateFlow(emptyList())
 }

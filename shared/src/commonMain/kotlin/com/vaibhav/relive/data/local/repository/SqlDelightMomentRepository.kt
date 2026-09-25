@@ -20,6 +20,8 @@ import com.vaibhav.relive.domain.model.Tag
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.repository.MomentRepository
 import com.vaibhav.relive.domain.repository.MomentDateNavigationScope
+import com.vaibhav.relive.domain.repository.SearchSuggestion
+import com.vaibhav.relive.domain.repository.SearchSuggestionScope
 import com.vaibhav.relive.domain.time.Instant
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -184,6 +186,23 @@ class SqlDelightMomentRepository(
             .asFlow()
             .mapToList(dispatcher)
             .map { rows -> withContext(dispatcher) { rows.map { hydrate(it) } } }
+
+    override fun observeSearchSuggestions(): Flow<List<SearchSuggestion>> =
+        database.momentTagsQueries.selectSearchSuggestions()
+            .asFlow()
+            .mapToList(dispatcher)
+            .map { rows ->
+                rows.map { row ->
+                    SearchSuggestion(
+                        query = requireNotNull(row.query),
+                        scope = when (row.source) {
+                            "tag" -> SearchSuggestionScope.Tag
+                            "place" -> SearchSuggestionScope.Place
+                            else -> error("Unknown search suggestion source: ${row.source}")
+                        },
+                    )
+                }
+            }
 
     override suspend fun findDateNavigationTarget(
         scope: MomentDateNavigationScope,

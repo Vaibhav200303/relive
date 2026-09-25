@@ -7,7 +7,16 @@ import com.vaibhav.relive.domain.model.MomentId
 import com.vaibhav.relive.domain.model.TimelineId
 import com.vaibhav.relive.domain.time.Instant
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+
+/** A locally derived search shortcut and the archive field it searches. */
+data class SearchSuggestion(
+    val query: String,
+    val scope: SearchSuggestionScope,
+)
+
+enum class SearchSuggestionScope { All, Tag, Place }
 
 /**
  * Persistence-facing operations on [Moment]. The repository refuses to change
@@ -120,6 +129,12 @@ interface MomentRepository {
 
     /** Local, case-insensitive search over readable saved location fields. */
     fun observeSearchByPlace(query: String): Flow<List<Moment>> = observeSearch(query)
+
+    /**
+     * Frequently used tag and readable-place labels, ordered for Search's empty-state shortcuts.
+     * Implementations should derive this without hydrating the archive.
+     */
+    fun observeSearchSuggestions(): Flow<List<SearchSuggestion>> = flowOf(emptyList())
 
     /**
      * Resolves calendar navigation with bounded, scope-aware reads.  [dayStart]

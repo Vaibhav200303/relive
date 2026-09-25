@@ -46,6 +46,33 @@ SELECT DISTINCT t.canonical, t.label FROM tags t
 JOIN moment_tags mt ON mt.tag_canonical = t.canonical
 ORDER BY t.canonical ASC;
 
+-- Search landing shortcuts are derived in SQL, so opening Search never needs to hydrate the
+-- archive just to discover its vocabulary. Tags and readable places retain their search scope.
+selectSearchSuggestions:
+SELECT t.label AS query, 'tag' AS source, COUNT(*) AS uses
+FROM tags t
+JOIN moment_tags mt ON mt.tag_canonical = t.canonical
+GROUP BY t.canonical, t.label
+UNION ALL
+SELECT COALESCE(
+    NULLIF(TRIM(m.location_display_name), ''),
+    NULLIF(TRIM(m.location_locality), ''),
+    NULLIF(TRIM(m.location_region), ''),
+    NULLIF(TRIM(m.location_country), '')
+) AS query,
+       'place' AS source,
+       COUNT(*) AS uses
+FROM moments m
+WHERE COALESCE(
+    NULLIF(TRIM(m.location_display_name), ''),
+    NULLIF(TRIM(m.location_locality), ''),
+    NULLIF(TRIM(m.location_region), ''),
+    NULLIF(TRIM(m.location_country), '')
+) IS NOT NULL
+GROUP BY query
+ORDER BY uses DESC, query COLLATE NOCASE ASC
+LIMIT 6;
+
 selectAllMomentTags:
 SELECT * FROM moment_tags
 ORDER BY moment_id ASC, tag_canonical ASC;
