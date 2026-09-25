@@ -44,6 +44,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import com.vaibhav.relive.domain.entitlement.EntitlementPolicy
 import com.vaibhav.relive.domain.entitlement.EntitlementProvider
 import com.vaibhav.relive.domain.model.TimelineWallpaper
+import com.vaibhav.relive.domain.model.selectableTimelineWallpapers
 import com.vaibhav.relive.domain.repository.AppearanceRepository
 import com.vaibhav.relive.domain.repository.TimelineRepository
 import com.vaibhav.relive.presentation.timeline.TimelineThemeDestination
@@ -137,7 +138,7 @@ fun TimelineThemeScreen(
             )
 
             val additionalWallpapers =
-                TimelineWallpaper.entries.filterNot(FeaturedTimelineWallpapers::contains)
+                selectableTimelineWallpapers.filterNot(FeaturedTimelineWallpapers::contains)
             TimelineWallpaperGrid(
                 wallpapers = additionalWallpapers,
                 selectedWallpaper = state.appearance.wallpaper,

@@ -269,7 +269,10 @@ private fun ArchiveCategoryCard(item: CategoryItem, totalBytes: Long) {
                     "${formatByteSize(item.summary.bytes)}, $percentage percent"
         },
         shape = RoundedCornerShape(d.radii.medium),
-        color = colors.surfaceCardTranslucent,
+        // Nested tiles need their own warm layer rather than a translucent card surface.
+        // Some light palettes use a white card role, which otherwise reads as a stark
+        // rectangle inside this already surfaced section.
+        color = colors.tint.copy(alpha = 0.56f),
     ) {
         Column(Modifier.padding(d.spacing.sm), verticalArrangement = Arrangement.spacedBy(d.spacing.sm)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -355,7 +358,7 @@ private fun ArchiveCountTile(item: CategoryItem, modifier: Modifier) {
             contentDescription = "${item.label}, ${item.summary.attachmentCount}"
         },
         shape = RoundedCornerShape(d.radii.medium),
-        color = colors.surfaceCardTranslucent,
+        color = colors.tint.copy(alpha = 0.56f),
     ) {
         Row(Modifier.padding(d.spacing.sm), verticalAlignment = Alignment.CenterVertically) {
             CategoryBadge(item.category, 38.dp)

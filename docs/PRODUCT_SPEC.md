@@ -645,7 +645,8 @@ The Appearance row presents palettes in entitlement order. The three Free choice
 **Evergreen**, **Ember & Aqua**, **Plum & Gold**, and **Rose & Sage**. The retired **Original**
 palette remains resolvable for an existing saved preference but is not offered for new selection.
 Warm Journal matches the former primary launcher's cream paper, leather brown, and quiet tan
-details. The appearance and launcher default for a fresh install is **Sunset**. Sunset is the
+details. Sunrise is the ivory-and-gold atmospheric palette in both light and dark mode. The
+appearance and launcher default for a fresh install is **Sunset**. Sunset is the
 primary launcher icon on both platforms; Warm Journal remains selectable and is retained as the former
 primary icon through the `AppIconWarmJournal` iOS alternate and Android launcher alias.
 
@@ -657,7 +658,7 @@ Original palette keeps a matching legacy icon for an existing saved preference.
 
 The global appearance mode is **System**, **Light**, or **Dark**. System follows the live platform appearance. The selected palette is the app default. All moments and each custom timeline own independent `TimelineAppearance` values; All's appearance is stored in native local preferences because All is logical, while custom timeline appearances are archive data. On Home, All's `TimelineAppearance` governs the **All moments band only**: the welcome block, the `Relive your memories` heading, and the Rediscover row always render on the plain canvas. Profile, Search, the Rediscover row, and read-only system collections use the app default. A timeline's mode always remains global.
 
-Warm Journal, Sunrise, and Sunset are available in Free. Warm Cream and Blush Pink are the Free wallpapers. All other selectable palettes and wallpapers are Relive Pro appearance options. A former Pro subscriber continues to see an already-selected premium appearance, but cannot select a new premium appearance without Pro.
+Warm Journal, Sunrise, and Sunset are available in Free. Warm Cream and Blush Pink are the Free wallpapers. Coral Bloom, Aqua Sky, Golden Hour, Violet Haze, and Sapphire Blue are retired from new selection but remain readable when already stored. All other selectable palettes and wallpapers are Relive Pro appearance options. A former Pro subscriber continues to see an already-selected premium appearance, but cannot select a new premium appearance without Pro.
 
 Themes **may** affect:
 

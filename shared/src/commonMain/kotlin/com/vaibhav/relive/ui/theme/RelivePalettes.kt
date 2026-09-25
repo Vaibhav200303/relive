@@ -186,29 +186,29 @@ val RoseSagePalette = RelivePalette(
     ),
 )
 
-// 07 · Sunrise — first light: pale gold sky, warm earth ink, an amber sun. Light mode is the
-// golden hour after dawn; dark mode is the violet pre-dawn sky waiting for it. The atmospheric
-// canvas gradient derives from these roles, so the whole app takes on the morning's light.
+// 07 · Sunrise — the approved ivory-and-gold editorial treatment. Light mode carries warm paper,
+// honeyed surfaces, and grounded brown ink; dark mode keeps the same gold identity over a deep,
+// near-black amber atmosphere. The shared canvas brush gives both modes their broad ambient light.
 val SunrisePalette = RelivePalette(
     theme = ThemeReference.Sunrise,
     label = "Sunrise",
     light = RelivePaletteRoles(
-        canvas = Color(0xFFFBF2E4),
-        surface = Color(0xFFFFFFFF),
-        ink = Color(0xFF46280F),
-        inkSoft = Color(0xFF6F4E30),
-        primary = Color(0xFFB4541A),
-        spark = Color(0xFFFFB94E),
-        tint = Color(0xFFF3DCC0),
+        canvas = Color(0xFFFDFBF4),
+        surface = Color(0xFFF2E3BD),
+        ink = Color(0xFF5C4A1E),
+        inkSoft = Color(0xFF806018),
+        primary = Color(0xFFA8770A),
+        spark = Color(0xFFD0843B),
+        tint = Color(0xFFF7F1E1),
     ),
     dark = RelivePaletteRoles(
-        canvas = Color(0xFF0D0912),
-        surface = Color(0xFF21172A),
-        ink = Color(0xFFF7EEE3),
-        inkSoft = Color(0xFFC7AFA6),
-        primary = Color(0xFFE4934C),
-        spark = Color(0xFFFFCF7D),
-        tint = Color(0xFF473556),
+        canvas = Color(0xFF090804),
+        surface = Color(0xFF1B170B),
+        ink = Color(0xFFFDFBF4),
+        inkSoft = Color(0xFFD8C99D),
+        primary = Color(0xFFD9A428),
+        spark = Color(0xFFEACA6D),
+        tint = Color(0xFF49380E),
     ),
 )
 

@@ -378,8 +378,13 @@ Themes are presentation-only token sets resolved by palette plus global appearan
 Sunset is the fresh-install default and mirrors the primary launcher icon. Warm Journal remains a
 selectable retained palette and mirrors its `AppIconWarmJournal`/Android alias artwork: cream paper (`#F5EFE9`),
 leather brown (`#5A3E2F`), deep brown ink (`#3B251B`), and a restrained tan spark (`#C99455`).
-Its dark variant uses chocolate canvases with cream text. In the Appearance row, the Free palettes
-are grouped first as Warm Journal, Sunrise, and Sunset; premium palettes follow. Sunset is the
+Its dark variant uses chocolate canvases with cream text. Sunrise uses the approved ivory-and-gold
+system: an `#FDFBF4` canvas, `#F7F1E1` secondary background, `#F2E3BD` surface, accessible
+deep-gold `#A8770A` controls, `#D0843B` highlights, and grounded brown text. Its dark variant retains
+the supplied brighter `#D9A428` gold over a near-black amber atmospheric gradient. The light
+workhorse gold and secondary ink are deliberately deepened from the supplied swatches so controls
+and card copy retain the design system's contrast floors. In the Appearance row, the Free palettes are grouped
+first as Warm Journal, Sunrise, and Sunset; premium palettes follow. Sunset is the
 fallback whenever no native palette preference exists.
 
 The launcher icon is palette-aware, not mode-aware. Every selectable palette uses one full-bleed
@@ -403,7 +408,7 @@ The generated-cover fallback is a centralized mode-aware theme token. It derives
 
 ### Timeline wallpapers
 
-Timeline wallpaper is independent from the global palette. The approved hand-drawn wallpaper artwork is bundled once per wallpaper identity and rendered behind Timeline content, so its doodles retain the exact supplied composition at every size. Light pairs are Warm Cream `#FAF3E9` / `#E7D5BF`, Blush Pink `#FDE7E7` / `#F0B8BA`, Sage Green `#E4E9DD` / `#B8C5AE`, Lavender `#EDE6F9` / `#CBBEE5`, Powder Blue `#E1EEFA` / `#B1CFEA`, and Soft Peach `#FEEBE1` / `#F5B99B`. Moment text, rail/dot, heart, media, and metadata retain their existing semantic colors until Moment treatment is introduced separately.
+Timeline wallpaper is independent from the global palette. The approved hand-drawn wallpaper artwork is bundled once per wallpaper identity and rendered behind Timeline content, so its doodles retain the exact supplied composition at every size. Light pairs are Warm Cream `#FAF3E9` / `#E7D5BF`, Blush Pink `#FDE7E7` / `#F0B8BA`, Sage Green `#E4E9DD` / `#B8C5AE`, Lavender `#EDE6F9` / `#CBBEE5`, Powder Blue `#E1EEFA` / `#B1CFEA`, and Soft Peach `#FEEBE1` / `#F5B99B`. Coral Bloom, Aqua Sky, Golden Hour, Violet Haze, and Sapphire Blue are retired from new selection; their stored identities and bundled artwork remain compatibility-only for existing timelines and portable archives. Moment text, rail/dot, heart, media, and metadata retain their existing semantic colors until Moment treatment is introduced separately.
 
 The Profile root follows its approved compact archive-card composition (ADR-0083): Back/title and a quiet Edit pill; a horizontal local identity row with the circular photo affordance; one grouped count surface; one restrained Pro feature card; the existing Appearance card; rounded row groups for Your memories, Preferences, and Relive; and the closing `Small moments. A fuller you.` signature. Settings rows pair a tonal icon tile with concise supporting copy and a simple chevron without a shaft. All presentation remains palette-aware and uses semantic tokens. The Appearance section's composition is unchanged.
 

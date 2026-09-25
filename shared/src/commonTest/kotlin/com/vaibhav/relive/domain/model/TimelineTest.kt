@@ -36,6 +36,26 @@ class TimelineTest {
     }
 
     @Test
+    fun retired_wallpapers_are_not_offered_for_new_selection() {
+        assertEquals(
+            listOf(
+                TimelineWallpaper.WarmCream,
+                TimelineWallpaper.BlushPink,
+                TimelineWallpaper.SageGreen,
+                TimelineWallpaper.Lavender,
+                TimelineWallpaper.PowderBlue,
+                TimelineWallpaper.SoftPeach,
+                TimelineWallpaper.MidnightNavy,
+                TimelineWallpaper.Evergreen,
+                TimelineWallpaper.MauveDusk,
+                TimelineWallpaper.TerracottaGlow,
+                TimelineWallpaper.CharcoalMist,
+            ),
+            selectableTimelineWallpapers,
+        )
+    }
+
+    @Test
     fun membership_binds_moment_to_custom_timeline_only() {
         val mem = CustomTimelineMembership(TimelineId("tl"), MomentId("m"))
         assertEquals("tl", mem.timelineId.value)

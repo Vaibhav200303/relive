@@ -32,6 +32,17 @@ enum class TimelineWallpaper {
     SapphireBlue,
 }
 
+/** Wallpapers offered for new selections; retired identities remain decodable for old archives. */
+val selectableTimelineWallpapers: List<TimelineWallpaper> = TimelineWallpaper.entries.filterNot {
+    it in setOf(
+        TimelineWallpaper.CoralBloom,
+        TimelineWallpaper.AquaSky,
+        TimelineWallpaper.GoldenHour,
+        TimelineWallpaper.VioletHaze,
+        TimelineWallpaper.SapphireBlue,
+    )
+}
+
 /**
  * Timeline-owned identities corresponding to the already-supported visual
  * treatments. This stage adds no new selectable treatment.
