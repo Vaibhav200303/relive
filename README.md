@@ -9,10 +9,10 @@ Relive turns everyday thoughts, photos, videos, audio, places, tags, and feeling
 Capture now. Let time organize it. Rediscover it later.
 
 <p align="center">
-  <a href="shipaton/screenshots/01-timeline.png"><img src="shipaton/screenshots/01-timeline.png" alt="Relive timeline with a photo Moment, place, tags, and feeling" width="23%"></a>
-  <a href="shipaton/screenshots/06-search.png"><img src="shipaton/screenshots/06-search.png" alt="Relive local memory search by words, tags, and places" width="23%"></a>
-  <a href="shipaton/screenshots/08-backup.png"><img src="shipaton/screenshots/08-backup.png" alt="Relive private Google Drive backup and restore" width="23%"></a>
-  <a href="shipaton/screenshots/09-export.png"><img src="shipaton/screenshots/09-export.png" alt="Relive Keepsake PDF and portable archive export" width="23%"></a>
+  <a href="shipaton/screenshots/02-home-timeline.png"><img src="shipaton/screenshots/02-home-timeline.png" alt="Relive timeline with a photo Moment, place, tags, and feeling" width="23%"></a>
+  <a href="shipaton/screenshots/08-search.png"><img src="shipaton/screenshots/08-search.png" alt="Relive local memory search by words, tags, and places" width="23%"></a>
+  <a href="shipaton/screenshots/09-backup.png"><img src="shipaton/screenshots/09-backup.png" alt="Relive private Google Drive backup and restore" width="23%"></a>
+  <a href="shipaton/screenshots/10-export.png"><img src="shipaton/screenshots/10-export.png" alt="Relive Keepsake PDF and portable archive export" width="23%"></a>
 </p>
 <p align="center"><sub>Timeline · Search · Backup & restore · Export</sub></p>
 
@@ -106,22 +106,22 @@ There is no local "pretend Pro" switch. Public SDK keys are supplied at build ti
 
 <table>
   <tr>
-    <td align="center"><a href="shipaton/screenshots/10-home.png"><img src="shipaton/screenshots/10-home.png" alt="Relive Home with Rediscover collections" width="100%"></a><br><sub>Home & Rediscover</sub></td>
-    <td align="center"><a href="shipaton/screenshots/01-timeline.png"><img src="shipaton/screenshots/01-timeline.png" alt="Relive timeline" width="100%"></a><br><sub>All Moments</sub></td>
-    <td align="center"><a href="shipaton/screenshots/02-moment.png"><img src="shipaton/screenshots/02-moment.png" alt="Relive On This Day Moment" width="100%"></a><br><sub>On This Day</sub></td>
+    <td align="center"><a href="shipaton/screenshots/03-home-mood.png"><img src="shipaton/screenshots/03-home-mood.png" alt="Relive Home with Rediscover collections and weekly mood" width="100%"></a><br><sub>Home & Rediscover</sub></td>
+    <td align="center"><a href="shipaton/screenshots/02-home-timeline.png"><img src="shipaton/screenshots/02-home-timeline.png" alt="Relive timeline" width="100%"></a><br><sub>All Moments</sub></td>
+    <td align="center"><a href="shipaton/screenshots/05-on-this-day.png"><img src="shipaton/screenshots/05-on-this-day.png" alt="Relive On This Day Moment" width="100%"></a><br><sub>On This Day</sub></td>
   </tr>
   <tr>
-    <td align="center"><a href="shipaton/screenshots/05-timelines.png"><img src="shipaton/screenshots/05-timelines.png" alt="Relive custom timelines" width="100%"></a><br><sub>Custom timelines</sub></td>
-    <td align="center"><a href="shipaton/screenshots/06-search.png"><img src="shipaton/screenshots/06-search.png" alt="Relive local search by writing, tags, and places" width="100%"></a><br><sub>Search</sub></td>
+    <td align="center"><a href="shipaton/screenshots/07-timelines.png"><img src="shipaton/screenshots/07-timelines.png" alt="Relive custom timelines" width="100%"></a><br><sub>Custom timelines</sub></td>
+    <td align="center"><a href="shipaton/screenshots/08-search.png"><img src="shipaton/screenshots/08-search.png" alt="Relive local search by writing, tags, and places" width="100%"></a><br><sub>Search</sub></td>
     <td align="center"><a href="shipaton/screenshots/04-mood-insights.png"><img src="shipaton/screenshots/04-mood-insights.png" alt="Relive Mood Insights" width="100%"></a><br><sub>Mood Insights</sub></td>
   </tr>
   <tr>
-    <td align="center"><a href="shipaton/screenshots/07-profile.png"><img src="shipaton/screenshots/07-profile.png" alt="Relive profile and appearance options" width="100%"></a><br><sub>Profile & appearance</sub></td>
-    <td align="center"><a href="shipaton/screenshots/08-backup.png"><img src="shipaton/screenshots/08-backup.png" alt="Relive Google Drive backup and restore" width="100%"></a><br><sub>Backup & restore</sub></td>
-    <td align="center"><a href="shipaton/screenshots/09-export.png"><img src="shipaton/screenshots/09-export.png" alt="Relive export format selection" width="100%"></a><br><sub>Export</sub></td>
+    <td align="center"><a href="shipaton/screenshots/06-profile.png"><img src="shipaton/screenshots/06-profile.png" alt="Relive profile and appearance options" width="100%"></a><br><sub>Profile & appearance</sub></td>
+    <td align="center"><a href="shipaton/screenshots/09-backup.png"><img src="shipaton/screenshots/09-backup.png" alt="Relive Google Drive backup and restore" width="100%"></a><br><sub>Backup & restore</sub></td>
+    <td align="center"><a href="shipaton/screenshots/10-export.png"><img src="shipaton/screenshots/10-export.png" alt="Relive export format selection" width="100%"></a><br><sub>Export</sub></td>
   </tr>
   <tr>
-    <td align="center" colspan="3"><a href="shipaton/screenshots/03-timeline-theme.png"><img src="shipaton/screenshots/03-timeline-theme.png" alt="Relive timeline theme and wallpaper selection" width="33%"></a><br><sub>Timeline themes</sub></td>
+    <td align="center" colspan="3"><a href="shipaton/screenshots/01-timeline-theme.png"><img src="shipaton/screenshots/01-timeline-theme.png" alt="Relive timeline theme and wallpaper selection" width="33%"></a><br><sub>Timeline themes</sub></td>
   </tr>
 </table>
 
