@@ -203,13 +203,13 @@ Global app appearance and timeline appearance are separate models and persistenc
 
 ---
 
-## 9. Monetization seams (later)
+## 9. Monetization seam and Phase 10 implementation
 
-RevenueCat (Pro entitlement), RevenueCat Funnels, and Stripe (web subscription) are planned for later phases and **must not be implemented now**. To keep the seam open:
+RevenueCat now provides the Phase 10 `relive_pro` entitlement. RevenueCat Funnels and Stripe web subscriptions remain later, optional release work. The implementation keeps the monetization boundary swappable:
 
-- Represent Pro state behind an **entitlement interface** in shared code (e.g. `EntitlementProvider` returning free/pro). Early phases can back it with a local stub.
-- Keep gating decisions (what Pro unlocks) in the domain/presentation layers so a real entitlement source can be swapped in later.
-- Do not add RevenueCat/Stripe dependencies until the monetization phase.
+- Pro state is exposed through the shared `EntitlementProvider` interface; `UnavailableEntitlementProvider` is the safe Free fallback when no usable public key is configured.
+- RevenueCat is the platform implementation, while feature gates remain in shared domain/presentation policy so the entitlement source can be replaced without coupling the UI to the SDK.
+- RevenueCat public keys and product identifiers are configuration-driven. RevenueCat secret keys never belong in a client build. Do not add Funnels or Stripe dependencies unless their later release work is explicitly started.
 
 See [`ROADMAP.md`](ROADMAP.md) Phase 10 and [`RELEASE.md`](RELEASE.md).
 

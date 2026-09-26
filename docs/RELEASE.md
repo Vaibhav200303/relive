@@ -68,6 +68,6 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 
 ## Notes
 
-- Monetization items (3–5) depend on Phase 9 and are added only when that phase begins; no RevenueCat/Stripe dependencies before then ([`ARCHITECTURE.md`](ARCHITECTURE.md) §9).
+- RevenueCat is implemented for Phase 10; its store configuration, public keys, and device validation remain release work. RevenueCat Funnels and Stripe remain optional later work ([`ARCHITECTURE.md`](ARCHITECTURE.md) §9).
 - Keep secrets (keystores, API keys, signing certs) out of the repository.
 - Update this file as items are configured; record any structural decisions in [`DECISIONS.md`](DECISIONS.md).
