@@ -45,7 +45,6 @@ kotlin {
     sourceSets {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
-            implementation(libs.compose.uiTooling)
             implementation(libs.androidx.core.ktx)
             implementation(libs.sqldelight.androidDriver)
             implementation(libs.sqlcipher.android)
@@ -106,12 +105,26 @@ sqldelight {
     }
 }
 
-dependencies {
-    androidRuntimeClasspath(libs.compose.uiTooling)
-}
-
 compose.resources {
     publicResClass = false
     packageOfResClass = "relive.shared.generated.resources"
     generateResClass = auto
+}
+
+// The shipped onboarding is composed from native UI elements. These retained design iterations
+// are source references only and must not be copied into application packages.
+tasks.named("copyNonXmlValueResourcesForCommonMain") {
+    doLast {
+        outputs.files.files
+            .filter { generatedResource ->
+                generatedResource.isFile &&
+                    generatedResource.name.startsWith("onboarding_") &&
+                    generatedResource.extension == "png"
+            }
+            .forEach { generatedResource ->
+                check(generatedResource.delete()) {
+                    "Could not exclude obsolete onboarding resource ${generatedResource.name}"
+                }
+            }
+    }
 }
