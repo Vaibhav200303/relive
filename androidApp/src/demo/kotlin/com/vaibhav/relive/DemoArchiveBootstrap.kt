@@ -41,10 +41,12 @@ object DemoArchiveBootstrap {
     }
 
     private suspend fun seedArchive(context: Context, container: ReliveAppContainer) {
+        val childTimelineId = TimelineId("shipaton-demo-timeline-small-wins-v1")
+        val migrateSmallWins = container.timelineRepository.findCustom(childTimelineId)?.name == "Small wins"
         val timelines = listOf(
             DemoTimeline("shipaton-demo-timeline-adventures-v1", "Adventures", TimelineWallpaper.SoftPeach),
             DemoTimeline("shipaton-demo-timeline-together-v1", "Together", TimelineWallpaper.BlushPink),
-            DemoTimeline("shipaton-demo-timeline-small-wins-v1", "Small wins", TimelineWallpaper.SageGreen),
+            DemoTimeline(childTimelineId.value, "Aarav's little years", TimelineWallpaper.PowderBlue),
         )
         timelines.forEach { demo ->
             val id = TimelineId(demo.id)
@@ -55,6 +57,13 @@ object DemoArchiveBootstrap {
                 )
             }
         }
+        if (migrateSmallWins) {
+            container.timelineRepository.rename(childTimelineId, "Aarav's little years")
+            container.timelineRepository.updateAppearance(
+                childTimelineId,
+                TimelineAppearance(wallpaper = TimelineWallpaper.PowderBlue),
+            )
+        }
 
         val media = mapOf(
             "on-this-day" to installAsset(context, container, "mountain-sunrise.png", "on-this-day.png"),
@@ -62,21 +71,29 @@ object DemoArchiveBootstrap {
             "dinner" to installAsset(context, container, "family-dinner.png", "dinner.png"),
             "cover-adventures" to installAsset(context, container, "mountain-sunrise.png", "cover-adventures.png"),
             "cover-together" to installAsset(context, container, "family-dinner.png", "cover-together.png"),
-            "cover-small-wins" to installAsset(context, container, "campus-picnic.png", "cover-small-wins.png"),
-            "season-campus" to installAsset(context, container, "campus-picnic.png", "season-campus.png"),
-            "season-mountains" to installAsset(context, container, "mountain-sunrise.png", "season-mountains.png"),
-            "season-dinner" to installAsset(context, container, "family-dinner.png", "season-dinner.png"),
-            "ridge" to installAsset(context, container, "mountain-sunrise.png", "ridge.png"),
+            "cover-little-years" to installAsset(context, container, "child-picnic.png", "cover-little-years-v2.png"),
+            "child-rain-boots" to installAsset(context, container, "child-rain-boots.png", "child-rain-boots.png"),
+            "child-breakfast-words" to installAsset(context, container, "child-breakfast-words.png", "child-breakfast-words.png"),
+            "child-picnic" to installAsset(context, container, "child-picnic.png", "child-picnic.png"),
+            "child-block-tower" to installAsset(context, container, "child-block-tower.png", "child-block-tower.png"),
+            "last-week-ride" to installAsset(context, container, "jacaranda-bike-ride.png", "last-week-ride-v2.png"),
+            "first-trip" to installAsset(context, container, "coastal-overlook.png", "first-trip-v2.png"),
+            "season-sunlit-park" to installAsset(context, container, "season-sunlit-park.png", "season-sunlit-park-v2.png"),
+            "season-rainy-window" to installAsset(context, container, "season-rainy-window.png", "season-rainy-window-v2.png"),
+            "season-frosty-morning" to installAsset(context, container, "season-frosty-morning.png", "season-frosty-morning-v2.png"),
         )
         val timelineCovers = mapOf(
             "shipaton-demo-timeline-adventures-v1" to media.getValue("cover-adventures"),
             "shipaton-demo-timeline-together-v1" to media.getValue("cover-together"),
-            "shipaton-demo-timeline-small-wins-v1" to media.getValue("cover-small-wins"),
+            "shipaton-demo-timeline-small-wins-v1" to media.getValue("cover-little-years"),
         )
         timelineCovers.forEach { (timelineId, coverPhotoRef) ->
             container.timelineRepository.updateCoverPhoto(TimelineId(timelineId), coverPhotoRef)
         }
-        demoMoments(media).forEach { seeded ->
+        val moments = demoMoments(media)
+        if (migrateSmallWins) migrateSmallWinsMoments(container, moments)
+        migrateDuplicateMomentMedia(container, moments)
+        moments.forEach { seeded ->
             if (container.momentRepository.findById(seeded.moment.id) == null) {
                 container.momentRepository.insert(
                     seeded.moment,
@@ -84,6 +101,41 @@ object DemoArchiveBootstrap {
                 )
             }
         }
+    }
+
+    private suspend fun migrateDuplicateMomentMedia(
+        container: ReliveAppContainer,
+        replacements: List<SeededMoment>,
+    ) {
+        replacements
+            .filter { it.moment.id.value in DISTINCT_MEDIA_MOMENT_IDS }
+            .forEach { seeded ->
+                val existing = container.momentRepository.findById(seeded.moment.id) ?: return@forEach
+                if (existing.attachments.none { it.storageRef.value in RETIRED_DUPLICATE_MEDIA_REFS }) return@forEach
+                container.momentRepository.updateEditable(
+                    seeded.moment.copy(
+                        createdAt = existing.createdAt,
+                        updatedAt = Instant(maxOf(System.currentTimeMillis(), existing.createdAt.epochMilliseconds)),
+                    ),
+                )
+            }
+    }
+
+    private suspend fun migrateSmallWinsMoments(
+        container: ReliveAppContainer,
+        replacements: List<SeededMoment>,
+    ) {
+        replacements
+            .filter { it.moment.id.value in CHILD_MOMENT_IDS }
+            .forEach { seeded ->
+                val existing = container.momentRepository.findById(seeded.moment.id) ?: return@forEach
+                val replacement = seeded.moment.copy(
+                    createdAt = existing.createdAt,
+                    updatedAt = Instant(maxOf(System.currentTimeMillis(), existing.createdAt.epochMilliseconds)),
+                )
+                container.momentRepository.updateEditable(replacement)
+                container.momentRepository.setFeeling(replacement.id, replacement.feeling)
+            }
     }
 
     private fun installAsset(
@@ -109,20 +161,20 @@ object DemoArchiveBootstrap {
         val now = System.currentTimeMillis()
         val adventures = "shipaton-demo-timeline-adventures-v1"
         val together = "shipaton-demo-timeline-together-v1"
-        val wins = "shipaton-demo-timeline-small-wins-v1"
+        val littleYears = "shipaton-demo-timeline-small-wins-v1"
         return listOf(
             SeededMoment(
                 moment(
                     id = "shipaton-demo-current-window-v1",
                     createdAt = currentWeekMoment(hoursAgo = 2),
-                    title = "Sunlight after the rain",
-                    content = "The pavement was still shining, and the whole walk home felt like an unexpected extra hour in the day.",
+                    title = "Puddles in new rain boots",
+                    content = "Aarav found every puddle on the walk home and gave each one the same delighted jump.",
                     feeling = MomentFeeling.Great,
                     location = "Riverside walk",
-                    tags = listOf("everyday", "outside"),
-                    attachments = listOf(attachment("current-window", media.getValue("campus"))),
+                    tags = listOf("aarav", "outside", "little things"),
+                    attachments = listOf(attachment("child-rain-boots", media.getValue("child-rain-boots"))),
                 ),
-                setOf(wins),
+                setOf(littleYears),
             ),
             SeededMoment(
                 moment(
@@ -155,7 +207,7 @@ object DemoArchiveBootstrap {
                     content = "We skipped the busy road and took the lane with the jacarandas instead. It added ten minutes and made the whole evening better.",
                     feeling = MomentFeeling.Great,
                     tags = listOf("friends", "outside"),
-                    attachments = listOf(attachment("last-week-ride", media.getValue("ridge"))),
+                    attachments = listOf(attachment("last-week-ride", media.getValue("last-week-ride"))),
                 ),
                 setOf(adventures, together),
             ),
@@ -175,12 +227,13 @@ object DemoArchiveBootstrap {
                 moment(
                     id = "shipaton-demo-last-week-reset-v1",
                     createdAt = lastWeekMoment(dayOffset = 5, hour = 8),
-                    title = "A slower morning",
-                    content = "The to-do list was still there, but it could wait until after breakfast and a window-open kind of pause.",
+                    title = "Three new words at breakfast",
+                    content = "Between bites of toast, Aarav named the moon, the spoon, and our dog. We wrote them down before the day got busy.",
                     feeling = MomentFeeling.Good,
-                    tags = listOf("thoughts", "everyday"),
+                    tags = listOf("aarav", "words", "milestone"),
+                    attachments = listOf(attachment("child-breakfast-words", media.getValue("child-breakfast-words"))),
                 ),
-                setOf(wins),
+                setOf(littleYears),
             ),
             SeededMoment(
                 moment(
@@ -200,15 +253,15 @@ object DemoArchiveBootstrap {
                 moment(
                     id = "shipaton-demo-campus-v1",
                     createdAt = Instant(now - 18L * DAY_MS),
-                    title = "One last picnic before finals",
-                    content = "A blanket, too many snacks, and the optimistic promise that we would start studying after sunset.",
+                    title = "A picnic made for running",
+                    content = "Aarav barely stopped for strawberries. The whole afternoon was a loop between the blanket, the trees, and our open arms.",
                     favorite = true,
                     feeling = MomentFeeling.Great,
                     location = "University gardens",
-                    tags = listOf("friends", "university"),
-                    attachments = listOf(attachment("campus", media.getValue("campus"))),
+                    tags = listOf("aarav", "family", "outside"),
+                    attachments = listOf(attachment("child-picnic", media.getValue("child-picnic"))),
                 ),
-                setOf(together, wins),
+                setOf(together, littleYears),
             ),
             SeededMoment(
                 moment(
@@ -233,9 +286,9 @@ object DemoArchiveBootstrap {
                     feeling = MomentFeeling.Good,
                     tags = listOf("everyday", "photography"),
                     attachments = listOf(
-                        attachment("season-1", media.getValue("season-campus"), 0),
-                        attachment("season-2", media.getValue("season-mountains"), 1),
-                        attachment("season-3", media.getValue("season-dinner"), 2),
+                        attachment("season-1", media.getValue("season-sunlit-park"), 0),
+                        attachment("season-2", media.getValue("season-rainy-window"), 1),
+                        attachment("season-3", media.getValue("season-frosty-morning"), 2),
                     ),
                 ),
                 setOf(adventures),
@@ -244,22 +297,23 @@ object DemoArchiveBootstrap {
                 moment(
                     id = "shipaton-demo-achievement-v1",
                     createdAt = Instant(now - 145L * DAY_MS),
-                    title = "Submitted",
-                    content = "The project that lived in half-finished notes for months is finally out in the world. I expected fireworks; instead there was a quiet cup of tea and a very good kind of tired.",
+                    title = "The tallest block tower yet",
+                    content = "Six blocks high, then seven. When it tumbled, Aarav laughed, gathered every piece, and started again.",
                     feeling = MomentFeeling.Great,
-                    tags = listOf("achievement", "small wins"),
+                    tags = listOf("aarav", "play", "milestone"),
+                    attachments = listOf(attachment("child-block-tower", media.getValue("child-block-tower"))),
                 ),
-                setOf(wins),
+                setOf(littleYears),
             ),
             SeededMoment(
                 moment(
                     id = "shipaton-demo-long-thought-v1",
                     createdAt = Instant(now - 230L * DAY_MS),
-                    title = "A note for the slower days",
-                    content = "Not every day needs a headline. Some are made of the kettle clicking off, a familiar song from the next room, clean sheets, a message answered at the right time, and the walk taken only because the evening air felt kind. I want to remember that a life is not built only from milestones. It is also built from these ordinary pieces, almost invisible while they are happening, that later become the texture of a whole season.",
-                    tags = listOf("thoughts", "everyday"),
+                    title = "A note for future us",
+                    content = "Today you wanted the blue cup, one more story, and to hold both our hands on the stairs. None of it looked remarkable while it was happening, which is exactly why I want to keep it.",
+                    tags = listOf("aarav", "everyday", "family"),
                 ),
-                setOf(wins),
+                setOf(littleYears),
             ),
             SeededMoment(
                 moment(
@@ -269,7 +323,7 @@ object DemoArchiveBootstrap {
                     content = "The map said ten minutes. Forty minutes later we found the overlook we did not know we were looking for.",
                     location = "North ridge",
                     tags = listOf("travel", "friends"),
-                    attachments = listOf(attachment("ridge", media.getValue("ridge"))),
+                    attachments = listOf(attachment("first-trip", media.getValue("first-trip"))),
                 ),
                 setOf(adventures, together),
             ),
@@ -354,6 +408,24 @@ object DemoArchiveBootstrap {
 
     private data class DemoTimeline(val id: String, val name: String, val wallpaper: TimelineWallpaper)
     private data class SeededMoment(val moment: Moment, val timelineIds: Set<String>)
+    private val CHILD_MOMENT_IDS = setOf(
+        "shipaton-demo-current-window-v1",
+        "shipaton-demo-last-week-reset-v1",
+        "shipaton-demo-campus-v1",
+        "shipaton-demo-achievement-v1",
+        "shipaton-demo-long-thought-v1",
+    )
+    private val DISTINCT_MEDIA_MOMENT_IDS = setOf(
+        "shipaton-demo-last-week-ride-v1",
+        "shipaton-demo-photo-journal-v1",
+        "shipaton-demo-first-trip-v1",
+    )
+    private val RETIRED_DUPLICATE_MEDIA_REFS = setOf(
+        "images/demo-ridge.png",
+        "images/demo-season-campus.png",
+        "images/demo-season-mountains.png",
+        "images/demo-season-dinner.png",
+    )
     private const val DAY_MS = 86_400_000L
     private const val HOUR_MS = 3_600_000L
 }
