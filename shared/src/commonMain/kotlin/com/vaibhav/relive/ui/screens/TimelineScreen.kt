@@ -7,8 +7,10 @@ import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -560,14 +562,9 @@ fun TimelineScreen(
     // and collapsed in place so AnimatedContent still sees a real false -> true transition
     // (ADR-0061). Per ADR-0059 no focus is requested and no IME is opened. A preserved draft is
     // reopened as it stands rather than being prepared over.
-    // One travel speed for the whole surface: the pace the return-to-top control already moves
-    // at, so seating the composer reads as this surface moving rather than a jump cut.
-    val composerSeatPaceMillis = ReliveTheme.motion.durations.short4
-    // The last stretch of that travel decelerates into place, and even the shortest hop — from
-    // rest, with the composer already on screen — takes this long, so focusing All moments reads
-    // as one continuous motion instead of a snap.
-    val composerSeatLandingEasing = ReliveTheme.motion.easings.emphasizedDecelerate
-    val composerSeatMinLandingMillis = ReliveTheme.motion.durations.medium4
+    // Cover distant archive ground quickly, then hand the measured final viewport to a critically
+    // damped spring. It preserves the fast initial impulse without bouncing past the composer.
+    val composerSeatPaceMillis = ReliveTheme.motion.durations.short1
     val composerSeatReduceMotion = ReliveTheme.reduceMotion
     val openHomeComposer: () -> Unit = {
         // Already open means this is a request to go back to it, not to start over: re-preparing
@@ -589,8 +586,7 @@ fun TimelineScreen(
                     listState?.scrollToItemAtPace(
                         targetIndex = homeHeaderCount,
                         millisPerViewport = composerSeatPaceMillis,
-                        landingEasing = composerSeatLandingEasing,
-                        minLandingMillis = composerSeatMinLandingMillis,
+                        springLanding = true,
                     )
                 }
             } finally {
@@ -2069,9 +2065,8 @@ private fun TimelineContent(
                                     } else {
                                         listState.scrollToItemAtPace(
                                             targetIndex = sheetTopIndex,
-                                            millisPerViewport = motion.durations.short4,
-                                            landingEasing = motion.easings.emphasizedDecelerate,
-                                            minLandingMillis = motion.durations.medium2,
+                                            millisPerViewport = motion.durations.short1,
+                                            springLanding = true,
                                         )
                                     }
                                 } finally {
@@ -2421,19 +2416,16 @@ private fun TimelineCoverBackdrop(
  * lets the last frame be clamped to what is actually left — so the feed lands exactly on the target
  * instead of overshooting past it and springing back.
  *
- * A steady pace has a hard edge, though: it stops dead on arrival, and over a short distance the
- * whole travel is that edge — a jump cut. So once the target is measured and the distance is
- * exactly known, the remainder is flown as one [landingEasing] glide instead, lasting at least
- * [minLandingMillis] so even a half-viewport hop reads as movement rather than a snap. With no
- * easing supplied the constant pace runs to the very end, as before.
+ * A steady pace has a hard edge, though: it stops dead on arrival. When [springLanding] is set,
+ * the measured final viewport inherits the travel velocity and settles with a critically damped
+ * spring. That gives the motion a fast initial impulse and a gentle finish without overshoot.
  *
  * A user drag takes the scroll mutex at a higher priority, so touching the screen cancels this.
  */
 private suspend fun LazyListState.scrollToItemAtPace(
     targetIndex: Int,
     millisPerViewport: Int,
-    landingEasing: Easing? = null,
-    minLandingMillis: Int = 0,
+    springLanding: Boolean = false,
 ) {
     scroll {
         var lastFrameNanos = withFrameNanos { it }
@@ -2450,26 +2442,25 @@ private suspend fun LazyListState.scrollToItemAtPace(
                 else -> Float.MAX_VALUE
             }
             if (remaining == 0f) break
-            if (landingEasing != null && remaining != null && remaining != Float.MAX_VALUE) {
-                val landingMillis = maxOf(
-                    minLandingMillis,
-                    (abs(remaining) / viewport * millisPerViewport).roundToInt(),
-                )
-                if (landingMillis <= 0) {
-                    scrollBy(remaining)
-                    break
-                }
-                val startNanos = withFrameNanos { it }
+            if (springLanding && remaining != null && remaining != Float.MAX_VALUE) {
                 var consumed = 0f
-                while (true) {
-                    val now = withFrameNanos { it }
-                    val fraction = ((now - startNanos) / (landingMillis * 1_000_000f)).coerceIn(0f, 1f)
-                    val glideTo = remaining * landingEasing.transform(fraction)
-                    scrollBy(glideTo - consumed)
-                    consumed = glideTo
-                    if (fraction >= 1f) break
+                val pace = viewport * 1000f / millisPerViewport
+                // Keep the inherited velocity below the spring's critical crossing velocity when
+                // only a small remainder is visible, so even a short hop settles without bounce.
+                val landingVelocity = minOf(pace, abs(remaining) * 20f)
+                animate(
+                    initialValue = 0f,
+                    targetValue = remaining,
+                    initialVelocity = if (remaining < 0f) -landingVelocity else landingVelocity,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = 420f,
+                    ),
+                ) { value, _ ->
+                    scrollBy(value - consumed)
+                    consumed = value
                 }
-                // Content can resize mid-glide (images settling, items animating); square up any
+                // Content can resize mid-settle (images settling, items animating); square up any
                 // drift so the landing is exact.
                 layoutInfo.visibleItemsInfo.firstOrNull { it.index == targetIndex }?.let {
                     scrollBy((it.offset - layoutInfo.viewportStartOffset).toFloat())
