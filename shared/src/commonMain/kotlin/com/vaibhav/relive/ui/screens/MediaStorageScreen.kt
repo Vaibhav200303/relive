@@ -151,7 +151,7 @@ private fun ArchiveHero(insights: ArchiveInsights) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(d.radii.largeIncreased),
-        color = ReliveTheme.colors.surfaceCard.copy(alpha = 0.94f),
+        color = ReliveTheme.colors.surfaceCard,
         shadowElevation = 1.dp,
     ) {
         BoxWithConstraints(Modifier.padding(d.spacing.xl)) {
@@ -381,7 +381,7 @@ private fun ArchiveSectionCard(title: String, subtitle: String, content: @Compos
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(d.radii.largeIncreased),
-        color = ReliveTheme.colors.surfaceCard.copy(alpha = 0.88f),
+        color = ReliveTheme.colors.surfaceCard,
         shadowElevation = 1.dp,
     ) {
         Column(Modifier.padding(d.spacing.lg), verticalArrangement = Arrangement.spacedBy(d.spacing.md)) {
