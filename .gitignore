@@ -2,6 +2,10 @@
 .kotlin
 .gradle
 **/build/
+!androidApp/build/
+androidApp/build/*
+!androidApp/build/judge/
+!androidApp/build/judge/**
 xcuserdata
 !src/**/build/
 local.properties

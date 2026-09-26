@@ -181,13 +181,14 @@ The judge archive is generic, uses original project-owned media, and is seeded i
 
 ## Shipaton judge quick start
 
-1. Clone the repository and meet the requirements below.
-2. Add a RevenueCat Test Store public SDK key to untracked local configuration. The public legal URLs are included by default.
-3. Build and install `demoDebug`.
-4. Launch the app; the showcase archive is seeded once on first launch.
-5. Open **Relive Pro** to test purchase and restore through RevenueCat Test Store.
-6. Explore **On This Day**, **From Your Past**, **Mood Insights**, custom timelines, backup, and export.
-7. Create a new Moment to verify that the judge build uses normal persistent storage.
+1. Download the latest [Relive demo APK](androidApp/build/judge/relive-demo-debug.apk) from the repository, or clone the repository and meet the requirements below.
+2. Install the APK on an Android device or emulator (API 24 or newer). The included build is configured for RevenueCat Test Store, so no SDK key setup is needed to try purchases.
+3. Launch the app; the showcase archive is seeded once on first launch.
+4. Open **Relive Pro** to test purchase and restore through RevenueCat Test Store.
+5. Explore **On This Day**, **From Your Past**, **Mood Insights**, custom timelines, backup, and export.
+6. Create a new Moment to verify that the judge build uses normal persistent storage.
+
+The APK is tracked with Git LFS. A source build from a fresh clone still needs a RevenueCat Test Store public SDK key; Git LFS supplies the prebuilt APK, not the key used by local builds.
 
 ## Run locally
 
