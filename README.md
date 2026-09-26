@@ -10,11 +10,11 @@ Capture now. Let time organize it. Rediscover it later.
 
 <p align="center">
   <a href="shipaton/screenshots/01-timeline.png"><img src="shipaton/screenshots/01-timeline.png" alt="Relive timeline with a photo Moment, place, tags, and feeling" width="23%"></a>
-  <a href="shipaton/screenshots/03-rediscover.png"><img src="shipaton/screenshots/03-rediscover.png" alt="Relive On This Day rediscovery collection" width="23%"></a>
-  <a href="shipaton/screenshots/04-mood-insights.png"><img src="shipaton/screenshots/04-mood-insights.png" alt="Relive Mood Insights based on saved Moment feelings" width="23%"></a>
-  <a href="shipaton/screenshots/06-relive-pro.png"><img src="shipaton/screenshots/06-relive-pro.png" alt="Relive Pro plans and premium features" width="23%"></a>
+  <a href="shipaton/screenshots/06-search.png"><img src="shipaton/screenshots/06-search.png" alt="Relive local memory search by words, tags, and places" width="23%"></a>
+  <a href="shipaton/screenshots/08-backup.png"><img src="shipaton/screenshots/08-backup.png" alt="Relive private Google Drive backup and restore" width="23%"></a>
+  <a href="shipaton/screenshots/09-export.png"><img src="shipaton/screenshots/09-export.png" alt="Relive Keepsake PDF and portable archive export" width="23%"></a>
 </p>
-<p align="center"><sub>Timeline · Rediscover · Mood Insights · Relive Pro</sub></p>
+<p align="center"><sub>Timeline · Search · Backup & restore · Export</sub></p>
 
 ## Why Relive?
 
@@ -22,13 +22,19 @@ Most tools are good at storing pieces of a life. Camera rolls hold media, notes 
 
 Relive is designed around **returning to your memories**, not collecting more content. A Moment keeps the writing and media together with its time, place, tags, feeling, favourite state, and timeline memberships. The chronological card-and-rail presentation turns those Moments into a personal narrative rather than another folder to maintain.
 
+Conventional device backups often make it difficult to choose what is worth preserving: unnecessary files consume cloud space, and managing the backup later can be cumbersome. Relive keeps the live archive local and puts the person in control. Backup is optional, its schedule and network policy are explicit, and exports can be limited to the memories and date range they choose.
+
+Finding one memory should not mean endlessly scrolling through years of content. Relive provides local search across saved writing, tags, and readable places, plus a calendar route back to a specific date. When a memory deserves to leave the app, it can become a printable Keepsake PDF or a portable `.relive` archive that can be saved or shared with someone else.
+
 ## The product idea
 
 - **Capture without friction.** Save a thought, one or more photos, video, or audio without turning memory keeping into work.
 - **Let time organize naturally.** Every Moment belongs in the chronological archive and can also appear in multiple custom timelines without duplication.
 - **Rediscover, don't just archive.** On This Day, From Your Past, Favourites, and All Photos create natural ways back into the archive.
+- **Find memories without the endless scroll.** Search writing, tags, and saved places locally, or jump to a date from the calendar.
 - **Private by design.** Relive is personal rather than performative: no account system, social graph, public feed, or application backend.
-- **Keep ownership practical.** Optional backup, portable archives, and Keepsake PDFs prevent memories from being trapped inside one screen or device.
+- **Control what leaves the device.** Optional backup settings make cloud use deliberate, while export lets people choose specific timelines, memories, and date ranges.
+- **Keep ownership practical.** Turn selected Moments into a beautiful printable Keepsake PDF or a portable archive to save or share.
 
 ## The Relive experience
 
@@ -46,6 +52,10 @@ The signature newest-first feed presents Moments as editorial cards along a cont
 
 Create custom timelines with their own cover and appearance, place one Moment in several timelines without copying it, and return through search, favourites, All Photos, or the Rediscover collections.
 
+### Search
+
+Search the archive without paging through the entire timeline. Relive matches saved writing, tags, and readable places locally, offers archive-aware suggestions, and includes a calendar route to a particular date.
+
 ### Rediscover
 
 Rediscover is the reason the archive exists. On This Day resurfaces the same calendar date from earlier years; From Your Past brings back older Moments; Favourites keeps personally important memories close.
@@ -60,15 +70,15 @@ The archive is local-first. Memories remain in Relive's private app storage unle
 
 ### Google Drive backup
 
-Android backup is optional and user-authorized. Relive requests only `https://www.googleapis.com/auth/drive.appdata`, stores versioned backup bundles in the hidden app-specific Drive folder, and does not persist access or refresh tokens. Backup and transactional restore preserve Moment data, relationships, and managed media. See [Google Drive setup](docs/GOOGLE_DRIVE_SETUP.md).
+Android backup is optional and user-authorized, with controls for automatic backup and the network it may use. Relive requests only `https://www.googleapis.com/auth/drive.appdata`, stores versioned backup bundles in the hidden app-specific Drive folder, and does not persist access or refresh tokens. Backup and transactional restore preserve Moment data, relationships, and managed media. See [Google Drive setup](docs/GOOGLE_DRIVE_SETUP.md).
 
 ### Portable Relive archive
 
-A `.relive` export contains a versioned manifest, Moments, custom timelines, memberships, timeline appearance, media, byte counts, and SHA-256 integrity hashes. Relive validates archive paths, entry limits, metadata relationships, and checksums before opening it as a read-only archive.
+A `.relive` export contains a versioned manifest, selected Moments, custom timelines, memberships, timeline appearance, media, byte counts, and SHA-256 integrity hashes. It is a view-only copy designed for saving or sharing while the live archive remains untouched. Relive validates archive paths, entry limits, metadata relationships, and checksums before opening it as a read-only archive.
 
 ### Keepsake PDF
 
-Keepsake export creates a human-readable, printable A4 memory diary with writing and photos. Video and audio remain part of the portable archive; they are not presented as playable media inside the PDF.
+Keepsake export turns selected Moments into a beautiful, human-readable A4 memory diary with writing and photos—ready to print, save, or share with someone else. Video and audio remain part of the portable archive; they are not presented as playable media inside the PDF.
 
 Exported files are intentionally unencrypted and leave App Lock, so Relive discloses that before creation and uses user-controlled system save/share destinations.
 
@@ -96,8 +106,13 @@ There is no local "pretend Pro" switch. Public SDK keys are supplied at build ti
 
 <table>
   <tr>
-    <td align="center"><a href="shipaton/screenshots/01-timeline.png"><img src="shipaton/screenshots/01-timeline.png" alt="Relive timeline" width="100%"></a><br><sub>Timeline</sub></td>
-    <td align="center"><a href="shipaton/screenshots/03-rediscover.png"><img src="shipaton/screenshots/03-rediscover.png" alt="Relive On This Day" width="100%"></a><br><sub>Rediscover</sub></td>
+    <td align="center"><a href="shipaton/screenshots/10-home.png"><img src="shipaton/screenshots/10-home.png" alt="Relive Home with Rediscover collections" width="100%"></a><br><sub>Home & Rediscover</sub></td>
+    <td align="center"><a href="shipaton/screenshots/01-timeline.png"><img src="shipaton/screenshots/01-timeline.png" alt="Relive timeline" width="100%"></a><br><sub>All Moments</sub></td>
+    <td align="center"><a href="shipaton/screenshots/02-moment.png"><img src="shipaton/screenshots/02-moment.png" alt="Relive On This Day Moment" width="100%"></a><br><sub>On This Day</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="shipaton/screenshots/05-timelines.png"><img src="shipaton/screenshots/05-timelines.png" alt="Relive custom timelines" width="100%"></a><br><sub>Custom timelines</sub></td>
+    <td align="center"><a href="shipaton/screenshots/06-search.png"><img src="shipaton/screenshots/06-search.png" alt="Relive local search by writing, tags, and places" width="100%"></a><br><sub>Search</sub></td>
     <td align="center"><a href="shipaton/screenshots/04-mood-insights.png"><img src="shipaton/screenshots/04-mood-insights.png" alt="Relive Mood Insights" width="100%"></a><br><sub>Mood Insights</sub></td>
   </tr>
   <tr>
@@ -105,9 +120,12 @@ There is no local "pretend Pro" switch. Public SDK keys are supplied at build ti
     <td align="center"><a href="shipaton/screenshots/08-backup.png"><img src="shipaton/screenshots/08-backup.png" alt="Relive Google Drive backup and restore" width="100%"></a><br><sub>Backup & restore</sub></td>
     <td align="center"><a href="shipaton/screenshots/09-export.png"><img src="shipaton/screenshots/09-export.png" alt="Relive export format selection" width="100%"></a><br><sub>Export</sub></td>
   </tr>
+  <tr>
+    <td align="center" colspan="3"><a href="shipaton/screenshots/03-timeline-theme.png"><img src="shipaton/screenshots/03-timeline-theme.png" alt="Relive timeline theme and wallpaper selection" width="33%"></a><br><sub>Timeline themes</sub></td>
+  </tr>
 </table>
 
-All screenshots show the real Android `demo` flavor with intentionally seeded, project-owned showcase data.
+All screenshots show the real Android `demo` flavor with intentionally seeded, project-owned showcase data. Submission assets are exported at the Shipaton-required **1179 × 2556 px** portrait size with no device frames.
 
 ## Built with
 
