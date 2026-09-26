@@ -146,7 +146,7 @@ The repository's source-of-truth documents are the [product specification](docs/
 | Variant | Purpose | Demo data | RevenueCat configuration |
 | --- | --- | --- | --- |
 | `demoDebug` | Shipaton judge build | Idempotent generic archive | Test Store supported |
-| `friendsShare` | Clean shareable APK for direct testing | None | Test Store supported; debuggable and debug-signed |
+| `friendsReleaseCandidate` | Relive Release Candidate APK for direct testing | None | Test Store supported; debuggable and debug-signed |
 | `productionDebug` / `productionRelease` | Normal product configuration | None | Production public SDK key only; Test Store rejected |
 
 The demo bootstrap writes through the same repositories and media store as a real Moment. It is compiled only into the `demo` flavor; `friends` and `production` compile a no-op bootstrap and package no demo assets.
@@ -214,7 +214,7 @@ The APK is written to `androidApp/build/outputs/apk/demo/debug/`.
 ### Other Android artifacts
 
 ```bash
-./gradlew :androidApp:assembleFriendsShare
+./gradlew :androidApp:assembleFriendsReleaseCandidate
 ./gradlew :androidApp:assembleProductionDebug
 ```
 
@@ -233,7 +233,7 @@ The repository includes domain, presentation, persistence, migration, backup/res
   :androidApp:testProductionDebugUnitTest \
   :androidApp:lint \
   :androidApp:assembleDemoDebug \
-  :androidApp:assembleFriendsShare \
+  :androidApp:assembleFriendsReleaseCandidate \
   :androidApp:assembleProductionDebug
 ```
 

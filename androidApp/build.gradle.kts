@@ -127,10 +127,10 @@ android {
         }
     }
     buildTypes {
-        create("share") {
+        create("releaseCandidate") {
             initWith(getByName("release"))
-            // Friends shares use the RevenueCat Test Store, which the SDK only permits in
-            // debuggable APKs. This keeps release-like packaging while retaining that contract.
+            // The Release Candidate uses the RevenueCat Test Store, which the SDK only permits
+            // in debuggable APKs. This keeps release-like packaging while retaining that contract.
             isDebuggable = true
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += listOf("release")
@@ -169,8 +169,17 @@ android {
 
 androidComponents {
     beforeVariants { variant ->
-        if (variant.buildType == "share" && variant.productFlavors.none { it.second == "friends" }) {
+        if (variant.buildType == "releaseCandidate" && variant.productFlavors.none { it.second == "friends" }) {
             variant.enable = false
+        }
+    }
+    onVariants { variant ->
+        if (variant.name == "friendsReleaseCandidate") {
+            variant.outputs.forEach { output ->
+                (output as com.android.build.api.variant.impl.VariantOutputImpl)
+                    .outputFileName
+                    .set("relive-release-candidate.apk")
+            }
         }
     }
 }

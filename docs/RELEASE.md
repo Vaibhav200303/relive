@@ -12,7 +12,7 @@ Status legend: ☐ not started · ◐ in progress · ☑ done.
 - ☑ Application ids confirmed: production `com.vaibhav.relive`, judge demo `com.vaibhav.relive.demo`, and friends `com.vaibhav.relive.friends`.
 - ☐ `minSdk 24` / `targetSdk 36` / `compileSdk 36` reviewed against store requirements at submission time.
 - ◐ R8 is deliberately disabled because the current Kotlin 2.4/AGP toolchain reports metadata-compatibility warnings; release builds and lint pass, with physical-device smoke testing still required.
-- ◐ Judge `demoDebug`, friends `friendsShare`, production release APK, and production AAB are produced; release signing and physical smoke testing remain required. RevenueCat Test Store cannot run in non-debuggable APKs, so the shareable friends artifact is the debuggable, debug-signed `friendsShare` APK unless a separate production-key release is intended.
+- ◐ Judge `demoDebug`, Relive Release Candidate, production release APK, and production AAB are produced; release signing and physical smoke testing remain required. RevenueCat Test Store cannot run in non-debuggable APKs, so the Relive Release Candidate is debuggable and debug-signed unless a separate production-key release is intended.
 - ☐ Google Play listing: title, description, category, content rating, data-safety form.
 
 ## 2. iOS build & signing  ☐

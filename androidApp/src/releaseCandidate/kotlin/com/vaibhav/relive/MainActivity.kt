@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
-/** Shareable friends entry point; it intentionally uses the same production app wiring. */
+/** Release Candidate entry point; it intentionally uses the same production app wiring. */
 class MainActivity : ComponentActivity() {
     private lateinit var deviceAuthentication: AndroidDeviceAuthentication
     private lateinit var reminderService: AndroidRediscoverReminderService
