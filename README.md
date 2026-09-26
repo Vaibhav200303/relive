@@ -121,6 +121,9 @@ There is no local "pretend Pro" switch. Public SDK keys are supplied at build ti
     <td align="center"><a href="shipaton/screenshots/10-export.png"><img src="shipaton/screenshots/10-export.png" alt="Relive export format selection" width="100%"></a><br><sub>Export</sub></td>
   </tr>
   <tr>
+    <td align="center" colspan="3"><a href="shipaton/screenshots/11-composer.png"><img src="shipaton/screenshots/11-composer.png" alt="Relive inline Moment composer with location, tags, timelines, and media" width="33%"></a><br><sub>Capture a Moment</sub></td>
+  </tr>
+  <tr>
     <td align="center" colspan="3"><a href="shipaton/screenshots/01-timeline-theme.png"><img src="shipaton/screenshots/01-timeline-theme.png" alt="Relive timeline theme and wallpaper selection" width="33%"></a><br><sub>Timeline themes</sub></td>
   </tr>
 </table>
