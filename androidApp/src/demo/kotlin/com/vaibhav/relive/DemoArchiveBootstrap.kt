@@ -67,6 +67,8 @@ object DemoArchiveBootstrap {
 
         val media = mapOf(
             "on-this-day" to installAsset(context, container, "mountain-sunrise.png", "on-this-day.png"),
+            "beach-morning" to installAsset(context, container, "goa-morning-beach.png", "beach-morning.png"),
+            "beach-sunset" to installAsset(context, container, "coast-sunset-beach.png", "beach-sunset.png"),
             "campus" to installAsset(context, container, "campus-picnic.png", "campus.png"),
             "dinner" to installAsset(context, container, "family-dinner.png", "dinner.png"),
             "cover-adventures" to installAsset(context, container, "mountain-sunrise.png", "cover-adventures.png"),
@@ -251,6 +253,33 @@ object DemoArchiveBootstrap {
             ),
             SeededMoment(
                 moment(
+                    id = "shipaton-demo-beach-morning-2024-v1",
+                    createdAt = beachAnniversary(2024, 8, 45),
+                    title = "Morning by the sea",
+                    content = "We reached the sand before the beach got busy. The boats were already out, and we stayed until the sun warmed our shoulders.",
+                    favorite = true,
+                    feeling = MomentFeeling.Great,
+                    location = "Goa beach",
+                    tags = listOf("beach", "travel", "together"),
+                    attachments = listOf(attachment("beach-morning", media.getValue("beach-morning"))),
+                ),
+                setOf(adventures, together),
+            ),
+            SeededMoment(
+                moment(
+                    id = "shipaton-demo-beach-sunset-2023-v1",
+                    createdAt = beachAnniversary(2023, 17, 30),
+                    title = "One more sunset swim",
+                    content = "We left our sandals above the tide line and went back into the water for one last swim. The sky turned pink on the walk in.",
+                    feeling = MomentFeeling.Good,
+                    location = "West coast beach",
+                    tags = listOf("beach", "travel", "friends"),
+                    attachments = listOf(attachment("beach-sunset", media.getValue("beach-sunset"))),
+                ),
+                setOf(adventures),
+            ),
+            SeededMoment(
+                moment(
                     id = "shipaton-demo-campus-v1",
                     createdAt = Instant(now - 18L * DAY_MS),
                     title = "A picnic made for running",
@@ -375,6 +404,14 @@ object DemoArchiveBootstrap {
             set(Calendar.HOUR_OF_DAY, 9)
             set(Calendar.MINUTE, 30)
             set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        return Instant(calendar.timeInMillis)
+    }
+
+    private fun beachAnniversary(year: Int, hour: Int, minute: Int): Instant {
+        val calendar = Calendar.getInstance().apply {
+            set(year, Calendar.SEPTEMBER, 27, hour, minute, 0)
             set(Calendar.MILLISECOND, 0)
         }
         return Instant(calendar.timeInMillis)
