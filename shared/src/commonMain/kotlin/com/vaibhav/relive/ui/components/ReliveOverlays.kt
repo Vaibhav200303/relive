@@ -21,9 +21,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.vaibhav.relive.ui.theme.ReliveTheme
 import com.vaibhav.relive.ui.theme.reliveBottomSheetEnter
 import com.vaibhav.relive.ui.theme.reliveBottomSheetExit
@@ -50,10 +49,12 @@ fun ReliveBottomSheet(
     val state = remember { MutableTransitionState(false) }.also { it.targetState = visible }
 
     if (state.currentState || state.targetState) {
-        Popup(
-            alignment = Alignment.TopStart,
+        Dialog(
             onDismissRequest = onDismissRequest,
-            properties = PopupProperties(focusable = true),
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false,
+                decorFitsSystemWindows = false,
+            ),
         ) {
             Box(
                 modifier = Modifier

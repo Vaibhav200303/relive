@@ -40,6 +40,13 @@ class SlidingBackdropTest {
     }
 
     @Test
+    fun anUpwardDragAnywhereCollapsesAnExpandedBackdrop() {
+        assertEquals(650f, collapseBackdropBy(expansionPx = 800f, dragDelta = -150f))
+        assertEquals(0f, collapseBackdropBy(expansionPx = 100f, dragDelta = -150f))
+        assertEquals(800f, collapseBackdropBy(expansionPx = 800f, dragDelta = 150f))
+    }
+
+    @Test
     fun aSlowReleasePastHalfwayExpands() {
         assertEquals(
             max,

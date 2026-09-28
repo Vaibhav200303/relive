@@ -4,6 +4,9 @@ import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -15,6 +18,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
@@ -215,6 +219,47 @@ internal fun rememberBackdropExpansionConnection(
         }
     }
 }
+
+/** Lets an expanded backdrop collapse from an upward drag that starts anywhere on its viewport. */
+@Composable
+internal fun Modifier.expandedBackdropCollapseGesture(
+    state: BackdropExpansionState,
+): Modifier {
+    val motion = ReliveTheme.motion
+    val scope = rememberCoroutineScope()
+    var draggedUp by remember(state) { mutableStateOf(false) }
+    val dragState = rememberDraggableState { delta ->
+        if (delta < 0f && state.expansionPx > 0f) {
+            draggedUp = true
+            state.cancelActiveSettlement()
+            state.expansionPx = collapseBackdropBy(state.expansionPx, delta)
+        }
+    }
+    return draggable(
+        state = dragState,
+        orientation = Orientation.Vertical,
+        enabled = state.expansionPx > 0f,
+        onDragStarted = {
+            draggedUp = false
+            state.cancelActiveSettlement()
+        },
+        onDragStopped = { velocity ->
+            if (draggedUp || velocity < 0f) {
+                scope.launch {
+                    animateExpansionTo(
+                        state = state,
+                        target = 0f,
+                        durationMillis = motion.durations.standardMillis,
+                        easing = motion.easings.standard,
+                    )
+                }
+            }
+        },
+    )
+}
+
+internal fun collapseBackdropBy(expansionPx: Float, dragDelta: Float): Float =
+    if (dragDelta < 0f) (expansionPx + dragDelta).coerceAtLeast(0f) else expansionPx
 
 /** Direct until 80%, then eased resistance down to 30% response at full expansion. */
 internal fun homeExpansionResponseRatio(progress: Float): Float =

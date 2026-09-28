@@ -910,6 +910,7 @@ private fun HomeBackdrop(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .expandedBackdropCollapseGesture(expansionState)
             .bleedHorizontal(dims.timeline.horizontalPadding)
             // The welcome layer trails the sheet, so without this it would ride up past the top
             // edge of the content area.

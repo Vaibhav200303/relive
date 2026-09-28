@@ -1320,6 +1320,7 @@ private fun TimelineContent(
     // its head, so the chronological end is a short scroll from the top of the surface rather than
     // the far end of history, and the return control points up rather than down.
     val isNewestFirst = isHomeSurface || isSlidingCoverSurface
+    val expansion = remember(timelineState.currentTimeline) { BackdropExpansionState() }
     val emptyHomeScrollLimitConnection = remember(listState, isEmptyHomeSurface, homeHeaderCount) {
         if (!isEmptyHomeSurface || homeHeaderCount <= 0) {
             null
@@ -1477,13 +1478,18 @@ private fun TimelineContent(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .expandedBackdropCollapseGesture(expansion)
                 .padding(horizontal = dims.timeline.horizontalPadding)
-                // Home's backdrop is responsible for the system gesture area while stretched.
-                // Reserving navigation bars here reduced that layer's height and exposed the All
-                // timeline wallpaper below it. The floating controls still apply navigation-bar
-                // padding themselves; only the IME needs to constrain this content container.
+                // Sliding backdrops own the system gesture area while stretched. Reserving the
+                // navigation bar here shortens their viewport and exposes a strip beneath an
+                // expanded cover. Their scroll content and floating controls apply the inset
+                // themselves; only the IME should constrain the backdrop container.
                 .windowInsetsPadding(
-                    if (isHomeSurface) WindowInsets.ime else WindowInsets.navigationBars.union(WindowInsets.ime),
+                    if (isHomeSurface || isSlidingCoverSurface) {
+                        WindowInsets.ime
+                    } else {
+                        WindowInsets.navigationBars.union(WindowInsets.ime)
+                    },
                 ),
         ) {
             // Behind the list, so the timeline sheet slides over it rather than with it.
@@ -1520,7 +1526,6 @@ private fun TimelineContent(
                 val coverTravelPx = with(density) {
                     (dims.timeline.coverHeroHeight - coverControlsInset).roundToPx()
                 }.coerceAtLeast(0)
-                val expansion = rememberBackdropExpansionState()
                 LaunchedEffect(coverHeightPx) { expansion.backdropHeightPx = coverHeightPx }
                 val expansionConnection = rememberBackdropExpansionConnection(expansion)
                 // Keep scroll-derived cover position behind a stable provider. The surrounding
@@ -1852,7 +1857,13 @@ private fun TimelineContent(
                                 }
                             }
                         },
-                    contentPadding = PaddingValues(bottom = dims.spacing.huge),
+                    contentPadding = PaddingValues(
+                        bottom = dims.spacing.huge + if (isSlidingCoverSurface) {
+                            WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                        } else {
+                            0.dp
+                        },
+                    ),
                 ) {
                     if (isHomeSurface) {
                         homeHeader?.invoke(this)
