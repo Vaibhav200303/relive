@@ -51,6 +51,9 @@ import platform.UIKit.UIApplication
 import platform.UIKit.UIGraphicsBeginImageContextWithOptions
 import platform.UIKit.UIDocumentPickerDelegateProtocol
 import platform.UIKit.UIDocumentPickerViewController
+import platform.UIKit.UIDocumentInteractionController
+import platform.UIKit.UIDocumentInteractionControllerDelegateProtocol
+import platform.UIKit.UIViewController
 import platform.UIKit.UIGraphicsEndImageContext
 import platform.UIKit.UIGraphicsBeginPDFContextToFile
 import platform.UIKit.UIGraphicsBeginPDFPage
@@ -330,6 +333,9 @@ private class IosPortableArchiveMediaStore(private val root: NSURL, private val 
 @Composable
 actual fun rememberExportFileHandle(): ExportFileHandle = remember {
     object : ExportFileHandle {
+        private var previewController: UIDocumentInteractionController? = null
+        private var previewDelegate: UIDocumentInteractionControllerDelegateProtocol? = null
+
         override suspend fun choosePortableArchive(): String? {
             val type = UTType.typeWithIdentifier(RELIVE_ARCHIVE_UTI) ?: UTType.typeWithIdentifier("public.data")!!
             val deferred = CompletableDeferred<String?>()
@@ -355,6 +361,21 @@ actual fun rememberExportFileHandle(): ExportFileHandle = remember {
             present(picker)
             return true
         }
+        override fun open(result: ExportResult): Boolean {
+            val presenter = presentingViewController() ?: return false
+            val controller = UIDocumentInteractionController.interactionControllerWithURL(
+                NSURL.fileURLWithPath(result.path),
+            )
+            val delegate = object : NSObject(), UIDocumentInteractionControllerDelegateProtocol {
+                override fun documentInteractionControllerViewControllerForPreview(
+                    controller: UIDocumentInteractionController,
+                ): UIViewController = presenter
+            }
+            previewController = controller
+            previewDelegate = delegate
+            controller.delegate = delegate
+            return controller.presentPreviewAnimated(true)
+        }
         override fun share(result: ExportResult): Boolean {
             present(UIActivityViewController(listOf(NSURL.fileURLWithPath(result.path)), null))
             return true
@@ -364,9 +385,14 @@ actual fun rememberExportFileHandle(): ExportFileHandle = remember {
 
 @OptIn(ExperimentalForeignApi::class)
 private fun present(controller: platform.UIKit.UIViewController) {
-    var root = UIApplication.sharedApplication.keyWindow?.rootViewController ?: return
+    presentingViewController()?.presentViewController(controller, true, null)
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private fun presentingViewController(): UIViewController? {
+    var root = UIApplication.sharedApplication.keyWindow?.rootViewController ?: return null
     while (root.presentedViewController != null) root = root.presentedViewController!!
-    root.presentViewController(controller, true, null)
+    return root
 }
 
 @OptIn(ExperimentalForeignApi::class)

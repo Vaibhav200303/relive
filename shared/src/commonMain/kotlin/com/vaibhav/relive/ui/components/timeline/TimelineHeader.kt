@@ -3,7 +3,9 @@ package com.vaibhav.relive.ui.components.timeline
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -189,6 +191,7 @@ fun HomeFloatingHeaderActions(
 @Composable
 fun TimelineCoverHero(
     name: String,
+    subtitle: String? = null,
     coverPhotoRef: MediaStorageRef?,
     mediaStore: MediaStore,
     onBack: (() -> Unit)?,
@@ -287,7 +290,15 @@ fun TimelineCoverHero(
             onJumpToDate = onJumpToDate,
             onChangeTheme = onChangeTheme,
         )
-        Text(name, style = ReliveTheme.typography.coverTitle, color = colors.textPrimary, modifier = Modifier.align(Alignment.BottomStart).padding(dims.spacing.xl))
+        Column(
+            modifier = Modifier.align(Alignment.BottomStart).padding(dims.spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(dims.spacing.xs),
+        ) {
+            Text(name, style = ReliveTheme.typography.coverTitle, color = colors.textPrimary)
+            subtitle?.let {
+                Text(it, style = ReliveTheme.typography.eyebrow, color = colors.textSecondary)
+            }
+        }
     }
 }
 

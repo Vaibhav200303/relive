@@ -173,6 +173,7 @@ fun ExportScreen(
             ExportFlowStage.Result -> ExportResultScreen(
                 result = requireNotNull(activeStage.result),
                 onBack = viewModel::clearOperation,
+                onOpen = files::open,
                 onSave = files::save,
                 onShare = files::share,
             )
@@ -1132,6 +1133,7 @@ private fun ExportProcessingScreen(operation: ExportOperationState, onBack: () -
 private fun ExportResultScreen(
     result: ExportResult,
     onBack: () -> Unit,
+    onOpen: (ExportResult) -> Boolean,
     onSave: suspend (ExportResult) -> Boolean,
     onShare: (ExportResult) -> Boolean,
 ) {
@@ -1171,7 +1173,24 @@ private fun ExportResultScreen(
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(dims.spacing.xxl))
-            Button(
+            if (result.format == ExportFormat.KeepsakePdf) {
+                Button(
+                    onClick = {
+                        deliveryMessage = if (onOpen(result)) {
+                            "Opening your PDF."
+                        } else {
+                            "No PDF viewer is available. You can still save or share it."
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = ReliveTheme.colors.accent,
+                        contentColor = ReliveTheme.colors.textOnAccent,
+                    ),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+                ) { Text("Open PDF", style = ReliveTheme.typography.prominentAction) }
+                Spacer(Modifier.height(dims.spacing.sm))
+            }
+            OutlinedButton(
                 onClick = {
                     scope.launch {
                         deliveryMessage = if (onSave(result)) {
@@ -1183,7 +1202,7 @@ private fun ExportResultScreen(
                     }
                 },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-            ) { Text("Save to device", style = ReliveTheme.typography.prominentAction) }
+            ) { Text("Save to device", color = ReliveTheme.colors.textPrimary) }
             Spacer(Modifier.height(dims.spacing.sm))
             OutlinedButton(
                 onClick = {

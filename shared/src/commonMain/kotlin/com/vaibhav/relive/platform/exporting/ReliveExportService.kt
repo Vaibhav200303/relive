@@ -48,6 +48,7 @@ interface ReliveExportService {
 
 interface ExportFileHandle {
     suspend fun choosePortableArchive(): String?
+    fun open(result: ExportResult): Boolean
     suspend fun save(result: ExportResult): Boolean
     fun share(result: ExportResult): Boolean
 }

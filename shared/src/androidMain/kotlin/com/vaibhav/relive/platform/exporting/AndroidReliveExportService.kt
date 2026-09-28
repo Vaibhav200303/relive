@@ -778,6 +778,16 @@ actual fun rememberExportFileHandle(): ExportFileHandle {
                 }
                 return uri?.let { destination -> runCatching { context.contentResolver.openOutputStream(destination, "w")?.use { output -> FileInputStream(result.path).use { it.copyTo(output) } } ?: error("Could not save") }.isSuccess } ?: false
             }
+            override fun open(result: ExportResult): Boolean = runCatching {
+                val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", File(result.path))
+                context.startActivity(
+                    Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(uri, result.mimeType)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                    },
+                )
+                true
+            }.getOrDefault(false)
             override fun share(result: ExportResult): Boolean = runCatching {
                 val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", File(result.path))
                 context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = result.mimeType; putExtra(Intent.EXTRA_STREAM, uri); addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION) }, "Share ${result.filename}"))
