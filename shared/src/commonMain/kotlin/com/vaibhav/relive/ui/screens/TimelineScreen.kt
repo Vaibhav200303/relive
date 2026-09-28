@@ -26,6 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
@@ -1598,6 +1599,47 @@ private fun TimelineContent(
                 } else {
                     0
                 }
+                LaunchedEffect(feelingPromptMomentId, moments, feedOffset, isNewestFirst) {
+                    val promptMomentId = feelingPromptMomentId ?: return@LaunchedEffect
+                    val momentIndex = moments.indexOfFirst { it.id == promptMomentId }
+                    if (momentIndex < 0) return@LaunchedEffect
+
+                    val targetIndex = momentIndex + if (isNewestFirst) feedOffset else 0
+                    // The prompt reserves its complete height immediately. On the following
+                    // frame, move only its actual overflow into view, so keeping a Moment feels
+                    // like one continuous settling motion instead of a jump followed by a fixup.
+                    withFrameNanos { }
+                    var targetItem = listState.layoutInfo.visibleItemsInfo
+                        .firstOrNull { it.index == targetIndex }
+                    if (targetItem == null) {
+                        // Normally the new card replaces the adjacent composer and is already
+                        // measured. Keep the distant fallback direct so there is never a long
+                        // archive fly-through.
+                        listState.scrollToItem(targetIndex)
+                        withFrameNanos { }
+                        targetItem = listState.layoutInfo.visibleItemsInfo
+                            .firstOrNull { it.index == targetIndex }
+                            ?: return@LaunchedEffect
+                    }
+                    val overflow = feelingPromptOverflow(
+                        itemOffset = targetItem.offset,
+                        itemSize = targetItem.size,
+                        viewportEndOffset = listState.layoutInfo.viewportEndOffset,
+                    )
+                    if (overflow > 0) {
+                        if (reduceMotion) {
+                            listState.scrollBy(overflow.toFloat())
+                        } else {
+                            listState.animateScrollBy(
+                                value = overflow.toFloat(),
+                                animationSpec = tween(
+                                    durationMillis = motion.durations.medium1,
+                                    easing = motion.easings.emphasizedDecelerate,
+                                ),
+                            )
+                        }
+                    }
+                }
                 // The composer is one item emitted at whichever end of the feed is the
                 // chronological end: the head on Home (newest-first), the tail everywhere else.
                 val composerItem: LazyListScope.() -> Unit = {
@@ -2416,6 +2458,12 @@ private fun TimelineCoverBackdrop(
         }
     }
 }
+
+internal fun feelingPromptOverflow(
+    itemOffset: Int,
+    itemSize: Int,
+    viewportEndOffset: Int,
+): Int = (itemOffset + itemSize - viewportEndOffset).coerceAtLeast(0)
 
 /**
  * Travels to [targetIndex] — in whichever direction it lies — at a steady, readable pace of one

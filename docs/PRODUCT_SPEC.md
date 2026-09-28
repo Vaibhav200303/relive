@@ -611,7 +611,7 @@ A Moment may carry one optional **feeling**: `Great`, `Good`, or `Low`. Feelings
 
 ### 10A.1 Capturing a feeling
 
-- After a successful **Keep Moment** for a **new** Moment on an editable surface, a small `How does this moment feel?` prompt renders inline beneath the freshly saved Moment card, inside the timeline flow. It is never a modal, dialog, bottom sheet, or separate screen, and it causes no scroll.
+- After a successful **Keep Moment** for a **new** Moment on an editable surface, a small `How does this moment feel?` prompt renders inline beneath the freshly saved Moment card, inside the timeline flow. It is never a modal, dialog, bottom sheet, or separate screen. The surface automatically eases only the prompt's clipped overflow into view, leaving the complete prompt selectable without manual scrolling or a long feed traversal; reduced motion places it directly.
 - The prompt offers exactly the three feelings as face chips plus a dismiss `×`. Choosing writes the feeling; dismissing writes nothing. The prompt also leaves when another Moment is saved or the surface is left. Ignoring it forever is a fully supported path — a Moment with no feeling is a normal Moment, not an incomplete one.
 - Editing a Moment never shows the prompt and never clears an existing feeling; the feeling write path remains separate from general Moment editing, like the favorite toggle.
 

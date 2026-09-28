@@ -3,6 +3,7 @@ package com.vaibhav.relive.ui.components.timeline
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -73,6 +74,7 @@ import com.vaibhav.relive.ui.theme.TimelineMomentForegroundColors
 import com.vaibhav.relive.ui.theme.timelineMomentForegroundColors
 import com.vaibhav.relive.ui.theme.reliveInContextVerticalEnter
 import com.vaibhav.relive.ui.theme.reliveInContextVerticalExit
+import com.vaibhav.relive.ui.theme.spec
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -306,7 +308,14 @@ fun MomentCard(
             // than a floating interruption.
             AnimatedVisibility(
                 visible = showFeelingPrompt && onChooseFeeling != null,
-                enter = motion.reliveInContextVerticalEnter(ReliveTheme.reduceMotion, Alignment.Top),
+                // Reserve the final height immediately so viewport placement needs no visible
+                // correction while an expand transition grows the prompt.
+                enter = fadeIn(
+                    animationSpec = motion.spec(
+                        reduceMotion = ReliveTheme.reduceMotion,
+                        full = tween(motion.durations.short2, easing = motion.easings.standard),
+                    ),
+                ),
                 exit = motion.reliveInContextVerticalExit(ReliveTheme.reduceMotion, Alignment.Top),
                 label = "feeling prompt",
             ) {

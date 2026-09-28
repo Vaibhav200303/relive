@@ -47,6 +47,7 @@ import com.vaibhav.relive.domain.model.TimelineWallpaper
 import com.vaibhav.relive.domain.model.selectableTimelineWallpapers
 import com.vaibhav.relive.domain.repository.AppearanceRepository
 import com.vaibhav.relive.domain.repository.TimelineRepository
+import com.vaibhav.relive.platform.system.ReliveBackHandler
 import com.vaibhav.relive.presentation.timeline.TimelineThemeDestination
 import com.vaibhav.relive.presentation.timeline.TimelineThemeViewModel
 import com.vaibhav.relive.ui.components.timeline.BackGlyph
@@ -88,6 +89,8 @@ fun TimelineThemeScreen(
     val dims = ReliveTheme.dimensions
     val colors = ReliveTheme.colors
     val policy = EntitlementPolicy(entitlement)
+
+    ReliveBackHandler(enabled = true, onBack = onBack)
 
     Column(
         modifier = Modifier
