@@ -92,6 +92,9 @@ android {
             signingConfig = signingConfigs.getByName("debug")
             buildConfigField("boolean", "IS_DEMO", "true")
             buildConfigField("boolean", "IS_FRIENDS", "false")
+            // The public Shipaton evaluation build stops at the first instant after
+            // 31 October 2026 in India (UTC+05:30). Production builds never read this value.
+            buildConfigField("long", "DEMO_EXPIRES_AT_EPOCH_MILLIS", "1793471400000L")
             val key = revenueCatPublicKey("RELIVE_REVENUECAT_DEMO_ANDROID_PUBLIC_API_KEY")
                 ?: revenueCatPublicKey("RELIVE_REVENUECAT_ANDROID_PUBLIC_API_KEY")
                 ?: "RELIVE_REVENUECAT_DEMO_ANDROID_PUBLIC_API_KEY"
@@ -104,6 +107,7 @@ android {
             signingConfigs.findByName("friendsRelease")?.let { signingConfig = it }
             buildConfigField("boolean", "IS_DEMO", "false")
             buildConfigField("boolean", "IS_FRIENDS", "true")
+            buildConfigField("long", "DEMO_EXPIRES_AT_EPOCH_MILLIS", "0L")
             val key = revenueCatPublicKey("RELIVE_REVENUECAT_FRIENDS_ANDROID_PUBLIC_API_KEY")
                 ?: revenueCatPublicKey("RELIVE_REVENUECAT_ANDROID_PUBLIC_API_KEY")
                 ?: "RELIVE_REVENUECAT_FRIENDS_ANDROID_PUBLIC_API_KEY"
@@ -114,6 +118,7 @@ android {
             signingConfigs.findByName("productionRelease")?.let { signingConfig = it }
             buildConfigField("boolean", "IS_DEMO", "false")
             buildConfigField("boolean", "IS_FRIENDS", "false")
+            buildConfigField("long", "DEMO_EXPIRES_AT_EPOCH_MILLIS", "0L")
             val key = revenueCatPublicKey("RELIVE_REVENUECAT_PRODUCTION_ANDROID_PUBLIC_API_KEY")
                 ?: revenueCatPublicKey("RELIVE_REVENUECAT_ANDROID_PUBLIC_API_KEY")
                     ?.takeUnless { it.trim().startsWith("test_") }

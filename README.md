@@ -175,6 +175,8 @@ The repository's source-of-truth documents are the [product specification](docs/
 
 The demo bootstrap writes through the same repositories and media store as a real Moment. It is compiled only into the `demo` flavor; `friends` and `production` compile a no-op bootstrap and package no demo assets.
 
+The public Shipaton demo is a time-limited judging artifact. It expires after **31 October 2026 (India Standard Time)** and then shows a theme-aware evaluation-ended screen instead of the archive or Test Store purchase flow. The production and friends distributions do not expire, and expiration does not delete local data.
+
 ### Demo data transparency
 
 The judge archive is generic, uses original project-owned media, and is seeded idempotently so time-dependent features are useful immediately. Its code and assets exist only in the `demo` source set; the clean friends and production variants never receive those Moments.

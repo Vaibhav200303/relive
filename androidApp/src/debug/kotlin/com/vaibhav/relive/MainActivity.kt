@@ -42,7 +42,13 @@ class MainActivity : ComponentActivity() {
         AndroidBackupDebugTrigger.scheduler = AndroidBackupScheduler(applicationContext)
         routeIntent(intent)
         setIntent(Intent(this, MainActivity::class.java))
-        setContent { App(container, onIncomingShareCancelled = ::finish) }
+        setContent {
+            App(
+                container = container,
+                demoExpiresAtEpochMilliseconds = BuildConfig.DEMO_EXPIRES_AT_EPOCH_MILLIS.takeIf { BuildConfig.IS_DEMO },
+                onIncomingShareCancelled = ::finish,
+            )
+        }
         shareScope.launch {
             combine(
                 container.appearanceRepository.preferences,

@@ -3,6 +3,7 @@ package com.vaibhav.relive
 import android.app.Application
 import com.vaibhav.relive.platform.backup.AndroidBackupPreferencesRepository
 import com.vaibhav.relive.domain.entitlement.EntitlementProvider
+import com.vaibhav.relive.domain.entitlement.UnavailableEntitlementProvider
 import com.vaibhav.relive.domain.entitlement.entitlementProviderFor
 import com.vaibhav.relive.domain.backup.BackupCadence
 import kotlinx.coroutines.CoroutineScope
@@ -15,13 +16,17 @@ import com.vaibhav.relive.platform.backup.installBackupAuthDebugLogging
 class ReliveApplication : Application() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val entitlementProvider: EntitlementProvider by lazy {
-        entitlementProviderFor(
-            publicApiKey = BuildConfig.REVENUECAT_PUBLIC_API_KEY,
-            enableDebugLogging = BuildConfig.DEBUG,
-            // RevenueCat deliberately refuses Test Store keys in non-debuggable apps. Friends
-            // shares the real app flow through a debuggable Test Store APK; production never does.
-            allowTestStore = (BuildConfig.IS_DEMO || BuildConfig.IS_FRIENDS) && BuildConfig.DEBUG,
-        )
+        if (isDemoBuildExpired()) {
+            UnavailableEntitlementProvider("This time-limited judging build has expired.")
+        } else {
+            entitlementProviderFor(
+                publicApiKey = BuildConfig.REVENUECAT_PUBLIC_API_KEY,
+                enableDebugLogging = BuildConfig.DEBUG,
+                // RevenueCat deliberately refuses Test Store keys in non-debuggable apps. Friends
+                // shares the real app flow through a debuggable Test Store APK; production never does.
+                allowTestStore = (BuildConfig.IS_DEMO || BuildConfig.IS_FRIENDS) && BuildConfig.DEBUG,
+            )
+        }
     }
     override fun onCreate() {
         super.onCreate()
@@ -35,3 +40,6 @@ class ReliveApplication : Application() {
         }
     }
 }
+
+internal fun isDemoBuildExpired(nowEpochMilliseconds: Long = System.currentTimeMillis()): Boolean =
+    BuildConfig.IS_DEMO && nowEpochMilliseconds >= BuildConfig.DEMO_EXPIRES_AT_EPOCH_MILLIS

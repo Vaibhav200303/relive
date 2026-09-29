@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.DisposableEffect
@@ -38,6 +39,7 @@ import com.vaibhav.relive.ui.screens.TimelineScreen
 import com.vaibhav.relive.ui.screens.TimelineHomeScreen
 import com.vaibhav.relive.presentation.timelinehome.TimelineHomeContent
 import com.vaibhav.relive.ui.screens.AppLockScreen
+import com.vaibhav.relive.ui.screens.DemoExpiredScreen
 import com.vaibhav.relive.ui.screens.OnboardingScreen
 import com.vaibhav.relive.ui.screens.HomeScreen
 import com.vaibhav.relive.ui.screens.rememberHomeSurfaceState
@@ -106,6 +108,7 @@ import com.vaibhav.relive.platform.exporting.rememberExportFileHandle
 import com.vaibhav.relive.platform.share.IncomingSharePayload
 import com.vaibhav.relive.platform.share.IncomingShareState
 import androidx.lifecycle.Lifecycle
+import kotlinx.coroutines.delay
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.launch
@@ -165,6 +168,7 @@ private sealed interface RediscoverDestination {
 @Preview
 fun App(
     container: ReliveAppContainer,
+    demoExpiresAtEpochMilliseconds: Long? = null,
     rediscoverDebugControls: (@Composable () -> Unit)? = null,
     onIncomingShareCancelled: (() -> Unit)? = null,
 ) {
@@ -181,6 +185,24 @@ fun App(
         mode = appearanceState.preferences.mode,
         systemDark = isSystemInDarkTheme(),
     )
+    val demoExpired by produceState(
+        initialValue = isDemoExpired(
+            nowEpochMilliseconds = container.clock.now().epochMilliseconds,
+            expiresAtEpochMilliseconds = demoExpiresAtEpochMilliseconds,
+        ),
+        key1 = container.clock,
+        key2 = demoExpiresAtEpochMilliseconds,
+    ) {
+        val expiresAt = demoExpiresAtEpochMilliseconds ?: return@produceState
+        while (!value) {
+            val remaining = expiresAt - container.clock.now().epochMilliseconds
+            if (remaining <= 0L) {
+                value = true
+            } else {
+                delay(minOf(remaining, 60_000L))
+            }
+        }
+    }
     LaunchedEffect(appearanceState.preferences.defaultTheme, container.launcherIconController) {
         container.launcherIconController.synchronize(
             appearanceState.preferences.defaultTheme.toLauncherIcon(),
@@ -190,6 +212,10 @@ fun App(
         themeId = appearanceState.preferences.defaultTheme.toReliveThemeId(),
         darkMode = darkMode,
     ) {
+        if (demoExpired) {
+            DemoExpiredScreen()
+            return@ReliveTheme
+        }
         @OptIn(ExperimentalSharedTransitionApi::class)
         // The app's one global ground: every screen sits on the current theme's atmospheric
         // canvas gradient, so navigation moves content over a steady light source rather than
@@ -1160,6 +1186,11 @@ fun App(
         }
     }
 }
+
+internal fun isDemoExpired(
+    nowEpochMilliseconds: Long,
+    expiresAtEpochMilliseconds: Long?,
+): Boolean = expiresAtEpochMilliseconds != null && nowEpochMilliseconds >= expiresAtEpochMilliseconds
 
 private fun profileDestinationDepth(destination: ProfileDestination): Int = when (destination) {
     ProfileDestination.Closed -> 0
