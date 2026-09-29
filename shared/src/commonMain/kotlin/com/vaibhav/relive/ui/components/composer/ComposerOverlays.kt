@@ -139,11 +139,7 @@ private fun LibraryChoiceSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(
-                    androidx.compose.ui.graphics.Brush.verticalGradient(
-                        listOf(colors.surfaceOverlay, lerp(colors.surfaceOverlay, colors.tint, 0.16f)),
-                    ),
-                )
+                .background(Color.White)
                 .navigationBarsPadding()
                 .padding(horizontal = dims.spacing.xl)
                 .padding(bottom = dims.spacing.xl)

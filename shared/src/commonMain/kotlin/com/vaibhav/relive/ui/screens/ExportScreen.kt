@@ -482,6 +482,7 @@ private fun TimelineExportPicker(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(Color.White)
                 .navigationBarsPadding()
                 .padding(horizontal = dims.spacing.xl),
         ) {
